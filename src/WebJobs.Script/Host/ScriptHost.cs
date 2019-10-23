@@ -25,6 +25,8 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
 using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -51,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly IOptions<JobHostOptions> _hostOptions;
+        private readonly bool _isHttpWorker;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -77,13 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ScriptHost(IOptions<JobHostOptions> options,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptions<HttpWorkerOptions> httpWorkerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
             IConfiguration configuration,
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionDispatcher functionDispatcher,
+            IFunctionDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
@@ -113,11 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script
             _httpRoutesManager = httpRoutesManager;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostEnvironment = scriptHostEnvironment;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             EventManager = eventManager;
-            _functionDispatcher = functionDispatcher;
+            _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
 
             _metricsLogger = metricsLogger;
@@ -462,17 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (_environment.IsPlaceholderModeEnabled()
-                || string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
-                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            }
-            else
-            {
-                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
-            }
+            AddFunctionDescriptors();
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
@@ -482,6 +477,31 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.DescriptorsCreated();
             }
             Functions = functions;
+        }
+
+        private void AddFunctionDescriptors()
+        {
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                _logger.HostIsInPlaceholderMode();
+                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            }
+            else if (_isHttpWorker)
+            {
+                _logger.AddingDescriptorProviderForHttpWorker();
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+            }
+            else if (string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
+            }
+           else
+            {
+                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+            }
         }
 
         /// <summary>
@@ -633,10 +653,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
 
-            if (!_environment.IsPlaceholderModeEnabled())
-            {
-                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime);
-            }
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker);
 
             foreach (FunctionMetadata metadata in functions)
             {

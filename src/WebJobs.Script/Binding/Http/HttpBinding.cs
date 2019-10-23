@@ -8,6 +8,7 @@ using System.Dynamic;
 using System.Globalization;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -39,18 +40,24 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override Task BindAsync(BindingContext context)
         {
             HttpRequest request = (HttpRequest)context.TriggerValue;
-
-            object content = context.Value;
-            if (content is Stream)
+            HttpResponseMessage invocationResponseMessage = context.Value as HttpResponseMessage;
+            if (invocationResponseMessage != null)
             {
-                // for script language functions (e.g. PowerShell, BAT, etc.) the value
-                // will be a Stream which we need to convert to string
-                ConvertStreamToValue((Stream)content, DataType.String, ref content);
+                request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = invocationResponseMessage;
             }
+            else
+            {
+                object content = context.Value;
+                if (content is Stream)
+                {
+                    // for script language functions (e.g. PowerShell, BAT, etc.) the value
+                    // will be a Stream which we need to convert to string
+                    ConvertStreamToValue((Stream)content, DataType.String, ref content);
+                }
 
-            IActionResult response = CreateResult(request, content);
-            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
-
+                IActionResult response = CreateResult(request, content);
+                request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
+            }
             return Task.CompletedTask;
         }
 

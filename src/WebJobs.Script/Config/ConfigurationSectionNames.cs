@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string ExtensionBundle = "extensionBundle";
         public const string ManagedDependency = "managedDependency";
         public const string Extensions = "extensions";
-        public const string HttpInvoker = "httpInvoker";
+        public const string HttpWorker = "httpWorker";
         public const string Http = Extensions + ":http";
         public const string Hsts = Http + ":hsts";
         public const string CustomHttpHeaders = Http + ":customHeaders";

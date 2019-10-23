@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;

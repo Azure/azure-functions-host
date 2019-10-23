@@ -8,9 +8,11 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
     // Arguments to start a worker process
     internal class HttpWorkerContext : WorkerContext
     {
-        public override string GetFormatedArguments()
+        public int Port { get; set; }
+
+        public override string GetFormattedArguments()
         {
-            return $" --workerId {WorkerId} --requestId {RequestId}";
+           return $" --workerId {WorkerId} --port {Port}";
         }
     }
 }

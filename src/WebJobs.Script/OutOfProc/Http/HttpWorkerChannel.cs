@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
         private ILanguageWorkerProcess _languageWorkerProcess;
-        private IHttpInvokerService _httpInvokerService;
+        private IHttpWorkerService _httpWorkerService;
 
         internal HttpWorkerChannel(
            string workerId,
            ILanguageWorkerProcess languageWorkerProcess,
-           IHttpInvokerService httpInvokerService,
+           IHttpWorkerService httpWorkerService,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount)
@@ -29,28 +29,21 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc
             Id = workerId;
             _languageWorkerProcess = languageWorkerProcess;
             _workerChannelLogger = logger;
-            _httpInvokerService = httpInvokerService;
-            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpInvoker", attemptCount));
+            _httpWorkerService = httpWorkerService;
+            _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
         }
 
         public string Id { get; }
 
         public Task InvokeFunction(ScriptInvocationContext context)
         {
-            // TODO: convert to Http request
-            return _httpInvokerService.GetInvocationResponse(context);
+            return _httpWorkerService.InvokeAsync(context);
         }
 
         public async Task StartWorkerProcessAsync()
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _languageWorkerProcess.StartProcessAsync();
-        }
-
-        public Task Status()
-        {
-            // TODO: status endpoint on http invoker. Wait till 200 OK response before sending invocation requests
-            throw new NotImplementedException();
         }
 
         protected virtual void Dispose(bool disposing)

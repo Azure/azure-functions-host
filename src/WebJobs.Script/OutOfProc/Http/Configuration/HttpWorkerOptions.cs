@@ -8,5 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.OutOfProc.Http
         public HttpWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
+
+        public int Port { get; set; }
     }
 }
