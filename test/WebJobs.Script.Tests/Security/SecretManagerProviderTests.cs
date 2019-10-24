@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
     public class SecretManagerProviderTests
     {
         private readonly ScriptApplicationHostOptions _options;
-        private readonly TestChangeTokenSource _tokenSource;
+        private readonly TestChangeTokenSource<ScriptApplicationHostOptions> _tokenSource;
         private readonly DefaultSecretManagerProvider _provider;
 
         public SecretManagerProviderTests()
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 SecretsPath = "c:\\path1"
             };
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_options);
-            _tokenSource = new TestChangeTokenSource();
+            _tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { _tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 

@@ -87,7 +87,7 @@ namespace Microsoft.WebJobs.Script.Tests
         private static IServiceCollection AddFunctionMetadataProvider(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
         {
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var source = new TestChangeTokenSource();
+            var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 

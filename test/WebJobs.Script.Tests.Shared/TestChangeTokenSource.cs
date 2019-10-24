@@ -8,7 +8,7 @@ using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class TestChangeTokenSource : IOptionsChangeTokenSource<ScriptApplicationHostOptions>
+    public class TestChangeTokenSource<T> : IOptionsChangeTokenSource<T>
     {
         private IChangeToken _changeToken;
         private CancellationTokenSource _cts = new CancellationTokenSource();
