@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WebHostLanguageWorkerChannelManagerTests
+    public class WebHostRpcWorkerChannelManagerTests
     {
         private readonly IScriptEventManager _eventManager;
         private readonly IEnvironment _testEnvironment;
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 { "StandbyModeEnabled", "true" }
             };
 
-        public WebHostLanguageWorkerChannelManagerTests()
+        public WebHostRpcWorkerChannelManagerTests()
         {
             _eventManager = new ScriptEventManager();
             _rpcServer = new TestRpcServer();
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _rpcWorkerProcessFactory.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(_rpcWorkerProcess.Object);
 
             _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
-            _rpcWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
+            _rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger());
         }
 
@@ -287,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task InitializeLanguageWorkerChannel_ThrowsOnProcessStartup()
         {
-            var rpcWorkerChannelFactory = new TestLanguageWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
+            var rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, null, _scriptRootPath, throwOnProcessStartUp: true);
             var rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger());
             var rpcWorkerChannel = await rpcWorkerChannelManager.InitializeLanguageWorkerChannel("test", _scriptRootPath);
             var ex = await Assert.ThrowsAsync<AggregateException>(async () => await rpcWorkerChannelManager.GetChannelAsync("test"));

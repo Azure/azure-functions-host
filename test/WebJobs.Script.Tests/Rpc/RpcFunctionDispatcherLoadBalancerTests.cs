@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class FunctionDispatcherLoadBalancerTests
+    public class RpcFunctionDispatcherLoadBalancerTests
     {
         [Fact]
         public static void LoadBalancer_EqualDistribution_EvenNumberOfChannels()
@@ -19,10 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
-                new TestLanguageWorkerChannel("1"),
-                new TestLanguageWorkerChannel("2"),
-                new TestLanguageWorkerChannel("3"),
-                new TestLanguageWorkerChannel("4")
+                new TestRpcWorkerChannel("1"),
+                new TestRpcWorkerChannel("2"),
+                new TestRpcWorkerChannel("3"),
+                new TestRpcWorkerChannel("4")
             };
 
             int expectedInvocationsPerChannel = totalInvocations / workerChannels.Count();
@@ -49,9 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
-                new TestLanguageWorkerChannel("1"),
-                new TestLanguageWorkerChannel("2"),
-                new TestLanguageWorkerChannel("3")
+                new TestRpcWorkerChannel("1"),
+                new TestRpcWorkerChannel("2"),
+                new TestRpcWorkerChannel("3")
             };
 
             int expectedInvocationsPerChannel = totalInvocations / workerChannels.Count();
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>()
             {
-                new TestLanguageWorkerChannel("1"),
+                new TestRpcWorkerChannel("1"),
             };
 
             IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer = new RpcFunctionInvocationDispatcherLoadBalancer();

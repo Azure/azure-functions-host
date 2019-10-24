@@ -15,7 +15,7 @@ using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannelManager : IWebHostRpcWorkerChannelManager
+    public class TesRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _scriptRootPath;
         private IRpcWorkerChannelFactory _testLanguageWorkerChannelFactory;
 
-        public TestLanguageWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, IRpcWorkerChannelFactory testLanguageWorkerChannelFactory)
+        public TesRpcWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, IRpcWorkerChannelFactory testLanguageWorkerChannelFactory)
         {
             _eventManager = eventManager;
             _testLogger = testLogger;

@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
-        private readonly WorkerConfig _workerConfig;
+        private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
 
         private IDisposable _functionLoadRequestResponseEvent;
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            string workerId,
            string rootScriptPath,
            IScriptEventManager eventManager,
-           WorkerConfig workerConfig,
+           RpcWorkerConfig workerConfig,
            IWorkerProcess rpcWorkerProcess,
            ILogger logger,
            IMetricsLogger metricsLogger,

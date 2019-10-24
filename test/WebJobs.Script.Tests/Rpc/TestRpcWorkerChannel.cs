@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannel : IRpcWorkerChannel
+    public class TestRpcWorkerChannel : IRpcWorkerChannel
     {
         private string _workerId;
         private bool _isWebhostChannel;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private RpcWorkerChannelState _state;
         private List<Task> _executionContexts;
 
-        public TestLanguageWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
+        public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
         {
             _workerId = workerId;
             _isWebhostChannel = isWebhostChannel;

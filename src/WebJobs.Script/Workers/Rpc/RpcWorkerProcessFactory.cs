@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class RpcWorkerProcessFactory : IRpcWorkerProcessFactory
     {
         private readonly IWorkerProcessFactory _workerProcessFactory;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs = null;
         private readonly IProcessRegistry _processRegistry;
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IScriptEventManager _eventManager = null;
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IWorkerProcess Create(string workerId, string runtime, string scriptRootPath)
         {
-            WorkerConfig workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            RpcWorkerConfig workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.rpcWorkerProcess.{runtime}.{workerId}");
             return new RpcWorkerProcess(runtime, workerId, scriptRootPath, _rpcServer.Uri, workerConfig.Arguments, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
         }

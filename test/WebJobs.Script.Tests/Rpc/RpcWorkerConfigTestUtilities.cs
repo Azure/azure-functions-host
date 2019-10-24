@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class WorkerConfigTestUtilities
+    public class RpcWorkerConfigTestUtilities
     {
         public const string TestWorkerPathInWorkerConfig = "./src/index";
         public const string TestDefaultWorkerFile = "testWorker.py";
@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             return workerDescription;
         }
 
-        public static void CreateWorkerFolder(string testDir, TestLanguageWorkerConfig workerConfig, bool createTestWorker = true)
+        public static void CreateWorkerFolder(string testDir, TestRpcWorkerConfig workerConfig, bool createTestWorker = true)
         {
             string workerPath = string.IsNullOrEmpty(workerConfig.Language) ? testDir : Path.Combine(testDir, workerConfig.Language);
             Directory.CreateDirectory(workerPath);

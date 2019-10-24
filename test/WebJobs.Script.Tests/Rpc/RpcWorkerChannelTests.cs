@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private readonly TestFunctionRpcService _testFunctionRpcService;
         private readonly TestLogger _logger;
         private readonly IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
-        private readonly WorkerConfig _testWorkerConfig;
+        private readonly RpcWorkerConfig _testWorkerConfig;
         private RpcWorkerChannel _workerChannel;
 
         public RpcWorkerChannelTests()

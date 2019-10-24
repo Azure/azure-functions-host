@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Configure(LanguageWorkerOptions options)
         {
             ISystemRuntimeInformation systemRuntimeInfo = new SystemRuntimeInformation();
-            var configFactory = new WorkerConfigFactory(_configuration, _logger, systemRuntimeInfo, _environment, _metricsLogger);
+            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, systemRuntimeInfo, _environment, _metricsLogger);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }

@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-        private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly bool _isHttpWorker;
         private readonly Lazy<ImmutableArray<FunctionMetadata>> _functionMetadataArray;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;

@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public class WorkerConfig
+    public class RpcWorkerConfig
     {
         public RpcWorkerDescription Description { get; set; }
 

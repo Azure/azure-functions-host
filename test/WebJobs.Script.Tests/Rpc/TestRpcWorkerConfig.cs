@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerConfig
+    public class TestRpcWorkerConfig
     {
         public string Language { get; set; }
 

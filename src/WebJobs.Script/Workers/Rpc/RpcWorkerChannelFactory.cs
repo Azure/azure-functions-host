@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
         private readonly IScriptEventManager _eventManager = null;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs = null;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs = null;
 
         public RpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager)

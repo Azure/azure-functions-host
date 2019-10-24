@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     // Gets fully configured WorkerConfigs from IWorkerProviders
-    internal class WorkerConfigFactory
+    internal class RpcWorkerConfigFactory
     {
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
@@ -25,14 +25,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private Dictionary<string, RpcWorkerDescription> _workerDescripionDictionary = new Dictionary<string, RpcWorkerDescription>();
 
-        public WorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
+        public RpcWorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
-            WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(WorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
+            WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -42,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string WorkersDirPath { get; }
 
-        public IList<WorkerConfig> GetConfigs()
+        public IList<RpcWorkerConfig> GetConfigs()
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
             {
                 BuildWorkerProviderDictionary();
-                var result = new List<WorkerConfig>();
+                var result = new List<RpcWorkerConfig>();
 
                 foreach (var description in _workerDescripionDictionary.Values)
                 {
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
                     }
                     arguments.ExecutableArguments.AddRange(description.Arguments);
-                    var config = new WorkerConfig()
+                    var config = new RpcWorkerConfig()
                     {
                         Description = description,
                         Arguments = arguments

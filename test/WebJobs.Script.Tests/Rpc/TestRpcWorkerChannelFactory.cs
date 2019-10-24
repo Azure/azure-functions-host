@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class TestLanguageWorkerChannelFactory : IRpcWorkerChannelFactory
+    public class TestRpcWorkerChannelFactory : IRpcWorkerChannelFactory
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private string _scriptRootPath;
         private bool _throwOnProcessStartUp;
 
-        public TestLanguageWorkerChannelFactory(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, bool throwOnProcessStartUp = false)
+        public TestRpcWorkerChannelFactory(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, bool throwOnProcessStartUp = false)
         {
             _eventManager = eventManager;
             _testLogger = testLogger;
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
         public IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
-            return new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, throwOnProcessStartUp: _throwOnProcessStartUp);
+            return new TestRpcWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, throwOnProcessStartUp: _throwOnProcessStartUp);
         }
     }
 }
