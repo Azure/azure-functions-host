@@ -32,12 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
         {
             string testScriptPath = Path.Combine("TestScripts", "CSharp");
             string testLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
+            var settings = new Dictionary<string, string>()
+            {
+                ["WEBSITE_SKU"] = "ElasticPremium"
+            };
+            var testEnvironment = new TestEnvironment(settings);
 
             _testHost = new TestFunctionHost(testScriptPath, testLogPath,
             configureWebHostServices: services =>
             {
                 services.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
-
+                services.AddSingleton<IEnvironment>(testEnvironment);
                 services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>
                 {
                     b.UseHostId("1234");
@@ -64,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 
             // Let's make the warmup request and not wait for it to finish,
             // as warmup call needs the host to be running while the host is currently paused
-            string masterKey = await _testHost.GetMasterKeyAsync();
-            string uri = $"admin/warmup?code={masterKey}";
+            string uri = "admin/warmup";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             Task<HttpResponseMessage> responseTask = _testHost.HttpClient.SendAsync(request);
 

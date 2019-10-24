@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
 
+        public bool IsElasticPremiumSku => WebsiteSku == ScriptConstants.ElasticPremiumSku;
+
         public virtual string AzureWebsiteInstanceId
          {
              get
