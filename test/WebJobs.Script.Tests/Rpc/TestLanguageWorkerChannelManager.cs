@@ -88,9 +88,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 throw new ArgumentNullException(nameof(language));
             }
-            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> languageWorkerChannels))
+            if (_workerChannels.TryGetValue(language, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> rpcWorkerChannels))
             {
-                if (languageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
+                if (rpcWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> value))
                 {
                     try
                     {
@@ -98,13 +98,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                         if (channel != null)
                         {
                             (channel as IDisposable)?.Dispose();
-                            languageWorkerChannels.Remove(workerId);
+                            rpcWorkerChannels.Remove(workerId);
                             return true;
                         }
                     }
                     catch (Exception)
                     {
-                        languageWorkerChannels.Remove(workerId);
+                        rpcWorkerChannels.Remove(workerId);
                         return true;
                     }
                 }

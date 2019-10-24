@@ -8,27 +8,27 @@ using System.Threading;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal class FunctionDispatcherLoadBalancer : IFunctionDispatcherLoadBalancer
+    internal class RpcFunctionInvocationDispatcherLoadBalancer : IRpcFunctionInvocationDispatcherLoadBalancer
     {
         private int _counter = 0;
 
         internal int Counter => _counter;
 
-        public IRpcWorkerChannel GetLanguageWorkerChannel(IEnumerable<IRpcWorkerChannel> languageWorkerChannels, int maxProcessCount)
+        public IRpcWorkerChannel GetLanguageWorkerChannel(IEnumerable<IRpcWorkerChannel> rpcWorkerChannels, int maxProcessCount)
         {
-            if (languageWorkerChannels == null)
+            if (rpcWorkerChannels == null)
             {
-                throw new ArgumentNullException(nameof(languageWorkerChannels));
+                throw new ArgumentNullException(nameof(rpcWorkerChannels));
             }
 
-            var currentNumberOfWorkers = languageWorkerChannels.Count();
+            var currentNumberOfWorkers = rpcWorkerChannels.Count();
             if (currentNumberOfWorkers == 0)
             {
                 throw new InvalidOperationException($"Did not find any initialized language workers");
             }
             if (maxProcessCount == 1)
             {
-                return languageWorkerChannels.FirstOrDefault();
+                return rpcWorkerChannels.FirstOrDefault();
             }
             var workerIndex = Interlocked.Increment(ref _counter) % currentNumberOfWorkers;
             if (_counter < 0 || workerIndex < 0)
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _counter = 0;
                 workerIndex = 0;
             }
-            return languageWorkerChannels.ElementAt(workerIndex);
+            return rpcWorkerChannels.ElementAt(workerIndex);
         }
     }
 }

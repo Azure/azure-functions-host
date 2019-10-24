@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IEnvironment _environment;
-        private readonly IWebHostRpcWorkerChannelManager _webHostlanguageWorkerChannelManager;
+        private readonly IWebHostRpcWorkerChannelManager _webHostRpcWorkerChannelManager;
         private readonly IRpcServer _rpcServer;
         private readonly ILogger _logger;
 
@@ -52,14 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             RpcWorkerConstants.NodeLanguageWorkerName
         };
 
-        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager languageWorkerChannelManager, ILogger<RpcInitializationService> logger)
+        public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _logger = logger;
             _rpcServer = rpcServer;
             _environment = environment;
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
-            _webHostlanguageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
         }
 
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            await _webHostlanguageWorkerChannelManager.ShutdownChannelsAsync();
+            await _webHostRpcWorkerChannelManager.ShutdownChannelsAsync();
         }
 
         public async Task OuterStopAsync(CancellationToken cancellationToken)
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
             if (ShouldStartAsPlaceholderPool())
             {
-                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
             else if (ShouldStartStandbyPlaceholderChannels())
             {
@@ -149,14 +149,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private Task InitializePlaceholderChannelsAsync(OSPlatform os)
         {
             return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
-                _webHostlanguageWorkerChannelManager.InitializeChannelAsync(runtime)));
+                _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
         }
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
             if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
             {
-                return _webHostlanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
 
             return Task.CompletedTask;

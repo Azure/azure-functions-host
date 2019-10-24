@@ -17,7 +17,7 @@ using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMeta
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class FunctionDispatcherTests
+    public class RpcFunctionInvocationDispatcherTests
     {
         private static TestLanguageWorkerChannel _javaTestChannel;
         private static TestLogger _testLogger = new TestLogger("FunctionDispatcherTests");
@@ -370,7 +370,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             {
                 testWebHostLanguageWorkerChannelManager = mockwebHostLanguageWorkerChannelManager.Object;
             }
-            var mockFunctionDispatcherLoadBalancer = new Mock<IFunctionDispatcherLoadBalancer>();
+            var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
 
             _javaTestChannel = new TestLanguageWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
 

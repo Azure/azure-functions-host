@@ -10,13 +10,13 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class LanguageWorkerProcessTests
+    public class RpcWorkerProcessTests
     {
-        private RpcWorkerProcess _languageWorkerProcess;
+        private RpcWorkerProcess _rpcWorkerProcess;
 
         private Mock<IScriptEventManager> _eventManager;
 
-        public LanguageWorkerProcessTests()
+        public RpcWorkerProcessTests()
         {
             _eventManager = new Mock<IScriptEventManager>();
             var workerProcessFactory = new Mock<IWorkerProcessFactory>();
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
-            _languageWorkerProcess = new RpcWorkerProcess("node",
+            _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
                 rpcServer.Uri,
@@ -40,29 +40,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void ErrorMessageQueue_Empty()
         {
-            Assert.Empty(_languageWorkerProcess.ProcessStdErrDataQueue);
+            Assert.Empty(_rpcWorkerProcess.ProcessStdErrDataQueue);
         }
 
         [Fact]
         public void ErrorMessageQueue_Enqueue_Success()
         {
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
 
-            Assert.True(_languageWorkerProcess.ProcessStdErrDataQueue.Count == 2);
-            string exceptionMessage = string.Join(",", _languageWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+            Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 2);
+            string exceptionMessage = string.Join(",", _rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error1,Error2", exceptionMessage);
         }
 
         [Fact]
         public void ErrorMessageQueue_Full_Enqueue_Success()
         {
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error1");
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error2");
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error3");
-            WorkerProcessUtilities.AddStdErrMessage(_languageWorkerProcess.ProcessStdErrDataQueue, "Error4");
-            Assert.True(_languageWorkerProcess.ProcessStdErrDataQueue.Count == 3);
-            string exceptionMessage = string.Join(",", _languageWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error1");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error2");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error3");
+            WorkerProcessUtilities.AddStdErrMessage(_rpcWorkerProcess.ProcessStdErrDataQueue, "Error4");
+            Assert.True(_rpcWorkerProcess.ProcessStdErrDataQueue.Count == 3);
+            string exceptionMessage = string.Join(",", _rpcWorkerProcess.ProcessStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
             Assert.Equal("Error2,Error3,Error4", exceptionMessage);
         }
 
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public void HandleWorkerProcessExitError_PublishesWorkerRestartEvent_OnIntentionalRestartExitCode()
         {
-            _languageWorkerProcess.HandleWorkerProcessRestart();
+            _rpcWorkerProcess.HandleWorkerProcessRestart();
 
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerRestartEvent>()), Times.Once());
             _eventManager.Verify(_ => _.Publish(It.IsAny<WorkerErrorEvent>()), Times.Never());

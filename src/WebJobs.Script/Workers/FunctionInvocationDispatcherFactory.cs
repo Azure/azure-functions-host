@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
-            IFunctionDispatcherLoadBalancer functionDispatcherLoadBalancer)
+            IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer)
         {
             if (httpWorkerOptions.Value == null)
             {

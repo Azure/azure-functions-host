@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             int expectedInvocationsPerChannel = totalInvocations / workerChannels.Count();
 
-            IFunctionDispatcherLoadBalancer loadBalancer = new FunctionDispatcherLoadBalancer();
+            IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer = new RpcFunctionInvocationDispatcherLoadBalancer();
             for (int index = 0; index < 100; index++)
             {
                 results.Add(loadBalancer.GetLanguageWorkerChannel(workerChannels, workerChannels.Count()));
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 
             int expectedInvocationsPerChannel = totalInvocations / workerChannels.Count();
 
-            IFunctionDispatcherLoadBalancer loadBalancer = new FunctionDispatcherLoadBalancer();
+            IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer = new RpcFunctionInvocationDispatcherLoadBalancer();
             for (int index = 0; index < 100; index++)
             {
                 results.Add(loadBalancer.GetLanguageWorkerChannel(workerChannels, workerChannels.Count()));
@@ -80,8 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 new TestLanguageWorkerChannel("1"),
             };
 
-            IFunctionDispatcherLoadBalancer loadBalancer = new FunctionDispatcherLoadBalancer();
-            FunctionDispatcherLoadBalancer functionDispatcherLoadBalancer = loadBalancer as FunctionDispatcherLoadBalancer;
+            IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer = new RpcFunctionInvocationDispatcherLoadBalancer();
+            RpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer = loadBalancer as RpcFunctionInvocationDispatcherLoadBalancer;
             for (int index = 0; index < 10; index++)
             {
                 loadBalancer.GetLanguageWorkerChannel(workerChannels, 1);
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             List<IRpcWorkerChannel> results = new List<IRpcWorkerChannel>();
             IEnumerable<IRpcWorkerChannel> workerChannels = new List<IRpcWorkerChannel>();
-            IFunctionDispatcherLoadBalancer loadBalancer = new FunctionDispatcherLoadBalancer();
+            IRpcFunctionInvocationDispatcherLoadBalancer loadBalancer = new RpcFunctionInvocationDispatcherLoadBalancer();
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {

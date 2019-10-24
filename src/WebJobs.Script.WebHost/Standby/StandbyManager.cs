@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<Task> _specializationTask;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
-        private readonly IWebHostRpcWorkerChannelManager _languageWorkerChannelManager;
+        private readonly IWebHostRpcWorkerChannelManager _rpcWorkerChannelManager;
         private readonly IConfigurationRoot _configuration;
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
@@ -43,13 +43,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static IChangeToken _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         private static SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostRpcWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, IMetricsLogger metricsLogger)
-            : this(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(500), metricsLogger)
+            : this(scriptHostManager, rpcWorkerChannelManager, configuration, webHostEnvironment, environment, options, logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(500), metricsLogger)
         {
         }
 
-        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostRpcWorkerChannelManager languageWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
+        public StandbyManager(IScriptHostManager scriptHostManager, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime, TimeSpan specializationTimerInterval, IMetricsLogger metricsLogger)
         {
             _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _configuration = configuration as IConfigurationRoot ?? throw new ArgumentNullException(nameof(configuration));
-            _languageWorkerChannelManager = languageWorkerChannelManager ?? throw new ArgumentNullException(nameof(languageWorkerChannelManager));
+            _rpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
             _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
             _specializationTimerInterval = specializationTimerInterval;
@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
-                await _languageWorkerChannelManager.SpecializeAsync();
+                await _rpcWorkerChannelManager.SpecializeAsync();
             }
 
             NotifyChange();

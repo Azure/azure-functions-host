@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IHttpWorkerService, DefaultHttpWorkerService>();
                 // Rpc Worker
                 services.AddSingleton<IJobHostRpcWorkerChannelManager, JobHostRpcWorkerChannelManager>();
-                services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
+                services.AddSingleton<IRpcFunctionInvocationDispatcherLoadBalancer, RpcFunctionInvocationDispatcherLoadBalancer>();
 
                 //Worker Function Invocation dispatcher
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();

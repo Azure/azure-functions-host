@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal interface IFunctionDispatcherLoadBalancer
+    internal interface IRpcFunctionInvocationDispatcherLoadBalancer
     {
         IRpcWorkerChannel GetLanguageWorkerChannel(IEnumerable<IRpcWorkerChannel> languageWorkers, int maxProcessCount);
     }

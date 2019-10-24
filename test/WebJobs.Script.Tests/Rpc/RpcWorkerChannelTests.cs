@@ -19,13 +19,13 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
 {
-    public class LanguageWorkerChannelTests
+    public class RpcWorkerChannelTests
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
         private static string _expectedLoadMsgPartial = "Sending FunctionLoadRequest for ";
 
-        private readonly Mock<IWorkerProcess> _mockLanguageWorkerProcess = new Mock<IWorkerProcess>();
+        private readonly Mock<IWorkerProcess> _mockrpcWorkerProcess = new Mock<IWorkerProcess>();
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\testdir";
         private readonly IScriptEventManager _eventManager = new ScriptEventManager();
@@ -40,19 +40,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         private readonly WorkerConfig _testWorkerConfig;
         private RpcWorkerChannel _workerChannel;
 
-        public LanguageWorkerChannelTests()
+        public RpcWorkerChannelTests()
         {
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
-            _mockLanguageWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
+            _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
             _workerChannel = new RpcWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
-               _mockLanguageWorkerProcess.Object,
+               _mockrpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0);
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
-            _mockLanguageWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+            _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
         }
 
         [Fact]
@@ -93,15 +93,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
-            Mock<IWorkerProcess> mockLanguageWorkerProcessThatThrows = new Mock<IWorkerProcess>();
-            mockLanguageWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
+            Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
+            mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
             _workerChannel = new RpcWorkerChannel(
                _workerId,
                _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
-               mockLanguageWorkerProcessThatThrows.Object,
+               mockrpcWorkerProcessThatThrows.Object,
                _logger,
                _metricsLogger,
                0);
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
-               _mockLanguageWorkerProcess.Object,
+               _mockrpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
                0);

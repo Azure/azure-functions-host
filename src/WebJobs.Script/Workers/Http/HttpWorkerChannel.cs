@@ -15,19 +15,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private bool _disposed;
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
-        private IWorkerProcess _languageWorkerProcess;
+        private IWorkerProcess _rpcWorkerProcess;
         private IHttpWorkerService _httpWorkerService;
 
         internal HttpWorkerChannel(
            string workerId,
-           IWorkerProcess languageWorkerProcess,
+           IWorkerProcess rpcWorkerProcess,
            IHttpWorkerService httpWorkerService,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount)
         {
             Id = workerId;
-            _languageWorkerProcess = languageWorkerProcess;
+            _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _httpWorkerService = httpWorkerService;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public async Task StartWorkerProcessAsync()
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _languageWorkerProcess.StartProcessAsync();
+            await _rpcWorkerProcess.StartProcessAsync();
         }
 
         protected virtual void Dispose(bool disposing)
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     _startLatencyMetric?.Dispose();
 
-                    (_languageWorkerProcess as IDisposable)?.Dispose();
+                    (_rpcWorkerProcess as IDisposable)?.Dispose();
                 }
                 _disposed = true;
             }

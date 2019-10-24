@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private IMetricsLogger _metricsLogger;
-        private IWorkerProcess _languageWorkerProcess;
+        private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
 
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            string rootScriptPath,
            IScriptEventManager eventManager,
            WorkerConfig workerConfig,
-           IWorkerProcess languageWorkerProcess,
+           IWorkerProcess rpcWorkerProcess,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _eventManager = eventManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
-            _languageWorkerProcess = languageWorkerProcess;
+            _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
 
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public RpcWorkerChannelState State => _state;
 
-        internal IWorkerProcess WorkerProcess => _languageWorkerProcess;
+        internal IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
         public async Task StartWorkerProcessAsync()
         {
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _languageWorkerProcess.StartProcessAsync();
+            await _rpcWorkerProcess.StartProcessAsync();
             _state = RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
         }
@@ -458,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         link.Dispose();
                     }
 
-                    (_languageWorkerProcess as IDisposable)?.Dispose();
+                    (_rpcWorkerProcess as IDisposable)?.Dispose();
 
                     foreach (var sub in _eventSubscriptions)
                     {
