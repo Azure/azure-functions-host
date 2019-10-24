@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionDispatcherFactory functionDispatcherFactory,
+            IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,

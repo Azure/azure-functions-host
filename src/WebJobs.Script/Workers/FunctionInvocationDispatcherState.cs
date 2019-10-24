@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public enum FunctionDispatcherState
+    public enum FunctionInvocationDispatcherState
     {
         /// <summary>
         /// The FunctionDispatcher has not yet been created

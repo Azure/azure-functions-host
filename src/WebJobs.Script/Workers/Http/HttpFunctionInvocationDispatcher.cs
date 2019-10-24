@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
-            State = FunctionDispatcherState.Default;
+            State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<HttpWorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                .Subscribe(WorkerRestart);
         }
 
-        public FunctionDispatcherState State { get; private set; }
+        public FunctionInvocationDispatcherState State { get; private set; }
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                      if (workerInitTask.IsCompleted)
                      {
                          _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
-                         State = FunctionDispatcherState.Initialized;
+                         State = FunctionInvocationDispatcherState.Initialized;
                      }
                      else
                      {
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return;
             }
 
-            State = FunctionDispatcherState.Initializing;
+            State = FunctionInvocationDispatcherState.Initializing;
             await InitializeJobhostLanguageWorkerChannelAsync(0);
         }
 

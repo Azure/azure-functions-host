@@ -86,12 +86,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task DelayUntilFunctionDispatcherInitialized()
         {
-            if (_functionDispatcher != null && _functionDispatcher.State == FunctionDispatcherState.Initializing)
+            if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
                 await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, 25, () =>
                 {
-                    return _functionDispatcher.State != FunctionDispatcherState.Initialized;
+                    return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });
             }
         }

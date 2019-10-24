@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _maxProcessCount = _maxProcessCount > _maxAllowedProcessCount ? _maxAllowedProcessCount : _maxProcessCount;
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
 
-            State = FunctionDispatcherState.Default;
+            State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
 
-        public FunctionDispatcherState State { get; private set; }
+        public FunctionInvocationDispatcherState State { get; private set; }
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                      {
                          _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, languageWorkerChannel.Id);
                          languageWorkerChannel.SendFunctionLoadRequests();
-                         State = FunctionDispatcherState.Initialized;
+                         State = FunctionInvocationDispatcherState.Initialized;
                      }
                      else
                      {
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
-                State = FunctionDispatcherState.Initializing;
+                State = FunctionInvocationDispatcherState.Initializing;
                 Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
                 if (webhostLanguageWorkerChannels != null)
                 {
@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         }
                     }
                     StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                    State = FunctionDispatcherState.Initialized;
+                    State = FunctionInvocationDispatcherState.Initialized;
                 }
                 else
                 {

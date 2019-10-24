@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         public async Task FunctionDispatcherState_Default_DotNetFunctions()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
             FunctionMetadata func1 = new FunctionMetadata()
             {
                 Name = "func1",
@@ -133,20 +133,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
 
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
 
             await functionDispatcher.InitializeAsync(functions);
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
         }
 
         [Fact]
         public async Task FunctionDispatcherState_Default_NoFunctions()
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
         }
 
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             var mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannelsAsync()).Returns(Task.CompletedTask);
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
             // Wait longer than debouce action.
             await Task.Delay(6000);
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
             };
             var mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
-            Assert.Equal(FunctionDispatcherState.Default, functionDispatcher.State);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(functions);
             // Wait longer than debouce action.
             await Task.Delay(6000);
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.True(functionDispatcher.State == FunctionDispatcherState.Initializing || functionDispatcher.State == FunctionDispatcherState.Initialized);
+            Assert.True(functionDispatcher.State == FunctionInvocationDispatcherState.Initializing || functionDispatcher.State == FunctionInvocationDispatcherState.Initialized);
             await WaitForFunctionDispactherStateInitialized(functionDispatcher);
         }
 
@@ -418,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
         {
             await TestHelpers.Await(() =>
             {
-                return functionDispatcher.State == FunctionDispatcherState.Initialized;
+                return functionDispatcher.State == FunctionInvocationDispatcherState.Initialized;
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
         }
 

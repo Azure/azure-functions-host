@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionDispatcherLoadBalancer, FunctionDispatcherLoadBalancer>();
 
                 //Worker Function Invocation dispatcher
-                services.AddSingleton<IFunctionDispatcherFactory, FunctionDispatcherFactory>();
+                services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
 
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionDispatcherShutdownManager>());
+                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
                 if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
                 {

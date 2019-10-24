@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     public interface IFunctionInvocationDispatcher : IDisposable
     {
-        FunctionDispatcherState State { get; }
+        FunctionInvocationDispatcherState State { get; }
 
         Task InvokeAsync(ScriptInvocationContext invocationContext);
 

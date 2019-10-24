@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public interface IFunctionDispatcherFactory
+    public interface IFunctionInvocationDispatcherFactory
     {
         IFunctionInvocationDispatcher GetFunctionDispatcher();
     }

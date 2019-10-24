@@ -12,11 +12,11 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal class FunctionDispatcherFactory : IFunctionDispatcherFactory
+    internal class FunctionInvocationDispatcherFactory : IFunctionInvocationDispatcherFactory
     {
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
 
-        public FunctionDispatcherFactory(IOptions<ScriptJobHostOptions> scriptHostOptions,
+        public FunctionInvocationDispatcherFactory(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IScriptJobHostEnvironment scriptJobHostEnvironment,
             IScriptEventManager eventManager,
