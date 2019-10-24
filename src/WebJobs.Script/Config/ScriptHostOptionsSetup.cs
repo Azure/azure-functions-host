@@ -2,10 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using static Microsoft.Azure.WebJobs.Script.Rpc.LanguageWorkerConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
 {

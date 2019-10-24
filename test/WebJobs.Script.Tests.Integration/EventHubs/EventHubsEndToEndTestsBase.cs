@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
+                : base(@"TestScripts\Node", "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 

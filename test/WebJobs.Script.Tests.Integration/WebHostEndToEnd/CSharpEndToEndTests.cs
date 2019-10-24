@@ -12,8 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.CodeAnalysis;
@@ -23,6 +22,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
             Assert.False(allLogs.Any(l => l.Summary.Contains("From ")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == OutOfProcConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.FunctionConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 
@@ -377,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 CreateSharedAssemblies();
             }
 
-            public TestFixture() : base(ScriptRoot, "csharp", LanguageWorkerConstants.DotNetLanguageWorkerName)
+            public TestFixture() : base(ScriptRoot, "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
             }
 

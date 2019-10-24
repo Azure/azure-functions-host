@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -9,11 +9,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class LanguageWorkerChannelManagerEndToEndTests : IClassFixture<LanguageWorkerChannelManagerEndToEndTests.TestFixture>
     {
-        private IWebHostLanguageWorkerChannelManager _languageWorkerChannelManager;
+        private IWebHostRpcWorkerChannelManager _rpcWorkerChannelManager;
         public LanguageWorkerChannelManagerEndToEndTests(TestFixture fixture)
         {
             Fixture = fixture;
-            _languageWorkerChannelManager = (IWebHostLanguageWorkerChannelManager) fixture.Host.Services.GetService(typeof(IWebHostLanguageWorkerChannelManager));
+            _rpcWorkerChannelManager = (IWebHostRpcWorkerChannelManager) fixture.Host.Services.GetService(typeof(IWebHostRpcWorkerChannelManager));
             
         }
 
@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
         {
-            var channelManager = _languageWorkerChannelManager as WebHostLanguageWorkerChannelManager;
-            var javaChannel = await channelManager.GetChannelAsync(LanguageWorkerConstants.JavaLanguageWorkerName);
+            var channelManager = _rpcWorkerChannelManager as WebHostRpcWorkerChannelManager;
+            var javaChannel = await channelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
         }
 

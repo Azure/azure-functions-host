@@ -16,7 +16,7 @@ using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -446,7 +446,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Microsoft.Azure.WebJobs.Extensions.EventHubs
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node"), "samples", LanguageWorkerConstants.NodeLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 

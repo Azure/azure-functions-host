@@ -3,7 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
         {
             if (!_environment.IsFileSystemReadOnly())
             {
-                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName));
+                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName));
                 if (funcAppFileProvisioner != null)
                 {
                     await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);

@@ -14,8 +14,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +26,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await TestHelpers.Await(() =>
             {
                 userLogs = Fixture.Host.GetScriptHostLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
-                consoleLog = Fixture.Host.GetScriptHostLogMessages(OutOfProcConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
+                consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
                 return userLogs.Count == 10 && consoleLog != null;
             }, userMessageCallback: Fixture.Host.GetLog);
 
@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
             Assert.False(allLogs.Any(l => l.Summary.Contains("after done")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == OutOfProcConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.FunctionConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 
@@ -894,7 +894,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 #endif
         public class TestFixture : EndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\Node", "node", LanguageWorkerConstants.NodeLanguageWorkerName)
+            public TestFixture() : base(@"TestScripts\Node", "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 

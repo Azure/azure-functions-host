@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private bool IsUserLogCategory(string categoryName)
         {
-            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(OutOfProcConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
+            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()

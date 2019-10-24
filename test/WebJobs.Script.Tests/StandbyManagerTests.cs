@@ -5,8 +5,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private Mock<IConfigurationRoot> _mockConfiguration;
         private Mock<IOptionsMonitor<ScriptApplicationHostOptions>> _mockOptionsMonitor;
         private Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
-        private Mock<IWebHostLanguageWorkerChannelManager> _mockLanguageWorkerChannelManager;
+        private Mock<IWebHostRpcWorkerChannelManager> _mockLanguageWorkerChannelManager;
         private TestEnvironment _testEnvironment;
         private string _testSettingName = "TestSetting";
         private string _testSettingValue = "TestSettingValue";
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockConfiguration = new Mock<IConfigurationRoot>();
             _mockOptionsMonitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
             _mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
-            _mockLanguageWorkerChannelManager = new Mock<IWebHostLanguageWorkerChannelManager>();
+            _mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
             _testEnvironment = new TestEnvironment();
             _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
 
@@ -88,13 +88,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task Specialize_ReloadsEnvironmentVariables()
         {
             TestMetricsLogger metricsLogger = new TestMetricsLogger();
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
             _mockLanguageWorkerChannelManager.Setup(m => m.SpecializeAsync()).Returns(async () =>
             {
                 _testEnvironment.SetEnvironmentVariable(_testSettingName, _testSettingValue);
                 await Task.Yield();
             });
-            _testEnvironment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
 
             var hostNameProvider = new HostNameProvider(_testEnvironment, _testLoggerFactory.CreateLogger<HostNameProvider>());
             var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);

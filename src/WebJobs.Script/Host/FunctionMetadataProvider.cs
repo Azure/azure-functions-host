@@ -11,7 +11,7 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return functionMetadata;
         }
 
-        internal static string ParseLanguage(string scriptFilePath, IEnumerable<WorkerConfig> workerConfigs)
+        internal static string ParseLanguage(string scriptFilePath, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             // scriptFilePath is not required for HttpWorker
             if (string.IsNullOrEmpty(scriptFilePath))

@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -426,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -457,7 +457,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -492,7 +492,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -514,7 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -555,11 +555,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName);
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
                 string uri = $"api/httptrigger?code={functionKey}&name=Mathew&name=Amy";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -578,7 +578,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -643,7 +643,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName}
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
@@ -668,7 +668,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
@@ -693,7 +693,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
@@ -716,7 +716,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             var vars = new Dictionary<string, string>
             {
-                { LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.DotNetLanguageWorkerName},
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "FALSE"}
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
@@ -819,7 +819,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", LanguageWorkerConstants.DotNetLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
                 MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }

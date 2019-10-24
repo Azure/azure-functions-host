@@ -25,9 +25,9 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.OutOfProc.Http;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IProxyMetadataManager _proxyMetadataManager;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private string _workerRuntime;
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private IFunctionDispatcher _functionDispatcher;
+        private IFunctionInvocationDispatcher _functionDispatcher;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IDistributedLockManager distributedLockManager,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
-            IFunctionDispatcherFactory functionDispatcherFactory,
+            IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
-            _workerRuntime = _environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public virtual bool InDiagnosticMode => _debugManager.InDiagnosticMode;
 
-        internal IFunctionDispatcher FunctionDispatcher => _functionDispatcher;
+        internal IFunctionInvocationDispatcher FunctionDispatcher => _functionDispatcher;
 
         /// <summary>
         /// Returns true if the specified name is the name of a known function,
@@ -484,7 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script
             if (_environment.IsPlaceholderModeEnabled())
             {
                 _logger.HostIsInPlaceholderMode();
-                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
+                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
             else if (_isHttpWorker)
@@ -492,9 +492,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForHttpWorker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
             }
-            else if (string.Equals(_workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.AddingDescriptorProviderForLanguage(LanguageWorkerConstants.DotNetLanguageWorkerName);
+                _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
            else

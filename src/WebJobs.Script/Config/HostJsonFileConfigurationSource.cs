@@ -9,7 +9,7 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             private JObject GetDefaultHostConfigObject()
             {
                 var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
-                if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
+                if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
                     && !_configurationSource.Environment.IsFileSystemReadOnly())
                 {
                     hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));

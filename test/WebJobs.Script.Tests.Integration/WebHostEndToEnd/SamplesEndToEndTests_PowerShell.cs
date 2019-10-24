@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\PowerShell"), "samples", LanguageWorkerConstants.PowerShellLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\PowerShell"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
             {
             }
 

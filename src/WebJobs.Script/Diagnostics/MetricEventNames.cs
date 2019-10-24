@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string InitializeHostConfiguration = "hostjsonfileconfigurationsource.loadhostconfigurationsource.initializehostconfig";
 
         // LanguageWorkerChannel events
-        public const string FunctionLoadRequestResponse = "languageworkerchannel.functionloadrequestresponse";
+        public const string FunctionLoadRequestResponse = "rpcworkerchannel.functionloadrequestresponse";
 
         // ScriptStartupTypeLocator events
         public const string ParseExtensions = "ScriptStartupTypeLocator.ParseExtensions";
@@ -79,12 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // Specialization events
         public const string SpecializationSpecializeHost = "specialization.standbymanager.specializehost";
         public const string SpecializationStandbyManagerInitialize = "specialization.standbymanager.initialize";
-        public const string SpecializationLanguageWorkerChannelManagerSpecialize = "specialization.webhostlanguageworkerchannelmanager.specialize";
-        public const string SpecializationEnvironmentReloadRequestResponse = "specialization.webhostlanguageworkerchannel.sendfunctionenvironmentreloadrequest.functionenvironmentreloadresponse";
+        public const string SpecializationLanguageWorkerChannelManagerSpecialize = "specialization.webhostrpcworkerchannelmanager.specialize";
+        public const string SpecializationEnvironmentReloadRequestResponse = "specialization.webhostrpcworkerchannel.sendfunctionenvironmentreloadrequest.functionenvironmentreloadresponse";
         public const string SpecializationScheduleShutdownStandbyChannels = "specialization.scheduleshutdownstandbychannels";
         public const string SpecializationRestartHost = "specialization.scripthostmanager.restarthost";
         public const string SpecializationDelayUntilHostReady = "specialization.scripthostmanager.delayuntilhostready";
-        public const string SpecializationShutdownStandbyChannels = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
-        public const string SpecializationShutdownStandbyChannel = "specialization.webhostlanguageworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
+        public const string SpecializationShutdownStandbyChannels = "specialization.webhostrpcworkerchannelmanager.scheduleshutdownstandbychannels.{0}";
+        public const string SpecializationShutdownStandbyChannel = "specialization.webhostrpcworkerchannelmanager.scheduleshutdownstandbychannels.Worker.{0}";
     }
 }
