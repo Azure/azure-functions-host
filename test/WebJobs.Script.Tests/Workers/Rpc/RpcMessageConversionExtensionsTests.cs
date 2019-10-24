@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcMessageConversionExtensionsTests
     {
-        private static readonly string TestImageLocation = "Rpc\\Resources\\functions.png";
+        private static readonly string TestImageLocation = "Workers\\Rpc\\Resources\\functions.png";
 
         [Theory]
         [InlineData("application/x-www-form-urlencoded’", "say=Hi&to=Mom", true)]
