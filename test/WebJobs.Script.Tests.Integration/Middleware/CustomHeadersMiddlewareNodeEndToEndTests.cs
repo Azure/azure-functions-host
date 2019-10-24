@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
         {
             private const string ScriptRoot = @"TestScripts\CustomHeadersMiddleware\Node";
 
-            public TestFixture() : base(ScriptRoot, "node", LanguageWorkerConstants.NodeLanguageWorkerName)
+            public TestFixture() : base(ScriptRoot, "node", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
         }

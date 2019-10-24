@@ -3,8 +3,7 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Moq;
 using Xunit;
 
@@ -15,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task FunctionDispatcherShutdownManager_ShutdownAsync_Succeeds()
         {
-            Mock<IFunctionDispatcher> mockFunctionDispatcher = new Mock<IFunctionDispatcher>();
+            Mock<IFunctionInvocationDispatcher> mockFunctionDispatcher = new Mock<IFunctionInvocationDispatcher>();
             mockFunctionDispatcher.Setup(a => a.ShutdownAsync()).Returns(Task.CompletedTask);
 
-            Mock<IFunctionDispatcherFactory> mockFunctionDispatcherFactory = new Mock<IFunctionDispatcherFactory>();
+            Mock<IFunctionInvocationDispatcherFactory> mockFunctionDispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
             mockFunctionDispatcherFactory.Setup(functionDispatcherFactory => functionDispatcherFactory.GetFunctionDispatcher()).Returns(mockFunctionDispatcher.Object);
 
-            var functionDispatcherShutdownManager = new FunctionDispatcherShutdownManager(mockFunctionDispatcherFactory.Object);
+            var functionDispatcherShutdownManager = new FunctionInvocationDispatcherShutdownManager(mockFunctionDispatcherFactory.Object);
             await functionDispatcherShutdownManager.StopAsync(CancellationToken.None);
             mockFunctionDispatcher.Verify(functionDispatcher => functionDispatcher.ShutdownAsync(), Times.Once);
         }

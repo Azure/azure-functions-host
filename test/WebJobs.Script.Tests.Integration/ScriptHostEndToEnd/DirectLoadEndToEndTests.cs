@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.WebJobs.Script.Tests;
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
             }
 
-            public TestFixture() : base(@"TestScripts\DirectLoad\", "dotnet", LanguageWorkerConstants.DotNetLanguageWorkerName)
+            public TestFixture() : base(@"TestScripts\DirectLoad\", "dotnet", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
             }
 
