@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcWorkerConfigTestUtilities
     {

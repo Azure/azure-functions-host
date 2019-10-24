@@ -7,7 +7,7 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcFunctionDispatcherLoadBalancerTests
     {

@@ -18,7 +18,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class RpcMessageConversionExtensionsTests
     {

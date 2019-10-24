@@ -13,7 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class TesRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {

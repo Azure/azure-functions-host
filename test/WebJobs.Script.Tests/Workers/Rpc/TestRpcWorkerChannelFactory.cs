@@ -11,7 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class TestRpcWorkerChannelFactory : IRpcWorkerChannelFactory
     {

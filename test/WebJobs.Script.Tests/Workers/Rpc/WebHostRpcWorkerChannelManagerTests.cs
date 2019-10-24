@@ -16,7 +16,7 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class WebHostRpcWorkerChannelManagerTests
     {
