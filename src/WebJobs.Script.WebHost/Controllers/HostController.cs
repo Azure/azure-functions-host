@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private static int _warmupExecuted;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -292,10 +293,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpGet]
         [HttpPost]
         [Route("admin/warmup")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [RequiresRunningHost]
         public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
         {
+            // Endpoint only for Windows Elastic Premium or Linux App Service plans
+            if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
+            {
+                return BadRequest("This API is not available for the current hosting plan");
+            }
+
+            if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
+            {
+                return Ok();
+            }
+
             var jobHost = hostService.Services?.GetService<IScriptJobHost>();
             if (jobHost == null)
             {

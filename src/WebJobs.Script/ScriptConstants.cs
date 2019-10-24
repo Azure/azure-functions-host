@@ -88,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
         public const string DynamicSku = "Dynamic";
+        public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
 
         public const string AzureProxyFunctionLocalRedirectKey = "MS_ProxyLocalRedirectCount";
