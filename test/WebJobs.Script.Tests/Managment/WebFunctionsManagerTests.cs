@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var contentBuilder = new StringBuilder();
             var httpClient = CreateHttpClient(contentBuilder);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
-            var tokenSource = new TestChangeTokenSource();
+            var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
             var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
