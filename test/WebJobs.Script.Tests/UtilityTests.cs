@@ -428,6 +428,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
         }
 
+        [Fact]
+        public void GetValidFunctions_Returns_Expected()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "java"
+            };
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "func2",
+                Language = "node"
+            };
+
+            FunctionDescriptor fd = new FunctionDescriptor();
+            fd.Metadata = func1;
+
+            IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
+            {
+                 func1, func2
+            };
+            ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
+            {
+                 fd
+            };
+            var validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+        }
+
         [Theory]
         [InlineData(true, true, true)]
         [InlineData(true, false, false)]

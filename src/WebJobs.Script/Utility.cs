@@ -557,6 +557,20 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        internal static IEnumerable<FunctionMetadata> GetValidFunctions(IEnumerable<FunctionMetadata> indexedFunctions, ICollection<FunctionDescriptor> functionDescriptors)
+        {
+            if (indexedFunctions == null || !indexedFunctions.Any())
+            {
+                return indexedFunctions;
+            }
+            if (functionDescriptors == null)
+            {
+                // No valid functions
+                return null;
+            }
+            return indexedFunctions.Any(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name));
+        }
+
         public static async Task MarkContainerDisabled(ILogger logger)
         {
             logger.LogDebug("Setting container instance offline");
