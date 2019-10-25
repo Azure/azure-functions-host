@@ -259,6 +259,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Collection(testLogger.GetLogMessages(),
+                p => Assert.Equal("FUNCTIONS_WORKER_RUNTIME_VERSION for language python: 3.7", p.FormattedMessage));
         }
 
         [Theory]
@@ -299,6 +301,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
             Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Collection(testLogger.GetLogMessages(),
+                p => Assert.Equal("FUNCTIONS_WORKER_RUNTIME_VERSION for language python: 3.6", p.FormattedMessage));
         }
 
         [Theory]
