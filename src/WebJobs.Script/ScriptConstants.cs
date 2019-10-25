@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogCategoryKeysController = "Host.Controllers.Keys";
         public const string LogCategoryKeys = "Host.Keys";
         public const string LogCategoryHostGeneral = "Host.General";
+        public const string LogCategoryHostStartup = "Host.Startup";
 
         // Define all system parameters we inject with a prefix to avoid collisions
         // with user parameters

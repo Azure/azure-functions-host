@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ILoggerFactory _defaultLoggerFactory;
         private TraceWriter _defaultTraceWriter;
         private Timer _specializationTimer;
+        private ILogger _logger;
 
         public WebHostResolver(ScriptSettingsManager settingsManager, ISecretManagerFactory secretManagerFactory, IScriptEventManager eventManager)
         {
@@ -123,73 +124,84 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         internal void EnsureInitialized(WebHostSettings settings)
         {
-            lock (_syncLock)
+            ILoggerFactory defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+            _logger = defaultLoggerFactory.CreateLogger(ScriptConstants.LogCategoryHostStartup);
+            try
             {
-                // Determine whether we should do normal or standby initialization
-                if (!WebScriptHostManager.InStandbyMode)
+                lock (_syncLock)
                 {
-                    // We're not in standby mode. There are two cases to consider:
-                    // 1) We _were_ in standby mode and now we're ready to specialize
-                    // 2) We're doing non-specialization normal initialization
-                    if (_activeHostManager == null && 
-                        (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
+                    // Determine whether we should do normal or standby initialization
+                    if (!WebScriptHostManager.InStandbyMode)
                     {
-                        _specializationTimer?.Dispose();
-                        _specializationTimer = null;
-
-                        _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
-                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
-                        _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
-                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
-
-                        if (_standbyHostManager != null)
+                        // We're not in standby mode. There are two cases to consider:
+                        // 1) We _were_ in standby mode and now we're ready to specialize
+                        // 2) We're doing non-specialization normal initialization
+                        if (_activeHostManager == null &&
+                            (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
                         {
-                            // we're starting the one and only one
-                            // standby mode specialization
-                            _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+                            _logger.LogDebug("Not in standby mode.Initializing host");
 
-                            // After specialization, we need to ensure that custom timezone
-                            // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
-                            // DateTime caches timezone information, so we need to clear the cache.
-                            TimeZoneInfo.ClearCachedData();
+                            _specializationTimer?.Dispose();
+                            _specializationTimer = null;
 
-                            // ensure we reinitialize hostname after specialization
-                            HostNameProvider.Reset();
+                            _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
+                            _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
+                            _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                            InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
+
+                            if (_standbyHostManager != null)
+                            {
+                                // we're starting the one and only one
+                                // standby mode specialization
+                                _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+
+                                // After specialization, we need to ensure that custom timezone
+                                // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
+                                // DateTime caches timezone information, so we need to clear the cache.
+                                TimeZoneInfo.ClearCachedData();
+
+                                // ensure we reinitialize hostname after specialization
+                                HostNameProvider.Reset();
+                            }
+
+                            if (_standbyHostManager != null)
+                            {
+                                _standbyHostManager.Stop();
+                                _standbyHostManager.Dispose();
+                            }
+                            _standbyReceiverManager?.Dispose();
+                            _standbyScriptHostConfig = null;
+                            _standbyHostManager = null;
+                            _standbyReceiverManager = null;
                         }
-
-                        if (_standbyHostManager != null)
+                    }
+                    else
+                    {
+                        // We're in standby (placeholder) mode. Initialize the standby services.
+                        if (_standbyHostManager == null)
                         {
-                            _standbyHostManager.Stop();
-                            _standbyHostManager.Dispose();
+                            _logger.LogDebug("In standby mode");
+                            var standbySettings = CreateStandbySettings(settings);
+                            _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
+                            _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
+                            _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+
+                            InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
+                            StandbyManager.Initialize(_standbyScriptHostConfig);
+
+                            // start a background timer to identify when specialization happens
+                            // specialization usually happens via an http request (e.g. scale controller
+                            // ping) but this timer is started as well to handle cases where we
+                            // might not receive a request
+                            _specializationTimer = new Timer(OnSpecializationTimerTick, settings, 1000, 1000);
                         }
-                        _standbyReceiverManager?.Dispose();
-                        _standbyScriptHostConfig = null;
-                        _standbyHostManager = null;
-                        _standbyReceiverManager = null;
                     }
                 }
-                else
-                {
-                    // We're in standby (placeholder) mode. Initialize the standby services.
-                    if (_standbyHostManager == null)
-                    {
-                        var standbySettings = CreateStandbySettings(settings);
-                        _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
-                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
-                        _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
-
-                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
-                        StandbyManager.Initialize(_standbyScriptHostConfig);
-
-                        // start a background timer to identify when specialization happens
-                        // specialization usually happens via an http request (e.g. scale controller
-                        // ping) but this timer is started as well to handle cases where we
-                        // might not receive a request
-                        _specializationTimer = new Timer(OnSpecializationTimerTick, settings, 1000, 1000);
-                    }
-                }
+            }
+            catch (Exception initializationException)
+            {
+                 var errorEventId = new EventId(103, "HostInitializationError");
+                _logger.LogError(errorEventId, initializationException, "Failed to initialize host");
             }
         }
 
