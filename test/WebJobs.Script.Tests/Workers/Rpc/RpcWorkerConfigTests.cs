@@ -244,17 +244,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [MemberData(nameof(InvalidWorkerDescriptions))]
         public void InvalidWorkerDescription_Throws(WorkerDescription workerDescription)
         {
-            Assert.Throws<ValidationException>(() => workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory()));
+            var testLogger = new TestLogger(testLanguage);
+
+            Assert.Throws<ValidationException>(() => workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger));
         }
 
         [Theory]
         [MemberData(nameof(ValidWorkerDescriptions))]
         public void ValidateWorkerDescription_Succeeds(WorkerDescription workerDescription)
         {
+            var testLogger = new TestLogger(testLanguage);
+
             try
             {
                 RpcWorkerConfigTestUtilities.CreateTestWorkerFileInCurrentDir();
-                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
+                workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
             }
             finally
             {
@@ -267,26 +271,88 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("DotNet")]
         [InlineData("dotnet.exe")]
         [InlineData("DOTNET.EXE")]
-        public void ValidateWorkerDescription_ResolvesDotNetDefaultWorkerExecutablePath(string defaultExecutablePath)
+        public void ValidateWorkerDescription_ResolvesDotNetDefaultWorkerExecutablePath_WhenExpectedFileExists(
+            string defaultExecutablePath)
         {
+            var testLogger = new TestLogger(testLanguage);
+
             var expectedExecutablePath =
                 RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", defaultExecutablePath)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe")
                     : defaultExecutablePath;
 
-            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
+            var workerDescription = new RpcWorkerDescription
+            {
+                Language = testLanguage,
+                Extensions = new List<string>(),
+                DefaultExecutablePath = defaultExecutablePath,
+                FileExists = path =>
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return true;
+                                }
+            };
+
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
             Assert.Equal(expectedExecutablePath, workerDescription.DefaultExecutablePath);
+        }
+
+        [Theory]
+        [InlineData("dotnet")]
+        [InlineData("DotNet")]
+        [InlineData("dotnet.exe")]
+        [InlineData("DOTNET.EXE")]
+        public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePathAndWarns_WhenExpectedFileDoesNotExist(
+            string defaultExecutablePath)
+        {
+            var testLogger = new TestLogger(testLanguage);
+
+            var expectedExecutablePath =
+                RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe")
+                    : defaultExecutablePath;
+
+            var workerDescription = new RpcWorkerDescription
+            {
+                Language = testLanguage,
+                Extensions = new List<string>(),
+                DefaultExecutablePath = defaultExecutablePath,
+                FileExists = path =>
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return false;
+                                }
+            };
+
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
+            Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
+            Assert.True(testLogger.GetLogMessages().Any(message => message.Level == LogLevel.Warning
+                                                                   && message.FormattedMessage.Contains(defaultExecutablePath)
+                                                                   && message.FormattedMessage.Contains(expectedExecutablePath)));
         }
 
         [Theory]
         [InlineData(@"D:\CustomExecutableFolder\dotnet")]
         [InlineData(@"/CustomExecutableFolder/dotnet")]
         [InlineData("AnythingElse")]
-        public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePath_WhenDoesNotStrictlyMatchDotNet(string defaultExecutablePath)
+        public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePath_WhenDoesNotStrictlyMatchDotNet(
+            string defaultExecutablePath)
         {
-            var workerDescription = new RpcWorkerDescription { Language = testLanguage, Extensions = new List<string>(), DefaultExecutablePath = defaultExecutablePath };
-            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
+            var testLogger = new TestLogger(testLanguage);
+
+            var workerDescription = new RpcWorkerDescription
+            {
+                Language = testLanguage,
+                Extensions = new List<string>(),
+                DefaultExecutablePath = defaultExecutablePath,
+                FileExists = path =>
+                                {
+                                    Assert.True(false, "FileExists should not be called");
+                                    return false;
+                                }
+            };
+
+            workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
             Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
         }
 

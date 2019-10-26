@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     throw new HostConfigurationException($"Missing WorkerDescription for HttpWorker");
                 }
-                httpWorkerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath);
+                httpWorkerDescription.ApplyDefaultsAndValidate(_scriptJobHostOptions.RootScriptPath, _logger);
                 options.Arguments = new WorkerProcessArguments()
                 {
                     ExecutablePath = options.Description.DefaultExecutablePath,
