@@ -202,6 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                  var errorEventId = new EventId(103, "HostInitializationError");
                 _logger.LogError(errorEventId, initializationException, "Failed to initialize host");
+                throw;
             }
         }
 
