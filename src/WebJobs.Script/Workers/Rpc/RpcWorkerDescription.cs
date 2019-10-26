@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -65,7 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public override void ApplyDefaultsAndValidate(string workerDirectory)
+        // Can be replaced for testing purposes
+        internal Func<string, bool> FileExists { private get; set; } = File.Exists;
+
+        public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
         {
             if (workerDirectory == null)
             {
@@ -94,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
             }
 
-            ResolveDotNetDefaultExecutablePath();
+            ResolveDotNetDefaultExecutablePath(logger);
         }
 
         public void ValidateWorkerPath(string workerPath, OSPlatform os, Architecture architecture, string version)
@@ -139,14 +143,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private void ResolveDotNetDefaultExecutablePath()
+        private void ResolveDotNetDefaultExecutablePath(ILogger logger)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 && (DefaultExecutablePath.Equals(RpcWorkerConstants.DotNetExecutableName, StringComparison.OrdinalIgnoreCase)
                     || DefaultExecutablePath.Equals(RpcWorkerConstants.DotNetExecutableNameWithExtension, StringComparison.OrdinalIgnoreCase)))
             {
                 var programFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                DefaultExecutablePath = Path.Combine(programFilesFolder, RpcWorkerConstants.DotNetFolderName, DefaultExecutablePath);
+                var fullPath = Path.Combine(programFilesFolder, RpcWorkerConstants.DotNetFolderName, DefaultExecutablePath);
+                if (FileExists(fullPath))
+                {
+                    DefaultExecutablePath = fullPath;
+                }
+                else
+                {
+                    logger.Log(LogLevel.Warning, $"File '{fullPath}' is not found, '{RpcWorkerConstants.DotNetExecutableName}' invocation will rely on the PATH environment variable.");
+                }
             }
         }
     }
