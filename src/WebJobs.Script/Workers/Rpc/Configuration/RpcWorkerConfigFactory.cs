@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         workerDescription.DefaultWorkerPath = GetHydratedWorkerPath(workerDescription);
                     }
-                    workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory());
+                    workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
                     _workerDescripionDictionary[workerDescription.Language] = workerDescription;
                 }
                 catch (Exception ex)

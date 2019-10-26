@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -27,6 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public List<string> Arguments { get; set; }
 
-        public abstract void ApplyDefaultsAndValidate(string workerDirectory);
+        public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger);
     }
 }
