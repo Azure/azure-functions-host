@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var expectedExecutablePath =
                 RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", defaultExecutablePath)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe")
                     : defaultExecutablePath;
 
             var workerDescription = new RpcWorkerDescription
@@ -286,7 +286,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Language = testLanguage,
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
-                FileExists = path => true
+                FileExists = path =>
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return true;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -305,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var expectedExecutablePath =
                 RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", defaultExecutablePath)
+                    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe")
                     : defaultExecutablePath;
 
             var workerDescription = new RpcWorkerDescription
@@ -313,7 +317,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Language = testLanguage,
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
-                FileExists = path => false
+                FileExists = path =>
+                                {
+                                    Assert.Equal(expectedExecutablePath, path);
+                                    return false;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -324,15 +332,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        // It does not matter whether the file exists or not
-        [InlineData(@"D:\CustomExecutableFolder\dotnet", true)]
-        [InlineData(@"D:\CustomExecutableFolder\dotnet", false)]
-        [InlineData(@"/CustomExecutableFolder/dotnet", true)]
-        [InlineData(@"/CustomExecutableFolder/dotnet", false)]
-        [InlineData("AnythingElse", true)]
-        [InlineData("AnythingElse", false)]
+        [InlineData(@"D:\CustomExecutableFolder\dotnet")]
+        [InlineData(@"/CustomExecutableFolder/dotnet")]
+        [InlineData("AnythingElse")]
         public void ValidateWorkerDescription_DoesNotModifyDefaultWorkerExecutablePath_WhenDoesNotStrictlyMatchDotNet(
-            string defaultExecutablePath, bool fileExists)
+            string defaultExecutablePath)
         {
             var testLogger = new TestLogger(testLanguage);
 
@@ -341,7 +345,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Language = testLanguage,
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
-                FileExists = path => fileExists
+                FileExists = path =>
+                                {
+                                    Assert.True(false, "FileExists should not be called");
+                                    return false;
+                                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);

@@ -150,14 +150,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     || DefaultExecutablePath.Equals(RpcWorkerConstants.DotNetExecutableNameWithExtension, StringComparison.OrdinalIgnoreCase)))
             {
                 var programFilesFolder = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-                var fullPath = Path.Combine(programFilesFolder, RpcWorkerConstants.DotNetFolderName, DefaultExecutablePath);
+
+                var fullPath = Path.Combine(
+                                    programFilesFolder,
+                                    RpcWorkerConstants.DotNetFolderName,
+                                    RpcWorkerConstants.DotNetExecutableNameWithExtension);
+
                 if (FileExists(fullPath))
                 {
                     DefaultExecutablePath = fullPath;
                 }
                 else
                 {
-                    logger.Log(LogLevel.Warning, $"File '{fullPath}' is not found, '{RpcWorkerConstants.DotNetExecutableName}' invocation will rely on the PATH environment variable.");
+                    logger.Log(
+                        LogLevel.Warning,
+                        $"File '{fullPath}' is not found, '{DefaultExecutablePath}' invocation will rely on the PATH environment variable.");
                 }
             }
         }
