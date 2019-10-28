@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _specializationTimer = null;
 
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                    _activeScriptHostConfig.TraceWriter.Info("Not in Standby Mode. Host initializing");
+                    _activeScriptHostConfig.TraceWriter.Info("Host initializing.");
 
                     var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);

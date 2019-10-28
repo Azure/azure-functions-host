@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Web.Http;
@@ -35,7 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                 SecretsPath = Environment.CurrentDirectory, // not used
                 LoggerFactoryBuilder = new TestLoggerFactoryBuilder(Channel),
-                IsAuthDisabled = true
+                IsAuthDisabled = true,
+                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
             };
             WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
