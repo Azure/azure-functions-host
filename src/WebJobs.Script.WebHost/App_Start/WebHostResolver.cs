@@ -128,68 +128,98 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Determine whether we should do normal or standby initialization
                 if (!WebScriptHostManager.InStandbyMode)
                 {
-                    // We're not in standby mode. There are two cases to consider:
-                    // 1) We _were_ in standby mode and now we're ready to specialize
-                    // 2) We're doing non-specialization normal initialization
-                    if (_activeHostManager == null && 
-                        (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
-                    {
-                        _specializationTimer?.Dispose();
-                        _specializationTimer = null;
-
-                        _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
-                        _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
-                        _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
-                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
-
-                        if (_standbyHostManager != null)
-                        {
-                            // we're starting the one and only one
-                            // standby mode specialization
-                            _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
-
-                            // After specialization, we need to ensure that custom timezone
-                            // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
-                            // DateTime caches timezone information, so we need to clear the cache.
-                            TimeZoneInfo.ClearCachedData();
-
-                            // ensure we reinitialize hostname after specialization
-                            HostNameProvider.Reset();
-                        }
-
-                        if (_standbyHostManager != null)
-                        {
-                            _standbyHostManager.Stop();
-                            _standbyHostManager.Dispose();
-                        }
-                        _standbyReceiverManager?.Dispose();
-                        _standbyScriptHostConfig = null;
-                        _standbyHostManager = null;
-                        _standbyReceiverManager = null;
-                    }
+                    EncureInitializedNonStandbyMode(settings);
                 }
                 else
                 {
-                    // We're in standby (placeholder) mode. Initialize the standby services.
-                    if (_standbyHostManager == null)
-                    {
-                        var standbySettings = CreateStandbySettings(settings);
-                        _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                        var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
-                        _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
-                        _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
-
-                        InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
-                        StandbyManager.Initialize(_standbyScriptHostConfig);
-
-                        // start a background timer to identify when specialization happens
-                        // specialization usually happens via an http request (e.g. scale controller
-                        // ping) but this timer is started as well to handle cases where we
-                        // might not receive a request
-                        _specializationTimer = new Timer(OnSpecializationTimerTick, settings, 1000, 1000);
-                    }
+                    EnsureInitializedStandbyMode(settings);
                 }
+            }
+        }
+
+        private void EnsureInitializedStandbyMode(WebHostSettings settings)
+        {
+            try
+            {
+                // We're in standby (placeholder) mode. Initialize the standby services.
+                if (_standbyHostManager == null)
+                {
+                    var standbySettings = CreateStandbySettings(settings);
+                    _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
+                    _standbyScriptHostConfig.TraceWriter.Info("In Standby Mode. Host initializing.");
+
+                    var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+                    _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
+                    _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
+
+                    InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
+                    StandbyManager.Initialize(_standbyScriptHostConfig);
+
+                    // start a background timer to identify when specialization happens
+                    // specialization usually happens via an http request (e.g. scale controller
+                    // ping) but this timer is started as well to handle cases where we
+                    // might not receive a request
+                    _specializationTimer = new Timer(OnSpecializationTimerTick, settings, 1000, 1000);
+                }
+            }
+            catch (Exception standbyModeInitEx)
+            {
+                _standbyScriptHostConfig.TraceWriter.Error("Host failed to initialize in StandbyMode.", standbyModeInitEx);
+                throw;
+            }
+        }
+
+        private void EncureInitializedNonStandbyMode(WebHostSettings settings)
+        {
+            try
+            {
+                // We're not in standby mode. There are two cases to consider:
+                // 1) We _were_ in standby mode and now we're ready to specialize
+                // 2) We're doing non-specialization normal initialization
+                if (_activeHostManager == null &&
+                    (_standbyHostManager == null || (_settingsManager.ContainerReady && _settingsManager.ConfigurationReady)))
+                {
+                    _specializationTimer?.Dispose();
+                    _specializationTimer = null;
+
+                    _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
+                    _activeScriptHostConfig.TraceWriter.Info("Not in Standby Mode. Host initializing");
+
+                    var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+                    _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
+                    _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
+                    InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
+
+                    if (_standbyHostManager != null)
+                    {
+                        // we're starting the one and only one
+                        // standby mode specialization
+                        _activeScriptHostConfig.TraceWriter.Info(Resources.HostSpecializationTrace);
+
+                        // After specialization, we need to ensure that custom timezone
+                        // settings configured by the user (WEBSITE_TIME_ZONE) are honored.
+                        // DateTime caches timezone information, so we need to clear the cache.
+                        TimeZoneInfo.ClearCachedData();
+
+                        // ensure we reinitialize hostname after specialization
+                        HostNameProvider.Reset();
+                    }
+
+                    if (_standbyHostManager != null)
+                    {
+                        _standbyHostManager.Stop();
+                        _standbyHostManager.Dispose();
+                    }
+                    _standbyReceiverManager?.Dispose();
+                    _standbyScriptHostConfig = null;
+                    _standbyHostManager = null;
+                    _standbyReceiverManager = null;
+                }
+            }
+            catch (Exception hostInitEx)
+            {
+                _activeScriptHostConfig.TraceWriter.Error("Host failed to initialize.", hostInitEx);
+                throw;
             }
         }
 
@@ -209,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 TraceWriter = settings.TraceWriter,
                 IsSelfHost = settings.IsSelfHost
             };
-
+            settings.TraceWriter?.Info("Created Standby WebHostSettings.");
             return standbySettings;
         }
 

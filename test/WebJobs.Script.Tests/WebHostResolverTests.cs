@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -45,7 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     ScriptPath = @"c:\some\path",
                     LogPath = @"c:\log\path",
-                    SecretsPath = @"c:\secrets\path"
+                    SecretsPath = @"c:\secrets\path",
+                    TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
                 };
 
                 ScriptHostConfiguration configuration = resolver.GetScriptHostConfiguration(settings);
@@ -60,7 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var settings = new WebHostSettings
             {
                 IsSelfHost = true,
-                ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby")
+                ScriptPath = Path.Combine(Path.GetTempPath(), "Functions", "Standby"),
+                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
             };
 
             var config = WebHostResolver.CreateScriptHostConfiguration(settings, true);
@@ -86,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     LogPath = Path.Combine(tempRoot, @"Functions"),
                     ScriptPath = Path.Combine(tempRoot, @"Functions"),
                     SecretsPath = Path.Combine(tempRoot, @"Functions"),
+                    TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
                 };
                 FileUtility.EnsureDirectoryExists(settings.ScriptPath);
                 File.WriteAllText(Path.Combine(settings.ScriptPath, "host.json"), "{ id: 'testid' }");
