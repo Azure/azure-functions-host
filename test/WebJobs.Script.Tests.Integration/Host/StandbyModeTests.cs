@@ -100,6 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traces = _traceWriter.GetTraces();
                 var traceEvent = traces.SingleOrDefault(p => p.Message.Contains(Resources.HostSpecializationTrace));
                 Assert.Null(traceEvent);
+
+                // Verify Host Initilization log is written
+                Assert.True(traces.Any(m => m.Message == "Host initializing."));
             }
         }
 
@@ -122,6 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _webHostResolver.EnsureInitialized(settings);
 
                 var traces = _traceWriter.GetTraces();
+                Assert.True(traces.Count() == 6);
+                Assert.True(traces.Any(m => m.Message == "Host initializing."));
                 var traceEvent = traces.Last();
                 Assert.Equal(Resources.HostSpecializationTrace, traceEvent.Message);
                 Assert.Equal(TraceLevel.Info, traceEvent.Level);

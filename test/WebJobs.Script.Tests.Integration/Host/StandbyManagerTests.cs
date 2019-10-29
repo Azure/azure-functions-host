@@ -71,79 +71,90 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             using (var env = new TestScopedEnvironmentVariable(vars))
             {
-                var httpConfig = new HttpConfiguration();
-                httpConfig.Formatters.Add(new PlaintextMediaTypeFormatter());
-
-                var settingsManager = ScriptSettingsManager.Instance;
                 var testRootPath = Path.Combine(Path.GetTempPath(), "StandbyModeTest");
-                await FileUtility.DeleteDirectoryAsync(testRootPath, true);
-                var traceWriter = new TestTraceWriter(TraceLevel.Info);
-                var webHostSettings = new WebHostSettings
+                try
                 {
-                    IsSelfHost = true,
-                    LogPath = Path.Combine(testRootPath, "Logs"),
-                    SecretsPath = Path.Combine(testRootPath, "Secrets"),
-                    ScriptPath = Path.Combine(testRootPath, "WWWRoot"),
-                    TraceWriter = traceWriter
-                };
-                WebApiConfig.Register(httpConfig, _settingsManager, webHostSettings);
+                    var httpConfig = new HttpConfiguration();
+                    httpConfig.Formatters.Add(new PlaintextMediaTypeFormatter());
 
-                var httpServer = new HttpServer(httpConfig);
-                var httpClient = new HttpClient(httpServer);
-                httpClient.BaseAddress = new Uri("https://localhost/");
+                    var settingsManager = ScriptSettingsManager.Instance;
 
-                TestHelpers.WaitForWebHost(httpClient);
+                    await FileUtility.DeleteDirectoryAsync(testRootPath, true);
+                    var traceWriter = new TestTraceWriter(TraceLevel.Info);
+                    var webHostSettings = new WebHostSettings
+                    {
+                        IsSelfHost = true,
+                        LogPath = Path.Combine(testRootPath, "Logs"),
+                        SecretsPath = Path.Combine(testRootPath, "Secrets"),
+                        ScriptPath = Path.Combine(testRootPath, "WWWRoot"),
+                        TraceWriter = traceWriter
+                    };
+                    WebApiConfig.Register(httpConfig, _settingsManager, webHostSettings);
 
-                var traces = traceWriter.GetTraces().ToArray();
-                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[1].Message);
-                Assert.Equal("StandbyMode placeholder function directory created", traces[2].Message);
+                    var httpServer = new HttpServer(httpConfig);
+                    var httpClient = new HttpClient(httpServer);
+                    httpClient.BaseAddress = new Uri("https://localhost/");
 
-                // issue warmup request and verify
-                var request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");
-                var response = await httpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                string responseBody = await response.Content.ReadAsStringAsync();
-                Assert.Equal("WarmUp complete.", responseBody);
+                    TestHelpers.WaitForWebHost(httpClient);
 
-                // issue warmup request with restart and verify
-                request = new HttpRequestMessage(HttpMethod.Get, "api/warmup?restart=1");
-                response = await httpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-                responseBody = await response.Content.ReadAsStringAsync();
-                Assert.Equal("WarmUp complete.", responseBody);
+                    var traces = traceWriter.GetTraces().ToArray();
+                    Assert.True(traces.Count() == 19);
+                    Assert.Equal($"Created Standby WebHostSettings.", traces[0].Message);
+                    Assert.Equal($"In Standby Mode. Host initializing.", traces[2].Message);
+                    Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[3].Message);
+                    Assert.Equal("StandbyMode placeholder function directory created", traces[4].Message);
 
-                // Now specialize the host
-                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-                ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
+                    // issue warmup request and verify
+                    var request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");
+                    var response = await httpClient.SendAsync(request);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    Assert.Equal("WarmUp complete.", responseBody);
 
-                // give time for the specialization to happen
-                string[] logLines = null;
-                await TestHelpers.Await(() =>
+                    // issue warmup request with restart and verify
+                    request = new HttpRequestMessage(HttpMethod.Get, "api/warmup?restart=1");
+                    response = await httpClient.SendAsync(request);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    responseBody = await response.Content.ReadAsStringAsync();
+                    Assert.Equal("WarmUp complete.", responseBody);
+
+                    // Now specialize the host
+                    ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                    ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    ScriptSettingsManager.Instance.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
+
+                    // give time for the specialization to happen
+                    string[] logLines = null;
+                    await TestHelpers.Await(() =>
+                    {
+                        // wait for the trace indicating that the host has been specialized
+                        logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
+                        return logLines.Contains("Generating 0 job function(s)");
+                    }, userMessageCallback: () => string.Join(Environment.NewLine, traceWriter.GetTraces().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.Message}")));
+
+                    httpServer.Dispose();
+                    httpClient.Dispose();
+
+                    var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
+                    var expectedHostId = hostConfig.HostConfig.HostId;
+
+                    // verify the rest of the expected logs
+                    string text = string.Join(Environment.NewLine, logLines);
+                    Assert.True(logLines.Count(p => p.Contains("Stopping Host")) >= 1);
+                    Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
+                    Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
+                    Assert.Equal(2, logLines.Count(p => p.Contains("Starting Host (HostId=placeholder-host")));
+                    Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
+                    Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
+                    Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
+                    Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")));
+
+                    WebScriptHostManager.ResetStandbyMode();
+                }
+                finally
                 {
-                    // wait for the trace indicating that the host has been specialized
-                    logLines = traceWriter.GetTraces().Select(p => p.Message).ToArray();
-                    return logLines.Contains("Generating 0 job function(s)");
-                }, userMessageCallback: () => string.Join(Environment.NewLine, traceWriter.GetTraces().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.Message}")));
-
-                httpServer.Dispose();
-                httpClient.Dispose();
-
-                var hostConfig = WebHostResolver.CreateScriptHostConfiguration(webHostSettings, true);
-                var expectedHostId = hostConfig.HostConfig.HostId;
-
-                // verify the rest of the expected logs
-                string text = string.Join(Environment.NewLine, logLines);
-                Assert.True(logLines.Count(p => p.Contains("Stopping Host")) >= 1);
-                Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
-                Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
-                Assert.Equal(2, logLines.Count(p => p.Contains("Starting Host (HostId=placeholder-host")));
-                Assert.Equal(2, logLines.Count(p => p.Contains("Host is in standby mode")));
-                Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
-                Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
-                Assert.Equal(1, logLines.Count(p => p.Contains($"Starting Host (HostId={expectedHostId}")));
-
-                WebScriptHostManager.ResetStandbyMode();
+                    await FileUtility.DeleteDirectoryAsync(testRootPath, true);
+                }
             }
         }
     }

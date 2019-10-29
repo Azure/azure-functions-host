@@ -453,6 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void InitializeHttp()
         {
+            _logger.LogDebug("Initializing HttpRequestManager");
             // get the registered http configuration from the extension registry
             var extensions = Instance.ScriptConfig.HostConfig.GetService<IExtensionRegistry>();
             var httpConfig = extensions.GetExtensions<IExtensionConfigProvider>().OfType<HttpExtensionConfiguration>().Single();
@@ -464,10 +465,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // since the request manager is created based on configurable
             // settings, it has to be recreated when host config changes
             _httpRequestManager = new WebScriptHostRequestManager(httpConfig, PerformanceManager, _metricsLogger, _config.TraceWriter);
+            _logger.LogDebug("Initialized HttpRequestManager");
         }
 
         private void InitializeHttpFunctions(IEnumerable<FunctionDescriptor> functions, HttpExtensionConfiguration httpConfig)
         {
+            _logger.LogDebug("Initializing HttpFunctions");
             // we must initialize the route factory here AFTER full configuration
             // has been resolved so we apply any route prefix customizations
             var functionHttpRouteFactory = new HttpRouteFactory(httpConfig.RoutePrefix);
@@ -486,6 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var httpRouteFactory = function.Metadata.IsProxy ? proxyHttpRouteFactory : functionHttpRouteFactory;
                 httpRouteFactory.TryAddRoute(_httpRoutes, function);
             }
+            _logger.LogDebug("Initialized HttpFunctions");
         }
 
         public override void Shutdown(bool hard = false)
