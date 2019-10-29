@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Web.Http;
@@ -33,8 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\sample"),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                 SecretsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\src\WebJobs.Script.WebHost\App_Data\Secrets"),
-                IsAuthDisabled = isAuthDisabled,
-                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
+                IsAuthDisabled = isAuthDisabled
             };
 
             WebApiConfig.Register(_config, _settingsManager, HostSettings, RegisterDependencies);

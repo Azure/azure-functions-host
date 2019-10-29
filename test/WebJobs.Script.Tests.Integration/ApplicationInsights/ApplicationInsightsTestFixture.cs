@@ -36,8 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                 SecretsPath = Environment.CurrentDirectory, // not used
                 LoggerFactoryBuilder = new TestLoggerFactoryBuilder(Channel),
-                IsAuthDisabled = true,
-                TraceWriter = new TestTraceWriter(TraceLevel.Verbose)
+                IsAuthDisabled = true
             };
             WebApiConfig.Register(_config, _settingsManager, HostSettings);
 
