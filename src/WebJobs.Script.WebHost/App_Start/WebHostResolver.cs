@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception standbyModeInitEx)
             {
-                _standbyScriptHostConfig.TraceWriter?.Error("Host failed to initialize in StandbyMode.", standbyModeInitEx);
+                _standbyScriptHostConfig?.TraceWriter?.Error("Host failed to initialize in StandbyMode.", standbyModeInitEx);
                 throw new HostInitializationException("Host failed to initialize in StandbyMode.", standbyModeInitEx);
             }
         }
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception hostInitEx)
             {
-                _activeScriptHostConfig.TraceWriter?.Error("Host failed to initialize.", hostInitEx);
+                _activeScriptHostConfig?.TraceWriter?.Error("Host failed to initialize.", hostInitEx);
                 throw new HostInitializationException("Host failed to initialize.", hostInitEx);
             }
         }
