@@ -95,9 +95,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 TestHelpers.WaitForWebHost(httpClient);
 
                 var traces = traceWriter.GetTraces().ToArray();
-                Assert.Equal($"In Standby Mode. Host initializing.", traces[0].Message);
-                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[2].Message);
-                Assert.Equal("StandbyMode placeholder function directory created", traces[3].Message);
+                Assert.True(traces.Count() == 19);
+                Assert.Equal($"Created Standby WebHostSettings.", traces[0].Message);
+                Assert.Equal($"In Standby Mode. Host initializing.", traces[1].Message);
+                Assert.Equal($"Creating StandbyMode placeholder function directory ({Path.GetTempPath()}Functions\\Standby\\WWWRoot)", traces[3].Message);
+                Assert.Equal("StandbyMode placeholder function directory created", traces[4].Message);
 
                 // issue warmup request and verify
                 var request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");
