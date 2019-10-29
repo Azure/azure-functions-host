@@ -453,7 +453,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                  fd
             };
-            var validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+            IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+            int validFunctionsCount = 0;
+            foreach (var metadata in validFunctions)
+            {
+                Assert.Equal(func1.Name, metadata.Name);
+                validFunctionsCount++;
+            }
+            Assert.True(validFunctionsCount == 1);
+        }
+
+        [Fact]
+        public void GetValidFunctions_Returns_Null()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "java"
+            };
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "func2",
+                Language = "node"
+            };
+            FunctionMetadata func3 = new FunctionMetadata()
+            {
+                Name = "func3",
+                Language = "node"
+            };
+
+            FunctionDescriptor fd = new FunctionDescriptor();
+            fd.Metadata = func3;
+
+            IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
+            {
+                 func1, func2
+            };
+            ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
+            {
+                 fd
+            };
+
+            IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(null, functionDescriptors);
+            Assert.Null(validFunctions);
+
+            validFunctions = Utility.GetValidFunctions(functionMetadatas, null);
+            Assert.Null(validFunctions);
+
+            validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+            Assert.Empty(validFunctions);
         }
 
         [Theory]

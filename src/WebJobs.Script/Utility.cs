@@ -568,7 +568,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // No valid functions
                 return null;
             }
-            return indexedFunctions.Any(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name));
+            return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
         }
 
         public static async Task MarkContainerDisabled(ILogger logger)
