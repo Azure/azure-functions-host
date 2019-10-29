@@ -1,13 +1,17 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -81,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     LogPath = Path.Combine(tempRoot, @"Functions"),
                     ScriptPath = Path.Combine(tempRoot, @"Functions"),
-                    SecretsPath = Path.Combine(tempRoot, @"Functions")
+                    SecretsPath = Path.Combine(tempRoot, @"Functions"),
                 };
                 FileUtility.EnsureDirectoryExists(settings.ScriptPath);
                 File.WriteAllText(Path.Combine(settings.ScriptPath, "host.json"), "{ id: 'testid' }");
