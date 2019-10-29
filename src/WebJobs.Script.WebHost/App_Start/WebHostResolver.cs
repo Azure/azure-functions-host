@@ -146,12 +146,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var standbySettings = CreateStandbySettings(settings);
                     _standbyScriptHostConfig = CreateScriptHostConfiguration(standbySettings, true);
-                    _standbyScriptHostConfig.TraceWriter.Info("In Standby Mode. Host initializing.");
-
                     var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
+
                     _standbyHostManager = new WebScriptHostManager(_standbyScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, standbySettings, defaultLoggerFactory);
                     _standbyReceiverManager = new WebHookReceiverManager(_standbyHostManager.SecretManager);
 
+                    // TraceWriter is initialized to SystemTraceWriter only after creating WebScriptHostManager
+                    _standbyScriptHostConfig.TraceWriter?.Info("In Standby Mode. Host initializing.");
                     InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
                     StandbyManager.Initialize(_standbyScriptHostConfig);
 
@@ -164,8 +165,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception standbyModeInitEx)
             {
-                _standbyScriptHostConfig.TraceWriter.Error("Host failed to initialize in StandbyMode.", standbyModeInitEx);
-                throw;
+                _standbyScriptHostConfig.TraceWriter?.Error("Host failed to initialize in StandbyMode.", standbyModeInitEx);
+                throw new HostInitializationException("Host failed to initialize in StandbyMode.", standbyModeInitEx);
             }
         }
 
@@ -183,12 +184,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _specializationTimer = null;
 
                     _activeScriptHostConfig = CreateScriptHostConfiguration(settings);
-                    _activeScriptHostConfig.TraceWriter.Info("Host initializing.");
-
                     var defaultLoggerFactory = GetDefaultLoggerFactory(settings);
                     _activeHostManager = new WebScriptHostManager(_activeScriptHostConfig, _secretManagerFactory, _eventManager, _settingsManager, settings, defaultLoggerFactory);
                     _activeReceiverManager = new WebHookReceiverManager(_activeHostManager.SecretManager);
                     InitializeFileSystem(_settingsManager.FileSystemIsReadOnly);
+
+                    // TraceWriter is initialized to SystemTraceWriter only after creating WebScriptHostManager
+                    _activeScriptHostConfig.TraceWriter.Info("Host initializing.");
 
                     if (_standbyHostManager != null)
                     {
@@ -218,8 +220,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception hostInitEx)
             {
-                _activeScriptHostConfig.TraceWriter.Error("Host failed to initialize.", hostInitEx);
-                throw;
+                _activeScriptHostConfig.TraceWriter?.Error("Host failed to initialize.", hostInitEx);
+                throw new HostInitializationException("Host failed to initialize.", hostInitEx);
             }
         }
 
