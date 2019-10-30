@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
         private readonly TestLoggerProvider _loggerProvider;
+        private readonly ILogger _logger;
 
         public HostNameProviderTests()
         {
@@ -26,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            _hostNameProvider = new HostNameProvider(_mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
+            _logger = loggerFactory.CreateLogger<HostNameProvider>();
+            _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
         }
 
         [Theory]
@@ -53,19 +55,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // no header present
             HttpRequest request = new DefaultHttpContext().Request;
-            _hostNameProvider.Synchronize(request);
+            _hostNameProvider.Synchronize(request, _logger);
             Assert.Equal(null, _hostNameProvider.Value);
 
             // empty header value
             request = new DefaultHttpContext().Request;
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, string.Empty);
-            _hostNameProvider.Synchronize(request);
+            _hostNameProvider.Synchronize(request, _logger);
             Assert.Equal(null, _hostNameProvider.Value);
 
             // host provided via header - expect update
             request = new DefaultHttpContext().Request;
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test.azurewebsites.net");
-            _hostNameProvider.Synchronize(request);
+            _hostNameProvider.Synchronize(request, _logger);
             Assert.Equal("test.azurewebsites.net", _hostNameProvider.Value);
             var logs = _loggerProvider.GetAllLogMessages();
             Assert.Equal(1, logs.Count);
@@ -73,7 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // no change in header value - no update expected
             _loggerProvider.ClearAllLogMessages();
-            _hostNameProvider.Synchronize(request);
+            _hostNameProvider.Synchronize(request, _logger);
+            Assert.Equal("test.azurewebsites.net", _hostNameProvider.Value);
             Assert.Equal("test.azurewebsites.net", _hostNameProvider.Value);
             logs = _loggerProvider.GetAllLogMessages();
             Assert.Equal(0, logs.Count);
@@ -81,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // another change - expect update
             request = new DefaultHttpContext().Request;
             request.Headers.Add(ScriptConstants.AntaresDefaultHostNameHeader, "test2.azurewebsites.net");
-            _hostNameProvider.Synchronize(request);
+            _hostNameProvider.Synchronize(request, _logger);
             Assert.Equal("test2.azurewebsites.net", _hostNameProvider.Value);
             logs = _loggerProvider.GetAllLogMessages();
             Assert.Equal(1, logs.Count);

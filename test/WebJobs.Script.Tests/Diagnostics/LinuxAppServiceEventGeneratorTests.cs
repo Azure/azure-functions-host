@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -14,6 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
     public class LinuxAppServiceEventGeneratorTests
     {
+        private const string _hostNameDefault = "SimpleApp";
+
         private readonly LinuxAppServiceEventGenerator _generator;
         private readonly Dictionary<string, MockLinuxAppServiceFileLogger> _loggers;
 
@@ -32,7 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var loggerFactoryMock = new Mock<LinuxAppServiceFileLoggerFactory>(MockBehavior.Strict);
             loggerFactoryMock.Setup(f => f.GetOrCreate(It.IsAny<string>())).Returns<string>(s => _loggers[s]);
 
-            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object);
+            var environmentMock = new Mock<IEnvironment>();
+            environmentMock.Setup(f => f.GetEnvironmentVariable(It.Is<string>(v => v == "WEBSITE_HOSTNAME")))
+                .Returns<string>(s => _hostNameDefault);
+
+            var hostNameProvider = new HostNameProvider(environmentMock.Object);
+            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider);
         }
 
         [Theory]
@@ -47,13 +55,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(16, match.Groups.Count);
+            Assert.Equal(17, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
                 p => Assert.Equal(subscriptionId, p),
+                p => Assert.Equal(_hostNameDefault, p),
                 p => Assert.Equal(appName, p),
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),

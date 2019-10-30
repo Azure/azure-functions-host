@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
-            _hostNameProvider = new HostNameProvider(_testEnvironment, loggerFactory.CreateLogger<HostNameProvider>());
+            _hostNameProvider = new HostNameProvider(_testEnvironment);
         }
 
         [Fact]
