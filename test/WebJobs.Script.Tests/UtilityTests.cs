@@ -6,11 +6,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
+using System.IO.Abstractions;
+using System.IO.Abstractions.TestingHelpers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -97,6 +101,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Not sure what causes it, but either Task.Delay sometimes doesn't wait quite long enough or there is some clock skew.
             TimeSpan roundedElapsedSpan = sw.Elapsed.RoundSeconds(digits: 1);
             Assert.True(roundedElapsedSpan >= TimeSpan.FromSeconds(2), $"Expected roundedElapsedSpan >= TimeSpan.FromSeconds(2); Actual: {roundedElapsedSpan.TotalSeconds}");
+        }
+
+        [Theory]
+        [InlineData("Function1", "Function1", "en-US", true)]
+        [InlineData("function1", "Function1", "en-US", true)]
+        [InlineData("Função", "FunçÃo", "pt-BR", true)]
+        [InlineData("HttptRIGGER", "Httptrigger", "ja-JP", true)]
+        [InlineData("Iasdf1", "iasdf1", "tr-TR", true)]
+        public void FunctionNamesMatch_ReturnsExpectedResult(string functionNameA, string functionNameB, string cultureInfo, bool expectMatch)
+        {
+            CultureInfo environmentCulture = Thread.CurrentThread.CurrentCulture;
+
+            try
+            {
+                Thread.CurrentThread.CurrentCulture = new CultureInfo(cultureInfo);
+                Assert.Equal(expectMatch, Utility.FunctionNamesMatch(functionNameA, functionNameB));
+            }
+            finally
+            {
+                Thread.CurrentThread.CurrentCulture = environmentCulture;
+            }
         }
 
         [Theory]
@@ -401,6 +426,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Language = funcMetadataLanguage
             };
             Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
+        }
+
+        [Theory]
+        [InlineData(true, true, true)]
+        [InlineData(true, false, false)]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, false)]
+        public void AppOfflineTests(bool isLinuxContainerEnvironment, bool containerDisabledFileExists, bool appOffline)
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, isLinuxContainerEnvironment ? string.Empty : "Website_instance_id" },
+                { EnvironmentSettingNames.ContainerName, isLinuxContainerEnvironment ? "Container-Name" : string.Empty }
+            };
+
+            var fileSystem = new Mock<IFileSystem>();
+            fileSystem.Setup(f =>
+                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
+                .Returns(containerDisabledFileExists);
+            FileUtility.Instance = fileSystem.Object;
+
+            var checkAppOffline = Utility.CheckAppOffline(new TestEnvironment(vars), string.Empty);
+            Assert.Equal(appOffline, checkAppOffline);
+
+            FileUtility.Instance = null;
+        }
+
+        [Fact]
+        public void ResolveFunctionName_StateWins()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "functionName", "A" }
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("A", Utility.ResolveFunctionName(state, scope));
+        }
+
+        [Fact]
+        public void ResolveFunctionName_LastStateWins()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "functionName", "A" },
+                { LogConstants.NameKey, "C" },
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("C", Utility.ResolveFunctionName(state, scope));
+        }
+
+        [Fact]
+        public void ResolveFunctionName_Scope()
+        {
+            var state = new Dictionary<string, object>
+            {
+                { "notFunctionName", "A" },
+            };
+
+            var scope = new Dictionary<string, object>
+            {
+                { ScopeKeys.FunctionName, "B" }
+            };
+
+            Assert.Equal("B", Utility.ResolveFunctionName(state, scope));
         }
     }
 }

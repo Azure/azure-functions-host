@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Extensions.DependencyInjection;
@@ -371,7 +371,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                var provider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+                var provider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()

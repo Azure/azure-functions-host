@@ -4,20 +4,21 @@
 using System;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.OutOfProc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class SystemLoggerProvider : ILoggerProvider
+    public class SystemLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
         private readonly string _hostInstanceId;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
+        private IExternalScopeProvider _scopeProvider;
 
         public SystemLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEventGenerator eventGenerator, IEnvironment environment, IDebugStateProvider debugStateProvider, IScriptEventManager eventManager)
             : this(scriptOptions.Value.InstanceId, eventGenerator, environment, debugStateProvider, eventManager)
@@ -40,16 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // The SystemLogger is not used for user logs.
                 return NullLogger.Instance;
             }
-            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager);
+            return new SystemLogger(_hostInstanceId, categoryName, _eventGenerator, _environment, _debugStateProvider, _eventManager, _scopeProvider);
         }
 
         private bool IsUserLogCategory(string categoryName)
         {
-            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(OutOfProcConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
+            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()
         {
+        }
+
+        public void SetScopeProvider(IExternalScopeProvider scopeProvider)
+        {
+            _scopeProvider = scopeProvider;
         }
     }
 }

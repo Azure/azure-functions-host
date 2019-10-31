@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -22,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _functionName = "TestFunction";
         private readonly string _hostInstanceId;
         private readonly Mock<IDebugStateProvider> _debugStateProvider;
+        private readonly IEnvironment _environment;
         private bool _inDiagnosticMode;
 
         public SystemLoggerTests()
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _mockEventGenerator = new Mock<IEventGenerator>(MockBehavior.Strict);
 
-            var environment = new TestEnvironment(new Dictionary<string, string>
+            _environment = new TestEnvironment(new Dictionary<string, string>
                 {
                     { EnvironmentSettingNames.AzureWebsiteOwnerName,  $"{_subscriptionId}+westuswebspace" },
                     { EnvironmentSettingNames.AzureWebsiteName,  _websiteName },
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, environment, _debugStateProvider.Object, null);
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
         }
 
         [Fact]
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null);
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -177,7 +177,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _logger.LogDebug($"{{{ScriptConstants.LogPropertyIsUserLogKey}}}", true);
 
             // Make sure it's never been called.
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData("functionName")]
+        [InlineData(LogConstants.NameKey)]
+        [InlineData(ScopeKeys.FunctionName)]
+        public void Log_UsesCategoryFunctionName(string key)
+        {
+            var logState = new Dictionary<string, object>
+            {
+                [key] = "TestFunction2"
+            };
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+            _logger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
+        }
+
+        [Theory]
+        [InlineData("functionName")]
+        [InlineData(LogConstants.NameKey)]
+        [InlineData(ScopeKeys.FunctionName)]
+        public void Log_UsesStateFunctionName_IfNoCategory(string key)
+        {
+            var logState = new Dictionary<string, object>
+            {
+                [key] = "TestFunction2"
+            };
+
+            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+            logger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
+        }
+
+        [Theory]
+        [InlineData("functionName")]
+        [InlineData(LogConstants.NameKey)]
+        [InlineData(ScopeKeys.FunctionName)]
+        public void Log_UsesScopeFunctionName_IfNoCategory(string key)
+        {
+            var logScope = new Dictionary<string, object>
+            {
+                [key] = "TestFunction3"
+            };
+
+            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+
+            using (logger.BeginScope(logScope))
+            {
+                logger.LogDebug("TestMessage");
+            }
         }
     }
 }

@@ -22,7 +22,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private static int _warmupExecuted;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             IOptions<JobHostOptions> hostOptions,
@@ -267,36 +267,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Accepted();
         }
 
-        /// <summary>
-        /// This endpoint generates a temporary x-ms-site-restricted-token for core tool
-        /// to access KuduLite zipdeploy endpoint in Linux Consumption
-        /// </summary>
-        /// <returns>
-        /// 200 on token generated
-        /// 400 on non-Linux container environment
-        /// </returns>
-        [HttpGet]
-        [Route("admin/host/token")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public IActionResult GetAdminToken()
-        {
-            if (!_environment.IsLinuxConsumption())
-            {
-                return BadRequest("Endpoint is only available when running in Linux Container");
-            }
-
-            string requestHeaderToken = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
-            return Ok(requestHeaderToken);
-        }
-
         [HttpGet]
         [HttpPost]
         [Route("admin/warmup")]
-        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] IScriptJobHost scriptHost)
+        public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
         {
-            await scriptHost.TryInvokeWarmupAsync();
+            // Endpoint only for Windows Elastic Premium or Linux App Service plans
+            if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
+            {
+                return BadRequest("This API is not available for the current hosting plan");
+            }
+
+            if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
+            {
+                return Ok();
+            }
+
+            var jobHost = hostService.Services?.GetService<IScriptJobHost>();
+            if (jobHost == null)
+            {
+                _logger.LogError($"No active host available.");
+                return StatusCode(503);
+            }
+
+            await jobHost.TryInvokeWarmupAsync();
             return Ok();
         }
 

@@ -14,8 +14,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -34,6 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
+        private static readonly string[] _allowedFunctionNameKeys = new[]
+        {
+            "functionName",
+            LogConstants.NameKey,
+            ScopeKeys.FunctionName
+        };
+
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
@@ -170,6 +178,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsValidFunctionName(string functionName)
         {
             return FunctionNameValidationRegex.IsMatch(functionName);
+        }
+
+        public static bool FunctionNamesMatch(string functionName, string comparand)
+        {
+            return string.Equals(functionName, comparand, StringComparison.OrdinalIgnoreCase);
         }
 
         // "Namespace.Class.Method" --> "Namespace.Class"
@@ -392,14 +405,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return (TValue)kvps.Last().Value;
         }
 
-        public static string GetValueFromState<TState>(TState state, string key)
+        public static string ResolveFunctionName(IEnumerable<KeyValuePair<string, object>> stateProps, IDictionary<string, object> scopeProps)
         {
-            string value = string.Empty;
-            if (state is IEnumerable<KeyValuePair<string, object>> stateDict)
-            {
-                value = GetStateValueOrDefault<string>(stateDict, key) ?? string.Empty;
-            }
-            return value;
+            // State wins, then scope. To find function name, we'll look for any of these values.
+            // "last" wins with state values, so reverse it.
+            var firstKvp = stateProps
+                .Reverse()
+                .Concat(scopeProps)
+                .FirstOrDefault(p => _allowedFunctionNameKeys.Contains(p.Key));
+
+            return firstKvp.Value?.ToString();
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
@@ -449,13 +464,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker)
         {
+            if (isPlaceholderMode)
+            {
+                return;
+            }
+            if (isHttpWorker)
+            {
+                // Do not enforce langauge for http worker
+                return;
+            }
             if (!IsSingleLanguage(functions, workerRuntime))
             {
                 if (string.IsNullOrEmpty(workerRuntime))
                 {
-                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
+                    throw new HostInitializationException($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting");
                 }
                 else
                 {
@@ -490,7 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
                 if (IsDotNetLanguageFunction(functionLanguage))
                 {
-                    return LanguageWorkerConstants.DotNetLanguageWorkerName;
+                    return RpcWorkerConstants.DotNetLanguageWorkerName;
                 }
                 return functionLanguage;
             }
@@ -515,14 +539,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return dotNetLanguages.Any(lang => string.Equals(lang, functionLanguage, StringComparison.OrdinalIgnoreCase));
         }
 
-        public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<WorkerConfig> workerConfigs)
+        public static bool IsSupportedRuntime(string workerRuntime, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             return workerConfigs.Any(config => string.Equals(config.Description.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
-            if (string.Equals(workerRuntime, LanguageWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));
             }
@@ -533,11 +557,32 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        public static bool CheckAppOffline(string scriptPath)
+        public static async Task MarkContainerDisabled(ILogger logger)
         {
+            logger.LogDebug("Setting container instance offline");
+            var disableContainerFilePath = Path.Combine(Path.GetTempPath(), ScriptConstants.DisableContainerFileName);
+            if (!FileUtility.FileExists(disableContainerFilePath))
+            {
+                await FileUtility.WriteAsync(disableContainerFilePath, "This container instance is offline");
+            }
+        }
+
+        public static bool IsContainerDisabled()
+        {
+            return FileUtility.FileExists(Path.Combine(Path.GetTempPath(), ScriptConstants.DisableContainerFileName));
+        }
+
+        public static bool CheckAppOffline(IEnvironment environment, string scriptPath)
+        {
+            // Linux container environments have an additional way of putting a specific worker instance offline.
+            if (environment.IsLinuxConsumptionContainerDisabled())
+            {
+                return true;
+            }
+
             // check if we should be in an offline state
             string offlineFilePath = Path.Combine(scriptPath, ScriptConstants.AppOfflineFileName);
-            if (File.Exists(offlineFilePath))
+            if (FileUtility.FileExists(offlineFilePath))
             {
                 return true;
             }

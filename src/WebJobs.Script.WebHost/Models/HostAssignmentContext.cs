@@ -72,6 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }
         }
 
+        public bool IsUserDataMountEnabled()
+        {
+            Environment.TryGetValue(EnvironmentSettingNames.UserDataMountEnabled, out var mountEnabled);
+            return !string.IsNullOrEmpty(mountEnabled) &&
+                   string.Equals(mountEnabled, "1", StringComparison.OrdinalIgnoreCase);
+        }
+
         public bool IsMSIEnabled(out string endpoint)
         {
             endpoint = null;
@@ -102,6 +109,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             foreach (var pair in Environment)
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+
+            if (CorsSettings != null)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials, CorsSettings.SupportCredentials.ToString());
+
+                if (CorsSettings.AllowedOrigins != null)
+                {
+                    var allowedOrigins = JsonConvert.SerializeObject(CorsSettings.AllowedOrigins);
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins, allowedOrigins);
+                }
             }
         }
     }

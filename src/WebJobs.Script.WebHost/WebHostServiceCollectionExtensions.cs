@@ -6,9 +6,9 @@ using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -75,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IScriptWebHostEnvironment, ScriptWebHostEnvironment>();
             services.TryAddSingleton<IStandbyManager, StandbyManager>();
             services.TryAddSingleton<IScriptHostBuilder, DefaultScriptHostBuilder>();
-            services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
 
             // Linux container services
             services.AddLinuxContainerServices();
@@ -134,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+            services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
@@ -186,6 +187,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var nullMetricsLogger = s.GetService<ILogger<NullMetricsPublisher>>();
                 return new NullMetricsPublisher(nullMetricsLogger);
             });
+        }
+
+        private static IServiceCollection ConfigureOptionsWithChangeTokenSource<TOptions, TOptionsSetup, TOptionsChangeTokenSource>(this IServiceCollection services)
+            where TOptions : class
+            where TOptionsSetup : class, IConfigureOptions<TOptions>
+            where TOptionsChangeTokenSource : class, IOptionsChangeTokenSource<TOptions>
+        {
+            services.ConfigureOptions<TOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<TOptions>, TOptionsChangeTokenSource>();
+
+            return services;
         }
     }
 }

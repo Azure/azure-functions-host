@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ILogger _logger;
         private readonly HttpClient _client;
-        private readonly IEnumerable<WorkerConfig> _workerConfigs;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostNameProvider _hostNameProvider;
@@ -164,7 +164,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata().First(metadata => metadata.Name == name);
+            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata(true)
+                .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
+
             if (functionMetadata != null)
             {
                 string routePrefix = await GetRoutePrefix(hostOptions.RootScriptPath);

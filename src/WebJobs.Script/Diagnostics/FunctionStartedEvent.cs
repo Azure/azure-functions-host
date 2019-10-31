@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             InvocationId = invocationId;
             FunctionMetadata = functionMetadata;
             Success = true;
+            FunctionName = functionMetadata?.Name;
         }
 
         public FunctionMetadata FunctionMetadata { get; private set; }

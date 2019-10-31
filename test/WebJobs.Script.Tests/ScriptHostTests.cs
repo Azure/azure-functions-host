@@ -16,7 +16,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -905,13 +905,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void IsSupportedRuntime_Returns_False()
         {
-            Assert.False(Utility.IsSupportedRuntime(LanguageWorkerConstants.DotNetLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
+            Assert.False(Utility.IsSupportedRuntime(RpcWorkerConstants.DotNetLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
         [Fact]
         public void IsSupportedRuntime_Returns_True()
         {
-            Assert.True(Utility.IsSupportedRuntime(LanguageWorkerConstants.NodeLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
+            Assert.True(Utility.IsSupportedRuntime(RpcWorkerConstants.NodeLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
         [Theory]
@@ -958,8 +958,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName));
-            Assert.Equal($"Did not find functions with language [{LanguageWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false));
+            Assert.Equal($"Did not find functions with language [{RpcWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
         }
 
         [Fact]
@@ -981,7 +981,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, LanguageWorkerConstants.DotNetLanguageWorkerName);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false);
         }
 
         [Fact]
@@ -997,7 +997,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false);
+        }
+
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_HttpWorkerOrPlaceholderMode(bool placeholderMode, bool httpWorker)
+        {
+            FunctionMetadata funcJS1 = new FunctionMetadata()
+            {
+                Name = "funcJS1"
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJS1
+            };
+
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker);
         }
 
         [Fact]
@@ -1018,8 +1035,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty));
-            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {LanguageWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false));
+            Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
         }
 
         [Fact]

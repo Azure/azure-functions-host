@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "dotnet");
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task StandbyModeE2E_JavaTemplateSite()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
-            _settings.Add(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, LanguageWorkerConstants.JavaLanguageWorkerName);
+            _settings.Add(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.JavaLanguageWorkerName);
             await Verify_StandbyModeE2E_Java();
         }
 
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now specialize the host
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "java");
 
             Assert.False(environment.IsPlaceholderModeEnabled());
             Assert.True(environment.IsContainerReady());

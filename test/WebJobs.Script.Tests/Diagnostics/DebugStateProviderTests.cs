@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
     public class DebugStateProviderTests
     {
         private readonly ScriptApplicationHostOptions _options;
-        private readonly TestChangeTokenSource _tokenSource;
+        private readonly TestChangeTokenSource<ScriptApplicationHostOptions> _tokenSource;
         private readonly DebugStateProvider _provider;
 
         public DebugStateProviderTests()
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             };
 
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_options);
-            _tokenSource = new TestChangeTokenSource();
+            _tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { _tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 

@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
+            IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
@@ -37,8 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<HttpOptionsSetup>();
                     services.ConfigureOptions<CustomHttpHeadersOptionsSetup>();
                     services.ConfigureOptions<HostHstsOptionsSetup>();
+                    services.ConfigureOptions<HostCorsOptionsSetup>();
+                    services.ConfigureOptions<CorsOptionsSetup>();
                 })
-                .AddScriptHost(webHostOptions, configLoggerFactory, webJobsBuilder =>
+                .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     webJobsBuilder
                         .AddAzureStorageCoreServices();
@@ -46,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
+
+                    webJobsBuilder.Services.AddSingleton<IHttpRoutesManager, WebScriptHostHttpRoutesManager>();
                 })
                 .ConfigureAppConfiguration(configurationBuilder =>
                 {
@@ -81,6 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
+                    if (environment.IsLinuxConsumption())
+                    {
+                        services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+                    }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
                     // Make sure the registered IHostIdProvider is used
@@ -91,11 +101,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     // Logging and diagnostics
-                    services.AddSingleton<IMetricsLogger, WebHostMetricsLogger>();
+                    services.AddSingleton<IMetricsLogger>(a => new NonDisposableMetricsLogger(metricsLogger));
                     services.AddSingleton<IEventCollectorProvider, FunctionInstanceLogCollectorProvider>();
 
                     // Hosted services
-                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, HttpInitializationService>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);

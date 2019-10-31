@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Extensions.Configuration;
@@ -32,15 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _copiedRootPath;
         private string _functionsWorkerRuntime;
         private int _workerProcessCount;
+        private string _functionsWorkerRuntimeVersion;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1)
+        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1, string functionsWorkerRuntimeVersion = null)
         {
             FixtureId = testId;
 
             _rootPath = rootPath;
             _functionsWorkerRuntime = functionsWorkerRuntime;
             _workerProcessCount = workerProcessesCount;
-
+            _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -95,8 +96,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
             if (!string.IsNullOrEmpty(_functionsWorkerRuntime))
             {
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
-                Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerRuntime);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, _workerProcessCount.ToString());
+            }
+            if (!string.IsNullOrEmpty(_functionsWorkerRuntimeVersion))
+            {
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, _functionsWorkerRuntimeVersion);
             }
 
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
@@ -227,8 +232,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // best effort
                 }
             }
-            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
-            Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
+            Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
             return Task.CompletedTask;
         }
 

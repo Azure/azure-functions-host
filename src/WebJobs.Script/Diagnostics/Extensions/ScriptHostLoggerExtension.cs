@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
@@ -17,23 +16,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(400, nameof(HostIdIsSet)),
             "Host id explicitly set in configuration. This is not a recommended configuration and may lead to unexpected behavior.");
 
-        private static readonly Action<ILogger, string, Exception> _startingHost =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(401, nameof(StartingHost)),
-            "{message}");
-
-        private static readonly Action<ILogger, string, Exception> _functionsErrors =
-            LoggerMessage.Define<string>(
+        private static readonly Action<ILogger, string, string, Exception> _functionError =
+            LoggerMessage.Define<string, string>(
             LogLevel.Error,
-            new EventId(402, nameof(FunctionsErrors)),
-            "{message}");
+            new EventId(402, nameof(FunctionError)),
+            "The '{functionName}' function is in error: {errorMessage}");
 
-        private static readonly Action<ILogger, Exception> _addingDescriptorProvidersForAllLanguages =
+        private static readonly Action<ILogger, Exception> _hostIsInPlaceholderMode =
             LoggerMessage.Define(
             LogLevel.Debug,
-            new EventId(403, nameof(AddingDescriptorProvidersForAllLanguages)),
-            "Adding Function descriptor providers for all languages.");
+            new EventId(403, nameof(HostIsInPlaceholderMode)),
+            "Host is in placeholdermode");
 
         private static readonly Action<ILogger, string, Exception> _addingDescriptorProviderForLanguage =
             LoggerMessage.Define<string>(
@@ -95,30 +88,43 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(413, nameof(ScriptHostStarted)),
             "Host started ({ms}ms)");
 
+        private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpWorker =
+           LoggerMessage.Define(
+           LogLevel.Debug,
+           new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
+           "Adding Function descriptor provider for HttpWorker.");
+
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
         }
 
-        public static void StartingHost(this ILogger logger, string hostId, string instanceId, string version, bool inDebugMode, bool inDiagnosticMode, string extensionVersion)
+        public static void StartingHost(this ILogger logger, string hostId, string instanceId, string version, int processId, int appDomainId, bool inDebugMode, bool inDiagnosticMode, string extensionVersion)
         {
-            string message = $"Starting Host (HostId={hostId}, InstanceId={instanceId}, Version={version}, ProcessId={Process.GetCurrentProcess().Id}, AppDomainId={AppDomain.CurrentDomain.Id}, InDebugMode={inDebugMode}, InDiagnosticMode={inDiagnosticMode}, FunctionsExtensionVersion={extensionVersion})";
-            _startingHost(logger, message, null);
+            // LoggerMessage.Define can only handle a max of 6 parameters, so log this directly.
+            logger.LogInformation(new EventId(401, "StartingHost"),
+                "Starting Host (HostId={hostId}, InstanceId={instanceId}, Version={version}, ProcessId={processId}, AppDomainId={appDomainId}, InDebugMode={inDebugMode}, InDiagnosticMode={inDiagnosticMode}, FunctionsExtensionVersion={extensionVersion})",
+                hostId, instanceId, version, processId, appDomainId, inDebugMode, inDiagnosticMode, extensionVersion);
         }
 
-        public static void FunctionsErrors(this ILogger logger, string message)
+        public static void FunctionError(this ILogger logger, string functionName, string errorMessage)
         {
-            _functionsErrors(logger, message, null);
+            _functionError(logger, functionName, errorMessage, null);
         }
 
-        public static void AddingDescriptorProvidersForAllLanguages(this ILogger logger)
+        public static void HostIsInPlaceholderMode(this ILogger logger)
         {
-            _addingDescriptorProvidersForAllLanguages(logger, null);
+            _hostIsInPlaceholderMode(logger, null);
         }
 
         public static void AddingDescriptorProviderForLanguage(this ILogger logger, string workerRuntime)
         {
             _addingDescriptorProviderForLanguage(logger, workerRuntime, null);
+        }
+
+        public static void AddingDescriptorProviderForHttpWorker(this ILogger logger)
+        {
+            _addingDescriptorProviderForHttpWorker(logger, null);
         }
 
         public static void CreatingDescriptors(this ILogger logger)

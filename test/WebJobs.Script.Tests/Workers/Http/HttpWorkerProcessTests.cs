@@ -1,0 +1,59 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
+
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
+{
+    public class HttpWorkerProcessTests
+    {
+        private const string _testWorkerId = "testId";
+        private const string _rootScriptPath = "c:\\testDir";
+        private const int _workerPort = 8090;
+        private readonly ScriptSettingsManager _settingsManager;
+        private readonly Mock<IScriptEventManager> _mockEventManager = new Mock<IScriptEventManager>();
+        private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
+        private readonly IProcessRegistry _processRegistry = new EmptyProcessRegistry();
+        private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
+        private readonly ILogger _testLogger = new TestLogger("test");
+        private readonly HttpWorkerOptions _httpWorkerOptions;
+
+        public HttpWorkerProcessTests()
+        {
+            _httpWorkerOptions = new HttpWorkerOptions()
+            {
+                Port = _workerPort,
+                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" }
+            };
+            _settingsManager = ScriptSettingsManager.Instance;
+        }
+
+        [Theory]
+        [InlineData("9000")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void CreateWorkerProcess_VerifyEnvVars(string processEnvValue)
+        {
+            using (new TestScopedSettings(_settingsManager, HttpWorkerConstants.PortEnvVarName, processEnvValue))
+            {
+                if (!string.IsNullOrEmpty(processEnvValue))
+                {
+                    Assert.Equal(Environment.GetEnvironmentVariable(HttpWorkerConstants.PortEnvVarName), processEnvValue);
+                }
+                HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object);
+                Process childProcess = httpWorkerProcess.CreateWorkerProcess();
+                Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
+                childProcess.Dispose();
+            }
+        }
+    }
+}

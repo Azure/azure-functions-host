@@ -1,0 +1,9 @@
+{
+	"version": "2.0",
+	"httpWorker": {
+		"description": {
+			"defaultExecutablePath": "node",
+			"defaultWorkerPath": "server.js"
+		}
+	}
+}

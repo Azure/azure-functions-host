@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -14,15 +13,14 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -38,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly ScriptApplicationHostOptions _hostOptions;
         private readonly WebFunctionsManager _webFunctionsManager;
         private readonly Mock<IEnvironment> _mockEnvironment;
+        private readonly IFileSystem _fileSystem;
 
         public WebFunctionsManagerTests()
         {
@@ -61,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var contentBuilder = new StringBuilder();
             var httpClient = CreateHttpClient(contentBuilder);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
-            var tokenSource = new TestChangeTokenSource();
+            var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
             var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
@@ -84,9 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
+            _fileSystem = fileSystem;
             var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings());
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, languageWorkerOptions, NullLogger<FunctionMetadataProvider>.Instance);
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, languageWorkerOptions, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, metadataProvider);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, languageWorkerOptions, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, metadataProvider);
             _webFunctionsManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, metadataProvider);
         }
 
@@ -94,11 +94,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task ReadFunctionsMetadataSucceeds()
         {
             IEnumerable<FunctionMetadataResponse> metadata = await _webFunctionsManager.GetFunctionsMetadata(includeProxies: false);
-            var jsFunctions = metadata.Where(funcMetadata => funcMetadata.Language == LanguageWorkerConstants.NodeLanguageWorkerName).ToList();
+            var jsFunctions = metadata.Where(funcMetadata => funcMetadata.Language == RpcWorkerConstants.NodeLanguageWorkerName).ToList();
             var unknownFunctions = metadata.Where(funcMetadata => string.IsNullOrEmpty(funcMetadata.Language)).ToList();
 
             Assert.Equal(2, jsFunctions.Count());
             Assert.Equal(1, unknownFunctions.Count());
+        }
+
+        [Fact]
+        public async Task TryGetFunction_NoMatchingFunction_ReturnsEmpty()
+        {
+            var result = await _webFunctionsManager.TryGetFunction("non-function", null);
+            Assert.False(result.Item1);
+        }
+
+        [Fact]
+        public async Task TryGetFunction_NoFunction_ReturnsEmpty()
+        {
+            try
+            {
+                FileUtility.Instance = CreateEmptyFileSystem(_hostOptions);
+                var action = await _webFunctionsManager.TryGetFunction("function1", null);
+                Assert.False(action.Item1);
+            }
+            finally
+            {
+                FileUtility.Instance = _fileSystem;
+            }
         }
 
         [Theory]
@@ -175,6 +197,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
+        }
+
+        private static IFileSystem CreateEmptyFileSystem(ScriptApplicationHostOptions options)
+        {
+            string rootPath = options.ScriptPath;
+            string testDataPath = options.TestDataPath;
+
+            var fullFileSystem = new FileSystem();
+            var fileSystem = new Mock<IFileSystem>();
+            var fileBase = new Mock<FileBase>();
+            var dirBase = new Mock<DirectoryBase>();
+
+            fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
+            fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
+
+            var hostJson = new MemoryStream(Encoding.UTF8.GetBytes(@"{ ""durableTask"": { ""HubName"": ""TestHubValue"", ""azureStorageConnectionStringName"": ""DurableStorage"" }}"));
+            hostJson.Position = 0;
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(hostJson);
+
+            fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
+
+            dirBase.Setup(d => d.Exists(options.ScriptPath)).Returns(true);
+            dirBase.Setup(d => d.EnumerateDirectories(rootPath)).Returns(new string[0]);
+            return fileSystem.Object;
         }
 
         private static IFileSystem CreateFileSystem(ScriptApplicationHostOptions options)

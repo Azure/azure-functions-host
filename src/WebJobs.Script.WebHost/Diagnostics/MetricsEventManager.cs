@@ -4,13 +4,16 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -24,17 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
         private readonly object _functionActivityTrackerLockObject = new object();
-        private static string appName;
-        private static string subscriptionId;
         private bool _disposed;
         private IMetricsPublisher _metricsPublisher;
+        private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
 
-        public MetricsEventManager(IEnvironment environment, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
-            appName = GetNormalizedString(environment.GetAzureWebsiteUniqueSlotName());
-            subscriptionId = environment.GetSubscriptionId() ?? string.Empty;
-
+            _appServiceOptions = appServiceOptions;
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
             QueuedEvents = new ConcurrentDictionary<string, SystemMetricEvent>(StringComparer.OrdinalIgnoreCase);
@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 FunctionName = functionName,
                 EventName = eventName.ToLowerInvariant(),
                 Timestamp = DateTime.UtcNow,
+                StopWatch = Stopwatch.StartNew(),
                 Data = data
             };
         }
@@ -76,8 +77,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             SystemMetricEvent evt = eventHandle as SystemMetricEvent;
             if (evt != null)
             {
-                evt.Duration = DateTime.UtcNow - evt.Timestamp;
-                long latencyMS = (long)evt.Duration.TotalMilliseconds;
+                long latencyMS = 0;
+                evt.StopWatch.Stop();
+                if (evt.StopWatch != null)
+                {
+                    evt.Duration = evt.StopWatch.Elapsed;
+                    latencyMS = evt.StopWatch.ElapsedMilliseconds;
+                }
+                else
+                {
+                    evt.Duration = DateTime.UtcNow - evt.Timestamp;
+                    latencyMS = (long)evt.Duration.TotalMilliseconds;
+                }
 
                 // event aggregation is based on this key
                 // for each unique key, there will be only 1
@@ -151,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (instance == null)
                 {
-                    instance = new FunctionActivityTracker(_eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
+                    instance = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
                 }
                 instance.FunctionStarted(startedEvent);
             }
@@ -189,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
 
                 _eventGenerator.LogFunctionDetailsEvent(
-                    appName,
+                    _appServiceOptions.CurrentValue.AppName,
                     GetNormalizedString(function.Name),
                     function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
                     function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
@@ -265,11 +276,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(metricEvents));
             }
 
+            AppServiceOptions currentAppServiceOptions = _appServiceOptions.CurrentValue;
             foreach (SystemMetricEvent metricEvent in metricEvents)
             {
                 _eventGenerator.LogFunctionMetricEvent(
-                    subscriptionId,
-                    appName,
+                    currentAppServiceOptions.SubscriptionId,
+                    currentAppServiceOptions.AppName,
                     metricEvent.FunctionName ?? string.Empty,
                     metricEvent.EventName.ToLowerInvariant(),
                     metricEvent.Average,
@@ -318,11 +330,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
             private bool _disposed = false;
+            private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
             private IMetricsPublisher _metricsPublisher;
 
-            internal FunctionActivityTracker(IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
+            internal FunctionActivityTracker(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
             {
                 MetricsEventGenerator = generator;
+                _appServiceOptions = appServiceOptions;
                 _functionActivityFlushInterval = functionActivityFlushInterval;
                 _metricsPublisher = metricsPublisher;
                 Task.Run(
@@ -465,7 +479,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 MetricsEventGenerator.LogFunctionExecutionEvent(
                     _executionId,
-                    appName,
+                    _appServiceOptions.CurrentValue.AppName,
                     concurrency,
                     runningFunctionInfo.Name,
                     runningFunctionInfo.InvocationId.ToString(),
@@ -510,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {
-                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(appName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
+                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.CurrentValue.AppName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
                 }
             }
 

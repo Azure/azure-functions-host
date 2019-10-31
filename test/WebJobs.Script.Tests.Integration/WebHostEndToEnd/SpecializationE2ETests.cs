@@ -17,7 +17,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -295,11 +295,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class InfiniteTimerStandbyManager : StandbyManager
         {
-            public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostLanguageWorkerChannelManager languageWorkerChannelManager,
+            public InfiniteTimerStandbyManager(IScriptHostManager scriptHostManager, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager,
                 IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment,
                 IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, Microsoft.AspNetCore.Hosting.IApplicationLifetime applicationLifetime)
-                : base(scriptHostManager, languageWorkerChannelManager, configuration, webHostEnvironment, environment, options,
-                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1))
+                : base(scriptHostManager, rpcWorkerChannelManager, configuration, webHostEnvironment, environment, options,
+                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
             {
             }
         }

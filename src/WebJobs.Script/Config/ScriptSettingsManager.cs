@@ -39,26 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public bool IsDynamicSku => WebsiteSku == ScriptConstants.DynamicSku;
 
-        /// <summary>
-        /// Gets a value that uniquely identifies the site and slot.
-        /// </summary>
-        // TODO: DI (FACAVAL) Remove all usage here. Moved to EnvironmentUtility
-        public virtual string AzureWebsiteUniqueSlotName
-        {
-            get
-            {
-                string name = GetSetting(EnvironmentSettingNames.AzureWebsiteName);
-                string slotName = GetSetting(EnvironmentSettingNames.AzureWebsiteSlotName);
-
-                if (!string.IsNullOrEmpty(slotName) &&
-                    !string.Equals(slotName, ScriptConstants.DefaultProductionSlotName, StringComparison.OrdinalIgnoreCase))
-                {
-                    name += $"-{slotName}";
-                }
-
-                return name?.ToLowerInvariant();
-            }
-        }
+        public bool IsElasticPremiumSku => WebsiteSku == ScriptConstants.ElasticPremiumSku;
 
         public virtual string AzureWebsiteInstanceId
          {

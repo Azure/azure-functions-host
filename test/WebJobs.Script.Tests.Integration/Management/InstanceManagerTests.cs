@@ -17,6 +17,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
+using Newtonsoft.Json;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -58,6 +59,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Name = Path.GetTempFileName().Replace(".", string.Empty),
                 Value = Guid.NewGuid().ToString()
             };
+            var allowedOrigins = new string[]
+            {
+                "https://functions.azure.com",
+                "https://functions-staging.azure.com",
+                "https://functions-next.azure.com"
+            };
+            var supportCredentials = true;
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
@@ -65,7 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>
                 {
                     { envValue.Name, envValue.Value }
-                }
+                },
+                CorsSettings = new CorsSettings
+                {
+                    AllowedOrigins = allowedOrigins,
+                    SupportCredentials = supportCredentials,
+                },
             };
             bool result = _instanceManager.StartAssignment(context, isWarmup: false);
             Assert.True(result);
@@ -76,6 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var value = _environment.GetEnvironmentVariable(envValue.Name);
             Assert.Equal(value, envValue.Value);
+
+            var supportCredentialsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials);
+            Assert.Equal(supportCredentialsValue, supportCredentials.ToString());
+
+            var allowedOriginsValue = _environment.GetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins);
+            Assert.Equal(allowedOriginsValue, JsonConvert.SerializeObject(allowedOrigins));
 
             // verify logs
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -444,6 +463,95 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar returned BadRequest", p),
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
         }
+
+        private static bool IsMountCifsRequest(HttpRequestMessage request, string uri, string targetPath)
+        {
+            var formData = request.Content.ReadAsFormDataAsync().Result;
+            return string.Equals(uri, request.RequestUri.AbsoluteUri) &&
+                   string.Equals(targetPath, formData["targetPath"]);
+        }
+
+        [Fact]
+        public async Task Mounts_User_Data_From_Azure_Files()
+        {
+            const string meshInitUri = "http://localhost:8954/";
+            const string targetPath = "/userdata";
+            var environment = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureFilesConnectionString, "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whVtW5WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==" },
+                { EnvironmentSettingNames.AzureFilesContentShare, "contentshare" },
+                { EnvironmentSettingNames.MeshInitURI, meshInitUri },
+                { EnvironmentSettingNames.UserDataMountEnabled, "1" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.UserDataHome, targetPath);
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(""),
+                Headers = { }
+            });
+
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
+
+            var result = instanceManager.StartAssignment(assignmentContext, isWarmup: false);
+
+            await Task.Delay(TimeSpan.FromSeconds(0.5));
+
+            handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync",
+                Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(r => IsMountCifsRequest(r, meshInitUri, targetPath)),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task Does_Not_Mount_User_Data_From_Azure_Files_If_Not_Enabled()
+        {
+            const string meshInitUri = "http://localhost:8954/";
+            const string targetPath = "/userdata";
+            var environment = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureFilesConnectionString, "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whVtW5WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==" },
+                { EnvironmentSettingNames.AzureFilesContentShare, "contentshare" },
+                { EnvironmentSettingNames.MeshInitURI, meshInitUri },
+                { EnvironmentSettingNames.UserDataMountEnabled, "0" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment
+            };
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.UserDataHome, targetPath);
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
+
+            var result = instanceManager.StartAssignment(assignmentContext, isWarmup: false);
+
+            await Task.Delay(TimeSpan.FromSeconds(0.5));
+
+            handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync",
+                Times.Never(),
+                ItExpr.Is<HttpRequestMessage>(r => IsMountCifsRequest(r, meshInitUri, targetPath)),
+                ItExpr.IsAny<CancellationToken>());
+        }
+
 
         private InstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext, HttpStatusCode httpStatusCode)
         {

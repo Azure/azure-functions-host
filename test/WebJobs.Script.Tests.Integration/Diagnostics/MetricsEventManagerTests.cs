@@ -7,11 +7,13 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 using Xunit;
@@ -77,7 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             var mockMetricsPublisher = new Mock<IMetricsPublisher>();
-            _metricsEventManager = new MetricsEventManager(new TestEnvironment(), mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object);
+            var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
+            testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
+            _metricsEventManager = new MetricsEventManager(testAppServiceOptions.Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -385,7 +389,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             int flushInterval = 10;
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(new TestEnvironment(), mockGenerator.Object, flushInterval, null, flushInterval) { CallBase = true };
+            var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
+            testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;

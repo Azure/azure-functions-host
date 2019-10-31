@@ -135,6 +135,18 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is running in a Windows Elastic Premium
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Windows Elastic Premium app; otherwise, false.</returns>
+        public static bool IsWindowsElasticPremium(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
+            return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Gets a value indicating whether the application is running in an Azure Windows managed hosting environment
         /// (i.e. Windows Consumption or Windows Dedicated)
         /// </summary>
@@ -154,6 +166,16 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsLinuxConsumption(this IEnvironment environment)
         {
             return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether this specific linux consumption container instance is in offline mode.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Linux Consumption App Service app and the container is in draining mode; otherwise, false.</returns>
+        public static bool IsLinuxConsumptionContainerDisabled(this IEnvironment environment)
+        {
+            return environment.IsLinuxConsumption() && Utility.IsContainerDisabled();
         }
 
         /// <summary>

@@ -15,7 +15,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -116,6 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
+        public IServiceProvider WebHostServices => _testServer.Host.Services;
+
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
         public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
@@ -198,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <returns>The messages from the WebHost LoggerProvider</returns>
         public IList<LogMessage> GetWebHostLogMessages() => _webHostLoggerProvider.GetAllLogMessages();
 
-        public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages());
+        public string GetLog() => string.Join(Environment.NewLine, GetScriptHostLogMessages().Concat(GetWebHostLogMessages()).OrderBy(m => m.Timestamp));
 
         public void ClearLogMessages() => _scriptHostLoggerProvider.ClearAllLogMessages();
 
@@ -313,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance);
+                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
             }
         }
 

@@ -14,10 +14,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -76,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockHttpHandler = new MockHttpHandler(_contentBuilder);
             var httpClient = CreateHttpClient(_mockHttpHandler);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
-            var tokenSource = new TestChangeTokenSource();
+            var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
             var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
@@ -118,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType)).Returns("blob");
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
 
-            var functionMetadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), NullLogger<FunctionMetadataProvider>.Instance);
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataProvider);
+            var functionMetadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataProvider);
 
             _expectedSyncTriggersPayload = "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 "{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"DurableStorage\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\"}," +
