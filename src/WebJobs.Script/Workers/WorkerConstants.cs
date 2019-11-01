@@ -11,6 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string HttpScheme = "http";
 
         public const int ProcessStartTimeoutSeconds = 60;
+        public const int PollingIntervalMilliseconds = 25;
+        public const int WorkerInitTimeoutSeconds = 30;
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 

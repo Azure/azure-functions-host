@@ -4,8 +4,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Formatting;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
@@ -169,6 +171,40 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+        }
+
+        public async Task<bool> IsWorkerReady()
+        {
+            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.PollingIntervalMilliseconds, () =>
+            {
+                return ShouldContinueWaitingForWorker(requestUri, _logger);
+            });
+            bool isWorkerReady = ShouldContinueWaitingForWorker(requestUri, _logger);
+            return !isWorkerReady;
+        }
+
+        private static bool ShouldContinueWaitingForWorker(string requestUri, ILogger logger)
+        {
+            HttpWebRequest request = WebRequest.CreateHttp(requestUri);
+            request.Method = "GET";
+            try
+            {
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                }
+                return false;
+            }
+            catch (WebException webEx)
+            {
+                if (webEx.InnerException != null && webEx.InnerException is HttpRequestException && webEx.InnerException.InnerException != null && webEx.InnerException.InnerException is SocketException)
+                {
+                    return true;
+                }
+                // Wait for the worker to be ready
+                logger.LogError("err", webEx);
+                return false;
+            }
         }
     }
 }

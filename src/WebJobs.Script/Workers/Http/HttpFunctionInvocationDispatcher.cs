@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -59,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public FunctionInvocationDispatcherState State { get; private set; }
 
-        internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
+        internal Task InitializeHttpeWorkerChannelAsync(int attemptCount)
         {
             // TODO: Add process managment for http invoker
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
@@ -87,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
 
             State = FunctionInvocationDispatcherState.Initializing;
-            await InitializeJobhostLanguageWorkerChannelAsync(0);
+            await InitializeHttpeWorkerChannelAsync(0);
         }
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
@@ -129,11 +128,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (_invokerErrors.Count < 3)
             {
-                await InitializeJobhostLanguageWorkerChannelAsync(_invokerErrors.Count);
+                await InitializeHttpeWorkerChannelAsync(_invokerErrors.Count);
             }
-            else if (_httpWorkerChannel == null)
+            else
             {
-                _logger.LogError("Exceeded http invoker restart retry count. Shutting down Functions Host");
+                _logger.LogError("Exceeded http worker restart retry count. Shutting down Functions Host");
                 _scriptJobHostEnvironment.Shutdown();
             }
         }

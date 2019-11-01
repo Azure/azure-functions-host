@@ -5,21 +5,23 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     public class HttpWorkerChannel : IHttpWorkerChannel, IDisposable
     {
+        private readonly IScriptEventManager _eventManager;
         private bool _disposed;
         private IDisposable _startLatencyMetric;
         private ILogger _workerChannelLogger;
-        private IWorkerProcess _rpcWorkerProcess;
+        private IWorkerProcess _workerProcess;
         private IHttpWorkerService _httpWorkerService;
 
         internal HttpWorkerChannel(
            string workerId,
+           IScriptEventManager eventManager,
            IWorkerProcess rpcWorkerProcess,
            IHttpWorkerService httpWorkerService,
            ILogger logger,
@@ -27,7 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
            int attemptCount)
         {
             Id = workerId;
-            _rpcWorkerProcess = rpcWorkerProcess;
+            _eventManager = eventManager;
+            _workerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _httpWorkerService = httpWorkerService;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
@@ -40,10 +43,42 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerService.InvokeAsync(context);
         }
 
+        internal async Task<bool> DelayWorkerUntilReady()
+        {
+            _workerChannelLogger.LogDebug("Waiting for HttpWorker to be ready");
+            try
+            {
+                bool isWorkerReady = await _httpWorkerService.IsWorkerReady();
+                if (!isWorkerReady)
+                {
+                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker channel timedout"));
+                }
+                _workerChannelLogger.LogDebug("HttpWorker is ready");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // HttpFunctionInvocationDispatcher will handdle the worker error events
+                PublishWorkerErrorEvent(ex);
+            }
+            _workerChannelLogger.LogDebug("Starting HttpWorker timedout");
+            return false;
+        }
+
         public async Task StartWorkerProcessAsync()
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _rpcWorkerProcess.StartProcessAsync();
+            await _workerProcess.StartProcessAsync();
+            await DelayWorkerUntilReady();
+        }
+
+        private void PublishWorkerErrorEvent(Exception exc)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            _eventManager.Publish(new HttpWorkerErrorEvent(Id, exc));
         }
 
         protected virtual void Dispose(bool disposing)
@@ -54,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     _startLatencyMetric?.Dispose();
 
-                    (_rpcWorkerProcess as IDisposable)?.Dispose();
+                    (_workerProcess as IDisposable)?.Dispose();
                 }
                 _disposed = true;
             }

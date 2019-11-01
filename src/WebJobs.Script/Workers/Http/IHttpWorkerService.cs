@@ -9,5 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     public interface IHttpWorkerService
     {
         Task InvokeAsync(ScriptInvocationContext scriptInvocationContext);
+
+        Task<bool> IsWorkerReady();
     }
 }
