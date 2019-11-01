@@ -1,5 +1,5 @@
 <Project>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="1.0.201910151" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="1.0.201911015" />
   </ItemGroup>
 </Project>
