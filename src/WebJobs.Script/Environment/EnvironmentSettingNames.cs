@@ -37,13 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
-        public const string UserDataMountEnabled = "WEBSITE_USER_DATA_MOUNT_ENABLED";
         public const string UserDataHome = "USER_DATA_HOME";
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
         public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
+        public const string UserDataAzureFilesConnectionString = "WEBSITE_USERDATA_CONTENTAZUREFILECONNECTIONSTRING";
+        public const string UserDataAzureFilesContentShare = "WEBSITE_USERDATA_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
 

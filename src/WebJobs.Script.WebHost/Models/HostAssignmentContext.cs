@@ -40,6 +40,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 ? Environment[EnvironmentSettingNames.AzureFilesContentShare]
                 : SiteName;
 
+        public string UserDataAzureFilesConnectionString
+            => Environment.ContainsKey(EnvironmentSettingNames.UserDataAzureFilesConnectionString)
+                ? Environment[EnvironmentSettingNames.UserDataAzureFilesConnectionString]
+                : string.Empty;
+
+        public string UserDataAzureFilesContentShare
+            => Environment.ContainsKey(EnvironmentSettingNames.UserDataAzureFilesContentShare)
+                ? Environment[EnvironmentSettingNames.UserDataAzureFilesContentShare]
+                : string.Empty;
+
         public RunFromPackageContext GetRunFromPkgContext()
         {
             if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
@@ -74,9 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public bool IsUserDataMountEnabled()
         {
-            Environment.TryGetValue(EnvironmentSettingNames.UserDataMountEnabled, out var mountEnabled);
-            return !string.IsNullOrEmpty(mountEnabled) &&
-                   string.Equals(mountEnabled, "1", StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(UserDataAzureFilesConnectionString) &&
+                   !string.IsNullOrEmpty(UserDataAzureFilesContentShare);
         }
 
         public bool IsMSIEnabled(out string endpoint)

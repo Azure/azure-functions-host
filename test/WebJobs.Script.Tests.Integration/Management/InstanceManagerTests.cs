@@ -478,10 +478,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             const string targetPath = "/userdata";
             var environment = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.AzureFilesConnectionString, "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whVtW5WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==" },
-                { EnvironmentSettingNames.AzureFilesContentShare, "contentshare" },
+                { EnvironmentSettingNames.UserDataAzureFilesConnectionString, "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whVtW5WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==" },
+                { EnvironmentSettingNames.UserDataAzureFilesContentShare, "contentshare" },
                 { EnvironmentSettingNames.MeshInitURI, meshInitUri },
-                { EnvironmentSettingNames.UserDataMountEnabled, "1" }
             };
             var assignmentContext = new HostAssignmentContext
             {
@@ -523,10 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             const string targetPath = "/userdata";
             var environment = new Dictionary<string, string>
             {
-                { EnvironmentSettingNames.AzureFilesConnectionString, "DefaultEndpointsProtocol=https;AccountName=storageaccount;AccountKey=whVtW5WP8QTh84TT5wdjgzeFTj7Vc1aOiCVjTXohpE+jALoKOQ9nlQpj5C5zpgseVJxEVbaAhptP5j5DpaLgtA==" },
-                { EnvironmentSettingNames.AzureFilesContentShare, "contentshare" },
-                { EnvironmentSettingNames.MeshInitURI, meshInitUri },
-                { EnvironmentSettingNames.UserDataMountEnabled, "0" }
+                { EnvironmentSettingNames.MeshInitURI, meshInitUri }
             };
             var assignmentContext = new HostAssignmentContext
             {
