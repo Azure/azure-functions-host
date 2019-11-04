@@ -29,17 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData(null, false)]
-        [InlineData("0", false)]
-        [InlineData("1", true)]
-        [InlineData("abcd", false)]
-        public void Verifies_If_User_Data_Mount_Is_Enabled(string mountEnvVariable, bool isMountEnabled)
+        [InlineData(null, null, false)]
+        [InlineData("1", null, false)]
+        [InlineData(null, "2", false)]
+        [InlineData("", "", false)]
+        [InlineData("1", "", false)]
+        [InlineData("", "2", false)]
+        [InlineData("1", "2", true)]
+        public void Verifies_If_User_Data_Mount_Is_Enabled(string userDataAzureFilesConnectionString, string userDataAzureFilesContentShare, bool isMountEnabled)
         {
             var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
-            if (mountEnvVariable != null)
-            {
-                hostAssignmentContext.Environment[EnvironmentSettingNames.UserDataMountEnabled] = mountEnvVariable;
-            }
+            hostAssignmentContext.Environment[EnvironmentSettingNames.UserDataAzureFilesConnectionString] = userDataAzureFilesConnectionString;
+            hostAssignmentContext.Environment[EnvironmentSettingNames.UserDataAzureFilesContentShare] = userDataAzureFilesContentShare;
 
             Assert.Equal(isMountEnabled, hostAssignmentContext.IsUserDataMountEnabled());
         }
