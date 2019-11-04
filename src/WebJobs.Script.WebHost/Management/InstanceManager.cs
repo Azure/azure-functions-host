@@ -276,16 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Irrespective of deployment mechanism mount the share for user data files.
             if (assignmentContext.IsUserDataMountEnabled())
             {
-                if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString) &&
-                    !string.IsNullOrEmpty(assignmentContext.AzureFilesContentShare))
-                {
-                    await MountUserData(assignmentContext);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        $"{EnvironmentSettingNames.AzureFilesConnectionString} or {EnvironmentSettingNames.AzureFilesContentShare} is empty. User data share will not be mounted");
-                }
+                await MountUserData(assignmentContext);
             }
         }
 
@@ -300,8 +291,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationUserDataMount))
                         {
-                            await MountCifs(assignmentContext.AzureFilesConnectionString,
-                                assignmentContext.AzureFilesContentShare, userDataHome);
+                            await MountCifs(assignmentContext.UserDataAzureFilesConnectionString,
+                                assignmentContext.UserDataAzureFilesContentShare, userDataHome);
                         }
                     }
                     catch (Exception e)
