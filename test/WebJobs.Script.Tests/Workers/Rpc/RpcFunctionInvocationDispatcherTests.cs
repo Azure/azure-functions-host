@@ -313,18 +313,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(@"node", @"node", false, true, true)]
-        [InlineData(@"node", @"node", true, false, true)]
-        [InlineData(@"node", @"node", true, true, true)]
-        [InlineData(@"node", @"node", false, false, false)]
-        [InlineData(@"node", @"java", false, true, false)]
-        [InlineData(@"node", "", false, true, false)]
+        [InlineData("node", "node", false, true, true)]
+        [InlineData("node", "node", true, false, true)]
+        [InlineData("node", "node", true, true, true)]
+        [InlineData("node", "node", false, false, false)]
+        [InlineData("node", "java", false, true, false)]
+        [InlineData("node", "", false, true, false)]
         [InlineData("", "", false, true, false)]
-        [InlineData("", @"node", false, true, false)]
-        [InlineData("", @"node", true, false, false)]
-        [InlineData("", @"node", true, true, false)]
-        [InlineData("", @"node", false, false, false)]
-        [InlineData("", @"java", false, true, false)]
+        [InlineData("", "node", false, true, false)]
+        [InlineData("", "node", true, false, false)]
+        [InlineData("", "node", true, true, false)]
+        [InlineData("", "node", false, false, false)]
+        [InlineData("", "java", false, true, false)]
         public async Task FunctionDispatcher_ShouldRestartChannel_Returns_True(string workerRuntime, string channelLanguage, bool isWebHostChannel, bool isJobHostChannel, bool expectedResult)
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
