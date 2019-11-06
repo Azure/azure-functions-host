@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal bool ShouldRestartWorkerChannel(string runtime, bool isWebHostChannel, bool isJobHostChannel)
         {
-            return (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(runtime, StringComparison.InvariantCultureIgnoreCase)) && (isWebHostChannel || isJobHostChannel);
+            return string.Equals(_workerRuntime, runtime, StringComparison.InvariantCultureIgnoreCase) && (isWebHostChannel || isJobHostChannel);
         }
 
         private async Task RestartWorkerChannel(string runtime, string workerId)
