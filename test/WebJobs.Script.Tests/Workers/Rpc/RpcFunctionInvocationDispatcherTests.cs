@@ -313,31 +313,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(@"node", false, true, true)]
-        [InlineData(@"node", true, false, true)]
-        [InlineData(@"node", true, true, true)]
-        [InlineData(@"node", false, false, false)]
-        [InlineData(@"java", false, true, false)]
-        [InlineData("", false, true, false)]
-        public async Task FunctionDispatcher_ShouldRestartChannel_Returns_True(string language, bool isWebHostChannel, bool isJobHostChannel, bool expectedResult)
+        [InlineData(@"node", @"node", false, true, true)]
+        [InlineData(@"node", @"node", true, false, true)]
+        [InlineData(@"node", @"node", true, true, true)]
+        [InlineData(@"node", @"node", false, false, false)]
+        [InlineData(@"node", @"java", false, true, false)]
+        [InlineData(@"node", "", false, true, false)]
+        [InlineData("", "", false, true, false)]
+        [InlineData("", @"node", false, true, false)]
+        [InlineData("", @"node", true, false, false)]
+        [InlineData("", @"node", true, true, false)]
+        [InlineData("", @"node", false, false, false)]
+        [InlineData("", @"java", false, true, false)]
+        public async Task FunctionDispatcher_ShouldRestartChannel_Returns_True(string workerRuntime, string channelLanguage, bool isWebHostChannel, bool isJobHostChannel, bool expectedResult)
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
-            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
-            Assert.Equal(expectedResult, functionDispatcher.ShouldRestartWorkerChannel(language, isWebHostChannel, isJobHostChannel));
-        }
-
-        [Theory]
-        [InlineData(@"node", false, true, false)]
-        [InlineData(@"node", true, false, false)]
-        [InlineData(@"node", true, true, false)]
-        [InlineData(@"node", false, false, false)]
-        [InlineData(@"java", false, true, false)]
-        [InlineData("", false, true, false)]
-        public async Task FunctionDispatcher_ShouldNotRestartChannel_InPlaceholderMode(string language, bool isWebHostChannel, bool isJobHostChannel, bool expectedResult)
-        {
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(isPlaceholderMode: true);
-            await functionDispatcher.InitializeAsync(null);
-            Assert.Equal(expectedResult, functionDispatcher.ShouldRestartWorkerChannel(language, isWebHostChannel, isJobHostChannel));
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(workerRuntime));
+            Assert.Equal(expectedResult, functionDispatcher.ShouldRestartWorkerChannel(channelLanguage, isWebHostChannel, isJobHostChannel));
         }
 
         [Fact]
@@ -349,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(testLogs.Any(m => m.FormattedMessage.Contains("Removing errored webhost language worker channel for runtime")));
         }
 
-        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, bool isPlaceholderMode = false)
+        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false)
         {
             var eventManager = new ScriptEventManager();
             var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
@@ -359,11 +351,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             if (!string.IsNullOrEmpty(maxProcessCountValue))
             {
                 testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue);
-            }
-
-            if (isPlaceholderMode)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
 
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
@@ -444,6 +431,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
+            if (string.IsNullOrEmpty(runtime))
+            {
+                return new List<FunctionMetadata>();
+            }
+
             return new List<FunctionMetadata>()
             {
                 new FunctionMetadata()
