@@ -68,7 +68,16 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A <see cref="Task"/> representing the computed backoff interval.</returns>
         public static async Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
         {
-            TimeSpan delay = ComputeBackoff(exponent, unit, min, max);
+            TimeSpan delay = TimeSpan.FromSeconds(5);
+
+            try
+            {
+                delay = ComputeBackoff(exponent, unit, min, max);
+            }
+            catch (Exception)
+            {
+                // Use the default if there is any problem computing backoff
+            }
 
             if (delay.TotalMilliseconds > 0)
             {
@@ -85,12 +94,27 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static TimeSpan ComputeBackoff(int exponent, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
         {
+            TimeSpan maxValue = max ?? TimeSpan.MaxValue;
+
+            // prevent an OverflowException
+            if (exponent >= 64)
+            {
+                return maxValue;
+            }
+
             // determine the exponential backoff factor
             long backoffFactor = Convert.ToInt64((Math.Pow(2, exponent) - 1) / 2);
 
             // compute the backoff delay
             unit = unit ?? TimeSpan.FromSeconds(1);
             long totalDelayTicks = backoffFactor * unit.Value.Ticks;
+
+            // If we've overflowed long, return max.
+            if (backoffFactor > 0 && totalDelayTicks <= 0)
+            {
+                return maxValue;
+            }
+
             TimeSpan delay = TimeSpan.FromTicks(totalDelayTicks);
 
             // apply minimum restriction
@@ -100,9 +124,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // apply maximum restriction
-            if (max.HasValue && delay > max)
+            if (delay > maxValue)
             {
-                delay = max.Value;
+                delay = maxValue;
             }
 
             return delay;

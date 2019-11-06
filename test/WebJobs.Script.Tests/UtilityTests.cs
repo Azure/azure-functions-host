@@ -132,6 +132,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("00:02:00", "00:02:00")]
+        [InlineData(null, "10675199.02:48:05.4775807")]
+        public void ComputeBackoff_Overflow(string maxValue, string expected)
+        {
+            TimeSpan? max = null;
+            if (maxValue != null)
+            {
+                max = TimeSpan.Parse(maxValue);
+            }
+
+            TimeSpan expectedValue = TimeSpan.Parse(expected);
+
+            // Catches two overflow bugs:
+            // 1. Computed ticks would fluctuate between positive and negative, resulting in min-and-max alternating.
+            // 2. At 64+ we'd throw an OverflowException.
+            for (int i = 60; i < 70; i++)
+            {
+                TimeSpan result = Utility.ComputeBackoff(i, min: TimeSpan.FromSeconds(1), max: max);
+                Assert.Equal(expectedValue, result);
+            }
+        }
+
+        [Theory]
         [InlineData(typeof(TestPoco), true)]
         [InlineData(typeof(TestStruct), true)]
         [InlineData(typeof(ITestInterface), false)]
