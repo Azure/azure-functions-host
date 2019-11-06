@@ -319,12 +319,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("node", "node", false, false, false)]
         [InlineData("node", "java", false, true, false)]
         [InlineData("node", "", false, true, false)]
-        [InlineData("", "", false, true, false)]
-        [InlineData("", "node", false, true, false)]
-        [InlineData("", "node", true, false, false)]
-        [InlineData("", "node", true, true, false)]
-        [InlineData("", "node", false, false, false)]
-        [InlineData("", "java", false, true, false)]
+        [InlineData(null, "", false, true, false)]
+        [InlineData(null, "node", false, true, false)]
+        [InlineData(null, "node", true, false, false)]
+        [InlineData(null, "node", true, true, false)]
+        [InlineData(null, "node", false, false, false)]
+        [InlineData(null, "java", false, true, false)]
         public async Task FunctionDispatcher_ShouldRestartChannel_Returns_True(string workerRuntime, string channelLanguage, bool isWebHostChannel, bool isJobHostChannel, bool expectedResult)
         {
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
