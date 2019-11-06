@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -325,18 +323,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 else
                 {
                     logger.LogDebug($"Will start a new host after delay.");
-                    await Utility.DelayWithBackoffAsync(attemptCount, currentCancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2), logger: logger)
-                        .ContinueWith(t =>
-                        {
-                            if (currentCancellationToken.IsCancellationRequested)
-                            {
-                                logger.LogDebug($"Cancellation for operation '{activeOperation.Id}' requested during delay. A new host will not be started.");
-                                currentCancellationToken.ThrowIfCancellationRequested();
-                            }
 
-                            logger.LogDebug("Starting new host after delay.");
-                            return StartHostAsync(currentCancellationToken, attemptCount, parentOperationId: activeOperation.Id);
-                        });
+                    await Utility.DelayWithBackoffAsync(attemptCount, currentCancellationToken, min: TimeSpan.FromSeconds(1), max: TimeSpan.FromMinutes(2), logger: logger);
+
+                    if (currentCancellationToken.IsCancellationRequested)
+                    {
+                        logger.LogDebug($"Cancellation for operation '{activeOperation.Id}' requested during delay. A new host will not be started.");
+                        currentCancellationToken.ThrowIfCancellationRequested();
+                    }
+
+                    logger.LogDebug("Starting new host after delay.");
+                    Task ignore = StartHostAsync(currentCancellationToken, attemptCount, parentOperationId: activeOperation.Id);
                 }
             }
         }
