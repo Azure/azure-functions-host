@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors.Infrastructure;
@@ -155,6 +156,68 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             IEnumerable<string> allowCredsHeaderValues;
             Assert.False(response.Headers.TryGetValues("Access-Control-Allow-Credentials", out allowCredsHeaderValues));
+
+            IEnumerable<string> allowMethods;
+            Assert.False(response.Headers.TryGetValues("Access-Control-Allow-Methods", out allowMethods));
+        }
+
+        [Fact]
+        public async Task Invoke_Adds_AccessControlAllowMethods()
+        {
+            var envars = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.ContainerName, "foo" },
+            };
+            var testEnv = new TestEnvironment(envars);
+            var testOrigin = "https://functions.azure.com";
+            var hostCorsOptions = new HostCorsOptions
+            {
+                AllowedOrigins = new List<string> { testOrigin },
+                SupportCredentials = true,
+            };
+
+            var builder = new WebHostBuilder()
+                .Configure(app =>
+                {
+                    app.UseMiddleware<JobHostPipelineMiddleware>();
+                    app.Run(async context =>
+                    {
+                        await context.Response.WriteAsync("Hello world");
+                    });
+                })
+                .ConfigureServices(services =>
+                {
+                    services.AddTransient<IEnvironment>(factory => testEnv);
+                    services.ConfigureOptions<CorsOptionsSetup>();
+                    services.AddTransient<IConfigureOptions<HostCorsOptions>>(factory => new TestHostCorsOptionsSetup(hostCorsOptions));
+                    services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                    services.AddCors();
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+                    services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
+                });
+
+            var server = new TestServer(builder);
+
+            var client = server.CreateClient();
+            client.DefaultRequestHeaders.Add("Origin", testOrigin);
+            client.DefaultRequestHeaders.Add("Access-Control-Request-Method", HttpMethod.Post.ToString());
+
+            var request = new HttpRequestMessage(HttpMethod.Options, string.Empty);
+
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            IEnumerable<string> originHeaderValues;
+            Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Origin", out originHeaderValues));
+            Assert.Equal(testOrigin, originHeaderValues.FirstOrDefault());
+
+            IEnumerable<string> allowCredsHeaderValues;
+            Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Credentials", out allowCredsHeaderValues));
+            Assert.Equal("true", allowCredsHeaderValues.FirstOrDefault());
+
+            IEnumerable<string> allowMethods;
+            Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Methods", out allowMethods));
+            Assert.Equal("POST", allowMethods.FirstOrDefault());
         }
 
         public class TestHostCorsOptionsSetup : IConfigureOptions<HostCorsOptions>
