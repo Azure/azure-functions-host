@@ -33,6 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     policyBuilder = policyBuilder.AllowCredentials();
                 }
 
+                policyBuilder.AllowAnyHeader();
+                policyBuilder.AllowAnyMethod();
+
                 var policy = policyBuilder.Build();
                 options.AddDefaultPolicy(policy);
             }
