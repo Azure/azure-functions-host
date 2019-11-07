@@ -44,16 +44,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             string depsPath = Path.Combine(Directory.GetCurrentDirectory(), "Description", "DotNet", "TestFiles", "DepsFiles");
 
-            IDictionary<string, string> assemblies = FunctionAssemblyLoadContext.InitializeDeps(depsPath);
+            (IDictionary<string, string> depsAssemblies, IDictionary<string, string> nativeLibraries) =
+                FunctionAssemblyLoadContext.InitializeDeps(depsPath);
 
             string testRid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "unix";
 
             // Ensure runtime specific dependencies are resolved, with appropriate RID
-            Assert.Contains($"runtimes/{testRid}/lib/netstandard2.0/System.Private.ServiceModel.dll", assemblies.Values);
-            Assert.Contains($"runtimes/{testRid}/lib/netstandard1.3/System.Text.Encoding.CodePages.dll", assemblies.Values);
+            Assert.Contains($"runtimes/{testRid}/lib/netstandard2.0/System.Private.ServiceModel.dll", depsAssemblies.Values);
+            Assert.Contains($"runtimes/{testRid}/lib/netstandard1.3/System.Text.Encoding.CodePages.dll", depsAssemblies.Values);
 
             // Ensure flattened dependency has expected path
-            Assert.Contains($"Microsoft.Azure.WebJobs.Host.Storage.dll", assemblies.Values);
+            Assert.Contains($"Microsoft.Azure.WebJobs.Host.Storage.dll", depsAssemblies.Values);
+
+            // Ensure native libraries are resolved, with appropriate RID and path
+            string nativeRid;
+            string nativePrefix;
+            string nativeExtension;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                nativeRid = "win-";
+                nativePrefix = string.Empty;
+                nativeExtension = "dll";
+            }
+            else
+            {
+                nativePrefix = "lib";
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    nativeRid = "osx-";
+                    nativeExtension = "dylib";
+                }
+                else
+                {
+                    nativeRid = "linux-";
+                    nativeExtension = "so";
+                }
+            }
+
+            nativeRid += Environment.Is64BitProcess ? "x64" : "x86";
+
+            Assert.Contains($"runtimes/{nativeRid}/nativeassets/netstandard2.0/{nativePrefix}CpuMathNative.{nativeExtension}", nativeLibraries.Values);
         }
     }
 }

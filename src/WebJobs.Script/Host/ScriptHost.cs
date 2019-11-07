@@ -264,20 +264,21 @@ namespace Microsoft.Azure.WebJobs.Script
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functions = GetFunctionsMetadata();
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, _workerRuntime));
                 }
 
-                // Initialize language worker function dispatcher
-                await _functionDispatcher.InitializeAsync(functions);
+                var directTypes = GetDirectTypes(functionMetadataList);
+                await InitializeFunctionDescriptorsAsync(functionMetadataList);
 
-                var directTypes = GetDirectTypes(functions);
-                await InitializeFunctionDescriptorsAsync(functions);
+                // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions));
+
                 GenerateFunctions(directTypes);
 
                 CleanupFileSystem();

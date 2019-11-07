@@ -248,6 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 version = description.DefaultRuntimeVersion;
             }
+            _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
             description.ValidateWorkerPath(description.DefaultWorkerPath, os, architecture, version);
 

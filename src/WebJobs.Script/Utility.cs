@@ -109,7 +109,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public static async Task DelayWithBackoffAsync(int exponent, CancellationToken cancellationToken, TimeSpan? unit = null,
             TimeSpan? min = null, TimeSpan? max = null, ILogger logger = null)
         {
-            TimeSpan delay = ComputeBackoff(exponent, unit, min, max);
+            TimeSpan delay = TimeSpan.FromSeconds(5);
+
+            try
+            {
+                delay = ComputeBackoff(exponent, unit, min, max);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug(ex, $"Exception while calculating backoff. Using a default '{delay}' delay.");
+            }
+
             logger?.LogDebug($"Delay is '{delay}'.");
 
             if (delay.TotalMilliseconds > 0)
@@ -127,12 +137,27 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static TimeSpan ComputeBackoff(int exponent, TimeSpan? unit = null, TimeSpan? min = null, TimeSpan? max = null)
         {
+            TimeSpan maxValue = max ?? TimeSpan.MaxValue;
+
+            // prevent an OverflowException
+            if (exponent >= 64)
+            {
+                return maxValue;
+            }
+
             // determine the exponential backoff factor
             long backoffFactor = Convert.ToInt64((Math.Pow(2, exponent) - 1) / 2);
 
             // compute the backoff delay
             unit = unit ?? TimeSpan.FromSeconds(1);
             long totalDelayTicks = backoffFactor * unit.Value.Ticks;
+
+            // If we've overflowed long, return max.
+            if (backoffFactor > 0 && totalDelayTicks <= 0)
+            {
+                return maxValue;
+            }
+
             TimeSpan delay = TimeSpan.FromTicks(totalDelayTicks);
 
             // apply minimum restriction
@@ -142,9 +167,9 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // apply maximum restriction
-            if (max.HasValue && delay > max)
+            if (delay > maxValue)
             {
-                delay = max.Value;
+                delay = maxValue;
             }
 
             return delay;
@@ -555,6 +580,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 return functions.Any(f => f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
             return false;
+        }
+
+        internal static IEnumerable<FunctionMetadata> GetValidFunctions(IEnumerable<FunctionMetadata> indexedFunctions, ICollection<FunctionDescriptor> functionDescriptors)
+        {
+            if (indexedFunctions == null || !indexedFunctions.Any())
+            {
+                return indexedFunctions;
+            }
+            if (functionDescriptors == null)
+            {
+                // No valid functions
+                return null;
+            }
+            return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
         }
 
         public static async Task MarkContainerDisabled(ILogger logger)
