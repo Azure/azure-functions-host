@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationFileCommand = "linux.container.specialization.file.command";
         public const string LinuxContainerSpecializationAzureFilesMount = "linux.container.specialization.azure.files.mount";
         public const string LinuxContainerSpecializationGetPackageType = "linux.container.specialization.get.package.type";
-        public const string LinuxContainerSpecializationUserDataMount = "linux.container.specialization.userdata.mount";
+        public const string LinuxContainerSpecializationBYOSMountPrefix = "linux.container.specialization.byos";
 
         // Specialization events
         public const string SpecializationSpecializeHost = "specialization.standbymanager.specializehost";
