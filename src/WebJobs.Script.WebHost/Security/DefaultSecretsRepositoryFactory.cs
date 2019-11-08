@@ -17,7 +17,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string secretStorageType = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string storageString = AmbientConnectionStringProvider.Instance.GetConnectionString(ConnectionStringNames.Storage);
-            if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
+            string secretStorageSas = settingsManager.GetSetting(EnvironmentSettingNames.AzureWebJobsSecretStorageSas);
+            if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && secretStorageSas != null)
+            {
+                string siteSlotName = settingsManager.AzureWebsiteUniqueSlotName ?? config.HostConfig.HostId;
+                return new BlobStorageSasSecretsRepository(Path.Combine(webHostSettings.SecretsPath, "Sentinels"), secretStorageSas, siteSlotName);
+            }
+            else if (secretStorageType != null && secretStorageType.Equals("Blob", StringComparison.OrdinalIgnoreCase) && storageString != null)
             {
                 string siteSlotName = settingsManager.AzureWebsiteUniqueSlotName ?? config.HostConfig.HostId;
                 return new BlobStorageSecretsRepository(Path.Combine(webHostSettings.SecretsPath, "Sentinels"), storageString, siteSlotName);

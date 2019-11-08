@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json.Linq;
 
@@ -262,6 +263,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     return response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK;
                 }
             }
+        }
+
+        public static Uri CreateBlobContainerSas(string connectionString, string blobContainer)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            var container = blobClient.GetContainerReference(blobContainer);
+            container.CreateIfNotExists();
+
+            var policy = new SharedAccessBlobPolicy
+            {
+                SharedAccessStartTime = DateTime.UtcNow,
+                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(1),
+                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.List | SharedAccessBlobPermissions.Delete
+            };
+            var sas = container.GetSharedAccessSignature(policy);
+
+            return new Uri(container.StorageUri.PrimaryUri, sas);
         }
     }
 }

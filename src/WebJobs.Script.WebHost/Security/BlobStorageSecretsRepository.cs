@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// <summary>
     /// An <see cref="ISecretsRepository"/> implementation that uses Azure blob storage as the backing store.
     /// </summary>
-    public sealed class BlobStorageSecretsRepository : ISecretsRepository, IDisposable
+    public class BlobStorageSecretsRepository : ISecretsRepository, IDisposable
     {
         private readonly string _secretsSentinelFilePath;
         private readonly string _secretsBlobPath;
@@ -57,14 +57,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
 
             _accountConnectionString = accountConnectionString;
-            CloudStorageAccount account = CloudStorageAccount.Parse(_accountConnectionString);
-            CloudBlobClient client = account.CreateCloudBlobClient();
-
-            _blobContainer = client.GetContainerReference(_secretsContainerName);
-            _blobContainer.CreateIfNotExists();
+            _blobContainer = CreateBlobContainer(_accountConnectionString);
         }
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
+
+        protected virtual CloudBlobContainer CreateBlobContainer(string connectionString)
+        {
+            CloudStorageAccount account = CloudStorageAccount.Parse(connectionString);
+            CloudBlobClient client = account.CreateCloudBlobClient();
+            CloudBlobContainer blobContainer = client.GetContainerReference(_secretsContainerName);
+            blobContainer.CreateIfNotExists();
+
+            return blobContainer;
+        }
 
         private string GetSecretsBlobPath(ScriptSecretsType secretsType, string functionName = null)
         {
@@ -182,6 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public void Dispose()
         {
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

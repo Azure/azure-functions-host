@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsExtensionsPath = "AzureWebJobs_ExtensionsPath";
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
+        public const string AzureWebJobsSecretStorageSas = "AzureWebJobsSecretStorageSas";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string ProxySiteExtensionEnabledKey = "ROUTING_EXTENSION_VERSION";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
