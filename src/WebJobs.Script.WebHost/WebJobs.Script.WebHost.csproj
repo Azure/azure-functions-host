@@ -559,6 +559,7 @@
     <Compile Include="FunctionRequestInvoker.cs" />
     <Compile Include="ProxyFunctionExecutor.cs" />
     <Compile Include="Security\BlobStorageSecretsRepository.cs" />
+    <Compile Include="Security\BlobStorageSasSecretsRepository.cs" />
     <Compile Include="Security\DefaultSecretManagerFactory.cs" />
     <Compile Include="Security\DefaultSecretsRepositoryFactory.cs" />
     <Compile Include="Security\FileSystemSecretsRepository.cs" />
