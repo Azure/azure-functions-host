@@ -654,6 +654,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string BuildStorageConnectionString(string accountName, string accessKey)
+        {
+            return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accessKey}";
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

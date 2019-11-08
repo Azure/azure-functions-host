@@ -529,6 +529,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FileUtility.Instance = null;
         }
 
+        [Theory]
+        [InlineData("", "", "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
+        [InlineData(null, null, "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
+        [InlineData("accountname", "password", "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password")]
+        public void BuildStorageConnectionString(string accountName, string accessKey, string expectedConnectionString)
+        {
+            Assert.Equal(expectedConnectionString, Utility.BuildStorageConnectionString(accountName, accessKey));
+        }
+
         [Fact]
         public void ResolveFunctionName_StateWins()
         {

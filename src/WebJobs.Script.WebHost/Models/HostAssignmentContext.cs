@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -40,16 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 ? Environment[EnvironmentSettingNames.AzureFilesContentShare]
                 : SiteName;
 
-        public string UserDataAzureFilesConnectionString
-            => Environment.ContainsKey(EnvironmentSettingNames.UserDataAzureFilesConnectionString)
-                ? Environment[EnvironmentSettingNames.UserDataAzureFilesConnectionString]
-                : string.Empty;
-
-        public string UserDataAzureFilesContentShare
-            => Environment.ContainsKey(EnvironmentSettingNames.UserDataAzureFilesContentShare)
-                ? Environment[EnvironmentSettingNames.UserDataAzureFilesContentShare]
-                : string.Empty;
-
         public RunFromPackageContext GetRunFromPkgContext()
         {
             if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteRunFromPackage))
@@ -82,10 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }
         }
 
-        public bool IsUserDataMountEnabled()
+        public IEnumerable<KeyValuePair<string, string>> GetBYOSEnvironmentVariables()
         {
-            return !string.IsNullOrEmpty(UserDataAzureFilesConnectionString) &&
-                   !string.IsNullOrEmpty(UserDataAzureFilesContentShare);
+            return Environment.Where(kv =>
+                kv.Key.StartsWith(AzureStorageInfoValue.AzureFilesStoragePrefix, StringComparison.OrdinalIgnoreCase) ||
+                kv.Key.StartsWith(AzureStorageInfoValue.AzureBlobStoragePrefix, StringComparison.OrdinalIgnoreCase));
         }
 
         public bool IsMSIEnabled(out string endpoint)
