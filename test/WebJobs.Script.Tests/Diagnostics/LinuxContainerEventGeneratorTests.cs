@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.True(match.Success);
             Assert.Equal(10, match.Groups.Count);
 
-            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
                 p => Assert.Equal(resourceId, p),

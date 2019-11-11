@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-using System;
-using System.Linq;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
@@ -25,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public CorsMiddleware CreateCorsMiddleware(RequestDelegate next, IOptions<HostCorsOptions> corsOptions)
         {
             CorsPolicy policy = _corsOptions.Value.GetPolicy(_corsOptions.Value.DefaultPolicyName);
-            var corsService = new CorsService(_corsOptions);
+            var corsService = new CorsService(_corsOptions, _loggerFactory);
             var middleware = new CorsMiddleware(next, corsService, policy, _loggerFactory);
 
             return middleware;
