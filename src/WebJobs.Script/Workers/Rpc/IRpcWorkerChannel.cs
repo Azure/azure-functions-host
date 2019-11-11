@@ -13,17 +13,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         string Id { get; }
 
-        IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
+        //IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         RpcWorkerChannelState State { get; }
 
-        void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
+        //void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
-        void SendFunctionLoadRequests();
+        void StartWorkerProcess();
 
-        Task SendFunctionEnvironmentReloadRequest();
+        void SendFunctionEnvironmentReloadRequest();
 
-        Task StartWorkerProcessAsync();
+        void SendFunctionLoadRequests(IEnumerable<FunctionMetadata> functions);
+
+        Task SendInvocationRequest(ScriptInvocationContext context);
 
         Task DrainInvocationsAsync();
     }

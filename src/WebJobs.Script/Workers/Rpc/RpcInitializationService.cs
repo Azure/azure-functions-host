@@ -72,14 +72,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             _logger.LogDebug("Starting Rpc Initialization Service.");
             await InitializeRpcServerAsync();
-            await InitializeChannelsAsync();
+            InitializeChannels();
             _logger.LogDebug("Rpc Initialization Service started.");
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            await _webHostRpcWorkerChannelManager.ShutdownChannelsAsync();
+            _webHostRpcWorkerChannelManager.ShutdownChannels();
+            return Task.CompletedTask;
         }
 
         public async Task OuterStopAsync(CancellationToken cancellationToken)
@@ -121,45 +122,47 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal Task InitializeChannelsAsync()
+        internal void InitializeChannels()
         {
             // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
             if (ShouldStartAsPlaceholderPool())
             {
-                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                _webHostRpcWorkerChannelManager.InitializeChannel(_workerRuntime);
             }
             else if (ShouldStartStandbyPlaceholderChannels())
             {
-                return InitializePlaceholderChannelsAsync();
+                InitializePlaceholderChannels();
             }
-
-            return InitializeWebHostRuntimeChannelsAsync();
+            else
+            {
+                InitializeWebHostRuntimeChannels();
+            }
         }
 
-        private Task InitializePlaceholderChannelsAsync()
+        private void InitializePlaceholderChannels()
         {
             if (_environment.IsLinuxAzureManagedHosting())
             {
-                return InitializePlaceholderChannelsAsync(OSPlatform.Linux);
+                InitializePlaceholderChannels(OSPlatform.Linux);
             }
-
-            return InitializePlaceholderChannelsAsync(OSPlatform.Windows);
+            else
+            {
+                InitializePlaceholderChannels(OSPlatform.Windows);
+            }
         }
 
-        private Task InitializePlaceholderChannelsAsync(OSPlatform os)
+        private void InitializePlaceholderChannels(OSPlatform os)
         {
-            return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
-                _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
+            _hostingOSToWhitelistedRuntimes[os].Select(runtime =>
+                   _webHostRpcWorkerChannelManager.InitializeChannel(runtime));
         }
 
-        private Task InitializeWebHostRuntimeChannelsAsync()
+        private void InitializeWebHostRuntimeChannels()
         {
             if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
             {
-                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                _webHostRpcWorkerChannelManager.InitializeChannel(_workerRuntime);
             }
-
-            return Task.CompletedTask;
         }
 
         internal bool ShouldStartStandbyPlaceholderChannels()

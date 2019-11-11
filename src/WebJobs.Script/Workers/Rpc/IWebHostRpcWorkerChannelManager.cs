@@ -8,14 +8,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IWebHostRpcWorkerChannelManager
     {
-        Task<IRpcWorkerChannel> InitializeChannelAsync(string language);
+        IRpcWorkerChannel InitializeChannel(string language);
 
-        Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> GetChannels(string language);
+        Dictionary<string, IRpcWorkerChannel> GetChannels(string language);
 
-        Task SpecializeAsync();
+        void Specialize();
 
-        Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId);
+        bool ShutdownChannelIfExists(string language, string workerId);
 
-        Task ShutdownChannelsAsync();
+        void ShutdownChannels();
     }
 }

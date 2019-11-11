@@ -48,13 +48,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
         private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
-        private IEnumerable<FunctionMetadata> _functions;
+        // private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private IMetricsLogger _metricsLogger;
         private IWorkerProcess _rpcWorkerProcess;
-        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
-        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
+        // Initialized in constructor
+        private TaskCompletionSource<bool> _specializeTask;
+        private TaskCompletionSource<bool> _workerInitTask;
+        private TaskCompletionSource<bool> _functionLoadTask;
+        private IEnvironment _environment;
 
         internal RpcWorkerChannel(
            string workerId,
@@ -65,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
+           IEnvironment environment,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
@@ -75,8 +79,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
+
+            // Initialize TaskCompletionSources
+            _specializeTask = new TaskCompletionSource<bool>();
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                // TODO: this assumes that if we begin in placeholder mode, we will NEVER specialize this process after
+                _specializeTask.SetResult(true);
+            }
+            _workerInitTask = new TaskCompletionSource<bool>();
+            _functionLoadTask = new TaskCompletionSource<bool>();
 
             _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -108,13 +123,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public string Id => _workerId;
 
-        public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
-
         public RpcWorkerChannelState State => _state;
 
         internal IWorkerProcess WorkerProcess => _rpcWorkerProcess;
 
-        public async Task StartWorkerProcessAsync()
+        public void StartWorkerProcess()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(TimeSpan.FromSeconds(WorkerConstants.ProcessStartTimeoutSeconds))
@@ -122,9 +135,110 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _rpcWorkerProcess.StartProcessAsync();
+            _rpcWorkerProcess.StartProcessAsync();
             _state = RpcWorkerChannelState.Initializing;
+        }
+
+        // TODO: is this a fine way to do exception handling?? Too weird of a pattern?? Note: ideally the internals of communication are separated here.
+        public void SendFunctionEnvironmentReloadRequest()
+        {
+            var task = SendFunctionEnvironmentReloadRequestAsync();
+            LogTaskExceptionsOnCompletion(task, "Error reloading environment variables");
+        }
+
+        private async Task SendFunctionEnvironmentReloadRequestAsync()
+        {
             await _workerInitTask.Task;
+
+            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
+
+            _eventSubscriptions
+                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
+                .Timeout(workerInitTimeout)
+                .Take(1)
+                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
+
+            IDictionary processEnv = Environment.GetEnvironmentVariables();
+
+            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionEnvironmentReloadRequest = request
+            });
+        }
+
+        public void SendFunctionLoadRequests(IEnumerable<FunctionMetadata> functions)
+        {
+            var task = SendFunctionLoadRequestsAsync(functions);
+            LogTaskExceptionsOnCompletion(task, "Error loading functions");
+        }
+
+        private async Task SendFunctionLoadRequestsAsync(IEnumerable<FunctionMetadata> functions)
+        {
+            if (functions != null)
+            {
+                await _workerInitTask.Task;
+                await _specializeTask.Task;
+
+                foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled))
+                {
+                    SendFunctionLoadRequest(metadata);
+                }
+            }
+            else
+            {
+                _functionLoadTask.SetResult(true);
+            }
+        }
+
+        public async Task SendInvocationRequest(ScriptInvocationContext context)
+        {
+            await _workerInitTask.Task;
+            await _specializeTask.Task;
+            await _functionLoadTask.Task;
+
+            try
+            {
+                if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
+                {
+                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
+                    context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
+                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                }
+                else
+                {
+                    if (context.CancellationToken.IsCancellationRequested)
+                    {
+                        context.ResultSource.SetCanceled();
+                        return;
+                    }
+                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
+                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
+                    SendStreamingMessage(new StreamingMessage
+                    {
+                        InvocationRequest = invocationRequest
+                    });
+                }
+            }
+            catch (Exception invokeEx)
+            {
+                context.ResultSource.TrySetException(invokeEx);
+            }
+        }
+
+        internal void LogTaskExceptionsOnCompletion(Task task, string message)
+        {
+            task.ContinueWith(reloadTask =>
+             {
+                 // Maybe unnecessary but makes sure we get some sort of logs
+                 if (reloadTask.IsFaulted)
+                 {
+                     _workerChannelLogger.LogError(message, reloadTask.Exception);
+                 }
+             });
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
@@ -151,9 +265,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                _reloadTask.SetResult(false);
+                _specializeTask.SetResult(false);
             }
-            _reloadTask.SetResult(true);
+            _specializeTask.SetResult(true);
             latencyEvent.Dispose();
         }
 
@@ -173,50 +287,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _state = RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _workerInitTask.SetResult(true);
-        }
-
-        public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
-        {
-            _functions = functions;
-            foreach (FunctionMetadata metadata in functions)
-            {
-                _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
-                _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
-            }
-        }
-
-        public void SendFunctionLoadRequests()
-        {
-            if (_functions != null)
-            {
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled))
-                {
-                    SendFunctionLoadRequest(metadata);
-                }
-            }
-        }
-
-        public Task SendFunctionEnvironmentReloadRequest()
-        {
-            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
-            IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
-
-            _eventSubscriptions
-                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
-                .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
-
-            IDictionary processEnv = Environment.GetEnvironmentVariables();
-
-            FunctionEnvironmentReloadRequest request = GetFunctionEnvironmentReloadRequest(processEnv);
-
-            SendStreamingMessage(new StreamingMessage
-            {
-                FunctionEnvironmentReloadRequest = request
-            });
-
-            return _reloadTask.Task;
         }
 
         internal FunctionEnvironmentReloadRequest GetFunctionEnvironmentReloadRequest(IDictionary processEnv)
@@ -283,6 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 //Cache function load errors to replay error messages on invoking failed functions
                 _functionLoadErrors[loadResponse.FunctionId] = ex;
+                _functionLoadTask.SetException(ex);
             }
 
             if (loadResponse.IsDependencyDownloaded)
@@ -290,43 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
-            // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
-            // associate the invocation input buffer with the function
-            var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
-            _inputLinks.Add(disposableLink);
-        }
-
-        internal void SendInvocationRequest(ScriptInvocationContext context)
-        {
-            try
-            {
-                if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
-                {
-                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
-                    context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
-                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
-                }
-                else
-                {
-                    if (context.CancellationToken.IsCancellationRequested)
-                    {
-                        context.ResultSource.SetCanceled();
-                        return;
-                    }
-                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
-                    _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
-                    SendStreamingMessage(new StreamingMessage
-                    {
-                        InvocationRequest = invocationRequest
-                    });
-                }
-            }
-            catch (Exception invokeEx)
-            {
-                context.ResultSource.TrySetException(invokeEx);
-            }
+            _functionLoadTask.SetResult(true);
         }
 
         internal void InvokeResponse(InvocationResponse invokeResponse)
@@ -419,7 +454,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void HandleWorkerEnvReloadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Reloading environment variables failed");
-            _reloadTask.SetException(exc);
+            PublishWorkerErrorEvent(exc);
         }
 
         internal void HandleWorkerInitError(Exception exc)
@@ -430,7 +465,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void PublishWorkerErrorEvent(Exception exc)
         {
-            _workerInitTask.SetException(exc);
+            _workerChannelLogger.LogWarning($"Worker process encountered a fatal error for runtime: {_runtime} workerId:{_workerId}.", exc);
+            _workerInitTask.TrySetException(exc);
+            _specializeTask.TrySetException(exc);
+            _functionLoadTask.TrySetException(exc);
+
             if (_disposing)
             {
                 return;

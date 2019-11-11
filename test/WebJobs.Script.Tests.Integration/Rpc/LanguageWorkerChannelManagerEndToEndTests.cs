@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public TestFixture Fixture { get; set; }
 
         [Fact]
-        public async Task InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
+        public void InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
         {
             var channelManager = _rpcWorkerChannelManager as WebHostRpcWorkerChannelManager;
-            var javaChannel = await channelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
+            var javaChannel = channelManager.GetChannel(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(javaChannel);
         }
 

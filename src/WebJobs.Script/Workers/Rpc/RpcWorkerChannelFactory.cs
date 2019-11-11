@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs = null;
+        private readonly IEnvironment _environment = null;
 
         public RpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager)
@@ -28,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _loggerFactory = loggerFactory;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _rpcWorkerProcessFactory = rpcWorkerProcessManager;
+            _environment = environment;
         }
 
         public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
@@ -49,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                          workerLogger,
                          metricsLogger,
                          attemptCount,
+                         _environment,
                          managedDependencyOptions);
         }
     }

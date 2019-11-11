@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
-                await _rpcWorkerChannelManager.SpecializeAsync();
+                _rpcWorkerChannelManager.Specialize();
             }
 
             NotifyChange();
