@@ -27,18 +27,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IMeshInitServiceClient _meshInitServiceClient;
         private readonly IEnvironment _environment;
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshInitServiceClient meshInitServiceClient)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;
+            _meshInitServiceClient = meshInitServiceClient;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
@@ -270,52 +272,66 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString))
             {
-                await MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
+                await _meshInitServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
             }
 
-            // Irrespective of deployment mechanism mount the share for user data files.
-            if (assignmentContext.IsUserDataMountEnabled())
+            // BYOS
+            var storageVolumes = assignmentContext.GetBYOSEnvironmentVariables()
+                .Select(AzureStorageInfoValue.FromEnvironmentVariable).ToList();
+
+            var mountedVolumes =
+                (await Task.WhenAll(storageVolumes.Where(v => v != null).Select(MountStorageAccount))).Where(
+                    result => result).ToList();
+
+            if (mountedVolumes.Count != storageVolumes.Count)
             {
-                if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString) &&
-                    !string.IsNullOrEmpty(assignmentContext.AzureFilesContentShare))
-                {
-                    await MountUserData(assignmentContext);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        $"{EnvironmentSettingNames.AzureFilesConnectionString} or {EnvironmentSettingNames.AzureFilesContentShare} is empty. User data share will not be mounted");
-                }
+                _logger.LogWarning(
+                    $"Successfully mounted {mountedVolumes.Count} / {storageVolumes.Count} BYOS storage accounts");
             }
         }
 
-        private async Task MountUserData(HostAssignmentContext assignmentContext)
+        private async Task<bool> MountStorageAccount(AzureStorageInfoValue storageInfoValue)
         {
-            var userDataHome = _environment.GetEnvironmentVariable(EnvironmentSettingNames.UserDataHome);
-            if (!string.IsNullOrEmpty(userDataHome))
+            try
             {
+                var storageConnectionString =
+                    Utility.BuildStorageConnectionString(storageInfoValue.AccountName, storageInfoValue.AccessKey);
+
                 await Utility.InvokeWithRetriesAsync(async () =>
                 {
                     try
                     {
-                        using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationUserDataMount))
+                        using (_metricsLogger.LatencyEvent($"{MetricEventNames.LinuxContainerSpecializationBYOSMountPrefix}.{storageInfoValue.Type.ToString().ToLowerInvariant()}.{storageInfoValue.Id?.ToLowerInvariant()}"))
                         {
-                            await MountCifs(assignmentContext.AzureFilesConnectionString,
-                                assignmentContext.AzureFilesContentShare, userDataHome);
+                            switch (storageInfoValue.Type)
+                            {
+                                case AzureStorageType.AzureFiles:
+                                    await _meshInitServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    break;
+                                case AzureStorageType.AzureBlob:
+                                    await _meshInitServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    break;
+                                default:
+                                    throw new NotSupportedException($"Unknown BYOS storage type {storageInfoValue.Type}");
+                            }
                         }
                     }
                     catch (Exception e)
                     {
-                        string error = $"Error mounting user data";
-                        _logger.LogError(e, error);
+                        // todo: Expose any failures here as a part of a health check api.
+                        _logger.LogError(e, $"Failed to mount BYOS storage account {storageInfoValue.Id}");
                         throw;
                     }
-                    _logger.LogInformation($"User data mounted successfully");
+                    _logger.LogInformation(
+                        $"Successfully mounted BYOS storage account {storageInfoValue.Id}");
                 }, 1, TimeSpan.FromSeconds(0.5));
+
+                return true;
             }
-            else
+            catch (Exception e)
             {
-                _logger.LogWarning($"{EnvironmentSettingNames.UserDataHome} is empty. User data share will not be mounted");
+                _logger.LogError(e, $"Failed to mount BYOS storage account {storageInfoValue.Id}");
+                return false;
             }
         }
 
@@ -421,7 +437,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    await MountFuse("squashfs", filePath, scriptPath);
+                    await _meshInitServiceClient.MountFuse("squashfs", filePath, scriptPath);
                 }
             }
             else if (packageType == CodePackageType.Zip)
@@ -429,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
-                    await MountFuse("zip", filePath, scriptPath);
+                    await _meshInitServiceClient.MountFuse("zip", filePath, scriptPath);
                 }
                 else
                 {
@@ -488,35 +504,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private void UnsquashImage(string filePath, string scriptPath)
             => RunBashCommand($"unsquashfs -f -d '{scriptPath}' '{filePath}'", MetricEventNames.LinuxContainerSpecializationUnsquash);
-
-        private async Task MountFuse(string type, string filePath, string scriptPath)
-            => await Mount(new[]
-            {
-                new KeyValuePair<string, string>("operation", type),
-                new KeyValuePair<string, string>("filePath", filePath),
-                new KeyValuePair<string, string>("targetPath", scriptPath),
-            });
-
-        private async Task MountCifs(string connectionString, string contentShare, string targetPath)
-        {
-            var sa = CloudStorageAccount.Parse(connectionString);
-            var key = Convert.ToBase64String(sa.Credentials.ExportKey());
-            await Mount(new[]
-           {
-                new KeyValuePair<string, string>("operation", "cifs"),
-                new KeyValuePair<string, string>("host", sa.FileEndpoint.Host),
-                new KeyValuePair<string, string>("accountName", sa.Credentials.AccountName),
-                new KeyValuePair<string, string>("accountKey", key),
-                new KeyValuePair<string, string>("contentShare", contentShare),
-                new KeyValuePair<string, string>("targetPath", targetPath),
-            });
-        }
-
-        private async Task Mount(IEnumerable<KeyValuePair<string, string>> formData)
-        {
-            var res = await _client.PostAsync(_environment.GetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI), new FormUrlEncodedContent(formData));
-            _logger.LogInformation("Response {res} from init", res);
-        }
 
         private (string, string, int) RunBashCommand(string command, string metricName)
         {

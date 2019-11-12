@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v2.1": {
       "FunctionApp66/1.0.0": {
         "dependencies": {
+          "Microsoft.ML.CpuMath": "1.4.0",
           "Microsoft.NET.Sdk.Functions": "1.0.23",
           "System.ServiceModel.Http": "4.5.3"
         },
@@ -682,6 +683,39 @@
           "lib/netstandard2.0/Microsoft.Extensions.Primitives.dll": {
             "assemblyVersion": "2.1.0.0",
             "fileVersion": "2.1.0.18136"
+          }
+        }
+      },
+      "Microsoft.ML.CpuMath/1.4.0": {
+        "dependencies": {
+          "System.Memory": "4.5.0"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.ML.CpuMath.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.4.28230.4"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/linux-x64/nativeassets/netstandard2.0/libCpuMathNative.so": {
+            "rid": "linux-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/osx-x64/nativeassets/netstandard2.0/libCpuMathNative.dylib": {
+            "rid": "osx-x64",
+            "assetType": "native",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win-x64/nativeassets/netstandard2.0/CpuMathNative.dll": {
+            "rid": "win-x64",
+            "assetType": "native",
+            "fileVersion": "1.4.28230.4"
+          },
+          "runtimes/win-x86/nativeassets/netstandard2.0/CpuMathNative.dll": {
+            "rid": "win-x86",
+            "assetType": "native",
+            "fileVersion": "1.4.28230.4"
           }
         }
       },
@@ -1712,6 +1746,13 @@
       "sha512": "sha512-U+TqiIAwTQQVlX/+270Z1pv+4aVOl7/Dd39znQcdDpK8nzbdaEt0qahI0e6ZPb8b/1YvQ/iUeWpuYq91NWjaTg==",
       "path": "microsoft.extensions.primitives/2.1.0",
       "hashPath": "microsoft.extensions.primitives.2.1.0.nupkg.sha512"
+    },
+    "Microsoft.ML.CpuMath/1.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-eRDY1KMcDc4iT075MOWlQL4RBrvI9GYl0wD/LiCR4h49hej61qHk88FW3ij3kBRrxSG9ssG8jJJJCNaQeGUaZg==",
+      "path": "microsoft.ml.cpumath/1.4.0",
+      "hashPath": "microsoft.ml.cpumath.1.4.0.nupkg.sha512"
     },
     "Microsoft.Net.Http.Headers/2.1.0": {
       "type": "package",

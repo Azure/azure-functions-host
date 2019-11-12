@@ -154,7 +154,7 @@ function cleanExtension([string] $bitness) {
         }
     }
 
-    $keepRuntimes = @('win', 'win-x86', 'win10-x86')
+    $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }

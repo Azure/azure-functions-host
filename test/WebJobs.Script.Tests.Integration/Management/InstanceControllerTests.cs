@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.BadRequest
                 });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger());
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null);
 
             InstanceManager.Reset();
 

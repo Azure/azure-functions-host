@@ -8,5 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public string AppName { get; set; }
 
         public string SubscriptionId { get; set; }
+
+        public string RuntimeSiteName { get; set; }
     }
 }

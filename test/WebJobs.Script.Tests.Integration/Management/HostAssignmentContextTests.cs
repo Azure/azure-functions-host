@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Xunit;
 
@@ -28,20 +29,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(msiEndpoint, actualMsiEndpoint);
         }
 
-        [Theory]
-        [InlineData(null, false)]
-        [InlineData("0", false)]
-        [InlineData("1", true)]
-        [InlineData("abcd", false)]
-        public void Verifies_If_User_Data_Mount_Is_Enabled(string mountEnvVariable, bool isMountEnabled)
+        [Fact]
+        public void Returns_BYOS_EnvironmentVariables()
         {
-            var hostAssignmentContext = new HostAssignmentContext {Environment = new Dictionary<string, string>()};
-            if (mountEnvVariable != null)
+            var hostAssignmentContext = new HostAssignmentContext()
             {
-                hostAssignmentContext.Environment[EnvironmentSettingNames.UserDataMountEnabled] = mountEnvVariable;
-            }
+                Environment = new Dictionary<string, string>
+                {
+                    [EnvironmentSettingNames.MsiSecret] = "secret",
+                    ["AZUREFILESSTORAGE_storage1"] = "storage1",
+                    ["AzureFilesStorage_storage2"] = "storage2",
+                    ["AZUREBLOBSTORAGE_blob1"] = "blob1",
+                    ["AzureBlobStorage_blob2"] = "blob2",
+                    [EnvironmentSettingNames.MsiEndpoint] = "endpoint",
+                }
+            };
 
-            Assert.Equal(isMountEnabled, hostAssignmentContext.IsUserDataMountEnabled());
+            var byosEnvironmentVariables = hostAssignmentContext.GetBYOSEnvironmentVariables();
+            Assert.Equal(4, byosEnvironmentVariables.Count());
+
+            Assert.Equal("storage1",byosEnvironmentVariables.First(env => env.Key == "AZUREFILESSTORAGE_storage1").Value);
+            Assert.Equal("storage2", byosEnvironmentVariables.First(env => env.Key == "AzureFilesStorage_storage2").Value);
+            Assert.Equal("blob1", byosEnvironmentVariables.First(env => env.Key == "AZUREBLOBSTORAGE_blob1").Value);
+            Assert.Equal("blob2", byosEnvironmentVariables.First(env => env.Key == "AzureBlobStorage_blob2").Value);
         }
     }
 }

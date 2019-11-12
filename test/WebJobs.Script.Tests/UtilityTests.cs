@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -162,6 +161,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TimeSpan result = Utility.ComputeBackoff(exponent, unit, min, max);
             TimeSpan expectedTimespan = TimeSpan.Parse(expected);
             Assert.Equal(expectedTimespan, result);
+        }
+
+        [Theory]
+        [InlineData("00:02:00", "00:02:00")]
+        [InlineData(null, "10675199.02:48:05.4775807")]
+        public void ComputeBackoff_Overflow(string maxValue, string expected)
+        {
+            TimeSpan? max = null;
+            if (maxValue != null)
+            {
+                max = TimeSpan.Parse(maxValue);
+            }
+
+            TimeSpan expectedValue = TimeSpan.Parse(expected);
+
+            // Catches two overflow bugs:
+            // 1. Computed ticks would fluctuate between positive and negative, resulting in min-and-max alternating.
+            // 2. At 64+ we'd throw an OverflowException.
+            for (int i = 60; i < 70; i++)
+            {
+                TimeSpan result = Utility.ComputeBackoff(i, min: TimeSpan.FromSeconds(1), max: max);
+                Assert.Equal(expectedValue, result);
+            }
         }
 
         [Theory]
@@ -428,6 +450,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(func1, language));
         }
 
+        [Fact]
+        public void GetValidFunctions_Returns_Expected()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "java"
+            };
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "func2",
+                Language = "node"
+            };
+
+            FunctionDescriptor fd = new FunctionDescriptor();
+            fd.Metadata = func1;
+
+            IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
+            {
+                 func1, func2
+            };
+            ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
+            {
+                 fd
+            };
+            IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+            int validFunctionsCount = 0;
+            foreach (var metadata in validFunctions)
+            {
+                Assert.Equal(func1.Name, metadata.Name);
+                validFunctionsCount++;
+            }
+            Assert.True(validFunctionsCount == 1);
+        }
+
+        [Fact]
+        public void GetValidFunctions_Returns_Null()
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "java"
+            };
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "func2",
+                Language = "node"
+            };
+            FunctionMetadata func3 = new FunctionMetadata()
+            {
+                Name = "func3",
+                Language = "node"
+            };
+
+            FunctionDescriptor fd = new FunctionDescriptor();
+            fd.Metadata = func3;
+
+            IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
+            {
+                 func1, func2
+            };
+            ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
+            {
+                 fd
+            };
+
+            IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(null, functionDescriptors);
+            Assert.Null(validFunctions);
+
+            validFunctions = Utility.GetValidFunctions(functionMetadatas, null);
+            Assert.Null(validFunctions);
+
+            validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
+            Assert.Empty(validFunctions);
+        }
+
         [Theory]
         [InlineData(true, true, true)]
         [InlineData(true, false, false)]
@@ -451,6 +549,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(appOffline, checkAppOffline);
 
             FileUtility.Instance = null;
+        }
+
+        [Theory]
+        [InlineData("", "", "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
+        [InlineData(null, null, "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
+        [InlineData("accountname", "password", "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password")]
+        public void BuildStorageConnectionString(string accountName, string accessKey, string expectedConnectionString)
+        {
+            Assert.Equal(expectedConnectionString, Utility.BuildStorageConnectionString(accountName, accessKey));
         }
 
         [Fact]

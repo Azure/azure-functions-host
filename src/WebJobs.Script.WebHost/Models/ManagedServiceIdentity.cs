@@ -18,5 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string ResourceId { get; set; }
 
         public string Certificate { get; set; }
+
+        public string PrincipalId { get; set; }
     }
 }

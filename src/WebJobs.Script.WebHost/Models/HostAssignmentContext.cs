@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -72,11 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             }
         }
 
-        public bool IsUserDataMountEnabled()
+        public IEnumerable<KeyValuePair<string, string>> GetBYOSEnvironmentVariables()
         {
-            Environment.TryGetValue(EnvironmentSettingNames.UserDataMountEnabled, out var mountEnabled);
-            return !string.IsNullOrEmpty(mountEnabled) &&
-                   string.Equals(mountEnabled, "1", StringComparison.OrdinalIgnoreCase);
+            return Environment.Where(kv =>
+                kv.Key.StartsWith(AzureStorageInfoValue.AzureFilesStoragePrefix, StringComparison.OrdinalIgnoreCase) ||
+                kv.Key.StartsWith(AzureStorageInfoValue.AzureBlobStoragePrefix, StringComparison.OrdinalIgnoreCase));
         }
 
         public bool IsMSIEnabled(out string endpoint)
