@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     [Trait(TestTraits.Group, TestTraits.ContainerInstanceTests)]
     public class InstanceManagerTests : IDisposable
     {
-        private const int assignmentWaitPeriod = 2000; //ms
-
         private readonly TestLoggerProvider _loggerProvider;
         private readonly TestEnvironmentEx _environment;
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
@@ -180,9 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             bool result = _instanceManager.StartAssignment(context, isWarmup: false);
             Assert.True(result);
 
-            Thread.Sleep(assignmentWaitPeriod);
-
-            Assert.False(_scriptWebEnvironment.InStandbyMode);
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
