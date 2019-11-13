@@ -95,6 +95,26 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Delays while the specified condition remains true.
+        /// </summary>
+        /// <param name="timeoutSeconds">The maximum number of seconds to delay.</param>
+        /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
+        /// <param name="condition">The condition to check</param>
+        /// <returns>A Task representing the delay.</returns>
+        internal static async Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition)
+        {
+            TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
+            TimeSpan timeWaited = TimeSpan.Zero;
+
+            while (await condition() && (timeWaited < timeout))
+            {
+                await Task.Delay(delay);
+                timeWaited += delay;
+            }
+        }
+
+        /// <summary>
         /// Implements a configurable exponential backoff strategy.
         /// </summary>
         /// <param name="exponent">The backoff exponent. E.g. for backing off in a retry loop,

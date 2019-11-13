@@ -180,29 +180,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 return ShouldContinueWaitingForWorker(requestUri, _logger);
             });
-            bool isWorkerReady = ShouldContinueWaitingForWorker(requestUri, _logger);
+            bool isWorkerReady = await ShouldContinueWaitingForWorker(requestUri, _logger);
             return !isWorkerReady;
         }
 
-        private static bool ShouldContinueWaitingForWorker(string requestUri, ILogger logger)
+        private async Task<bool> ShouldContinueWaitingForWorker(string requestUri, ILogger logger)
         {
-            HttpWebRequest request = WebRequest.CreateHttp(requestUri);
-            request.Method = "GET";
             try
             {
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                {
-                }
-                return false;
+                await _httpClient.GetAsync(requestUri);
+                // Any Http response indicates a valid server Url
+                return true;
             }
-            catch (WebException webEx)
+            catch (HttpRequestException httpRequestEx)
             {
-                if (webEx.InnerException != null && webEx.InnerException is HttpRequestException && webEx.InnerException.InnerException != null && webEx.InnerException.InnerException is SocketException)
+                if (httpRequestEx.InnerException != null && httpRequestEx.InnerException is SocketException)
                 {
+                    // Wait for the worker to be ready
+                    logger.LogDebug(httpRequestEx, "Waiting for HttpWorker to be initialized");
                     return true;
                 }
-                // Wait for the worker to be ready
-                logger.LogError("err", webEx);
+                // Any other inner exception, consider HttpWorker to be ready
                 return false;
             }
         }

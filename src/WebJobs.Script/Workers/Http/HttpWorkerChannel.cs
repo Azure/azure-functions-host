@@ -43,33 +43,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerService.InvokeAsync(context);
         }
 
-        internal async Task<bool> DelayWorkerUntilReady()
+        internal async Task DelayUntilWokerInitialized()
         {
-            _workerChannelLogger.LogDebug("Waiting for HttpWorker to be ready");
+            _workerChannelLogger.LogDebug("Initializing HttpWorker.");
             try
             {
                 bool isWorkerReady = await _httpWorkerService.IsWorkerReady();
                 if (!isWorkerReady)
                 {
-                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker channel timedout"));
+                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timedout."));
                 }
-                _workerChannelLogger.LogDebug("HttpWorker is ready");
-                return true;
+                _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
             }
             catch (Exception ex)
             {
                 // HttpFunctionInvocationDispatcher will handdle the worker error events
                 PublishWorkerErrorEvent(ex);
             }
-            _workerChannelLogger.LogDebug("Starting HttpWorker timedout");
-            return false;
         }
 
         public async Task StartWorkerProcessAsync()
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _workerProcess.StartProcessAsync();
-            await DelayWorkerUntilReady();
+            await DelayUntilWokerInitialized();
         }
 
         private void PublishWorkerErrorEvent(Exception exc)
