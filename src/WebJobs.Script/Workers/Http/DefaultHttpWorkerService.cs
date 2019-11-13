@@ -26,15 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly ILogger _logger;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
-            : this(new HttpClient(), httpWorkerOptions, loggerFactory)
+            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>())
         {
         }
 
-        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
+        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger)
         {
             _httpClient = httpClient;
             _httpWorkerOptions = httpWorkerOptions.Value;
-            _logger = loggerFactory.CreateLogger<DefaultHttpWorkerService>();
+            _logger = logger;
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -175,29 +175,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public async Task<bool> IsWorkerReady()
         {
-            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
-            await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.PollingIntervalMilliseconds, () =>
+            await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.PollingIntervalMilliseconds, async () =>
             {
-                return ShouldContinueWaitingForWorker(requestUri, _logger);
+                return await ShouldContinueWaitingForWorker();
             });
-            bool isWorkerReady = await ShouldContinueWaitingForWorker(requestUri, _logger);
-            return !isWorkerReady;
+            bool continueWaitingForWorker = await ShouldContinueWaitingForWorker();
+            _logger.LogDebug("Is Http Worker Ready:{workerRead}", !continueWaitingForWorker);
+            return !continueWaitingForWorker;
         }
 
-        private async Task<bool> ShouldContinueWaitingForWorker(string requestUri, ILogger logger)
+        private async Task<bool> ShouldContinueWaitingForWorker()
         {
+            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+            httpRequestMessage.RequestUri = new Uri(requestUri);
             try
             {
-                await _httpClient.GetAsync(requestUri);
+                await _httpClient.SendAsync(httpRequestMessage);
                 // Any Http response indicates a valid server Url
-                return true;
+                return false;
             }
             catch (HttpRequestException httpRequestEx)
             {
                 if (httpRequestEx.InnerException != null && httpRequestEx.InnerException is SocketException)
                 {
                     // Wait for the worker to be ready
-                    logger.LogDebug(httpRequestEx, "Waiting for HttpWorker to be initialized");
+                    _logger.LogDebug("Waiting for HttpWorker to be initialized. Request to: {requestUri} failing with exception message: {message}", requestUri, httpRequestEx.Message);
                     return true;
                 }
                 // Any other inner exception, consider HttpWorker to be ready

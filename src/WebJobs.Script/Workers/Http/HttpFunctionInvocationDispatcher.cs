@@ -120,7 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     (_httpWorkerChannel as IDisposable)?.Dispose();
                 }
-                _logger.LogDebug("Restarting http invoker channel");
                 await RestartWorkerChannel(workerId);
         }
 
@@ -128,6 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (_invokerErrors.Count < 3)
             {
+                _logger.LogDebug("Restarting http invoker channel");
                 await InitializeHttpeWorkerChannelAsync(_invokerErrors.Count);
             }
             else
