@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string hostInstanceId = _hostInstanceId;
             string activityId = Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertyActivityIdKey) ?? string.Empty;
             string runtimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
+            string slotName = _environment.GetSlotName() ?? string.Empty;
 
             // Populate details from the exception.
             string details = string.Empty;
@@ -118,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
-            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName);
+            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName, slotName);
         }
     }
 }

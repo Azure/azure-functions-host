@@ -246,10 +246,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        /// <summary>
+        /// Gets the name of the currently deployed site name.
+        /// </summary>
         public static string GetRuntimeSiteName(this IEnvironment environment)
         {
             string runtimeSiteName = environment.GetEnvironmentVariable(AzureWebsiteRuntimeSiteName);
             return runtimeSiteName?.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Gets the name of the app's slot, if it exists.
+        /// </summary>
+        public static string GetSlotName(this IEnvironment environment)
+        {
+            string slotName = environment.GetEnvironmentVariable(AzureWebsiteSlotName);
+            return slotName?.ToLowerInvariant();
         }
 
         /// <summary>
