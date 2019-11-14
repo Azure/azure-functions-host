@@ -4,6 +4,8 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Configuration;
@@ -201,6 +203,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             Assert.Equal(1, options.Description.Arguments.Count);
             Assert.Equal("--xTest1 --xTest2", options.Description.Arguments[0]);
+        }
+
+        [Fact]
+        public void GetUnusedTcpPort_Succeeds()
+        {
+            int unusedPort = HttpWorkerOptionsSetup.GetUnusedTcpPort();
+            TcpListener tcpListener = null;
+            try
+            {
+                tcpListener = new TcpListener(IPAddress.Loopback, unusedPort);
+                tcpListener.Start();
+            }
+            finally
+            {
+                tcpListener?.Stop();
+            }
         }
 
         private IConfiguration BuildHostJsonConfiguration(IEnvironment environment = null)
