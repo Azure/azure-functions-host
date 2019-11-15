@@ -189,6 +189,8 @@ message WorkerStatusResponse {
 message FunctionEnvironmentReloadRequest {
   // Environment variables from the current process
   map<string, string> environment_variables = 1;
+  // Current directory of function app
+  string current_directory = 2;
 }
 
 message FunctionEnvironmentReloadResponse {

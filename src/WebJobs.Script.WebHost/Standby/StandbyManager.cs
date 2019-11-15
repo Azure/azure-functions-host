@@ -107,12 +107,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // user dependencies
             FunctionAssemblyLoadContext.ResetSharedContext();
 
+            NotifyChange();
+
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
                 await _rpcWorkerChannelManager.SpecializeAsync();
             }
-
-            NotifyChange();
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationRestartHost))
             {
