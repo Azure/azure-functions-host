@@ -24,6 +24,17 @@
     </PropertyGroup>
   </Target>
 
+  <UsingTask TaskName="RemoveRuntimeDependencies"
+             AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
+  
+  <Target Name="_FunctionsBuildCleanOutput" AfterTargets="_GenerateFunctionsPostBuild" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
+    <RemoveRuntimeDependencies OutputPath="$(TargetDir)bin"/>
+  </Target>
+
+  <Target Name="_FunctionsPublishCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostPublish" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
+    <RemoveRuntimeDependencies OutputPath="$(PublishDir)bin"/>
+  </Target>
+  
   <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
 
