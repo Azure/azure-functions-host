@@ -32,7 +32,6 @@ function RunTest([string] $project, [string] $description,[bool] $skipBuild = $f
 $tests = @(
   @{project = "..\tools\ExtensionsMetadataGenerator\test\ExtensionsMetadataGeneratorTests"; description="ExtensionsMetadataGenerator Tests"},
   @{project ="WebJobs.Script.Tests"; description="Unit Tests"},
-  @{project ="WebJobs.Script.Scaling.Tests"; description="Scaling Tests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Non-E2E integration tests"; filter ="Category!=E2E"},
   @{project ="WebJobs.Script.Tests.Integration"; description="C# end to end tests"; filter ="Group=CSharpEndToEndTests"},
   @{project ="WebJobs.Script.Tests.Integration"; description="Node end to end tests"; filter ="Group=NodeEndToEndTests"},

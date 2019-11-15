@@ -73,7 +73,6 @@ If you want to test anything other than HTTP, it will require the `AzureWebJobsS
 
 ## Running tests (Visual Studio)
 There are three test projects in the WebJobs.Script solution
- - WebJobs.Script.Scaling.Tests 
  - WebJobs.Script.Tests
  - WebJobs.Script.Test.Integration
 
