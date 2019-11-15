@@ -395,6 +395,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Azure.WebJobs.Host.Storage",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Azure.WebJobs.Extensions",
       "resolutionPolicy": "minorMatchOrLower"
     },
