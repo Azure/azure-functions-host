@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
@@ -173,18 +174,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
         }
 
-        public async Task<bool> IsWorkerReady()
+        public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
         {
-            await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.PollingIntervalMilliseconds, async () =>
+            bool continueWaitingForWorker = await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, async () =>
             {
-                return await ShouldContinueWaitingForWorker();
-            });
-            bool continueWaitingForWorker = await ShouldContinueWaitingForWorker();
-            _logger.LogDebug("Is Http Worker Ready:{workerRead}", !continueWaitingForWorker);
+                return await IsWorkerReadyForRequest();
+            }, cancellationToken);
             return !continueWaitingForWorker;
         }
 
-        private async Task<bool> ShouldContinueWaitingForWorker()
+        private async Task<bool> IsWorkerReadyForRequest()
         {
             string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage();

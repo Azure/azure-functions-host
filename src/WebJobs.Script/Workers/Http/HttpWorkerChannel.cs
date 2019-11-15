@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -43,17 +44,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerService.InvokeAsync(context);
         }
 
-        internal async Task DelayUntilWokerInitialized()
+        internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
         {
             _workerChannelLogger.LogDebug("Initializing HttpWorker.");
             try
             {
-                bool isWorkerReady = await _httpWorkerService.IsWorkerReady();
+                bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
                 if (!isWorkerReady)
                 {
-                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timedout."));
+                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
                 }
-                _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                else
+                {
+                    _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                }
             }
             catch (Exception ex)
             {
@@ -62,11 +66,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        public async Task StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _workerProcess.StartProcessAsync();
-            await DelayUntilWokerInitialized();
+            await DelayUntilWokerInitialized(cancellationToken);
         }
 
         private void PublishWorkerErrorEvent(Exception exc)

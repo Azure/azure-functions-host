@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -58,11 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public FunctionInvocationDispatcherState State { get; private set; }
 
-        internal Task InitializeHttpeWorkerChannelAsync(int attemptCount)
+        internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
             // TODO: Add process managment for http invoker
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
-            _httpWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
+            _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
                  {
                      if (workerInitTask.IsCompleted)
                      {
@@ -77,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return Task.CompletedTask;
         }
 
-        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions)
+        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             if (functions == null || !functions.Any())
             {
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
 
             State = FunctionInvocationDispatcherState.Initializing;
-            await InitializeHttpeWorkerChannelAsync(0);
+            await InitializeHttpWorkerChannelAsync(0, cancellationToken);
         }
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             if (_invokerErrors.Count < 3)
             {
                 _logger.LogDebug("Restarting http invoker channel");
-                await InitializeHttpeWorkerChannelAsync(_invokerErrors.Count);
+                await InitializeHttpWorkerChannelAsync(_invokerErrors.Count);
             }
             else
             {

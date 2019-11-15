@@ -317,11 +317,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
 
-            bool workerReady = await _defaultHttpWorkerService.IsWorkerReady();
+            bool workerReady = await _defaultHttpWorkerService.IsWorkerReady(CancellationToken.None);
             Assert.False(workerReady);
 
             var testLogs = _testLogger.GetLogMessages();
-            Assert.True(testLogs.All(m => m.FormattedMessage.Contains("Waiting for HttpWorker to be initialized")));
+            Assert.True(testLogs.All(m => m.FormattedMessage.Contains("Invalid http worker service")));
         }
 
         [Fact]
@@ -338,12 +338,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
 
-            bool workerReady = await _defaultHttpWorkerService.IsWorkerReady();
+            bool workerReady = await _defaultHttpWorkerService.IsWorkerReady(CancellationToken.None);
             Assert.True(workerReady);
-
-            var testLogs = _testLogger.GetLogMessages();
-            Assert.True(testLogs.Count == 1);
-            Assert.True(testLogs.All(m => m.FormattedMessage.Contains("Is Http Worker Ready:True")));
         }
 
         private async void ValidateDefaultInvocationRequest(HttpRequestMessage httpRequestMessage)

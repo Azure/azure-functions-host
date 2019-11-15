@@ -101,17 +101,19 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static async Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition)
+        internal static async Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition, CancellationToken cancellationToken)
         {
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
             TimeSpan timeWaited = TimeSpan.Zero;
-
-            while (await condition() && (timeWaited < timeout))
+            bool conditionResult = await condition();
+            while (conditionResult && (timeWaited < timeout) && !cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(delay);
                 timeWaited += delay;
+                conditionResult = await condition();
             }
+            return conditionResult;
         }
 
         /// <summary>
