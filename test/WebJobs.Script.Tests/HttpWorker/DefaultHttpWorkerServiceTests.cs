@@ -31,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         private HttpWorkerOptions _httpWorkerOptions;
         private ILoggerFactory _testLoggerFactory;
         private int _defaultPort = 8090;
-        private TestLogger _testLogger = new TestLogger(TestFunctionName);
+        private TestLogger _testLogger = new TestLogger("ServiceLogger");
+        private TestLogger _functionLogger = new TestLogger(TestFunctionName);
 
         public DefaultHttpWorkerServiceTests()
         {
@@ -65,12 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
 
             var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult();
-            var testLogs = _testLogger.GetLogMessages();
+            var testLogs = _functionLogger.GetLogMessages();
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
             Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
             Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
@@ -90,12 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger, Script.Description.DataType.Binary);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger, Script.Description.DataType.Binary);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
 
             var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult_DataType_Binary_Outputs();
-            var testLogs = _testLogger.GetLogMessages();
+            var testLogs = _functionLogger.GetLogMessages();
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
             Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
             Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
@@ -126,12 +127,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
 
             var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetTestHttpScriptInvocationResult_Binary_Outputs();
-            var testLogs = _testLogger.GetLogMessages();
+            var testLogs = _functionLogger.GetLogMessages();
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
             Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
             Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
@@ -164,13 +165,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessHttpInAndOutInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
             var expectedHttpResponseMessage = HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage();
             var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();
 
-            var testLogs = _testLogger.GetLogMessages();
+            var testLogs = _functionLogger.GetLogMessages();
             Assert.Equal(0, testLogs.Count());
 
             Assert.Equal(1, invocationResult.Outputs.Count());
@@ -201,13 +202,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessHttpInAndOutInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
             var expectedHttpResponseMessage = HttpWorkerTestUtilities.GetValidSimpleHttpResponseMessage();
             var expectedResponseContent = await expectedHttpResponseMessage.Content.ReadAsStringAsync();
 
-            var testLogs = _testLogger.GetLogMessages();
+            var testLogs = _functionLogger.GetLogMessages();
             Assert.Equal(0, testLogs.Count());
 
             Assert.Equal(1, invocationResult.Outputs.Count());
@@ -233,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
             Assert.Empty(invocationResult.Outputs);
@@ -293,8 +294,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
-            _defaultHttpWorkerService.ProcessLogsFromHttpResponse(HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger), httpScriptInvocationResult);
-            var testLogs = _testLogger.GetLogMessages();
+            _defaultHttpWorkerService.ProcessLogsFromHttpResponse(HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger), httpScriptInvocationResult);
+            var testLogs = _functionLogger.GetLogMessages();
             if (httpScriptInvocationResult.Logs != null && httpScriptInvocationResult.Logs.Any())
             {
                 Assert.True(testLogs.Count() == httpScriptInvocationResult.Logs?.Count());
