@@ -62,8 +62,21 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;
-            if (_extensionBundleManager.IsExtensionBundleConfigured())
+            var bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var functionMetadataCollection = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true);
+            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
+
+            if (bundleConfigured)
             {
+                // Generate a Hashset of all the binding types used in the function app
+                foreach (var functionMetadata in functionMetadataCollection)
+                {
+                    foreach (var binding in functionMetadata.Bindings)
+                    {
+                        bindingsSet.Add(binding.Type);
+                    }
+                }
+
                 string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
@@ -85,14 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             var startupTypes = new List<Type>();
 
-            var functionBindings = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true).SelectMany(f => f.Bindings.Select(b => b.Type));
-
-            var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             foreach (var extensionItem in extensionItems)
             {
                 if (!bundleConfigured
                     || extensionItem.Bindings.Count == 0
-                    || extensionItem.Bindings.Intersect(functionBindings, StringComparer.OrdinalIgnoreCase).Any())
+                    || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);
