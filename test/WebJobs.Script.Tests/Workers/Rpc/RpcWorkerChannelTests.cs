@@ -270,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
-            Assert.True(envReloadRequest.CurrentDirectory == _scriptRootPath);
+            Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
         }
 
         [Fact]

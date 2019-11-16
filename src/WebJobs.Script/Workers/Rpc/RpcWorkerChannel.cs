@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
 
-            request.CurrentDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
 
             return request;
         }
