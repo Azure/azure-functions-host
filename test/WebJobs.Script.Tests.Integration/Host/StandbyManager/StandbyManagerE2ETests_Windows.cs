@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Verify_StandbyModeE2E_Java();
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
         public async Task StandbyModeE2E_Node()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
