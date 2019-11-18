@@ -97,6 +97,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Verify_StandbyModeE2E_Java();
         }
 
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
+        public async Task StandbyModeE2E_Node()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            await Verify_StandbyModeE2E_Node();
+        }
+
         private async Task Verify_StandbyModeE2E_Java()
         {
             var environment = new TestEnvironment(_settings);
@@ -135,6 +142,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify Java same java process is used after host restart
             var result = javaProcessesBefore.Where(pId1 => !javaProcessesAfter.Any(pId2 => pId2 == pId1));
+            Assert.Equal(0, result.Count());
+        }
+
+        private async Task Verify_StandbyModeE2E_Node()
+        {
+            var environment = new TestEnvironment(_settings);
+            await InitializeTestHostAsync("Windows_Node", environment);
+
+            await VerifyWarmupSucceeds();
+            await VerifyWarmupSucceeds(restart: true);
+
+            // Get java process Id before specialization
+            IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
+
+            // now specialize the host
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot, "/");
+
+            Assert.False(environment.IsPlaceholderModeEnabled());
+            Assert.True(environment.IsContainerReady());
+
+            // give time for the specialization to happen
+            string[] logLines = null;
+            await TestHelpers.Await(() =>
+            {
+                // wait for the trace indicating that the host has been specialized
+                logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+                return logLines.Contains("Generating 0 job function(s)") && logLines.Contains("Stopping JobHost");
+            }, timeout: 60 * 1000, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+
+            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+
+            // Verify number of java processes before and after specialization are the same.
+            Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
+
+            //Verify atleast one java process is running
+            Assert.True(nodeProcessesAfter.Count() >= 1);
+
+            // Verify Java same java process is used after host restart
+            var result = nodeProcessesBefore.Where(pId1 => !nodeProcessesAfter.Any(pId2 => pId2 == pId1));
             Assert.Equal(0, result.Count());
         }
     }
