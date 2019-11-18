@@ -27,10 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class RpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
-        private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -58,23 +58,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal RpcWorkerChannel(
            string workerId,
-           string rootScriptPath,
            IScriptEventManager eventManager,
            RpcWorkerConfig workerConfig,
            IWorkerProcess rpcWorkerProcess,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
+           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
            IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
         {
             _workerId = workerId;
-            _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
             _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
+            _applicationHostOptions = applicationHostOptions;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -230,6 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
+
+            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+
             return request;
         }
 
