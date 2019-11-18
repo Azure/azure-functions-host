@@ -81,9 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        internal static async Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
         {
-            return DelayAsyncHelper(timeoutSeconds, pollingIntervalMilliseconds, condition, null, CancellationToken.None);
+            Func<Task<bool>> action = async () => await Task.FromResult(condition());
+            bool conditionResult = await DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, action, CancellationToken.None);
+            return conditionResult;
         }
 
         /// <summary>
@@ -93,42 +95,18 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The async condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition, CancellationToken cancellationToken)
+        internal static async Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition, CancellationToken cancellationToken)
         {
-            return DelayAsyncHelper(timeoutSeconds, pollingIntervalMilliseconds, null, condition, cancellationToken);
-        }
-
-        private static async Task<bool> DelayAsyncHelper(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition, Func<Task<bool>> asyncCondition, CancellationToken cancellationToken)
-        {
-            if (condition == null && asyncCondition == null)
-            {
-                throw new ArgumentNullException("condition");
-            }
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
             TimeSpan timeWaited = TimeSpan.Zero;
-            bool conditionResult = await GetConditionResult(condition, asyncCondition);
+            bool conditionResult = await condition();
             while (conditionResult && (timeWaited < timeout) && !cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(delay);
                 timeWaited += delay;
-                conditionResult = await GetConditionResult(condition, asyncCondition);
+                conditionResult = await condition();
             }
-            return conditionResult;
-        }
-
-        private static async Task<bool> GetConditionResult(Func<bool> condition, Func<Task<bool>> asyncCondition)
-        {
-            bool conditionResult = true;
-            if (asyncCondition != null)
-            {
-                conditionResult = await asyncCondition();
-            }
-            else
-            {
-                conditionResult = condition();
-            }
-
             return conditionResult;
         }
 
