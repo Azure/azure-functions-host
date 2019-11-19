@@ -3,8 +3,8 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,11 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IHttpWorkerProcessFactory _httpWorkerProcessFactory = null;
         private readonly HttpWorkerOptions _httpWorkerOptions = null;
+        private readonly IScriptEventManager _eventManager;
         private IHttpWorkerService _httpWorkerService;
 
-        public HttpWorkerChannelFactory(IEnvironment environment, ILoggerFactory loggerFactory, IOptions<HttpWorkerOptions> httpWorkerOptions,
+        public HttpWorkerChannelFactory(IEnvironment environment, ILoggerFactory loggerFactory, IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptEventManager eventManager,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IHttpWorkerProcessFactory httpWorkerProcessFactory, IHttpWorkerService httpWorkerService)
         {
+            _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
             _httpWorkerProcessFactory = httpWorkerProcessFactory ?? throw new ArgumentNullException(nameof(httpWorkerProcessFactory));
@@ -33,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IWorkerProcess httpWorkerProcess = _httpWorkerProcessFactory.Create(workerId, scriptRootPath, _httpWorkerOptions);
             return new HttpWorkerChannel(
                          workerId,
+                         _eventManager,
                          httpWorkerProcess,
                          _httpWorkerService,
                          workerLogger,

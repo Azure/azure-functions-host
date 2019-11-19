@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, 25, () =>
+                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });

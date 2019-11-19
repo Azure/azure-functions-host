@@ -81,17 +81,32 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static async Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        internal static Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        {
+            Task<bool> Condition() => Task.FromResult(condition());
+            return DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, Condition, CancellationToken.None);
+        }
+
+        /// <summary>
+        /// Delays while the specified condition remains true.
+        /// </summary>
+        /// <param name="timeoutSeconds">The maximum number of seconds to delay.</param>
+        /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
+        /// <param name="condition">The async condition to check</param>
+        /// <returns>A Task representing the delay.</returns>
+        internal static async Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<Task<bool>> condition, CancellationToken cancellationToken)
         {
             TimeSpan timeout = TimeSpan.FromSeconds(timeoutSeconds);
             TimeSpan delay = TimeSpan.FromMilliseconds(pollingIntervalMilliseconds);
             TimeSpan timeWaited = TimeSpan.Zero;
-
-            while (condition() && (timeWaited < timeout))
+            bool conditionResult = await condition();
+            while (conditionResult && (timeWaited < timeout) && !cancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(delay);
                 timeWaited += delay;
+                conditionResult = await condition();
             }
+            return conditionResult;
         }
 
         /// <summary>
