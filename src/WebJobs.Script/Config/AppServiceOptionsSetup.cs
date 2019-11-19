@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.AppName = _environment.GetAzureWebsiteUniqueSlotName() ?? string.Empty;
             options.SubscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
             options.RuntimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
+            options.SlotName = _environment.GetSlotName() ?? string.Empty;
         }
     }
 }

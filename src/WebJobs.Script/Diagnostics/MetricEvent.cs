@@ -19,5 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public string Data { get; set; }
 
         public string RuntimeSiteName { get; set; }
+
+        public string SlotName { get; set; }
     }
 }
