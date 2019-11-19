@@ -41,7 +41,7 @@ Before filing an issue, please check that it doesn't already exist. If you're no
     - [Node 8.4+](https://nodejs.org/en/)
     - [.NET Core 2.2 SDK](https://dotnet.microsoft.com/download/dotnet-core/2.2)
  - Editor
-    - [Visual Studio 2017](https://visualstudio.microsoft.com/vs/) (recommended)
+    - [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) (recommended)
     - [VS Code](https://code.visualstudio.com/) (works, but has some quirks running tests)
  - Misc tools (suggested)
     - [git](https://git-scm.com/downloads) - source control
