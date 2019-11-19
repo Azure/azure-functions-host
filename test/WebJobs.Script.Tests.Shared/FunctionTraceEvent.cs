@@ -36,6 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public string ActivityId { get; set; }
 
+        public string RuntimeSiteName { get; set; }
+
+        public string SlotName { get; set; }
+
         public override string ToString()
         {
             return $"[{Timestamp.ToString("HH:mm:ss.fff")}] [{Source}] {Summary}";
