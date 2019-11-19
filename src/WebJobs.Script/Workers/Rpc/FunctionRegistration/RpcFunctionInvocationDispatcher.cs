@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions)
+        public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
