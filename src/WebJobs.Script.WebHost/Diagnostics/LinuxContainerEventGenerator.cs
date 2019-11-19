@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
+        private const int MaxDetailsLength = 10000;
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
@@ -68,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestampFormat);
             string hostVersion = ScriptHost.Version;
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
+            details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
             _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId}");
         }
