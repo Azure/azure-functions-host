@@ -12,9 +12,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -110,9 +110,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
             logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
-                        
+
             // Make sure we get a metric logged from both ILogger and TraceWriter
-            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");            
+            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
             Assert.Equal(2, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
 
             // Make sure we've gotten a log from the aggregator
@@ -170,6 +170,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var response = await Fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(response.StatusCode, HttpStatusCode.Redirect);
+        }
+
+        [Fact]
+        public async Task VerifyAcceptResult_OtherFunctionRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=accept")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
+        }
+
+        [Fact]
+        public async Task VerifyCreateResult_OtherFunctionRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=create")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Created);
+        }
+
+        [Fact]
+        public async Task VerifyAcceptResult_BadRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=acceptBadRoute")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
+        }
+
+        [Fact]
+        public async Task VerifyCreateResult_BadRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=createBadRoute")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
         }
 
         [Fact]
@@ -447,6 +503,7 @@ namespace SecondaryDependency
                         "HttpTrigger-Dynamic",
                         "HttpTrigger-Scenarios",
                         "HttpTrigger-Redirect",
+                        "HttpTrigger-Routed",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
                         "LoadScriptReference",
