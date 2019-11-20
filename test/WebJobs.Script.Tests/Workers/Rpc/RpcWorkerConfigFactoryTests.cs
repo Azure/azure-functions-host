@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
-            Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(expectedPath, configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Collection(testLogger.GetLogMessages(),
                 p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.7", p.FormattedMessage));
         }
@@ -300,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
-            Assert.Equal(expectedPath, configFactory.GetHydratedWorkerPath(workerDescription));
+            Assert.Equal(expectedPath, configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Collection(testLogger.GetLogMessages(),
                 p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.6", p.FormattedMessage));
         }
@@ -341,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment, new TestMetricsLogger());
 
-            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
         }
 
@@ -378,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, mockRuntimeInfo.Object, _testEnvironment, new TestMetricsLogger());
 
-            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
         }
 
@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
-            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
         }
 
@@ -436,8 +436,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
-            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetHydratedWorkerPath(workerDescription));
+            var ex = Assert.Throws<NotSupportedException>(() => configFactory.GetFormattedWorkerPath(workerDescription));
             Assert.Equal(ex.Message, $"Version 3.4 is not supported for language {workerDescription.Language}");
+        }
+
+        [Theory]
+        [InlineData("python", "python", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}/worker.py", true)]
+        [InlineData("python", "python", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/windows/{architecture}/worker.py", true)]
+        [InlineData("python", "PYTHON", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/windows/x86/worker.py", true)]
+        [InlineData("python", "python", "go/windows/x86/worker.py", false)]
+        [InlineData("python", "NOde", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}/worker.py", false)]
+        public void ShouldFormatWorker_Returns_True(string workerLanguage, string workerRuntime, string workerPath, bool expectedResult)
+        {
+            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var config = new ConfigurationBuilder().Build();
+            var testLogger = new TestLogger("test");
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            Assert.Equal(expectedResult, rpcWorkerConfigFactory.ShouldFormatWorkerPath(workerPath, workerLanguage));
         }
     }
 }

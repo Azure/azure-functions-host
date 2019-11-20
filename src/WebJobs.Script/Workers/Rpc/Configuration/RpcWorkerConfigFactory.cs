@@ -53,9 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
 
-                    if (IsHydrationNeeded(description.DefaultWorkerPath))
+                    if (ShouldFormatWorkerPath(description.DefaultWorkerPath, description.Language))
                     {
-                        description.DefaultWorkerPath = GetHydratedWorkerPath(description);
+                        description.DefaultWorkerPath = GetFormattedWorkerPath(description);
                     }
 
                     var arguments = new WorkerProcessArguments()
@@ -136,9 +136,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
                     GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
-                    if (IsHydrationNeeded(workerDescription.DefaultWorkerPath))
+                    if (ShouldFormatWorkerPath(workerDescription.DefaultWorkerPath, workerDescription.Language))
                     {
-                        workerDescription.DefaultWorkerPath = GetHydratedWorkerPath(workerDescription);
+                        workerDescription.DefaultWorkerPath = GetFormattedWorkerPath(workerDescription);
                     }
                     workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), _logger);
                     _workerDescripionDictionary[workerDescription.Language] = workerDescription;
@@ -221,11 +221,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal bool IsHydrationNeeded(string workerPath)
+        internal bool ShouldFormatWorkerPath(string workerPath, string language)
         {
             if (string.IsNullOrEmpty(workerPath))
             {
                 return false;
+            }
+            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {workerRuntime}");
+                if (!workerRuntime.Equals(language, StringComparison.OrdinalIgnoreCase))
+                {
+                    // After specialization only hydrate worker config for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+                    return false;
+                }
             }
 
             return workerPath.Contains(RpcWorkerConstants.OSPlaceholder) ||
@@ -233,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     workerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder);
         }
 
-        internal string GetHydratedWorkerPath(RpcWorkerDescription description)
+        internal string GetFormattedWorkerPath(RpcWorkerDescription description)
         {
             if (string.IsNullOrEmpty(description.DefaultWorkerPath))
             {
