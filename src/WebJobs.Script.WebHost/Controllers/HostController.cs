@@ -296,21 +296,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]
-        [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
-        [Route("runtime/webhooks/{name}/{*extra}")]
+        [Authorize(Policy = PolicyNames.SystemKeyAuthLevel)]
+        [Route("runtime/webhooks/{extensionName}/{*extra}")]
         [RequiresRunningHost]
-        public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
+        public async Task<IActionResult> ExtensionWebHookHandler(string extensionName, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
-            if (provider.TryGetHandler(name, out HttpHandler handler))
+            if (provider.TryGetHandler(extensionName, out HttpHandler handler))
             {
-                // must either be authorized at the admin level, or system level with
-                // a matching key name
-                string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
-                if (!AuthUtility.PrincipalHasAuthLevelClaim(User, AuthorizationLevel.System, keyName))
-                {
-                    return Unauthorized();
-                }
-
                 var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
                 HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
 
