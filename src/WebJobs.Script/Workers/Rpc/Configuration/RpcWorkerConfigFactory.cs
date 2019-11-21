@@ -51,30 +51,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 foreach (var description in _workerDescripionDictionary.Values)
                 {
-                    _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
-
-                    if (ShouldFormatWorkerPath(description.DefaultWorkerPath, description.Language))
+                    if (ShouldAddWorkerConfig(description.Language))
                     {
-                        description.DefaultWorkerPath = GetFormattedWorkerPath(description);
+                        _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
+
+                        if (ShouldFormatWorkerPath(description.DefaultWorkerPath, description.Language))
+                        {
+                            description.DefaultWorkerPath = GetFormattedWorkerPath(description);
+                        }
+
+                        var arguments = new WorkerProcessArguments()
+                        {
+                            ExecutablePath = description.DefaultExecutablePath,
+                            WorkerPath = description.DefaultWorkerPath
+                        };
+
+                        if (description.Language.Equals(RpcWorkerConstants.JavaLanguageWorkerName))
+                        {
+                            arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
+                        }
+                        arguments.ExecutableArguments.AddRange(description.Arguments);
+                        var config = new RpcWorkerConfig()
+                        {
+                            Description = description,
+                            Arguments = arguments
+                        };
+                        result.Add(config);
                     }
-
-                    var arguments = new WorkerProcessArguments()
-                    {
-                        ExecutablePath = description.DefaultExecutablePath,
-                        WorkerPath = description.DefaultWorkerPath
-                    };
-
-                    if (description.Language.Equals(RpcWorkerConstants.JavaLanguageWorkerName))
-                    {
-                        arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
-                    }
-                    arguments.ExecutableArguments.AddRange(description.Arguments);
-                    var config = new RpcWorkerConfig()
-                    {
-                        Description = description,
-                        Arguments = arguments
-                    };
-                    result.Add(config);
                 }
 
                 return result;
@@ -221,21 +224,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
+        internal bool ShouldAddWorkerConfig(string workerDescriptionLanguage)
+        {
+            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {workerRuntime}");
+                if (workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+                // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+                return false;
+            }
+            return true;
+        }
+
         internal bool ShouldFormatWorkerPath(string workerPath, string language)
         {
             if (string.IsNullOrEmpty(workerPath))
             {
                 return false;
-            }
-            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(workerRuntime))
-            {
-                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {workerRuntime}");
-                if (!workerRuntime.Equals(language, StringComparison.OrdinalIgnoreCase))
-                {
-                    // After specialization only hydrate worker config for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                    return false;
-                }
             }
 
             return workerPath.Contains(RpcWorkerConstants.OSPlaceholder) ||

@@ -441,19 +441,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("python", "python", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}/worker.py", true)]
-        [InlineData("python", "python", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/windows/{architecture}/worker.py", true)]
-        [InlineData("python", "PYTHON", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/windows/x86/worker.py", true)]
-        [InlineData("python", "python", "go/windows/x86/worker.py", false)]
-        [InlineData("python", "NOde", "%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}/worker.py", false)]
-        public void ShouldFormatWorker_Returns_True(string workerLanguage, string workerRuntime, string workerPath, bool expectedResult)
+        [InlineData("python", "Python", true)]
+        [InlineData("python", "NOde", false)]
+        [InlineData("python", "", true)]
+        [InlineData("python", null, true)]
+        public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool expectedResult)
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            Assert.Equal(expectedResult, rpcWorkerConfigFactory.ShouldFormatWorkerPath(workerPath, workerLanguage));
+            Assert.Equal(expectedResult, rpcWorkerConfigFactory.ShouldAddWorkerConfig(workerLanguage));
         }
     }
 }
