@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -94,6 +95,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
+        }
+
+        public static bool IsV2CompatibilityMode(this IEnvironment environment)
+        {
+            string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
+            bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
+
+            string extensionVersion = environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            bool isV2ExtensionVersion = string.Compare(extensionVersion, "~2", CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0;
+
+            return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
         }
 
         public static bool IsContainer(this IEnvironment environment)
