@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 OSPlatform.Linux,
                 new List<string>()
                 {
+                    RpcWorkerConstants.JavaLanguageWorkerName,
                     RpcWorkerConstants.PythonLanguageWorkerName,
                     RpcWorkerConstants.NodeLanguageWorkerName
                 }

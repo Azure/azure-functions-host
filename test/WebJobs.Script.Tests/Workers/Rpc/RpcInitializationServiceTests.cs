@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
-            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Once);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
 
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
-            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Once);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
         }
