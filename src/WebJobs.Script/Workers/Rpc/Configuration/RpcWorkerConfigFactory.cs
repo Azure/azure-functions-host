@@ -235,6 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     return true;
                 }
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+                _logger.LogDebug($"Skipping WorkerConfig for language:{workerDescriptionLanguage}");
                 return false;
             }
             return true;
@@ -246,7 +247,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 return false;
             }
-
+            if (!ShouldAddWorkerConfig(language))
+            {
+                return false;
+            }
             return workerPath.Contains(RpcWorkerConstants.OSPlaceholder) ||
                     workerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder) ||
                     workerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder);
