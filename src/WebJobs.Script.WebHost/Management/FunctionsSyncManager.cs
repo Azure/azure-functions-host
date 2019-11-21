@@ -36,6 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string DurableTaskV2StorageConnectionName = "connectionStringName";
         private const string DurableTask = "durableTask";
 
+        internal const string DurableNotInstalledErrorMsg = "There is a host.json configuration for 'durableTask', but the durable task extension is not installed.";
+        internal const string InvalidDurableV1ConfigErrorMsg = "Invalid host.json configuration for 'durableTask' for durable task extension 1.x";
+        internal const string InvalidDurableV2ConfigErrorMsg = "Invalid host.json configuration for 'durableTask' for durable task extension 2.x";
+
         // 45 alphanumeric characters gives us a buffer in our table/queue/blob container names.
         private const int MaxTaskHubNameSize = 45;
         private const int MinTaskHubNameSize = 3;
@@ -395,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     var durableTaskExtension = extensions.FirstOrDefault(ext => string.Equals(ext.Id, "Microsoft.Azure.WebJobs.Extensions.Durabletask", StringComparison.OrdinalIgnoreCase));
                     if (durableTaskExtension == null)
                     {
-                        throw new InvalidOperationException("There is a host.json configuration for 'durableTask', but the durable task extension is not installed.");
+                        throw new InvalidOperationException(DurableNotInstalledErrorMsg);
                     }
 
                     var kvp = (JObject)durableTaskValue;
@@ -403,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         if (this.HasDurableV2SpecificConfig(kvp))
                         {
-                            throw new InvalidOperationException("The host.json is configured like v2.x of durable task extension, but v1.x is installed.");
+                            throw new InvalidOperationException(InvalidDurableV1ConfigErrorMsg);
                         }
                         return this.GetDurableV1Config(kvp);
                     }
@@ -411,7 +415,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         if (this.HasDurableV1SpecificConfig(kvp))
                         {
-                            throw new InvalidOperationException("The host.json is configured like v1.x of durable task extension, but v2.x is installed.");
+                            throw new InvalidOperationException(InvalidDurableV2ConfigErrorMsg);
                         }
                         return this.GetDurableV2Config(kvp);
                     }
@@ -442,7 +446,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception)
             {
-                throw new InvalidDataException("Invalid host.json configuration for 'durableTask' for durable task extension 1.x");
+                throw new InvalidDataException(InvalidDurableV1ConfigErrorMsg);
             }
 
             return config;
