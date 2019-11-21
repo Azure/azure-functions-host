@@ -4,7 +4,9 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
@@ -44,6 +46,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                         AuthorizationResult result = await authorizationService.AuthorizeAsync(c.User, PolicyNames.AdminAuthLevel);
 
                         return result.Succeeded;
+                    }
+
+                    return false;
+                });
+            });
+
+            options.AddPolicy(PolicyNames.SystemKeyAuthLevel, p =>
+            {
+                p.AddScriptAuthenticationSchemes();
+                p.RequireAssertion(c =>
+                {
+                    if (c.Resource is AuthorizationFilterContext filterContext)
+                    {
+                        if (filterContext.HttpContext.Request.IsAppServiceInternalRequest())
+                        {
+                            return true;
+                        }
+
+                        string keyName = null;
+                        object keyNameObject = filterContext.RouteData.Values["extensionName"];
+                        if (keyNameObject != null)
+                        {
+                            keyName = DefaultScriptWebHookProvider.GetKeyName(keyNameObject.ToString());
+                        }
+                        else
+                        {
+                            keyNameObject = filterContext.RouteData.Values["keyName"];
+                            if (keyNameObject != null)
+                            {
+                                keyName = keyNameObject.ToString();
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(keyName) && AuthUtility.PrincipalHasAuthLevelClaim(filterContext.HttpContext.User, AuthorizationLevel.System, keyName))
+                        {
+                            return true;
+                        }
                     }
 
                     return false;
