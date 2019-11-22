@@ -93,29 +93,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");
             }
-            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !File.Exists(DefaultWorkerPath))
-            {
-                throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
-            }
 
             ResolveDotNetDefaultExecutablePath(logger);
         }
 
-        public void ValidateWorkerPath(string workerPath, OSPlatform os, Architecture architecture, string version)
+        internal void ValidateDefaultWorkerPathFormatters(ISystemRuntimeInformation systemRuntimeInformation)
         {
-            if (workerPath.Contains(RpcWorkerConstants.OSPlaceholder))
+            if (DefaultWorkerPath.Contains(RpcWorkerConstants.OSPlaceholder))
             {
-                ValidateOSPlatform(os);
+                ValidateOSPlatform(systemRuntimeInformation.GetOSPlatform());
             }
 
-            if (workerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder))
+            if (DefaultWorkerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder))
             {
-                ValidateArchitecture(architecture);
+                ValidateArchitecture(systemRuntimeInformation.GetOSArchitecture());
             }
 
-            if (workerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(version))
+            if (DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(DefaultRuntimeVersion))
             {
-                ValidateRuntimeVersion(version);
+                ValidateRuntimeVersion();
+            }
+        }
+
+        internal void ThrowIfDefaultWorkerPathNotExists()
+        {
+            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !FileExists(DefaultWorkerPath))
+            {
+                throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
             }
         }
 
@@ -135,11 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private void ValidateRuntimeVersion(string version)
+        private void ValidateRuntimeVersion()
         {
-            if (!SupportedRuntimeVersions.Any(s => s.Equals(version, StringComparison.OrdinalIgnoreCase)))
+            if (!SupportedRuntimeVersions.Any(s => s.Equals(DefaultRuntimeVersion, StringComparison.OrdinalIgnoreCase)))
             {
-                throw new NotSupportedException($"Version {version} is not supported for language {Language}");
+                throw new NotSupportedException($"Version {DefaultRuntimeVersion} is not supported for language {Language}");
             }
         }
 
@@ -167,6 +171,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         $"File '{fullPath}' is not found, '{DefaultExecutablePath}' invocation will rely on the PATH environment variable.");
                 }
             }
+        }
+
+        internal void FormatWorkerPathIfNeeded(ISystemRuntimeInformation systemRuntimeInformation, IEnvironment environment, ILogger logger)
+        {
+            if (string.IsNullOrEmpty(DefaultWorkerPath))
+            {
+                return;
+            }
+
+            OSPlatform os = systemRuntimeInformation.GetOSPlatform();
+            Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
+            string version = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+            logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
+
+            if (!string.IsNullOrEmpty(version))
+            {
+                DefaultRuntimeVersion = version;
+            }
+
+            ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
+
+            DefaultWorkerPath = DefaultWorkerPath.Replace(RpcWorkerConstants.OSPlaceholder, os.ToString())
+                             .Replace(RpcWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
+                             .Replace(RpcWorkerConstants.RuntimeVersionPlaceholder, DefaultRuntimeVersion);
+        }
+
+        internal bool ShouldFormatWorkerPath(string workerPath)
+        {
+            if (string.IsNullOrEmpty(workerPath))
+            {
+                return false;
+            }
+            return workerPath.Contains(RpcWorkerConstants.OSPlaceholder) ||
+                    workerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder) ||
+                    workerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder);
         }
     }
 }
