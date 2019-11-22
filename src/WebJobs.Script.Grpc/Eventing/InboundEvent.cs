@@ -3,7 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
-namespace Microsoft.Azure.WebJobs.Script.Eventing.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc.Eventing
 {
     public class InboundEvent : RpcEvent
     {

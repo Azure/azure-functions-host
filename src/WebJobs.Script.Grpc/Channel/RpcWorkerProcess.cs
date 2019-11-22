@@ -41,13 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerProcessArguments = workerProcessArguments;
         }
 
-        internal override Process CreateWorkerProcess()
+        public override Process CreateWorkerProcess()
         {
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        public override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
         {
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
             if (langExc != null && langExc.ExitCode != -1)
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal override void HandleWorkerProcessRestart()
+        public override void HandleWorkerProcessRestart()
         {
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
             _eventManager.Publish(new WorkerRestartEvent(_runtime, _workerId));

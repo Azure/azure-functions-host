@@ -98,6 +98,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Grpc\WebJobs.Script.Grpc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>

@@ -7,11 +7,11 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public class RpcInitializationService : IManagedHostedService
     {

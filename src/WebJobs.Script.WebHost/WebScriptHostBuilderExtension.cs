@@ -120,6 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
 
+            // builder.AddGrpc();
+
             var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
             if (debugStateProvider.InDebugMode)
             {

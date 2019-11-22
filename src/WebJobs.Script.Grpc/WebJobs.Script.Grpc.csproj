@@ -34,7 +34,11 @@
     </PackageReference>
     <PackageReference Include="System.ComponentModel.Annotations" Version="4.5.0" />
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">
       <HintPath>C:\Program Files\dotnet\sdk\NuGetFallbackFolder\newtonsoft.json\11.0.2\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>

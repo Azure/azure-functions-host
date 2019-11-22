@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _workerProcessArguments = _httpWorkerOptions.Arguments;
         }
 
-        internal override Process CreateWorkerProcess()
+        public override Process CreateWorkerProcess()
         {
             var workerContext = new HttpWorkerContext()
             {
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        public override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
         {
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
             if (langExc != null && langExc.ExitCode != -1)
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
-        internal override void HandleWorkerProcessRestart()
+        public override void HandleWorkerProcessRestart()
         {
             _workerProcessLogger?.LogInformation("Language Worker Process exited and needs to be restarted.");
             _eventManager.Publish(new HttpWorkerRestartEvent(_workerId));

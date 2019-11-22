@@ -13,16 +13,18 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class RpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {

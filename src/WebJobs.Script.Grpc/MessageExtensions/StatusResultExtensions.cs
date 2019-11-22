@@ -5,7 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class StatusResultExtensions
     {

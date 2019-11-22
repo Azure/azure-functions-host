@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal abstract class WorkerProcess : IWorkerProcess, IDisposable
+    public abstract class WorkerProcess : IWorkerProcess, IDisposable
     {
         private readonly IProcessRegistry _processRegistry;
         private readonly ILogger _workerProcessLogger;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
+        public WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        internal abstract Process CreateWorkerProcess();
+        public abstract Process CreateWorkerProcess();
 
         public Task StartProcessAsync()
         {
@@ -162,9 +162,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        internal abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
+        public abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
 
-        internal abstract void HandleWorkerProcessRestart();
+        public abstract void HandleWorkerProcessRestart();
 
         public void Dispose()
         {

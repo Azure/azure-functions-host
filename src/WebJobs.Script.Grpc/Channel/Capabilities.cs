@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Google.Protobuf.Collections;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class Capabilities
     {

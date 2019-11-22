@@ -9,16 +9,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     // Implementation for the grpc service
-    // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
         private readonly IScriptEventManager _eventManager;

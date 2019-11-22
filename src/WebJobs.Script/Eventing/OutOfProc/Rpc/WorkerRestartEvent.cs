@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class WorkerRestartEvent : RpcChannelEvent
     {
-        internal WorkerRestartEvent(string language, string workerId)
+        public WorkerRestartEvent(string language, string workerId)
             : base(workerId)
         {
             Language = language;
