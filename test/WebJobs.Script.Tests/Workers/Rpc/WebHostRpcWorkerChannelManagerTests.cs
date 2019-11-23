@@ -319,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private IRpcWorkerChannel CreateTestChannel(string language)
         {
-            var testChannel = _rpcWorkerChannelFactory.Create(_scriptRootPath, language, null, 0, null);
+            var testChannel = _rpcWorkerChannelFactory.Create(_scriptRootPath, language, null, 0);
             _rpcWorkerChannelManager.AddOrUpdateWorkerChannels(language, testChannel);
             _rpcWorkerChannelManager.SetInitializedWorkerChannel(language, testChannel);
             return testChannel;

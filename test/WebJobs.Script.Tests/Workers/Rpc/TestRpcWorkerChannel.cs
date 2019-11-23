@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
@@ -51,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
         }
 
-        public void SendFunctionLoadRequests()
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencies)
         {
             _testLogger.LogInformation("RegisterFunctions called");
         }

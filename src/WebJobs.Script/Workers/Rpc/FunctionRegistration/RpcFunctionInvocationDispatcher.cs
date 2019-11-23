@@ -109,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
+            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
             rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                      if (workerInitTask.IsCompleted)
                      {
                          _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                         rpcWorkerChannel.SendFunctionLoadRequests();
+                         rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
                          State = FunctionInvocationDispatcherState.Initialized;
                      }
                      else
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             workerChannel.SetupFunctionInvocationBuffers(_functions);
-            workerChannel.SendFunctionLoadRequests();
+            workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
         }
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
                                 initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                initializedLanguageWorkerChannel.SendFunctionLoadRequests();
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
                             }
                             catch (Exception ex)
                             {
