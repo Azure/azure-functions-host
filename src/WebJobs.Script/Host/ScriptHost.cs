@@ -1793,6 +1793,16 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
                 }
+
+                if (configSection.TryGetValue("endpointAddress", out value))
+                {
+                    scriptConfig.ApplicationInsightsEndpointAddress = (string)value;
+                }
+
+                if (configSection.TryGetValue("quickPulseServiceEndpoint", out value))
+                {
+                    scriptConfig.ApplicationInsightsQuickPulseServiceEndpoint = (string)value;
+                }
             }
         }
 

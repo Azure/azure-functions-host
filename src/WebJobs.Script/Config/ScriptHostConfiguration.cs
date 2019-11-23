@@ -120,6 +120,16 @@ namespace Microsoft.Azure.WebJobs.Script
         public SamplingPercentageEstimatorSettings ApplicationInsightsSamplingSettings { get; set; }
 
         /// <summary>
+        /// Gets or sets the EnpointAddress to be used for Application Insights <see cref="ServerTelemetryChannel"/>
+        /// </summary>
+        public string ApplicationInsightsEndpointAddress { get; set; }
+
+        /// <summary>
+        /// Gets or sets the QuickPulseServiceEndpoint to be used for Application Insights <see cref="QuickPulseTelemetryModule"/>
+        /// </summary>
+        public string ApplicationInsightsQuickPulseServiceEndpoint { get; set; }
+
+        /// <summary>
         /// Gets or sets the <see cref="ILoggerFactoryBuilder"/> used to register <see cref="ILoggerProvider"/>s with
         /// the host's <see cref="ILoggerFactory"/>.
         /// </summary>

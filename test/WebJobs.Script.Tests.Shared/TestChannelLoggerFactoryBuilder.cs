@@ -60,12 +60,12 @@ namespace Microsoft.WebJobs.Script.Tests
         private TestTelemetryChannel _channel;
 
         public TestTelemetryClientFactory(Func<string, LogLevel, bool> filter, TestTelemetryChannel channel)
-            : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), filter)
+            : base(TestChannelLoggerFactoryBuilder.ApplicationInsightsKey, new SamplingPercentageEstimatorSettings(), null, null, filter)
         {
             _channel = channel;
         }
 
-        protected override ITelemetryChannel CreateTelemetryChannel()
+        protected override ITelemetryChannel CreateTelemetryChannel(string endpointAddress)
         {
             return _channel;
         }
