@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functions.First().Name == funcName);
 
             _workerChannel.SetupFunctionInvocationBuffers(functions);
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
             var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Name = "js1",
                 FunctionId = "TestFunctionId1"
             };
-            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata);
+            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata, null);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
             FunctionMetadata proxyMetadata = new FunctionMetadata()
             {
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 FunctionId = "TestFunctionId1",
                 IsProxy = true
             };
-            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
+            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata, null);
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 

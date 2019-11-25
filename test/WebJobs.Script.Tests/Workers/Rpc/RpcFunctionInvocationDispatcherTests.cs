@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
@@ -391,7 +392,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions),
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
-                null,
+                new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
                 mockFunctionDispatcherLoadBalancer.Object);
         }
 
