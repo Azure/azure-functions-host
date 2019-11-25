@@ -21,7 +21,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IDisposable
+    public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IServiceProvider, IDisposable
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
@@ -640,6 +640,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _telemetryConfiguration = telemetryConfig;
             _requestTrackingModule = module;
+        }
+
+        public object GetService(Type serviceType)
+        {
+            return Services?.GetService(serviceType);
         }
 
         protected virtual void Dispose(bool disposing)
