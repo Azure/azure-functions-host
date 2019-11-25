@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/warmup")]
         [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
+        public async Task<IActionResult> Warmup([FromServices] IScriptHostManager scriptHostManager)
         {
             // Endpoint only for Windows Elastic Premium or Linux App Service plans
             if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
@@ -284,15 +284,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return Ok();
             }
 
-            var jobHost = hostService.Services?.GetService<IScriptJobHost>();
-            if (jobHost == null)
+            if (scriptHostManager is IServiceProvider serviceProvider)
             {
-                _logger.LogError($"No active host available.");
-                return StatusCode(503);
+                IScriptJobHost jobHost = serviceProvider.GetService<IScriptJobHost>();
+
+                if (jobHost == null)
+                {
+                    _logger.LogError($"No active host available.");
+                    return StatusCode(503);
+                }
+
+                await jobHost.TryInvokeWarmupAsync();
+                return Ok();
             }
 
-            await jobHost.TryInvokeWarmupAsync();
-            return Ok();
+            return BadRequest("This API is not supported by the current hosting environment.");
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]
