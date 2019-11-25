@@ -279,15 +279,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _functionLoadRequestResponseEvent?.Dispose();
             _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
-            if (loadResponse.Result.IsFailure(out Exception ex))
+            if (loadResponse.Result.IsFailure(out Exception functionLoadEx))
             {
+                if (functionLoadEx == null)
+                {
+                    _workerChannelLogger?.LogError("Worker failed to function id {functionId}. Function load exception is not set by the worker", loadResponse.FunctionId);
+                }
+                else
+                {
+                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to function id {functionId}.", loadResponse.FunctionId);
+                }
                 //Cache function load errors to replay error messages on invoking failed functions
-                _functionLoadErrors[loadResponse.FunctionId] = ex;
+                _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
             }
 
             if (loadResponse.IsDependencyDownloaded)
             {
-                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
+                _workerChannelLogger?.LogDebug($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
             // link the invocation inputs to the invoke call
