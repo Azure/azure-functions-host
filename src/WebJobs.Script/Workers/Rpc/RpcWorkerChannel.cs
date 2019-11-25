@@ -47,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
-        private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
@@ -64,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -101,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
-            _managedDependencyOptions = managedDependencyOptions;
 
             _state = RpcWorkerChannelState.Default;
         }
@@ -185,13 +182,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public void SendFunctionLoadRequests()
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
         {
             if (_functions != null)
             {
                 foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled))
                 {
-                    SendFunctionLoadRequest(metadata);
+                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
                 }
             }
         }
@@ -236,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return request;
         }
 
-        internal void SendFunctionLoadRequest(FunctionMetadata metadata)
+        internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
             _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
@@ -244,11 +241,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // send a load request for the registered function
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionLoadRequest = GetFunctionLoadRequest(metadata)
+                FunctionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions)
             });
         }
 
-        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata)
+        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -263,10 +260,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             };
 
-            if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
+            if (managedDependencyOptions != null && managedDependencyOptions.Enabled)
             {
                 _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Description.Language} language worker");
-                request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
+                request.ManagedDependencyEnabled = managedDependencyOptions.Enabled;
             }
 
             foreach (var binding in metadata.Bindings)
