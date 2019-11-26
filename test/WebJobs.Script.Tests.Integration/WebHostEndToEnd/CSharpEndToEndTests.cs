@@ -12,9 +12,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -306,8 +306,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "Value", "TestInput" },
                 { "Metadata", metadata }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);

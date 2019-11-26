@@ -14,9 +14,10 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,7 +27,6 @@ using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -319,8 +319,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "value", "TestInput" },
                 { "metadata", metadata }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -361,8 +362,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "value", JToken.FromObject(body) },
                 { "contenttype", expectedContentType }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
 
@@ -393,8 +395,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "scenario", "echo" },
                 { "value", value }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -487,6 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
             string json = "} not json";
             request.Content = new StringContent(json, Encoding.UTF8, "AppLication/json");
+            request.Content.Headers.ContentLength = json.Length;
 
             var response = await Fixture.Host.HttpClient.SendAsync(request);
 
