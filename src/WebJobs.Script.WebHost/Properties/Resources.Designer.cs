@@ -282,5 +282,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceStaleHostSecretRefresh", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API..
+        /// </summary>
+        internal static string UnauthorizedArmExtensionResourceRequest {
+            get {
+                return ResourceManager.GetString("UnauthorizedArmExtensionResourceRequest", resourceCulture);
+            }
+        }
     }
 }

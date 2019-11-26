@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -65,8 +66,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc()
-                .AddXmlDataContractSerializerFormatters();
+            services.AddMvc(options =>
+            {
+                options.Filters.Add(new ArmExtensionResourceFilter());
+            })
+            .AddXmlDataContractSerializerFormatters();
 
             // Standby services
             services.AddStandbyServices();
