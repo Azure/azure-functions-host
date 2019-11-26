@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,10 +14,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -78,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                     // Allows us to configure services as the last step, thereby overriding anything
                     services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-                  })
+                })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
                     scriptHostWebJobsBuilder.AddAzureStorage();
@@ -101,13 +100,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .UseStartup<TestStartup>();
 
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-            _testServer = new TestServer(builder) { AllowSynchronousIO = true };
+            _testServer = new TestServer(builder) { BaseAddress = new Uri("https://localhost/") };
 
-            HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()))
-            {
-                BaseAddress = new Uri("https://localhost/")
-            };
+            HttpClient = _testServer.CreateClient();
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
@@ -253,25 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HostStatus status = await GetHostStatusAsync();
             return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
-        }
-
-        private class UpdateContentLengthHandler : DelegatingHandler
-        {
-            public UpdateContentLengthHandler(HttpMessageHandler innerHandler)
-                : base(innerHandler)
-            {
-            }
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                // Force reading the content-length to ensure the header is populated.
-                if (request.Content != null)
-                {
-                    Trace.Write(request.Content.Headers.ContentLength);
-                }
-
-                return base.SendAsync(request, cancellationToken);
-            }
         }
 
         private class TestStartup

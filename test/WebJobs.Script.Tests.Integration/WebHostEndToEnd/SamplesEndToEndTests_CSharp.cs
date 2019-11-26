@@ -15,10 +15,10 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 CloudBlobContainer outputContainer = _fixture.BlobClient.GetContainerReference("samples-output");
                 string inId = Guid.NewGuid().ToString();
@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-POCO");
 
@@ -468,12 +468,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 string id = Guid.NewGuid().ToString();
                 JObject requestBody = new JObject
-            {
-                { "Id", id },
-                { "Value", "Testing" }
-            };
+                {
+                    { "Id", id },
+                    { "Value", "Testing" }
+                };
 
-                request.Content = new StringContent(requestBody.ToString(), Encoding.UTF8, "application/json");
+                string content = requestBody.ToString();
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                request.Content.Headers.ContentLength = content.Length;
 
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -494,7 +496,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Compat");
                 string id = Guid.NewGuid().ToString();
@@ -516,7 +518,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Poco");
                 string id = Guid.NewGuid().ToString();
@@ -557,7 +559,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName);
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
@@ -580,7 +582,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionName = "HttpTrigger-CustomRoute";
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync(functionName);
@@ -645,14 +647,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTriggerWithObject");
 
                 string uri = $"api/httptriggerwithobject?code={functionKey}";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                request.Content = new StringContent("{ 'SenderName': 'Fabio' }");
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                string content = "{ 'SenderName': 'Fabio' }";
+                request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                request.Content.Headers.ContentLength = content.Length;
 
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -671,7 +674,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
                 string uri = $"api/httptrigger-identities?code={functionKey}";
@@ -696,14 +699,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "TRUE"}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string uri = $"api/httptrigger-identities";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
 
                 MockEasyAuth(request, "facebook", "Connor McMahon", "10241897674253170");
 
-                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
                 string responseContent = await response.Content.ReadAsStringAsync();
                 string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
@@ -719,7 +722,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
                 { "WEBSITE_AUTH_ENABLED", "FALSE"}
             };
-            using (var env = new TestScopedEnvironmentVariable(vars))
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
                 string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
                 string uri = $"api/httptrigger-identities?code={functionKey}";
@@ -825,6 +828,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public Mock<IScriptWebHookProvider> MockWebHookProvider { get; }
+
+            public override void ConfigureWebHost(IServiceCollection services)
+            {
+                base.ConfigureWebHost(services);
+
+                // The legacy http tests use sync IO so explicitly allow this
+                var environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
+
+                services.AddSingleton<IEnvironment>(_ => environment);
+            }
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {

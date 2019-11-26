@@ -20,11 +20,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
-{    
+{
     public class ProxyEndToEndTests : IClassFixture<ProxyEndToEndTests.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;
@@ -384,7 +383,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    });
 
                 // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-                _testServer = new TestServer(builder) { AllowSynchronousIO = true };
+                _testServer = new TestServer(builder);
                 HostOptions.RootServiceProvider = _testServer.Host.Services;
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;
 

@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-            _httpServer = new TestServer(webHostBuilder) { AllowSynchronousIO = true };
+            _httpServer = new TestServer(webHostBuilder);
             _httpClient = _httpServer.CreateClient();
             _httpClient.BaseAddress = new Uri("https://localhost/");
 
