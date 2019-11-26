@@ -1,12 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json;
-using System;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace TestFunctions
 {
@@ -24,7 +23,10 @@ namespace TestFunctions
             }
 
             string name = req.Query["name"];
+
+            // Explicitly read the body synchronously; this is used in the AllowSynchronousIOMiddleware tests
             string requestBody = new StreamReader(req.Body).ReadToEnd();
+
             dynamic data = JsonConvert.DeserializeObject(requestBody);
             name = name ?? data?.name;
 
