@@ -284,6 +284,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_Model_Binding()
+        {
+            (JObject req, JObject res) = await MakeModelRequest(Fixture.Host.HttpClient);
+            Assert.True(JObject.DeepEquals(req, res), res.ToString());
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Model_Binding_V2CompatMode()
+        {
+            // We need a custom host to set this to v2 compat mode.
+            using (var host = new TestFunctionHost(@"TestScripts\CSharp", Path.Combine(Path.GetTempPath(), "Functions"),
+                configureWebHostServices: webHostServices =>
+                {
+                    var environment = new TestEnvironment();
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
+                    webHostServices.AddSingleton<IEnvironment>(_ => environment);
+                },
+                configureScriptHostWebJobsBuilder: webJobsBuilder =>
+                {
+                    webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        // Only load the functions we care about
+                        o.Functions = new[]
+                        {
+                            "HttpTrigger-Model-v2",
+                        };
+                    });
+                }))
+            {
+
+                (JObject req, JObject res) = await MakeModelRequest(host.HttpClient, "-v2");
+
+                // in v2, we expect the response to have a null customEnumerable property.
+                req["customEnumerable"] = null;
+
+                Assert.True(JObject.DeepEquals(req, res), res.ToString());
+            }
+        }
+
+        private static async Task<(JObject requestContent, JObject responseContent)> MakeModelRequest(HttpClient httpClient, string suffix = null)
+        {
+            var payload = new
+            {
+                custom = new { customProperty = "value" },
+                customEnumerable = new[] { new { customProperty = "value1" }, new { customProperty = "value2" } }
+            };
+
+            var jObject = JObject.FromObject(payload);
+            var json = jObject.ToString();
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/httptrigger-model{suffix}"),
+                Method = HttpMethod.Post,
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            request.Content.Headers.ContentLength = json.Length;
+
+            HttpResponseMessage response = await httpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            return (jObject, JObject.Parse(await response.Content.ReadAsStringAsync()));
+        }
+
+        [Fact]
         public async Task HttpTriggerToBlob()
         {
             var request = new HttpRequestMessage
@@ -449,6 +515,7 @@ namespace SecondaryDependency
                         "AssembliesFromSharedLocation",
                         "HttpTrigger-Dynamic",
                         "HttpTrigger-Scenarios",
+                        "HttpTrigger-Model",
                         "HttpTrigger-Redirect",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
