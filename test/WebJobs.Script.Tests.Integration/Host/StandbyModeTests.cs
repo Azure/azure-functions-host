@@ -46,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(true, WebScriptHostManager.InStandbyMode);
 
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
+
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
+
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
                 // test only set one way
