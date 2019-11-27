@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Determine whether we should do normal or standby initialization
                 if (!WebScriptHostManager.InStandbyMode)
                 {
-                    EncureInitializedNonStandbyMode(settings);
+                    EnsureInitializedNonStandbyMode(settings);
                 }
                 else
                 {
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        private void EncureInitializedNonStandbyMode(WebHostSettings settings)
+        private void EnsureInitializedNonStandbyMode(WebHostSettings settings)
         {
             try
             {

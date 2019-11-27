@@ -148,7 +148,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     return true;
                 }
-
+                if (ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode) != null)
+                {
+                    // These environment variables are set by DWAS at during specialization.
+                    // Note: All three varaibles might not get set at the same time.
+                    // Each of these gets set during different phases of specialization
+                    if (!(ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "0"
+                        && ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady) == "1"
+                        && ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady) == "1"))
+                    {
+                        return true;
+                    }
+                }
                 // no longer standby mode
                 _standbyMode = false;
 
