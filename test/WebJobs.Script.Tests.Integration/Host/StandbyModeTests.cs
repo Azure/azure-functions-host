@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void InStandbyMode_ReturnsExpectedValue()
+        public void InStandbyMode_ReturnsExpectedValue_AzureWebsitePlaceholderMode_Set()
         {
             using (new TestEnvironment())
             {
@@ -44,13 +44,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 Assert.Equal(true, WebScriptHostManager.InStandbyMode);
+            }
+        }
 
+        [Fact]
+        public void InStandbyMode_ReturnsExpectedValue_AzureWebsiteContainerReady_Set()
+        {
+            using (new TestEnvironment())
+            {
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
-                Assert.Equal(true, WebScriptHostManager.InStandbyMode);
-
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 Assert.Equal(true, WebScriptHostManager.InStandbyMode);
+            }
+        }
 
+        [Fact]
+        public void InStandbyMode_ReturnsExpectedValue()
+        {
+            using (new TestEnvironment())
+            {
+                // initially false
+                Assert.Equal(false, WebScriptHostManager.InStandbyMode);
+            }
+
+            using (new TestEnvironment())
+            {
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
                 Assert.Equal(false, WebScriptHostManager.InStandbyMode);
 
@@ -99,6 +119,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var settings = GetWebHostSettings();
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, "1");
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+
                 Assert.False(WebScriptHostManager.InStandbyMode);
                 _webHostResolver.EnsureInitialized(settings);
 
@@ -200,6 +223,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private string _home;
             private string _prevHome;
             private string _prevPlaceholderMode;
+            private string _prevConfigurationReady;
+            private string _prevContainerReady;
             private string _prevInstanceId;
 
             public TestEnvironment()
@@ -207,6 +232,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager = ScriptSettingsManager.Instance;
                 _prevHome = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteHomePath);
                 _prevPlaceholderMode = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode);
+                _prevConfigurationReady = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady);
+                _prevContainerReady = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady);
                 _prevInstanceId = _settingsManager.GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId);
 
                 _home = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -223,6 +250,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteHomePath, _prevHome);
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId, _prevInstanceId);
                 _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsitePlaceholderMode, _prevPlaceholderMode);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteConfigurationReady, _prevConfigurationReady);
+                _settingsManager.SetSetting(EnvironmentSettingNames.AzureWebsiteContainerReady, _prevContainerReady);
+
                 try
                 {
                     Directory.Delete(_home, recursive: true);
