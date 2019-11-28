@@ -64,11 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return rid;
         }
 
-        private static string GetRuntimeAssembliesJson()
-        {
-            return GetResourceFileContents("runtimeassemblies.json");
-        }
-
         private static string GetRuntimesGraphJson()
         {
             return GetResourceFileContents("runtimes.json");
@@ -84,9 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies()
+        internal static Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies(string assemblyManifestName)
         {
-            string assembliesJson = GetRuntimeAssembliesJson();
+            string assembliesJson = GetResourceFileContents(assemblyManifestName);
             JObject assemblies = JObject.Parse(assembliesJson);
 
             return assemblies["runtimeAssemblies"]
