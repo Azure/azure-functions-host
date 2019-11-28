@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding
     {
-        private static bool isActionResultHandlingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling);
+        private static Lazy<bool> isActionResultHandlingEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling));
 
         public HttpBinding(ScriptJobHostOptions config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
@@ -198,7 +198,49 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        private static IActionResult CreateObjectResult(object result)
+        {
+            var objectResult = new ObjectResult(result);
+
+            if (result is HttpResponseMessage)
+            {
+                // To maintain backwards compatibility, if the type returned is an
+                // instance of an HttpResponseMessage, add the appropriate formatter to
+                // handle the response
+                objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
+            }
+
+            return objectResult;
+        }
+
         internal static void SetResponse(HttpRequest request, object result)
+        {
+            // Use the existing response if already set (IBinder model).
+            // This is always set by OOP languages.
+            if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing) && existing is IActionResult)
+            {
+                return;
+            }
+
+            if (!(result is IActionResult actionResult))
+            {
+                if (result is IConvertToActionResult actionResultConvertible)
+                {
+                    actionResult = actionResultConvertible.Convert();
+                }
+                else
+                {
+                    actionResult = CreateObjectResult(result);
+                }
+            }
+
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
+        }
+
+        /// <summary>
+        /// This method is used when running in compatibility mode, maintained to preserve the behavior in 2.x
+        /// </summary>
+        internal static void LegacySetResponse(HttpRequest request, object result)
         {
             // use the existing response if already set (IBinder model)
             if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing) && existing is IActionResult)
@@ -206,8 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return;
             }
 
-            IActionResult actionResult = result as IActionResult;
-            if (actionResult == null)
+            if (!(result is IActionResult actionResult))
             {
                 if (result is Stream)
                 {
@@ -220,24 +261,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     actionResult = CreateResult(request, result);
                 }
-                else if (isActionResultHandlingEnabled && result is IConvertToActionResult convertable)
+                else if (isActionResultHandlingEnabled.Value && result is IConvertToActionResult actionResultConvertible)
                 {
                     // Convert ActionResult<T> to ActionResult
-                    actionResult = convertable.Convert();
+                    actionResult = actionResultConvertible.Convert();
                 }
                 else
                 {
-                    var objectResult = new ObjectResult(result);
-
-                    if (result is System.Net.Http.HttpResponseMessage)
-                    {
-                        // To maintain backwards compatibility, if the type returned is an
-                        // instance of an HttpResponseMessage, add the appropriate formatter to
-                        // handle the response
-                        objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
-                    }
-
-                    actionResult = objectResult;
+                    actionResult = CreateObjectResult(result);
                 }
             }
 
