@@ -22,9 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public partial class FunctionAssemblyLoadContext : AssemblyLoadContext
     {
-        private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(DependencyHelper.GetRuntimeAssemblies);
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
         private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
+        private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
 
         private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
 
@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static void ResetSharedContext()
         {
             _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
+            _runtimeAssembliesInfo.ResetIfStale();
         }
 
         internal static (IDictionary<string, string> depsAssemblies, IDictionary<string, string> nativeLibraries) InitializeDeps(string basePath)
@@ -153,10 +154,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private bool IsRuntimeAssembly(AssemblyName assemblyName)
-            => _runtimeAssemblies.Value.ContainsKey(assemblyName.Name);
+            => _runtimeAssembliesInfo.Assemblies.ContainsKey(assemblyName.Name);
 
         private bool TryGetRuntimeAssembly(AssemblyName assemblyName, out ScriptRuntimeAssembly assembly)
-            => _runtimeAssemblies.Value.TryGetValue(assemblyName.Name, out assembly);
+            => _runtimeAssembliesInfo.Assemblies.TryGetValue(assemblyName.Name, out assembly);
 
         private ResolutionPolicyEvaluator GetResolutionPolicyEvaluator(string policyName)
         {
