@@ -839,10 +839,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "System.Data.SqlClient",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "System.Diagnostics.Contracts",
       "resolutionPolicy": "minorMatchOrLower"
     },
