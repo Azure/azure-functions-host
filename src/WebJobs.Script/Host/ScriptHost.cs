@@ -270,7 +270,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, _workerRuntime));
+                    string runtimeStack = _workerRuntime;
+
+                    // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
+                    // Windows Consumption as well.
+                    if (_environment.IsLinuxConsumption())
+                    {
+                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+                        runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                    }
+
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
                 }
 
                 var directTypes = GetDirectTypes(functionMetadataList);
