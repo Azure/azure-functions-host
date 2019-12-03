@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
         {
-            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "1");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             StartStream startStream = new StartStream()
             {
                 WorkerId = _workerId
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker and host running in V2 compatability mode")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker and host running in V2 compatibility mode")));
         }
 
         [Theory]

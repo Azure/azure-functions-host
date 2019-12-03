@@ -141,11 +141,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 HostVersion = ScriptHost.Version,
             };
 
-            // Run as Functions Host V2 compatable
+            // Run as Functions Host V2 compatible
             if (_environment.IsV2CompatibilityMode())
             {
-                _workerChannelLogger.LogDebug("Worker and host running in V2 compatability mode");
-                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
+                _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
+                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "1");
             }
 
             SendStreamingMessage(new StreamingMessage
