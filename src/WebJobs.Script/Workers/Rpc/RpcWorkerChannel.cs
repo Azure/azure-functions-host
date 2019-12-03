@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (_environment.IsV2CompatibilityMode())
             {
                 _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
-                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "1");
+                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
             }
 
             SendStreamingMessage(new StreamingMessage

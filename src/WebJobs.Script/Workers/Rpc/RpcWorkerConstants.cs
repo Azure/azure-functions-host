@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
 
-        // Host Capailities
+        // Host Capabilites
         public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components
