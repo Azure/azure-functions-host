@@ -38,11 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RpcHttpStatusCode = "statusCode";
         public const string RpcHttpStatus = "status";
 
-        // Capabilites
+        // Worker Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
+
+        // Host Capabilites
+        public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components
         public const string DotNetExecutableName = "dotnet";
