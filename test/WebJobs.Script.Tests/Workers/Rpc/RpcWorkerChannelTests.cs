@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
-               _testEnvironment
+               _testEnvironment,
                _hostOptionsMonitor);
         }
 
@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
-               _testEnvironment
+               _testEnvironment,
                _hostOptionsMonitor);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
-               _testEnvironment
+               _testEnvironment,
                _hostOptionsMonitor);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
