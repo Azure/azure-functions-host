@@ -808,7 +808,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify all 3 output blobs were written
             var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
-            await TestHelpers.WaitForBlobAsync(blob);
+            await TestHelpers.WaitForBlobAsync(blob, Fixture.Host.GetLog);
             string blobContent = await blob.DownloadTextAsync();
             // TODO: why required?
             Assert.Equal("Test Blob 1", blobContent.TrimEnd('\0').Trim('"'));

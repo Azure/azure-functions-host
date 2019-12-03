@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Extensions.Primitives;
-using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
@@ -79,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             context.HttpContext.Response.Headers.TryGetValue("Set-Cookie", out StringValues cookies);
 
             Assert.Equal(2, cookies.Count);
-            Assert.Equal("firstCookie=cookieValue; path=/", cookies[0]);
+            Assert.Equal("firstCookie=cookieValue; path=/; samesite=none", cookies[0]);
             // TODO: https://github.com/Azure/azure-functions-host/issues/4890
             Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; httponly", cookies[1]);
         }
