@@ -109,10 +109,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
+            StringBuilder sb = new StringBuilder();
+
             await TestHelpers.Await(async () =>
             {
-                return await blob.ExistsAsync();
-            }, userMessageCallback: userMessageCallback);
+                bool exists = await blob.ExistsAsync();
+                sb.AppendLine($"{blob.Name} exists: {exists}.");
+                return exists;
+            },
+            pollingInterval: 500,
+            userMessageCallback: () => sb.ToString() + Environment.NewLine + userMessageCallback());
         }
 
         public static void ClearFunctionLogs(string functionName)
