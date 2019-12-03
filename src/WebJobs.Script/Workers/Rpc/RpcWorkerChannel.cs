@@ -27,10 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class RpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
-        private readonly string _rootScriptPath;
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -47,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
-        private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
@@ -58,23 +57,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal RpcWorkerChannel(
            string workerId,
-           string rootScriptPath,
            IScriptEventManager eventManager,
            RpcWorkerConfig workerConfig,
            IWorkerProcess rpcWorkerProcess,
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _workerId = workerId;
-            _rootScriptPath = rootScriptPath;
             _eventManager = eventManager;
             _workerConfig = workerConfig;
             _runtime = workerConfig.Description.Language;
             _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
+            _applicationHostOptions = applicationHostOptions;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
 
@@ -101,7 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
-            _managedDependencyOptions = managedDependencyOptions;
 
             _state = RpcWorkerChannelState.Default;
         }
@@ -185,13 +182,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public void SendFunctionLoadRequests()
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
         {
             if (_functions != null)
             {
                 foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled))
                 {
-                    SendFunctionLoadRequest(metadata);
+                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
                 }
             }
         }
@@ -230,10 +227,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
+
+            request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
+
             return request;
         }
 
-        internal void SendFunctionLoadRequest(FunctionMetadata metadata)
+        internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
             _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
@@ -241,11 +241,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // send a load request for the registered function
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionLoadRequest = GetFunctionLoadRequest(metadata)
+                FunctionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions)
             });
         }
 
-        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata)
+        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
@@ -260,10 +260,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             };
 
-            if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
+            if (managedDependencyOptions != null && managedDependencyOptions.Enabled)
             {
                 _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Description.Language} language worker");
-                request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
+                request.ManagedDependencyEnabled = managedDependencyOptions.Enabled;
             }
 
             foreach (var binding in metadata.Bindings)
@@ -279,15 +279,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _functionLoadRequestResponseEvent?.Dispose();
             _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
-            if (loadResponse.Result.IsFailure(out Exception ex))
+            if (loadResponse.Result.IsFailure(out Exception functionLoadEx))
             {
+                if (functionLoadEx == null)
+                {
+                    _workerChannelLogger?.LogError("Worker failed to function id {functionId}. Function load exception is not set by the worker", loadResponse.FunctionId);
+                }
+                else
+                {
+                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to function id {functionId}.", loadResponse.FunctionId);
+                }
                 //Cache function load errors to replay error messages on invoking failed functions
-                _functionLoadErrors[loadResponse.FunctionId] = ex;
+                _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
             }
 
             if (loadResponse.IsDependencyDownloaded)
             {
-                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
+                _workerChannelLogger?.LogDebug($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
             // link the invocation inputs to the invoke call

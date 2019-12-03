@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             uri = "runtime/webhooks/test?code=SystemValue2";
             request = new HttpRequestMessage(HttpMethod.Post, uri);
             response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
 
             // verify admin requests are allowed through
             uri = "runtime/webhooks/test?code=1234";
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             uri = "runtime/webhooks/invalid?code=SystemValue2";
             request = new HttpRequestMessage(HttpMethod.Post, uri);
             response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         }
 
         [Theory]

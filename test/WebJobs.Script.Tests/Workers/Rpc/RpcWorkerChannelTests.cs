@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly TestLogger _logger;
         private readonly IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
         private readonly RpcWorkerConfig _testWorkerConfig;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
         private RpcWorkerChannel _workerChannel;
 
         public RpcWorkerChannelTests()
@@ -47,15 +49,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
 
+            var hostOptions = new ScriptApplicationHostOptions
+            {
+                IsSelfHost = true,
+                ScriptPath = _scriptRootPath,
+                LogPath = Environment.CurrentDirectory, // not tested
+                SecretsPath = Environment.CurrentDirectory, // not tested
+                HasParentScope = true
+            };
+            _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
+
             _workerChannel = new RpcWorkerChannel(
                _workerId,
-               _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
-               0);
+               0,
+               _hostOptionsMonitor);
         }
 
         [Fact]
@@ -98,13 +110,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new RpcWorkerChannel(
                _workerId,
-               _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
                mockrpcWorkerProcessThatThrows.Object,
                _logger,
                _metricsLogger,
-               0);
+               0,
+               _hostOptionsMonitor);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
@@ -154,13 +166,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid invocationId = Guid.NewGuid();
             RpcWorkerChannel channel = new RpcWorkerChannel(
                _workerId,
-               _scriptRootPath,
                _eventManager,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
                _metricsLogger,
-               0);
+               0,
+               _hostOptionsMonitor);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             channel.SendInvocationRequest(scriptInvocationContext);
@@ -183,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
@@ -200,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functions.First().Name == funcName);
 
             _workerChannel.SetupFunctionInvocationBuffers(functions);
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
             var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
@@ -232,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void SendSendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
+        public void SendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
         {
             var environmentVariables = new Dictionary<string, string>()
             {
@@ -246,6 +258,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
             Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+        }
+
+        [Fact]
+        public void SendFunctionEnvironmentReloadRequest_WithDirectory()
+        {
+            var environmentVariables = new Dictionary<string, string>()
+            {
+                { "TestValid", "TestValue" }
+            };
+
+            FunctionEnvironmentReloadRequest envReloadRequest = _workerChannel.GetFunctionEnvironmentReloadRequest(environmentVariables);
+            Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.FunctionAppDirectory == _scriptRootPath);
         }
 
         [Fact]
@@ -276,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Name = "js1",
                 FunctionId = "TestFunctionId1"
             };
-            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata);
+            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata, null);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
             FunctionMetadata proxyMetadata = new FunctionMetadata()
             {
@@ -285,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 FunctionId = "TestFunctionId1",
                 IsProxy = true
             };
-            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
+            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata, null);
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 

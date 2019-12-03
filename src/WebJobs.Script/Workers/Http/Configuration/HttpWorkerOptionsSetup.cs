@@ -51,10 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal static int GetUnusedTcpPort()
         {
-            Socket tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            tcpSocket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-            int port = ((IPEndPoint)tcpSocket.LocalEndPoint).Port;
-            return port;
+            using (Socket tcpSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp))
+            {
+                tcpSocket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+                int port = ((IPEndPoint)tcpSocket.LocalEndPoint).Port;
+                return port;
+            }
         }
     }
 }

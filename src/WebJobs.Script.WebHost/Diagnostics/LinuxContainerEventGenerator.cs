@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
+        private const int MaxDetailsLength = 10000;
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
@@ -63,16 +64,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName)
+        public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName)
         {
             string eventTimestamp = DateTime.UtcNow.ToString(EventTimestampFormat);
             string hostVersion = ScriptHost.Version;
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
+            details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
             _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{eventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId}");
         }
 
-        public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName)
+        public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
             string hostVersion = ScriptHost.Version;
 

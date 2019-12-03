@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/warmup")]
         [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
+        public async Task<IActionResult> Warmup([FromServices] IScriptHostManager scriptHostManager)
         {
             // Endpoint only for Windows Elastic Premium or Linux App Service plans
             if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
@@ -284,33 +284,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return Ok();
             }
 
-            var jobHost = hostService.Services?.GetService<IScriptJobHost>();
-            if (jobHost == null)
+            if (scriptHostManager is IServiceProvider serviceProvider)
             {
-                _logger.LogError($"No active host available.");
-                return StatusCode(503);
+                IScriptJobHost jobHost = serviceProvider.GetService<IScriptJobHost>();
+
+                if (jobHost == null)
+                {
+                    _logger.LogError($"No active host available.");
+                    return StatusCode(503);
+                }
+
+                await jobHost.TryInvokeWarmupAsync();
+                return Ok();
             }
 
-            await jobHost.TryInvokeWarmupAsync();
-            return Ok();
+            return BadRequest("This API is not supported by the current hosting environment.");
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]
-        [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
-        [Route("runtime/webhooks/{name}/{*extra}")]
+        [Authorize(Policy = PolicyNames.SystemKeyAuthLevel)]
+        [Route("runtime/webhooks/{extensionName}/{*extra}")]
         [RequiresRunningHost]
-        public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
+        public async Task<IActionResult> ExtensionWebHookHandler(string extensionName, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
-            if (provider.TryGetHandler(name, out HttpHandler handler))
+            if (provider.TryGetHandler(extensionName, out HttpHandler handler))
             {
-                // must either be authorized at the admin level, or system level with
-                // a matching key name
-                string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
-                if (!AuthUtility.PrincipalHasAuthLevelClaim(User, AuthorizationLevel.System, keyName))
-                {
-                    return Unauthorized();
-                }
-
                 var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
                 HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
 

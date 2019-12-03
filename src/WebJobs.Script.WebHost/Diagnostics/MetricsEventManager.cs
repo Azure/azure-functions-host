@@ -290,7 +290,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     metricEvent.Count,
                     metricEvent.Timestamp,
                     metricEvent.Data ?? string.Empty,
-                    currentAppServiceOptions.RuntimeSiteName ?? string.Empty);
+                    currentAppServiceOptions.RuntimeSiteName ?? string.Empty,
+                    currentAppServiceOptions.SlotName ?? string.Empty);
             }
         }
 

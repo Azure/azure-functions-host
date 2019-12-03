@@ -54,11 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionInvocationId = string.Empty;
             string activityId = string.Empty;
             string runtimeSiteName = string.Empty;
+            string slotName = string.Empty;
 
             _logger.LogTrace(summary);
 
             _inDiagnosticMode = true;
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Trace, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Trace, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName, slotName));
             _logger.LogTrace(summary);
 
             _mockEventGenerator.VerifyAll();
@@ -73,8 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionInvocationId = string.Empty;
             string activityId = string.Empty;
             string runtimeSiteName = string.Empty;
+            string slotName = string.Empty;
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, summary, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName, slotName));
 
             _logger.LogDebug(summary);
 
@@ -90,12 +92,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionInvocationId = Guid.NewGuid().ToString();
             string activityId = Guid.NewGuid().ToString();
             string runtimeSiteName = string.Empty;
+            string slotName = string.Empty;
             var scopeState = new Dictionary<string, object>
             {
                 [ScriptConstants.LogPropertyFunctionInvocationIdKey] = functionInvocationId
             };
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, _subscriptionId, _websiteName, _functionName, eventName, _category, details, message, string.Empty, string.Empty, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName, slotName));
 
             var logData = new Dictionary<string, object>
             {
@@ -118,10 +121,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionInvocationId = string.Empty;
             string activityId = string.Empty;
             string runtimeSiteName = string.Empty;
+            string slotName = string.Empty;
 
             Exception ex = new Exception("Kaboom");
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, ex.ToFormattedString(), message, ex.GetType().ToString(), ex.Message, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName, slotName));
 
             _logger.LogError(ex, message);
 
@@ -143,10 +147,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionInvocationId = string.Empty;
             string activityId = string.Empty;
             string runtimeSiteName = string.Empty;
+            string slotName = string.Empty;
 
             Exception ex = new InvalidOperationException(secretException);
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Error, _subscriptionId, _websiteName, _functionName, eventName, _category, sanitizedDetails, sanitizedString, ex.GetType().ToString(), sanitizedExceptionMessage, functionInvocationId, _hostInstanceId, activityId, runtimeSiteName, slotName));
 
             _logger.LogError(ex, secretString);
 
@@ -161,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty), Times.Never);
         }
 
         [Fact]
@@ -177,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _logger.LogDebug($"{{{ScriptConstants.LogPropertyIsUserLogKey}}}", true);
 
             // Make sure it's never been called.
-            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _mockEventGenerator.Verify(p => p.LogFunctionTraceEvent(It.IsAny<LogLevel>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         }
 
         [Theory]
@@ -191,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction2"
             };
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
             _logger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
         }
 
@@ -208,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
             logger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
         }
 
@@ -225,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
 
-            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
+            _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
 
             using (logger.BeginScope(logScope))
             {

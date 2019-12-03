@@ -107,12 +107,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // user dependencies
             FunctionAssemblyLoadContext.ResetSharedContext();
 
+            // Signals change of JobHost options from placeholder mode
+            // (ex: ScriptPath is updated)
+            NotifyChange();
+
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationLanguageWorkerChannelManagerSpecialize))
             {
                 await _rpcWorkerChannelManager.SpecializeAsync();
             }
-
-            NotifyChange();
 
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationRestartHost))
             {

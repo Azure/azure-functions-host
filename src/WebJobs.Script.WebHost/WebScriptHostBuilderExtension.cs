@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -99,6 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
+                    services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
+
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
                     if (provider != null)
@@ -112,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     // Hosted services
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
+                    services.AddSingleton<IHostedService, ChangeAnalysisService>();
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

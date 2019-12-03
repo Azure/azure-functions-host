@@ -69,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
                 Traceparent = Activity.Current?.Id,
+                Tracestate = Activity.Current?.TraceStateString,
                 Attributes = Activity.Current?.Tags,
 
                 // TODO: link up cancellation token to parameter descriptors
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, 25, () =>
+                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });

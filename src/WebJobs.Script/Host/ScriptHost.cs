@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             var ignore = LogInitializationAsync();
 
-            await InitializeAsync();
+            await InitializeAsync(cancellationToken);
 
             // Throw if cancellation occurred during initialization.
             cancellationToken.ThrowIfCancellationRequested();
@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Performs all required initialization on the host.
         /// Must be called before the host is started.
         /// </summary>
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             _stopwatch.Start();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions));
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
 

@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -13,11 +12,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -75,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // now that the host is initialized, send a valid key
             // and expect success
             var secretManager = _httpServer.Host.Services.GetService<ISecretManagerProvider>().Current;
+            var fd = _httpServer.Host.Services.GetService<IFunctionInvocationDispatcherFactory>();
             var keys = await secretManager.GetFunctionSecretsAsync("HttpTrigger");
             string key = keys.First().Value;
             request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger?code={key}");
@@ -110,7 +110,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(2, logLines.Count(p => p.Contains("Executed 'Functions.WarmUp' (Succeeded")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Validating host assignment context")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting Assignment")));
-            Assert.Equal(1, logLines.Count(p => p.Contains("Applying 1 app setting(s)")));
+            Assert.Equal(1, logLines.Count(p => p.Contains("Applying 3 app setting(s)")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:python")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:powershell")));
+            Assert.Equal(1, logLines.Count(p => p.Contains($"Skipping WorkerConfig for language:java")));
             Assert.Equal(1, logLines.Count(p => p.Contains($"Extracting files to '{_expectedScriptPath}'")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
@@ -153,7 +156,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var request = new HttpRequestMessage(HttpMethod.Post, uri);
             var environment = new Dictionary<string, string>()
                 {
-                    { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() }
+                    { EnvironmentSettingNames.AzureWebsiteZipDeployment, sasUri.ToString() },
+                    { RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "~2" },
+                    { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node" }
                 };
             var assignmentContext = new HostAssignmentContext
             {

@@ -460,7 +460,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/5261")]
         public async Task Mounts_Valid_BYOS_Accounts()
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");

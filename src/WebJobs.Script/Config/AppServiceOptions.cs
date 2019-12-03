@@ -10,5 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public string SubscriptionId { get; set; }
 
         public string RuntimeSiteName { get; set; }
+
+        public string SlotName { get; set; }
     }
 }
