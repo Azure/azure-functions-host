@@ -274,9 +274,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
                     // Windows Consumption as well.
-                    if (_environment.IsLinuxConsumption())
+                    string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+
+                    if (!string.IsNullOrEmpty(runtimeVersion))
                     {
-                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
                         runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                     }
 
