@@ -28,5 +28,5 @@ module.exports = function (context, req) {
         }
     });
 
-    context.done(null, results);
+    context.done(null, { body: results });
 }
