@@ -172,8 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _startLatencyMetric = null;
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
-            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
