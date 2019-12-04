@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                         Path = "/",
                         HttpOnly = true,
                         MaxAge = TimeSpan.FromSeconds(20),
-                        SameSite = SameSiteMode.Unspecified
+                        SameSite = (SameSiteMode)(-1)
                     })
                 }
             };
@@ -80,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
 
             Assert.Equal(2, cookies.Count);
             Assert.Equal("firstCookie=cookieValue; path=/; samesite=lax", cookies[0]);
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4890
             Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; httponly", cookies[1]);
         }
 
