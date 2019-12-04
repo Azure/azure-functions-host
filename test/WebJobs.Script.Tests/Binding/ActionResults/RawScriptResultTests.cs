@@ -62,13 +62,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                 {
                     new Tuple<string, string, CookieOptions>("firstCookie", "cookieValue", new CookieOptions()
                     {
-                        SameSite = SameSiteMode.None
+                        SameSite = SameSiteMode.Lax
                     }),
                     new Tuple<string, string, CookieOptions>("secondCookie", "cookieValue2", new CookieOptions()
                     {
                         Path = "/",
                         HttpOnly = true,
-                        MaxAge = TimeSpan.FromSeconds(20)
+                        MaxAge = TimeSpan.FromSeconds(20),
+                        SameSite = (SameSiteMode)(-1)
                     })
                 }
             };
@@ -79,8 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             context.HttpContext.Response.Headers.TryGetValue("Set-Cookie", out StringValues cookies);
 
             Assert.Equal(2, cookies.Count);
-            Assert.Equal("firstCookie=cookieValue; path=/", cookies[0]);
-            Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; samesite=lax; httponly", cookies[1]);
+            Assert.Equal("firstCookie=cookieValue; path=/; samesite=lax", cookies[0]);
+            Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; httponly", cookies[1]);
         }
 
         [Fact]
