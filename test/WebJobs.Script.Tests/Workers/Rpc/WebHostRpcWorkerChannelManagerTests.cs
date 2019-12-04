@@ -263,7 +263,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.NodeLanguageWorkerName);
-            // This is an invalid setting configuration, but just to show that run from zip is NOT set
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "~3");
 
