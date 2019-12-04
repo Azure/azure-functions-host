@@ -108,6 +108,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
         }
 
+        public static bool IsV2CompatabileOnV3Extension(this IEnvironment environment)
+        {
+            string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
+            bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
+
+            string extensionVersion = environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            bool isV3ExtensionVersion = string.Compare(extensionVersion, "~3", CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0;
+
+            return isFunctionsV2CompatibilityMode && isV3ExtensionVersion;
+        }
+
         public static bool IsContainer(this IEnvironment environment)
         {
             var runningInContainer = environment.GetEnvironmentVariable(RunningInContainer);
