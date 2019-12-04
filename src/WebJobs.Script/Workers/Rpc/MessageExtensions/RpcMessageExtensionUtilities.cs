@@ -57,7 +57,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 cookieOptions.Secure = cookie.Secure.Value;
             }
 
-            cookieOptions.SameSite = RpcSameSiteEnumConverter(cookie.SameSite);
+            if (TryGetRpcSameSiteEnumConverter(cookie.SameSite, out SameSiteMode sameSiteMode))
+            {
+                cookieOptions.SameSite = sameSiteMode;
+            }
 
             if (cookie.HttpOnly != null)
             {
@@ -77,18 +80,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return new Tuple<string, string, CookieOptions>(cookie.Name, cookie.Value, cookieOptions);
         }
 
-        private static SameSiteMode RpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite)
+        private static bool TryGetRpcSameSiteEnumConverter(RpcHttpCookie.Types.SameSite sameSite, out SameSiteMode sameSiteMode)
         {
+            sameSiteMode = SameSiteMode.None;
             switch (sameSite)
             {
                 case RpcHttpCookie.Types.SameSite.Strict:
-                    return SameSiteMode.Strict;
+                    sameSiteMode = SameSiteMode.Strict;
+                    return true;
                 case RpcHttpCookie.Types.SameSite.Lax:
-                    return SameSiteMode.Lax;
+                    sameSiteMode = SameSiteMode.Lax;
+                    return true;
                 case RpcHttpCookie.Types.SameSite.None:
-                    return SameSiteMode.Unspecified;
+                    return false;
                 default:
-                    return SameSiteMode.Unspecified;
+                    return false;
             }
         }
     }
