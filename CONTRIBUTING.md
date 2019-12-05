@@ -39,9 +39,9 @@ Before filing an issue, please check that it doesn't already exist. If you're no
     - Note: today you have to have Node.js and Java installed, but in the long run we hope move those tests out into their own repos
     - [Java 8 ](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (JDK and JRE required)
     - [Node 8.4+](https://nodejs.org/en/)
-    - .NET Core 2.0
+    - [.NET Core 2.2 SDK](https://dotnet.microsoft.com/download/dotnet-core/2.2)
  - Editor
-    - [Visual Studio 2017](https://visualstudio.microsoft.com/vs/) (recommended)
+    - [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) (recommended)
     - [VS Code](https://code.visualstudio.com/) (works, but has some quirks running tests)
  - Misc tools (suggested)
     - [git](https://git-scm.com/downloads) - source control

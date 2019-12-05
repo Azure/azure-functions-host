@@ -46,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     hostId = uniqueSlotName;
                 }
             }
+            else if (environment.IsLinuxConsumption())
+            {
+                // The hostid is derived from the unique container name for Linux consumption.
+                hostId = environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName);
+            }
             else
             {
                 // When running locally, derive a stable host ID from machine name

@@ -4,8 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
 using DryIoc;
 using DryIoc.Microsoft.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,9 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
     public class JobHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService, IDisposable
     {
-        private const string ScriptJobHostScope = "scriptjobhost";
-
         private static readonly Rules _defaultContainerRules;
+        private static readonly Setup _jobHostRootScopeFactorySetup;
         private readonly IServiceProvider _rootProvider;
         private readonly IServiceScopeFactory _rootScopeFactory;
         private readonly Container _container;
@@ -25,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         static JobHostServiceProvider()
         {
+            _jobHostRootScopeFactorySetup = Setup.With(preventDisposal: true);
             _defaultContainerRules = Rules.Default
                 .With(FactoryMethod.ConstructorWithResolvableArguments)
                 .WithFactorySelector(Rules.SelectLastRegisteredFactory())
@@ -57,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                         return new DelegateFactory(_ => null);
                     }
 
-                    return new DelegateFactory(_ => _rootProvider.GetService(request.ServiceType));
+                    return new DelegateFactory(_ => _rootProvider.GetService(request.ServiceType), setup: _jobHostRootScopeFactorySetup);
                 });
 
             // preferInterpretation will be set to true to significanly improve cold start in consumption mode

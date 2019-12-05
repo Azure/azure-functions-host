@@ -32,11 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             byte[] bytes = TestHelpers.GenerateKeyBytes();
             var encryptionKey = Convert.ToBase64String(bytes);
+            var containerName = "testContainer";
 
             var vars = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
-                { EnvironmentSettingNames.ContainerName, "TestApp" },
+                { EnvironmentSettingNames.ContainerName, containerName },
                 { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
                 { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
@@ -96,10 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-            string sanitizedMachineName = Environment.MachineName
-                    .Where(char.IsLetterOrDigit)
-                    .Aggregate(new StringBuilder(), (b, c) => b.Append(c))
-                    .ToString().ToLowerInvariant();
+            string hostId = containerName.ToLowerInvariant();
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
@@ -118,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Zip extraction complete")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Triggering specialization")));
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting host specialization")));
-            Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={sanitizedMachineName}")));
+            Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={hostId}")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
             Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
