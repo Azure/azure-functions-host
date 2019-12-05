@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                         Path = "/",
                         HttpOnly = true,
                         MaxAge = TimeSpan.FromSeconds(20),
-                        SameSite = (SameSiteMode)(-1)
+                        SameSite = SameSiteMode.Unspecified
                     }),
                     new Tuple<string, string, CookieOptions>("thirdCookie", "cookieValue3", new CookieOptions()
                     {
