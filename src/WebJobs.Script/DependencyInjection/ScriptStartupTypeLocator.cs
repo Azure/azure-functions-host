@@ -62,12 +62,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;
-            var bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var functionMetadataCollection = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true);
+            HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
 
             if (bundleConfigured)
             {
+                bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 // Generate a Hashset of all the binding types used in the function app
                 foreach (var functionMetadata in functionMetadataCollection)
                 {
