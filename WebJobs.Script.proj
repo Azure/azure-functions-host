@@ -18,10 +18,6 @@
 
   <ItemGroup>
     <!-- The Assembly items below MUST be kept in dependency order. -->
-    <Build Include="src\WebJobs.Script.Scaling\WebJobs.Script.Scaling.csproj">
-      <PublishType>Assembly</PublishType>
-      <PublishPath>$(PublishPath)\Binaries</PublishPath>
-    </Build>
     <Build Include="src\WebJobs.Script\WebJobs.Script.csproj">
       <PublishType>Assembly</PublishType>
       <PublishPath>$(PublishPath)\Binaries</PublishPath>
@@ -164,7 +160,6 @@
   <Target Name="TestBuild" DependsOnTargets="CheckSkipStrongNames;Build">
     <ItemGroup>
       <UnitTestProjects Include="test\WebJobs.Script.Tests\WebJobs.Script.Tests.csproj"/>
-      <UnitTestProjects Include="test\WebJobs.Script.Scaling.Tests\WebJobs.Script.Scaling.Tests.csproj"/>
       <IntegrationTestProjects Include="test\WebJobs.Script.Tests.Integration\WebJobs.Script.Tests.Integration.csproj"/>
     </ItemGroup>
 

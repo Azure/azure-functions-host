@@ -15,9 +15,6 @@ function CheckExitCode([string] $step,[int] $currentCode)
 & $consoleRunnerx86Path "$env:APPVEYOR_BUILD_FOLDER\test\WebJobs.Script.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Tests.dll" -appveyor
 $exitCode = CheckExitCode "Unit tests" $exitCode
 
-& $consoleRunnerx86Path "$env:APPVEYOR_BUILD_FOLDER\test\WebJobs.Script.Scaling.Tests\bin\Release\Microsoft.Azure.WebJobs.Script.Scaling.Tests.dll" -appveyor
-$exitCode = CheckExitCode "Scaling tests" $exitCode
-
 .\runNodeTests.cmd
 $exitCode = CheckExitCode "Node tests" $exitCode
 
