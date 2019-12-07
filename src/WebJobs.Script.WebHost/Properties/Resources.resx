@@ -319,4 +319,7 @@
   <data name="TraceStaleHostSecretRefresh" xml:space="preserve">
     <value>Stale host secrets detected. Refreshing secrets.</value>
   </data>
+  <data name="UnauthorizedArmExtensionResourceRequest" xml:space="preserve">
+    <value>GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API.</value>
+  </data>
 </root>

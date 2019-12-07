@@ -52,6 +52,111 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task ArmExtensionsResourceFilter_NonExtensionRoute_Succeeds()
+        {
+            // when request not made via ARM extensions route, expect success
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_GetSecrets_NonAdmin_Unauthorized()
+        {
+            // when GET request for secrets is made via ARM extensions route, expect unauthorized
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await this._fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal($"\"{Microsoft.Azure.WebJobs.Script.WebHost.Properties.Resources.UnauthorizedArmExtensionResourceRequest}\"", content);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_GetSecrets_Admin_Succeeds()
+        {
+            // owner or co-admin always authorized
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            request.Headers.Add(ScriptConstants.AntaresClientAuthorizationSourceHeader, "Legacy");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_GetSecrets_Internal_Succeeds()
+        {
+            // hostruntime requests made internally by Geo (not over hostruntime bridge) are not filtered
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_GetSecrets_NoKey_Unauthorized()
+        {
+            // without master key the request is unauthorized (before the filter is even run)
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(ScriptConstants.AntaresClientAuthorizationSourceHeader, "Legacy");
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_InvalidKey_Unauthorized()
+        {
+            // with an invalid master key the request is unauthorized (before the filter is even run)
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/keys");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, "invalid");
+            request.Headers.Add(ScriptConstants.AntaresClientAuthorizationSourceHeader, "Legacy");
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_NonGet_Succeeds()
+        {
+            // if the extensions request is anything other than a GET, it is not filtered
+            var request = new HttpRequestMessage(HttpMethod.Delete, "admin/host/keys/dne");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "true");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task ArmExtensionsResourceFilter_GetNonSecretResource_Succeeds()
+        {
+            // resources that don't return secrets aren't restricted
+            var request = new HttpRequestMessage(HttpMethod.Get, "admin/host/ping");
+            request.Headers.Add(AuthorizationLevelAttribute.FunctionsKeyHeaderName, MasterKey);
+            request.Headers.Add(ScriptConstants.AntaresARMExtensionsRouteHeader, "1");
+            request.Headers.Add(ScriptConstants.AntaresARMRequestTrackingIdHeader, "1234");
+            var response = await _fixture.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
         public async Task EventHubTrigger()
         {
             _fixture.TraceWriter.ClearTraces();

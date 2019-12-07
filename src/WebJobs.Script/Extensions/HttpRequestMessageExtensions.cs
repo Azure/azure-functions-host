@@ -12,6 +12,16 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public static class HttpRequestMessageExtensions
     {
+        public static bool HasHeader(this HttpRequestMessage request, string headerName)
+        {
+            return !string.IsNullOrEmpty(request.GetHeaderValueOrDefault(headerName));
+        }
+
+        public static bool HasHeaderValue(this HttpRequestMessage request, string headerName, string value)
+        {
+            return string.Equals(request.GetHeaderValueOrDefault(headerName), value, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool MatchRoute(this HttpRequestMessage request, string route)
         {
             return request.RequestUri.LocalPath.Trim('/').ToLowerInvariant().Equals(route.Trim('/').ToLowerInvariant());

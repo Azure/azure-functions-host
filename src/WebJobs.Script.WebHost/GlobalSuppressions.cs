@@ -130,4 +130,5 @@
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Sas", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.BlobStorageSasSecretsRepository.#.ctor(System.String,System.String,System.String)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1054:UriParametersShouldNotBeStrings", MessageId = "1#", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.BlobStorageSasSecretsRepository.#.ctor(System.String,System.String,System.String)")]
 [assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors", Scope = "member", Target = "Microsoft.Azure.WebJobs.Script.WebHost.BlobStorageSecretsRepository.#.ctor(System.String,System.String,System.String)")]
+[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1703:ResourceStringsShouldBeSpelledCorrectly", MessageId = "hostruntime", Scope = "resource", Target = "Microsoft.Azure.WebJobs.Script.WebHost.Properties.Resources.resources")]
 

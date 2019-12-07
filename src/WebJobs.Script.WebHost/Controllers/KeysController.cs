@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     [JwtAuthentication]
     [AuthorizationLevel(AuthorizationLevel.Admin)]
+    [ResourceContainsSecrets]
     public class KeysController : ApiController
     {
         private const string MasterKeyName = "_master";

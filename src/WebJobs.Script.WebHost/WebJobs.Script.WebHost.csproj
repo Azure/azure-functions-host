@@ -508,6 +508,7 @@
     <Compile Include="Extensions\HttpRouteCollectionExtensions.cs" />
     <Compile Include="Extensions\HttpRouteFactoryExtensions.cs" />
     <Compile Include="Extensions\IEnumerableTasksExtensions.cs" />
+    <Compile Include="Filters\ArmExtensionResourceFilter.cs" />
     <Compile Include="Filters\EnableDebugModeAttribute.cs" />
     <Compile Include="Filters\RequiresRunningHostAttribute.cs" />
     <Compile Include="HostNameProvider.cs" />
@@ -517,6 +518,7 @@
     <Compile Include="Management\SyncTriggersResult.cs" />
     <Compile Include="Management\WebFunctionsManager.cs" />
     <Compile Include="Models\FunctionMetadataResponse.cs" />
+    <Compile Include="ResourceContainsSecretsAttribute.cs" />
     <Compile Include="Security\SecretsUtility.cs" />
     <Compile Include="Security\SimpleWebTokenHelper.cs" />
     <Compile Include="StandbyManager.cs" />

@@ -41,6 +41,39 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        {
+            return (T)GetHierarchicalAttributeOrNull(method, typeof(T));
+        }
+
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        /// <param name="type">The attribute type to look for.</param>
+        internal static Attribute GetHierarchicalAttributeOrNull(MethodInfo method, Type type)
+        {
+            var attribute = method.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            attribute = method.DeclaringType.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            return null;
+        }
+
         public static string GetSettingFromConfigOrEnvironment(string settingName)
         {
             string configValue = ConfigurationManager.AppSettings[settingName];
