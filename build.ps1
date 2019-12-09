@@ -62,12 +62,13 @@ function BuildOutput([string] $runtime, [bool] $isSelfContained) {
 
     if ($hasRuntime -and !$isSelfContained) {
         Write-Host "Building $runtime"
-        $runtimeSuffix = ".$runtime"
-    		$ridSwitch = "-r", "$runtime", "--self-contained", "false", "/p:PublishReadyToRun=true"
+        $runtimeSuffix = ".$runtime"        
+        # Only generate symbols from one build flavor (self-contained, below)        
+        $ridSwitch = "-r", "$runtime", "--self-contained", "false", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=false"
     } elseif ($hasRuntime -and $isSelfContained) {
         Write-Host "Building $runtime self-contained"
         $runtimeSuffix = ".$runtime.self-contained"        
-		    $ridSwitch = "-r", "$runtime", "--self-contained", "true", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true"
+        $ridSwitch = "-r", "$runtime", "--self-contained", "true", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true"
     } else {
         $runtimeSuffix = ".no-runtime"
     }
@@ -78,7 +79,7 @@ function BuildOutput([string] $runtime, [bool] $isSelfContained) {
     
     New-Item -Itemtype directory -path $privateSiteExtensionPath
     
-	  dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj $ridSwitch -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
+    dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj $ridSwitch -o "$privateSiteExtensionPath" -v q /p:BuildNumber=$buildNumber /p:IsPackable=false -c Release
     
     if ($hasRuntime -and $isSelfContained) {
         Write-Host "Moving symbols"
