@@ -17,8 +17,8 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -175,8 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Before the fix, when we issued the 100 requests, they would all enter the ThreadPool queue and
                 // a new thread would be taken from the thread pool every 500ms, resulting in thread starvation.
-                // After the fix, we should only be losing one.
-                int precision = 1;
+                // After the fix, we should only be losing one (but other operations may also be using a thread, so 
+                // we'll leave a little wiggle-room).
+                int precision = 3;
                 Assert.True(workerThreads >= originalWorkerThreads - precision, $"Available ThreadPool threads should not have decreased by more than {precision}. Actual: {workerThreads}. Original: {originalWorkerThreads}.");
 
                 await Task.WhenAll(requestTasks);

@@ -100,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected async Task TableOutputTest()
         {
             CloudTable table = Fixture.TableClient.GetTableReference("testoutput");
+            await table.CreateIfNotExistsAsync();
             await Fixture.DeleteEntities(table);
 
             JObject item = new JObject
