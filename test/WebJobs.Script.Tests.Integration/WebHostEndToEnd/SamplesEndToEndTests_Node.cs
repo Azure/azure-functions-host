@@ -385,7 +385,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 request = new HttpRequestMessage(HttpMethod.Get, uri);
                 response = await _fixture.Host.HttpClient.SendAsync(request);
-                timestamp = response.Headers.GetValues("Shared-Module").First();
+
+                if (response.Headers.Contains("Shared-Module"))
+                {
+                    timestamp = response.Headers.GetValues("Shared-Module").First();
+                }
+
                 return initialTimestamp != timestamp;
             }, timeout: 5000, pollingInterval: 500);
             Assert.NotEqual(initialTimestamp, timestamp);
