@@ -2,11 +2,9 @@
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-
+    <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
-
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
-
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
