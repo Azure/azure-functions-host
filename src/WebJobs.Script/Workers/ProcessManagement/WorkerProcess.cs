@@ -140,8 +140,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     HandleWorkerProcessExitError(processExitEx);
                 }
             }
-            catch (Exception)
+            catch (Exception exc)
             {
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit.");
                 // ignore process is already disposed
             }
         }
@@ -183,8 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _process.Dispose();
                 }
             }
-            catch (Exception)
+            catch (Exception exc)
             {
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
                 //ignore
             }
         }
