@@ -3,14 +3,15 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
-    <RuntimeReleaseSuffix></RuntimeReleaseSuffix>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
     <MajorMinorProductVersion>3.0</MajorMinorProductVersion>
-    <Version>$(MajorMinorProductVersion).0$(RuntimeReleaseSuffix)$(VersionSuffix)</Version>
+    <VersionPrefix>$(MajorMinorProductVersion).$(BuildNumber)</VersionPrefix>
+    <Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix)-$(VersionSuffix)</Version>
+    <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
-    <FileVersion>$(MajorMinorProductVersion).$(BuildNumber).0</FileVersion>
-    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>
-    <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion>  
+    <FileVersion>$(VersionPrefix)</FileVersion>
+    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
+    <InformationalVersion>$(Version) Commit hash: $(CommitHash)</InformationalVersion>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
