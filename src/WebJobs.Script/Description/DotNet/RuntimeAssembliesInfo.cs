@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -11,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IEnvironment _environment;
         private Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies;
         private object _loadSyncRoot = new object();
-        private bool? _compatMode;
+        private bool? _relaxedUnification;
 
         public RuntimeAssembliesInfo()
             : this(SystemEnvironment.Instance)
@@ -30,11 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             lock (_loadSyncRoot)
             {
-                _compatMode = _environment.IsV2CompatibilityMode();
+                _relaxedUnification = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagRelaxedAssemblyUnification, _environment);
 
-                string manifestName = _compatMode.Value
-                    ? "runtimeassemblies.json"
-                    : "runtimeassemblies-v3.json";
+                string manifestName = _relaxedUnification.Value
+                    ? "runtimeassemblies-relaxed.json"
+                    : "runtimeassemblies.json";
 
                 return DependencyHelper.GetRuntimeAssemblies(manifestName);
             }
@@ -44,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             lock (_loadSyncRoot)
             {
-                if (_compatMode != null && _compatMode.Value != _environment.IsV2CompatibilityMode())
+                if (_relaxedUnification != null && _relaxedUnification.Value != FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagRelaxedAssemblyUnification, _environment))
                 {
                     _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(GetRuntimeAssemblies);
 

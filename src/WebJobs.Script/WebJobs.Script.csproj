@@ -19,14 +19,14 @@
   <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
-    <None Remove="runtimeassemblies-v3.json" />
+    <None Remove="runtimeassemblies-relaxed.json" />
     <None Remove="runtimeassemblies.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
-    <EmbeddedResource Include="runtimeassemblies-v3.json">
+    <EmbeddedResource Include="runtimeassemblies-relaxed.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="runtimeassemblies.json">
@@ -54,7 +54,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="NuGet.Frameworks" Version="4.7.0" />
     <PackageReference Include="NuGet.LibraryModel" Version="4.7.0" />
     <PackageReference Include="NuGet.ProjectModel" Version="4.7.0" />
