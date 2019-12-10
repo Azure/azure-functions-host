@@ -50,11 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
         {
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
-            {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _workerProcessArguments.ExecutablePath);
-                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
-            }
+            _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited. Pid={langExc.Pid}.", _workerProcessArguments.ExecutablePath);
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
         }
 
         internal override void HandleWorkerProcessRestart()
