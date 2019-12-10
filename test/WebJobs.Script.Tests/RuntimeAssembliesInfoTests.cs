@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void Reset_WithLoadedAssemblies_ChangedCompatMode_ReturnsTrue()
+        public void Reset_WithLoadedAssemblies_ChangedRules_ReturnsTrue()
         {
             var environment = new TestEnvironment();
             var runtimeAssembliesInfo = new RuntimeAssembliesInfo(environment);
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var originalAssemblies = runtimeAssembliesInfo.Assemblies;
 
             // Change environment
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagRelaxedAssemblyUnification);
 
             bool result = runtimeAssembliesInfo.ResetIfStale();
 
@@ -57,6 +57,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(newAssemblies);
             Assert.NotSame(originalAssemblies, newAssemblies);
             Assert.True(result);
+        }
+
+        [Fact]
+        public void Load_WithRelaxedRules_ReturnsExpectedResult()
+        {
+            var environment = new TestEnvironment();
+            var runtimeAssembliesInfo = new RuntimeAssembliesInfo(environment);
+
+            // Change environment
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagRelaxedAssemblyUnification);
+
+            // Cause a load
+            var assemblies = runtimeAssembliesInfo.Assemblies;
+
+            assemblies.TryGetValue("Newtonsoft.Json", out ScriptRuntimeAssembly assembly);
+
+            Assert.NotNull(assemblies);
+            Assert.Null(assembly);
         }
     }
 }
