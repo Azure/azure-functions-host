@@ -1,24 +1,21 @@
-variables:
-  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
+name: $(Build.Reason)_$(Build.BuildId)
 
-name: 2.0.$(buildNumber)
-  
 pr:
   branches:
     include:
-    - master
-    - dev
+    - v3.x
+    - release/3.0
 
 trigger:
   branches:
     include:
-    - master
-    - dev
+    - v3.x
+    - release/3.0
 
 jobs:
 - job: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -31,39 +28,57 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
-- job: BuildArtifacts_Ubuntu
-  pool:
-    vmImage: 'ubuntu-18.04'
-  steps:
-  - task: Bash@3
-    inputs:
-      targetType: 'inline'
-      script: |
-        mkdir .dotnet &&
-        chmod +x dotnet-install.sh &&
-        ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet &&
-        PATH=".dotnet:"$PATH && dotnet --info
-        dotnet build WebJobs.Script.sln
-
-- job: BuildArtifacts_Windows
+- job: BuildArtifacts
   dependsOn: InitializePipeline
+  condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    includeSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.IncludeSuffix'] ] 
-  condition: and(succeeded(), eq(dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'], false))
+    suffix: $[ dependencies.InitializePipeline.outputs['Initialize.Suffix'] ]
+    emgSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.EmgSuffix'] ]
   pool:
-    vmImage: 'vs2017-win2016' 
+    vmImage: 'windows-2019' 
   steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -includeSuffix ([System.Convert]::ToBoolean("$(includeSuffix)")) -bypassPackaging $false -signOutput $false'
+      filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
+      arguments: '-buildNumber "$(Build.BuildId)" -suffix "$(suffix)"'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      Contents: '*.zip'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - task: DotNetCoreCLI@2
+    displayName: 'Build host packages'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '-o packages -p:BuildNumber=$(Build.BuildId) -p:CommitHash=$(Build.SourceVersion) --version-suffix $(suffix) -c Release'
+      projects: |
+        **\WebJobs.Script.csproj
+        **\WebJobs.Script.WebHost.csproj
+        **\WebJobs.Script.Grpc.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build performance package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '-o packages'
+      projects: |
+        **\WebJobs.Script.Performance.App.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build ExtensionsMetadataGenerator'
+    inputs:
+      command: 'build'      
+      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
@@ -108,15 +123,25 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))  
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
+  - task: DotNetCoreCLI@2
+    displayName: 'Pack ExtensionsMetadataGenerator package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '--no-build -c Release -o packages --version-suffix $(emgSuffix)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
+        steps:
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: '..\..\..\buildoutput'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -136,36 +161,25 @@ jobs:
              "ToolVersion": "1.0"
            }
        ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '..\..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '*.zip'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
+  - publish: $(Build.Repository.LocalPath)\packages
+    artifact: packages
 
 - job: RunUnitTests
+  dependsOn: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
@@ -179,38 +193,25 @@ jobs:
         **\WebJobs.Script.Tests.csproj
 
 - job: RunNonE2EIntegrationTests
+  dependsOn: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
+  variables:
+    keyVaultSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:      
       version: '10.x'
-  - task: PowerShell@2
-    displayName: 'Install Az.Storage Powershell module'
-    inputs:
-      targetType: 'inline'
-      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
       azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
-  - task: PowerShell@2
-    displayName: 'Checkout secrets'
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: azure-functions-host-$(LeaseBlob)
+      keyVaultName: azure-functions-host-$(keyVaultSuffix)
       secretsFilter: '*'
   - task: DotNetCoreCLI@2
     displayName: 'Non-E2E integration tests'
@@ -227,21 +228,18 @@ jobs:
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
       AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
-  - task: PowerShell@2
-    condition: always()
-    displayName: 'Checkin secrets'
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
+  dependsOn: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
+  variables:
+    keyVaultSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:
@@ -250,27 +248,11 @@ jobs:
     inputs:
       versionSpec: '3.7.x'
       addToPath: true
-  - task: PowerShell@2
-    displayName: 'Install Az.Storage Powershell module'
-    inputs:
-      targetType: 'inline'
-      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
       azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
-  - task: PowerShell@2
-    displayName: 'Checkout secrets'
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: azure-functions-host-$(LeaseBlob)
+      keyVaultName: azure-functions-host-$(keyVaultSuffix)
       secretsFilter: '*'
   - task: PowerShell@2
     displayName: 'Set environment variables'
@@ -385,9 +367,28 @@ jobs:
       arguments: '--filter "Group=ContainerInstanceTests"'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
-  - task: PowerShell@2
-    condition: always()
-    displayName: 'Checkin secrets'
+        
+- job: FinishPipeline
+  dependsOn:
+  - InitializePipeline
+  - BuildArtifacts
+  - RunUnitTests
+  - RunIntegrationTests
+  - RunNonE2EIntegrationTests
+  condition: always()
+  variables:
+    leaseBlob: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
+    leaseToken: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseToken'] ]
+  pool:
+    vmImage: 'windows-2019'
+  steps:
+  - task: AzureKeyVault@1
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Finish'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\finish-pipeline.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(leaseBlob) -leaseToken $(leaseToken)'
