@@ -688,14 +688,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Newtonsoft.Json",
-      "resolutionPolicy": "runtimeVersion"
-    },
-    {
-      "name": "Newtonsoft.Json.Bson",
-      "resolutionPolicy": "runtimeVersion"
-    },
-    {
       "name": "NuGet.Common",
       "resolutionPolicy": "minorMatchOrLower"
     },

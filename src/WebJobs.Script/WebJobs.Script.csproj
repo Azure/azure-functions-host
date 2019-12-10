@@ -19,14 +19,14 @@
   <ItemGroup>
     <None Remove="FileProvisioning\PowerShell\profile.ps1" />
     <None Remove="FileProvisioning\PowerShell\requirements.psd1" />
-    <None Remove="runtimeassemblies-v3.json" />
+    <None Remove="runtimeassemblies-relaxed.json" />
     <None Remove="runtimeassemblies.json" />
     <None Remove="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="FileProvisioning\PowerShell\profile.ps1" />
     <EmbeddedResource Include="FileProvisioning\PowerShell\requirements.psd1" />
-    <EmbeddedResource Include="runtimeassemblies-v3.json">
+    <EmbeddedResource Include="runtimeassemblies-relaxed.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
     <EmbeddedResource Include="runtimeassemblies.json">
