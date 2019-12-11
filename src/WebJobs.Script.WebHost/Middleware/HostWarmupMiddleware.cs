@@ -60,19 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // When this happens, we will need to regenerate the coldstart.jittrace file.
                 _logger.LogInformation($"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares}");
             }
-
-            PreJitRegexes();
-        }
-
-        private void PreJitRegexes()
-        {
-            // Calling match on regexes which get called during specialization in cold start path to avoid jitting cost of compiled regexes.
-            // These Regexes were found in the profiles and the list should get updated whenever a regex match is added and is getting called during cold start.
-            Regex entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
-            Regex functionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-            entryPointRegex.Match("FunctionAppTest.HelloHttp.Run");
-            functionNameValidationRegex.Match("testMethod");
         }
 
         public async Task WarmUp(HttpRequest request)
