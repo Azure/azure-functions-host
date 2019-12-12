@@ -36,6 +36,7 @@ jobs:
   variables:
     suffix: $[ dependencies.InitializePipeline.outputs['Initialize.Suffix'] ]
     emgSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.EmgSuffix'] ]
+    buildNumber: $[ counter(variables['Build.Reason'], 12940) ] # Start at the highest of our AppVeyor versions. Maintain a separate counter for PR and commits
   pool:
     vmImage: 'windows-2019' 
   steps:
@@ -48,7 +49,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(Build.BuildId)" -suffix "$(suffix)"'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
@@ -59,7 +60,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-o packages -p:BuildNumber=$(Build.BuildId) -p:CommitHash=$(Build.SourceVersion) --version-suffix $(suffix) -c Release'
+      arguments: '-o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) --version-suffix $(suffix) -c Release'
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
