@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -43,9 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
         {
-            var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
             var scriptRootPath = Path.Combine(uniqueTestRootPath, "wwwroot");
 
@@ -80,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureLogging(c =>
                 {
                     c.AddProvider(_loggerProvider);
+                    c.AddFilter((cat, lev) => true);
                 })
                 .ConfigureServices(c =>
                 {
@@ -98,6 +97,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddProvider(_loggerProvider);
                 });
+
+            return webHostBuilder;
+        }
+
+
+        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        {
+            var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment);
 
             _httpServer = new TestServer(webHostBuilder);
             _httpClient = _httpServer.CreateClient();
@@ -165,9 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual void Dispose()
         {
-            _loggerProvider.Dispose();
-            _httpServer.Dispose();
-            _httpClient.Dispose();
+            _loggerProvider?.Dispose();
+            _httpServer?.Dispose();
+            _httpClient?.Dispose();
             CleanupTestDirectory();
         }
     }

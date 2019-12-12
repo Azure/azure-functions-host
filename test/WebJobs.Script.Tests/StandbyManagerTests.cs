@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var hostNameProvider = new HostNameProvider(_testEnvironment);
             var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
 
+            manager.SetInitialized();
             await manager.SpecializeHostAsync();
 
             // Ensure metrics are generated
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal("placeholder.azurewebsites.net", hostNameProvider.Value);
 
+            manager.SetInitialized();
             await manager.SpecializeHostAsync();
 
             // Ensure metrics are generated
@@ -98,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var hostNameProvider = new HostNameProvider(_testEnvironment);
             var manager = new StandbyManager(_mockHostManager.Object, _mockLanguageWorkerChannelManager.Object, _mockConfiguration.Object, _mockWebHostEnvironment.Object, _testEnvironment, _mockOptionsMonitor.Object, NullLogger<StandbyManager>.Instance, hostNameProvider, _mockApplicationLifetime.Object, metricsLogger);
+            manager.SetInitialized();
             await manager.SpecializeHostAsync();
 
             // Ensure metrics are generated

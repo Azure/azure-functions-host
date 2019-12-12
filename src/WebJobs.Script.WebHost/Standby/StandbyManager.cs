@@ -37,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IDisposable _changeTokenCallbackSubscription;
         private readonly TimeSpan _specializationTimerInterval;
         private readonly IApplicationLifetime _applicationLifetime;
+        private readonly TaskCompletionSource<bool> _initializedSource = new TaskCompletionSource<bool>();
+        private readonly Task _initialized;
 
         private Timer _specializationTimer;
         private static CancellationTokenSource _standbyCancellationTokenSource = new CancellationTokenSource();
@@ -65,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _changeTokenCallbackSubscription = ChangeToken.RegisterChangeCallback(_ => _logger.LogDebug($"{nameof(StandbyManager)}.{nameof(ChangeToken)} callback has fired."), null);
             _specializationTimerInterval = specializationTimerInterval;
             _applicationLifetime = applicationLifetime;
+            _initialized = _initializedSource.Task;
         }
 
         public static IChangeToken ChangeToken => _standbyChangeToken;
@@ -87,9 +90,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task SpecializeHostCoreAsync()
         {
-            // Go async immediately to ensure that any async context from
-            // the PlaceholderSpecializationMiddleware is properly suppressed.
-            await Task.Yield();
+            // Do not specialize if the host has not yet initialized. This can lead
+            // to invalid state.
+            if (!_initialized.IsCompleted)
+            {
+                _logger.LogDebug(new EventId(600, "SpecializeBeforeInitialize"), "SpecializeHostAsync was called before InitializeAsync. Delaying specialization until InitializeAsync has completed.");
+            }
+
+            // Note: This method must always go async very quickly to ensure that any async
+            // context from the PlaceholderSpecializationMiddleware is properly suppressed.
+            await _initialized;
 
             _logger.LogInformation(Resources.HostSpecializationTrace);
 
@@ -156,6 +166,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _standbyChangeToken = new CancellationChangeToken(_standbyCancellationTokenSource.Token);
         }
 
+        // for testing
+        internal void SetInitialized()
+        {
+            _initializedSource.TrySetResult(true);
+        }
+
         public async Task InitializeAsync()
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationStandbyManagerInitialize))
@@ -175,6 +191,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     finally
                     {
                         _semaphore.Release();
+
+                        // Now that this is initalized, set this task as completed. This prevents
+                        // specialization from being run before initialization.
+                        SetInitialized();
                     }
                 }
             }

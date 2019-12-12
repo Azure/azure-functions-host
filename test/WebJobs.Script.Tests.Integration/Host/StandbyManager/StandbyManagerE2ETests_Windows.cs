@@ -8,8 +8,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -80,6 +84,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
+        }
+
+        [Fact]
+        public async Task SpecializeBeforeInitialize_WaitsForInitializeToComplete()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            var environment = new TestEnvironment(_settings);
+
+            // We cannot create and run a full test host as there's no way to issue
+            // requests to the TestServer before initialization has occurred.
+            var webHostBuilder = await CreateWebHostBuilderAsync("Windows", environment);
+            IWebHost host = webHostBuilder.Build();
+
+            // Pull the service out of the built host. If it were easier to construct, we'd do that instead.
+            var standbyManager = host.Services.GetService<IStandbyManager>();
+            var scriptHostManager = host.Services.GetService<IScriptHostManager>() as WebJobsScriptHostService;
+
+            // Simulate the race condition by flipping the specialization env vars and calling
+            // Specialize before the call to Initialize was made.
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+
+            bool changeTokenFired = false;
+            using (StandbyManager.ChangeToken.RegisterChangeCallback(_ => changeTokenFired = true, null))
+            {
+                Task specializeTask = standbyManager.SpecializeHostAsync();
+
+                await TestHelpers.Await(() => _loggerProvider.GetLog().Contains("SpecializeHostAsync was called before InitializeAsync."));
+
+                // Give this a few seconds to ensure that it waits.
+                await Task.Delay(2000);
+
+                // The ChangeToken should not fire yet.
+                Assert.False(changeTokenFired);
+
+                await standbyManager.InitializeAsync();
+
+                // Note: we also need to start the ScriptHostManager or else specialization will never complete
+                await scriptHostManager.StartAsync(CancellationToken.None);
+
+                await specializeTask;
+
+                Assert.True(changeTokenFired);
+
+                var log = _loggerProvider.GetAllLogMessages().Single(p => p.FormattedMessage != null && p.FormattedMessage.StartsWith("Creating StandbyMode placeholder function directory"));
+
+                Assert.Contains("standby", log.FormattedMessage);
+
+                // We should not be touching this directory for initialization.
+                Assert.DoesNotContain("Windows", log.FormattedMessage);
+            }
         }
 
         [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/4230")]
