@@ -31,12 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
         private const string Connection = "connection";
+        private const string TriggerVersion = "triggerVersion";
         private const string DurableTaskV1StorageConnectionName = "azureStorageConnectionStringName";
         private const string DurableTaskV2StorageOptions = "storageOptions";
         private const string DurableTaskV2StorageConnectionName = "connectionStringName";
         private const string DurableTask = "durableTask";
 
-        internal const string DurableNotInstalledErrorMsg = "There is a host.json configuration for 'durableTask', but the durable task extension is not installed.";
         internal const string InvalidDurableV1ConfigErrorMsg = "Invalid host.json configuration for 'durableTask' for durable task extension 1.x";
         internal const string InvalidDurableV2ConfigErrorMsg = "Invalid host.json configuration for 'durableTask' for durable task extension 2.x";
 
@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IExtensionsManager _extensionsManager;
 
         private CloudBlockBlob _hashBlob;
+        private Lazy<Task<string>> _durableVersion;
 
         public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider, IExtensionsManager extensionsManager)
         {
@@ -73,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostNameProvider = hostNameProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _extensionsManager = extensionsManager;
+            _durableVersion = new Lazy<Task<string>>(() => this.GetDurableVersionAsync());
         }
 
         internal bool ArmCacheEnabled
@@ -336,8 +338,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return json;
         }
 
+        private async Task<string> GetDurableVersionAsync()
+        {
+            var extensions = await _extensionsManager.GetExtensions();
+            var durableTaskExtension = extensions.FirstOrDefault(ext => string.Equals(ext.Id, "Microsoft.Azure.WebJobs.Extensions.DurableTask", StringComparison.OrdinalIgnoreCase));
+            return durableTaskExtension?.Version;
+        }
+
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
+            string durableVersion = await _durableVersion.Value;
             var durableTaskConfig = await ReadDurableTaskConfig();
             var triggers = (await functionsMetadata
                 .Where(f => !f.IsProxy)
@@ -350,6 +360,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // add a property "taskHubName" with durable task hub name.
                     if (durableTaskConfig.Any()
                         && (t["type"]?.ToString().Equals("orchestrationTrigger", StringComparison.OrdinalIgnoreCase) == true
+                            || t["type"]?.ToString().Equals("entityTrigger", StringComparison.OrdinalIgnoreCase) == true
                             || t["type"]?.ToString().Equals("activityTrigger", StringComparison.OrdinalIgnoreCase) == true))
                     {
                         if (durableTaskConfig.ContainsKey(HubName))
@@ -361,6 +372,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         {
                             t[Connection] = durableTaskConfig[Connection];
                         }
+
+                        t[TriggerVersion] = durableVersion;
                     }
                     return t;
                 });
@@ -379,6 +392,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
 
+            string durableVersion = await _durableVersion.Value;
             if (FileUtility.FileExists(hostJsonPath))
             {
                 var json = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
@@ -395,38 +409,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 JToken durableTaskValue;
                 if (json.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
                 {
-                    var extensions = await _extensionsManager.GetExtensions();
-                    var durableTaskExtension = extensions.FirstOrDefault(ext => string.Equals(ext.Id, "Microsoft.Azure.WebJobs.Extensions.Durabletask", StringComparison.OrdinalIgnoreCase));
-                    if (durableTaskExtension == null)
+                    var durableHostConfig = (JObject)durableTaskValue;
+                    if (durableVersion.StartsWith("1."))
                     {
-                        throw new InvalidOperationException(DurableNotInstalledErrorMsg);
+                        return this.GetDurableV1Config(durableHostConfig);
                     }
-
-                    var kvp = (JObject)durableTaskValue;
-                    if (durableTaskExtension.Version.StartsWith("1."))
+                    else if (durableVersion.StartsWith("2."))
                     {
-                        if (this.HasDurableV2SpecificConfig(kvp))
-                        {
-                            throw new InvalidOperationException(InvalidDurableV1ConfigErrorMsg);
-                        }
-                        return this.GetDurableV1Config(kvp);
-                    }
-                    else if (durableTaskExtension.Version.StartsWith("2."))
-                    {
-                        if (this.HasDurableV1SpecificConfig(kvp))
-                        {
-                            throw new InvalidOperationException(InvalidDurableV2ConfigErrorMsg);
-                        }
-                        return this.GetDurableV2Config(kvp);
+                        return this.GetDurableV2Config(durableHostConfig);
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Cannot read host.json configuration for version {durableTaskExtension.Version} of durable task extension");
+                        throw new InvalidOperationException($"Invalid host.json configuration for version {durableVersion} of durable task extension");
                     }
                 }
             }
 
-            return new Dictionary<string, string>();
+            if (durableVersion.StartsWith("2."))
+            {
+                return new Dictionary<string, string>()
+                {
+                    { HubName,  GetDefaultDurableV2HubName() }
+                };
+            }
+            else
+            {
+                return new Dictionary<string, string>();
+            }
         }
 
         private Dictionary<string, string> GetDurableV1Config(JObject durableHostConfig)
@@ -463,8 +472,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    string hubName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
-                    hubName = SanitizeHubName(hubName);
+                    string hubName = GetDefaultDurableV2HubName();
                     config.Add(HubName, hubName);
                 }
 
@@ -478,37 +486,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception)
             {
-                throw new InvalidDataException("Invalid host.json configuration for 'durableTask' for durable task extension 2.x");
+                throw new InvalidDataException(InvalidDurableV2ConfigErrorMsg);
             }
 
             return config;
         }
 
-        private bool HasDurableV1SpecificConfig(JObject durableHostConfig)
+        // This logic will eventually be moved to ScaleController once it has access to version information.
+        private string GetDefaultDurableV2HubName()
         {
-            if (durableHostConfig.TryGetValue(DurableTaskV1StorageConnectionName, StringComparison.OrdinalIgnoreCase, out JToken nameValue) && nameValue != null)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private bool HasDurableV2SpecificConfig(JObject durableHostConfig)
-        {
-            if (durableHostConfig.TryGetValue(DurableTaskV2StorageOptions, StringComparison.OrdinalIgnoreCase, out JToken storageOptions) && (storageOptions as JObject) != null)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        // Since in Durable V2 we default to sitename, it is possible that the sitename is not a valid task hub name.
-        // This algorithm translates any sitename into a valid taskhub name for Azure Storage.
-        // This logic is copied from DurableTask extension. Ideally we would put this somewhere shared.
-        private string SanitizeHubName(string hubName)
-        {
+            // See https://github.com/Azure/azure-functions-durable-extension/blob/eb186eadb73a21d0efdc33cd7603fde5d802cab9/src/WebJobs.Extensions.DurableTask/Options/DurableTaskOptions.cs#L42
+            string hubName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+            // See https://github.com/Azure/azure-functions-durable-extension/blob/eb186eadb73a21d0efdc33cd7603fde5d802cab9/src/WebJobs.Extensions.DurableTask/Options/AzureStorageOptions.cs#L145
             hubName = new string(hubName.ToCharArray()
                 .Where(char.IsLetterOrDigit)
                 .Take(MaxTaskHubNameSize)

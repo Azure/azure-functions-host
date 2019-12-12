@@ -5,6 +5,7 @@ using System.IO.Abstractions;
 using System.Net.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -101,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            services.AddTransient<IExtensionsManager, ExtensionsManager>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
