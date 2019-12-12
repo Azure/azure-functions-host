@@ -11,15 +11,6 @@ function AcquireLease($blob) {
   } 
 }
 
-# parse PR title to see if we should pack this
-$response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-$title = $response.title.ToLowerInvariant()
-Write-Host "Pull request '$title'"
-if ($title.Contains("[pack]")) {
-  Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
-  Write-Host "Setting 'BuildArtifacts' to true."
-}
-
 # set the build suffix
 $branchName = $env:BUILD_SOURCEBRANCHNAME
 $buildReason = $env:BUILD_REASON
@@ -27,6 +18,17 @@ $buildNumber = $env:BUILD_BUILDID
 Write-Host "Branch name: '$branchName'"
 Write-Host "Build reason: '$buildReason'"
 Write-Host "Build number: '$buildNumber'"
+
+if ($buildReason -eq "PullRequest") {
+  # parse PR title to see if we should pack this
+  $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+  $title = $response.title.ToLowerInvariant()
+  Write-Host "Pull request '$title'"
+  if ($title.Contains("[pack]")) {
+    Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
+    Write-Host "Setting 'BuildArtifacts' to true."
+  }
+}
 
 $suffix = "ci"
 $emgSuffix = "ci$buildNumber" #ExtensionsMetadataGenerator suffix
