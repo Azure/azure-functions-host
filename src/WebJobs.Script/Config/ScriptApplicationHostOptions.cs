@@ -29,5 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool HasParentScope { get; set; }
 
         public IServiceProvider RootServiceProvider { get; set; }
+
+        public bool IsStandbyConfiguration { get; internal set; }
     }
 }
