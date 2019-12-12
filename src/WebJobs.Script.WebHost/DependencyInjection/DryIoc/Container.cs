@@ -64,7 +64,6 @@ namespace DryIoc
     using MemberAssignmentExpr = System.Linq.Expressions.MemberAssignment;
     using FactoryDelegateExpr = System.Linq.Expressions.Expression<FactoryDelegate>;
     using global::Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection.DryIoc;
-
 #endif
 
     /// <summary>IoC Container. Documentation is available at https://bitbucket.org/dadhi/dryioc. </summary>
@@ -432,11 +431,11 @@ namespace DryIoc
             _scopeContext == null ? _ownCurrentScope : _scopeContext.GetCurrentOrDefault();
 
         /// <inheritdoc />
-        public IResolverContext WithCurrentScope(IScope scope)
+        public IResolverContext WithCurrentScope(IScope scope, bool preferInterpretaion = false)
         {
             ThrowIfContainerDisposed();
             return new Container(Rules, _registry, _singletonScope, _scopeContext,
-                scope, _disposed, _disposeStackTrace, parent: this, root: _root ?? this);
+                scope, _disposed, _disposeStackTrace, parent: this, root: _root ?? this, preferInterpretation: preferInterpretaion);
         }
 
         void IResolverContext.UseInstance(Type serviceType, object instance, IfAlreadyRegistered ifAlreadyRegistered,
@@ -693,7 +692,7 @@ namespace DryIoc
                 : Ref.Of(_registry.Value.WithoutCache());
 
             return new Container(rules, registry, singletonScope, scopeContext,
-                _ownCurrentScope, _disposed, _disposeStackTrace, _parent, _root);
+                _ownCurrentScope, _disposed, _disposeStackTrace, _parent, _root, _preferInterpretation);
         }
 
         /// <summary>Produces new container which prevents any further registrations.</summary>
@@ -2593,7 +2592,7 @@ namespace DryIoc
         IScope CurrentScope { get; }
 
         /// <summary>Creates resolver context with specified current scope (or container which implements the context).</summary>
-        IResolverContext WithCurrentScope(IScope scope);
+        IResolverContext WithCurrentScope(IScope scope, bool preferInterpretation);
 
         /// <summary>Allows to put instance into the scope.</summary>
         void UseInstance(Type serviceType, object instance, IfAlreadyRegistered IfAlreadyRegistered,
@@ -2687,7 +2686,7 @@ namespace DryIoc
         ///     handler.Handle(data);
         /// }
         /// ]]></code></example>
-        public static IResolverContext OpenScope(this IResolverContext r, object name = null, bool trackInParent = false)
+        public static IResolverContext OpenScope(this IResolverContext r, object name = null, bool trackInParent = false, bool preferInterpretation = false)
         {
             // todo: Should we use OwnCurrentScope, then should it be in ResolverContext?
             var openedScope = r.ScopeContext == null
@@ -2697,7 +2696,7 @@ namespace DryIoc
             if (trackInParent)
                 (openedScope.Parent ?? r.SingletonScope).TrackDisposable(openedScope);
 
-            return r.WithCurrentScope(openedScope);
+            return r.WithCurrentScope(openedScope, preferInterpretation);
         }
     }
 
