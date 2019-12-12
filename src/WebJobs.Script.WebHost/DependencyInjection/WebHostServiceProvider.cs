@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceScope CreateScope()
         {
-            return new JobHostServiceScope(_container.OpenScope());
+            return new JobHostServiceScope(_container.OpenScope(preferInterpretation: _container.PreferInterpretation));
         }
     }
 }
