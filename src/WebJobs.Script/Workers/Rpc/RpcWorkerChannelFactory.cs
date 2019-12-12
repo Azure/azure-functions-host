@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
         }
 
-        public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+        public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount)
         {
             var languageWorkerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)
@@ -50,8 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                          workerLogger,
                          metricsLogger,
                          attemptCount,
-                         _applicationHostOptions,
-                         managedDependencyOptions);
+                         _applicationHostOptions);
         }
     }
 }

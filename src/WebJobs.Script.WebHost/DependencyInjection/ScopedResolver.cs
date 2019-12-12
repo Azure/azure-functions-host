@@ -12,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
     internal class ScopedResolver : IDisposable
     {
+        private static readonly Setup _rootScopeFactorySetup = Setup.With(preventDisposal: true);
+
         public ScopedResolver(IContainer resolver, bool isRootResolver = false)
         {
             Container = resolver ?? throw new ArgumentNullException(nameof(resolver));
@@ -32,13 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .ContinueWith(t =>
                 {
                     Container.Dispose();
-                });
+                }, TaskContinuationOptions.ExecuteSynchronously);
         }
 
         internal ServiceScope CreateChildScope(IServiceScopeFactory rootScopeFactory)
         {
             var scopedRoot = rootScopeFactory.CreateScope();
-            Container scopedContext = Container.OpenScope() as Container;
+            var preferInterpretation = (Container as Container).PreferInterpretation;
+            Container scopedContext = Container.OpenScope(preferInterpretation: preferInterpretation) as Container;
 
             Rules rules = scopedContext.Rules;
             foreach (var unknownServiceResolver in scopedContext.Rules.UnknownServiceResolvers)
@@ -48,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             var resolver = scopedContext.With(r => rules.WithUnknownServiceResolvers(request =>
               {
-                  return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType));
+                  return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType), setup: _rootScopeFactorySetup);
               }));
 
             var scope = new ServiceScope(resolver, scopedRoot);

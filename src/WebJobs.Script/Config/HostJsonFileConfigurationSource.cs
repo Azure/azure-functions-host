@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject GetDefaultHostConfigObject()
             {
-                var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
+                var hostJsonJObj = JObject.Parse("{'version': '2.0', 'extensionBundle': { 'id': 'Microsoft.Azure.Functions.ExtensionBundle', 'version': '[1.*, 2.0.0)'}}");
                 if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
                     && !_configurationSource.Environment.IsFileSystemReadOnly())
                 {
