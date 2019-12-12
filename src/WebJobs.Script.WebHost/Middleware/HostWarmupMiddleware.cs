@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 // We will need to monitor failed vs success prepares and if the failures increase, it means code paths have diverged or there have been updates on dotnet core side.
                 // When this happens, we will need to regenerate the coldstart.jittrace file.
-                _logger.LogInformation($"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares}");
+                _logger.LogInformation(new EventId(100, "PreJit"), $"PreJIT Successful prepares: {successfulPrepares}, Failed prepares: {failedPrepares}");
             }
         }
 
