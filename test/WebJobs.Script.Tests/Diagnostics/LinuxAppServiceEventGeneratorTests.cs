@@ -67,12 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),
                 p => Assert.Equal(source, p),
-                p => Assert.Equal(details, p),
-                p => Assert.Equal(summary, p),
+                p => Assert.Equal(details, LinuxContainerEventGeneratorTests.UnNormalize(p)),
+                p => Assert.Equal(summary, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, p),
+                p => Assert.Equal(exceptionMessage, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
                 p => Assert.Equal(activityId, p));
@@ -126,8 +126,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),
                 p => Assert.Equal(functionName, p),
-                p => Assert.Equal(inputBindings, p),
-                p => Assert.Equal(outputBindings, p),
+                p => Assert.Equal(inputBindings, LinuxContainerEventGeneratorTests.UnNormalize(p)),
+                p => Assert.Equal(outputBindings, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
         }
