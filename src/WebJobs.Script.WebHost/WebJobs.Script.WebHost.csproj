@@ -39,6 +39,7 @@
     <None Remove="applicationHost.xdt" />
     <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
+    <None Remove="PreJIT\coldstart.jittrace" />
     <None Remove="web.InProcess.win-x64.xdt" />
     <None Remove="web.InProcess.win-x86.xdt" />
   </ItemGroup>
@@ -50,6 +51,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="web.InProcess.win-x86.xdt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="PreJIT\coldstart.jittrace">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
