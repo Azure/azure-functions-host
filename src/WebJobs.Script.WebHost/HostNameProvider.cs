@@ -21,13 +21,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class HostNameProvider
     {
         private readonly IEnvironment _environment;
-        private readonly ILogger _logger;
         private string _hostName;
 
-        public HostNameProvider(IEnvironment environment, ILogger<HostNameProvider> logger)
+        public HostNameProvider(IEnvironment environment)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logger = logger;
         }
 
         public virtual string Value
@@ -52,17 +50,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public virtual void Synchronize(HttpRequest request)
+        public virtual void Synchronize(HttpRequest request, ILogger logger)
         {
             string hostNameHeaderValue = request.Headers[ScriptConstants.AntaresDefaultHostNameHeader];
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
                 string.Compare(Value, hostNameHeaderValue) != 0)
             {
-                    if (string.Compare(Value, hostNameHeaderValue) != 0)
-                    {
-                        _logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
-                        _hostName = hostNameHeaderValue;
-                    }
+                if (string.Compare(Value, hostNameHeaderValue) != 0)
+                {
+                    logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
+                    _hostName = hostNameHeaderValue;
+                }
             }
         }
 

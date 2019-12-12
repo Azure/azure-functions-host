@@ -91,7 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
                 {
-                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory());
+                    var hostNameProvider = p.GetService<HostNameProvider>();
+                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider);
                 }
                 else
                 {
