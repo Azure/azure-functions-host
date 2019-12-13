@@ -12,14 +12,27 @@ function AcquireLease($blob) {
 }
 
 # set the build suffix
-$branchName = $env:BUILD_SOURCEBRANCHNAME
+$sourceBranch = $env:BUILD_SOURCEBRANCH
+$sourceBranchName = $env:BUILD_SOURCEBRANCHNAME
 $buildReason = $env:BUILD_REASON
-$buildNumber = $env:BUILD_BUILDID
-Write-Host "Branch name: '$branchName'"
+$buildNumber = "$env:COUNTER"
+Write-Host "Source branch: '$sourceBranch'"
+Write-Host "Source branch name: '$sourceBranchName'"
 Write-Host "Build reason: '$buildReason'"
 Write-Host "Build number: '$buildNumber'"
 
+$buildNamePrefix = ""
+
 if ($buildReason -eq "PullRequest") {
+  $sourceBranch = $env:SYSTEM_PULLREQUEST_SOURCEBRANCH
+  $targetBranch = $env:SYSTEM_PULLREQUEST_TARGETBRANCH
+  $prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+  $buildNamePrefix = "(PR $prNumber) "
+  Write-Host "PR source branch: '$sourceBranch'"
+  Write-Host "PR target branch: '$targetBranch'"
+  Write-Host "PR number: '$prNumber'"
+  Write-Host "Build name prefix: '$buildNamePrefix'"
+
   # parse PR title to see if we should pack this
   $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
   $title = $response.title.ToLowerInvariant()
@@ -38,10 +51,16 @@ if ($branchName -eq "release/3.0") {
   $emgSuffix = ""
 }
 
+$buildName = "$buildNamePrefix" + "3.0." + "$buildNumber"
+
 Write-Host "##vso[task.setvariable variable=Suffix;isOutput=true]$suffix"
 Write-Host "##vso[task.setvariable variable=EmgSuffix;isOutput=true]$emgSuffix"
+Write-Host "##vso[task.setvariable variable=BuildNumber;isOutput=true]$buildNumber"
+Write-Host "##vso[build.updatebuildnumber]$buildName"
 Write-Host "Setting 'Suffix' to '$suffix'."
 Write-Host "Setting 'EmgSuffix' to '$emgSuffix'."
+Write-Host "Setting 'BuildNumber' to '$buildNumber'."
+Write-Host "Setting build name to '$buildName'."
 
 # get a blob lease to prevent test overlap
 $storageContext = New-AzureStorageContext -ConnectionString $connectionString
