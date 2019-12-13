@@ -27,13 +27,14 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NuGet.Packaging.Signing;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
     public class FunctionsSyncManagerTests : IDisposable
     {
-        private const string DefaultTestDurableVersion = "1.8.4";
+        private const string DefaultTestTaskHub = "TestHubValue";
         private const string DefaultTestConnection = "DurableStorage";
 
         private readonly string _testRootScriptPath;
@@ -46,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
-        private readonly Mock<IExtensionsManager> _mockExtensionsManager;
         private readonly HostNameProvider _hostNameProvider;
         private string _function1;
 
@@ -124,25 +124,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
-            _mockExtensionsManager = new Mock<IExtensionsManager>(MockBehavior.Strict);
-            var extensions = new List<ExtensionPackageReference>();
-            extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = DefaultTestDurableVersion });
-            _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
-
             var functionMetadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataProvider, _mockExtensionsManager.Object);
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataProvider);
         }
 
-        private string GetExpectedSyncTriggersPayload(string durableVersion = DefaultTestDurableVersion, string connection = DefaultTestConnection)
+        private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
         {
+            string taskHubSegment = postedTaskHub != null ? $",\"taskHubName\":\"{postedTaskHub}\"" : "";
             return "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{connection}\",\"functionName\":\"function2\",\"taskHubName\":\"TestHubValue\",\"triggerVersion\":\"{durableVersion}\"}}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{connection}\",\"functionName\":\"function3\",\"taskHubName\":\"TestHubValue\",\"triggerVersion\":\"{durableVersion}\"}}]";
+                $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function2\"{taskHubSegment}}}," +
+                $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
         }
 
-        private void ResetMockFileSystem(string hostJsonContent = null)
+        private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
         {
-            var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent);
+            var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent);
             FileUtility.Instance = fileSystem;
         }
 
@@ -233,9 +229,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        private void VerifyResultWithCacheOn(string durableVersion = DefaultTestDurableVersion, string connection = DefaultTestConnection)
+        private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue")
         {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(durableVersion, connection);
+            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub);
             // verify triggers
             var result = JObject.Parse(_contentBuilder.ToString());
             var triggers = result["triggers"];
@@ -371,28 +367,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_DurableV2_NoTaskHub_CleanSiteName()
+        public async Task TrySyncTriggers_NoDurableTaskHub_UsesBundles_V1DefaultsPosted()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var extensions = new List<ExtensionPackageReference>();
-                extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = "2.0.0" });
-                _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
+                var durableConfig = new JObject();
 
-                var azureStorageConfig = new JObject
-                {
-                    { "connectionStringName", "DurableStorage" }
-                };
-                var durableConfig = new JObject
-                {
-                    { "storageOptions", azureStorageConfig }
-                };
+                var hostConfig = GetHostConfig(durableConfig, useBundles: true);
 
-                var hostConfig = GetHostConfig(durableConfig);
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: null);
 
-                ResetMockFileSystem(hostConfig.ToString());
                 // Act
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
 
@@ -400,24 +387,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(durableVersion: "2.0.0");
+                VerifyResultWithCacheOn(expectedTaskHub: null, connection: null);
             }
+
         }
 
         [Fact]
-        public async Task TrySyncTriggers_DurableV2_NoDurableConfig_PostsExpectedDefaults()
+        public async Task TrySyncTriggers_NoDurableTaskHub_DurableV1ExtensionJson_V1DefaultsPosted()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var extensions = new List<ExtensionPackageReference>();
-                extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = "2.0.0" });
-                _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
+                var durableConfig = new JObject();
 
-                var hostConfig = GetHostConfig(null);
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
 
-                ResetMockFileSystem(hostConfig.ToString());
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "1.8.3.0");
+
                 // Act
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
 
@@ -425,33 +413,50 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(durableVersion: "2.0.0", connection: string.Empty);
+                VerifyResultWithCacheOn(expectedTaskHub: null, connection: null);
             }
         }
 
         [Fact]
-        public async Task TrySyncTriggers_DurableV2_NoTaskHub_InvalidSiteName()
+        public async Task TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_CleanSiteName_V2DefaultsPosted()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var durableConfig = new JObject();
+
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
+
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0");
+
+                // Act
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                // Assert
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                VerifyResultWithCacheOn(expectedTaskHub: "TestHubValue", connection: null);
+            }
+        }
+
+
+        [Fact]
+        public async Task TrySyncTriggers_NoDurableTaskHub_DurableV2ExtensionJson_InvalidSiteName_V2DefaultsPosted()
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("Test_Hub_Value");
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var extensions = new List<ExtensionPackageReference>();
-                extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = "2.0.0" });
-                _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
+                var durableConfig = new JObject();
 
-                var azureStorageConfig = new JObject
-                {
-                    { "connectionStringName", "DurableStorage" }
-                };
-                var durableConfig = new JObject
-                {
-                    { "storageOptions", azureStorageConfig }
-                };
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
 
-                var hostConfig = GetHostConfig(durableConfig);
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0");
 
-                ResetMockFileSystem(hostConfig.ToString());
                 // Act
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
 
@@ -459,30 +464,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(durableVersion: "2.0.0");
+                VerifyResultWithCacheOn(expectedTaskHub: "TestHubValue", connection: null);
             }
         }
 
         [Fact]
-        public async Task TrySyncTriggers_DurableV2_TaskHubSpecified()
+        public async Task TrySyncTriggers_DurableV1ExtensionJson_V1ConfigPosted()
         {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
+
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                SetupV2Extension();
+                var durableConfig = new JObject();
 
-                var azureStorageConfig = new JObject
-                {
-                    { "connectionStringName", "DurableStorage" }
-                };
-                var durableConfig = new JObject
-                {
-                    { "storageOptions", azureStorageConfig },
-                    { "hubName", "TestHubValue" }
-                };
+                durableConfig["hubName"] = "DurableTask";
+                durableConfig["azureStorageConnectionStringName"] = "DurableConnection";
 
-                var hostConfig = GetHostConfig(durableConfig);
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
 
-                ResetMockFileSystem(hostConfig.ToString());
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "1.8.3.0");
+
                 // Act
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
 
@@ -490,7 +492,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(durableVersion: "2.0.0");
+                VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection");
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_DurableV2ExtensionJson_V2ConfigPosted()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var durableConfig = new JObject();
+
+                durableConfig["hubName"] = "DurableTask";
+
+                var azureStorageConfig = new JObject();
+                azureStorageConfig["connectionStringName"] = "DurableConnection";
+                durableConfig["storageOptions"] = azureStorageConfig;
+
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
+
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0");
+
+                // Act
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                // Assert
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection");
             }
         }
 
@@ -502,35 +535,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(errorMessage, messages[0].Message);
         }
 
-        [Fact]
-        public async Task TrySyncTriggers_InvalidDurableExtensionVersion_ReturnsError()
+        private void SetupDurableExtension(string hostJson, string durableExtensionJsonVersion)
         {
-            using (var env = new TestScopedEnvironmentVariable(_vars))
-            {
-                _mockExtensionsManager.Reset();
-                var extensions = new List<ExtensionPackageReference>();
-                extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = "3.0.0" });
-                _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
-
-                // Act
-                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
-
-                // Assert
-                Assert.False(syncResult.Success, "SyncTriggers should return success false");
-
-                VerifyLoggedInvalidOperationException($"Invalid host.json configuration for version 3.0.0 of durable task extension");
-            }
+            string extensionJson = durableExtensionJsonVersion != null ? GetExtensionsJson(durableExtensionJsonVersion) : null;
+            ResetMockFileSystem(hostJsonContent: hostJson, extensionsJsonContent: extensionJson);
         }
 
-        private void SetupV2Extension()
-        {
-            _mockExtensionsManager.Reset();
-            var extensions = new List<ExtensionPackageReference>();
-            extensions.Add(new ExtensionPackageReference() { Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask", Version = "2.0.0" });
-            _mockExtensionsManager.Setup(em => em.GetExtensions()).Returns(Task.FromResult((IEnumerable<ExtensionPackageReference>)extensions));
-        }
-
-        private JObject GetHostConfig(JObject durableConfig)
+        private JObject GetHostConfig(JObject durableConfig, bool useBundles = false)
         {
             var extensionsConfig = new JObject();
             if (durableConfig != null)
@@ -538,10 +549,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 extensionsConfig.Add("durableTask", durableConfig);
             }
 
-            return new JObject
+            var hostConfig = new JObject
             {
                 { "extensions", extensionsConfig }
             };
+
+            if (useBundles)
+            {
+                var extensionBundleConfig = new JObject();
+                extensionBundleConfig["id"] = "Microsoft.Azure.Functions.ExtensionBundle";
+                extensionBundleConfig["version"] = "[1.*, 2.0.0)";
+                hostConfig["extensionBundle"] = extensionBundleConfig;
+            }
+
+            return hostConfig;
+        }
+
+        private string GetExtensionsJson(string durableVersion)
+        {
+            var durableExtension = new JObject();
+            durableExtension["name"] = "DurableTask";
+            durableExtension["typeName"] = $"Microsoft.Azure.WebJobs.Extensions.DurableTask.DurableTaskWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.DurableTask, Version={durableVersion}, Culture=neutral, PublicKeyToken=014045d636e89289";
+            var extensions = new JArray();
+            extensions.Add(durableExtension);
+            var extensionJson = new JObject();
+            extensionJson["extensions"] = extensions;
+            return extensionJson.ToString();
         }
 
         [Theory]
@@ -597,7 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
         }
 
-        private IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null)
+        private IFileSystem CreateFileSystem(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null, string extensionsJsonContent = null)
         {
             var rootPath = hostOptions.ScriptPath;
             string testDataPath = hostOptions.TestDataPath;
@@ -629,11 +662,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             testHostJsonStream.Position = 0;
             fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testHostJsonStream);
 
+            if (extensionsJsonContent != null)
+            {
+                string extensionJsonPath = Path.Combine(Path.Combine(rootPath, "bin"), "extensions.json");
+                fileBase.Setup(f => f.Exists(extensionJsonPath)).Returns(true);
+                var testExtensionsJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(extensionsJsonContent));
+                testExtensionsJsonStream.Position = 0;
+                fileBase.Setup(f => f.Open(extensionJsonPath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testExtensionsJsonStream);
+            }
+
             fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
             dirBase.Setup(d => d.Exists(rootPath)).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, "bin"))).Returns(true);
             dirBase.Setup(d => d.EnumerateDirectories(rootPath))
                 .Returns(new[]
                 {
+                    Path.Combine(rootPath, "bin"),
                     Path.Combine(rootPath, "function1"),
                     Path.Combine(rootPath, "function2"),
                     Path.Combine(rootPath, "function3")
