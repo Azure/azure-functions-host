@@ -426,7 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Log whether App Insights is enabled
-            if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey))
+            if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey) || !string.IsNullOrEmpty(_settingsManager.ApplicationInsightsConnectionString))
             {
                 _metricsLogger.LogEvent(MetricEventNames.ApplicationInsightsEnabled);
             }
