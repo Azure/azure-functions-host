@@ -43,8 +43,13 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         $publishTarget = "$publishTarget.self-contained"
         $symbolsTarget = "$symbolsTarget.self-contained"
     }
-    
-    $cmd = "publish", ".\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:VersionSuffix=$suffix", "-c", "Release"
+
+    $suffixCmd = ""
+    if ($hasSuffix) {
+      $suffixCmd = "/p:VersionSuffix=$suffix"
+    }
+
+    $cmd = "publish", ".\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
