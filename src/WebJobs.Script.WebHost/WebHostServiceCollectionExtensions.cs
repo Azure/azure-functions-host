@@ -103,7 +103,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
-            services.AddTransient<IExtensionsManager, ExtensionsManager>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
