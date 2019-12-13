@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=some_other_key" },
                         { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SamplingSettings", "IsEnabled"), "false" },
                         { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SnapshotConfiguration", "IsEnabled"), "false" }
                     });
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ApplicationInsightsLoggerOptions appInsightsOptions = host.Services.GetService<IOptions<ApplicationInsightsLoggerOptions>>().Value;
 
                 Assert.Equal("some_key", appInsightsOptions.InstrumentationKey);
+                Assert.Equal("InstrumentationKey=some_other_key", appInsightsOptions.ConnectionString);
                 Assert.Null(appInsightsOptions.SamplingSettings);
                 Assert.False(appInsightsOptions.SnapshotConfiguration.IsEnabled);
             }
