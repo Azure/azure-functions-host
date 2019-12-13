@@ -1,4 +1,4 @@
-name: $(Build.Reason)_$(Build.BuildId)
+name: $(Build.BuildId) # This will be updated during InitializePipeline
 
 pr:
   branches:
@@ -16,6 +16,8 @@ jobs:
 - job: InitializePipeline
   pool:
     vmImage: 'windows-2019'
+  variables:
+    counter: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -36,7 +38,7 @@ jobs:
   variables:
     suffix: $[ dependencies.InitializePipeline.outputs['Initialize.Suffix'] ]
     emgSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.EmgSuffix'] ]
-    buildNumber: $[ counter(variables['Build.Reason'], 12940) ] # Start at the highest of our AppVeyor versions. Maintain a separate counter for PR and commits
+    buildNumber: $[ dependencies.InitializePipeline.outputs['Initialize.BuildNumber'] ]
   pool:
     vmImage: 'windows-2019' 
   steps:
