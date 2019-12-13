@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
             var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
 
-            var durableExtension = extensionItems.FirstOrDefault(ext => string.Equals(ext.Name, "DurableTask", StringComparison.OrdinalIgnoreCase));
+            var durableExtension = extensionItems?.FirstOrDefault(ext => string.Equals(ext.Name, "DurableTask", StringComparison.OrdinalIgnoreCase));
             if (durableExtension == null)
             {
                 return null;
