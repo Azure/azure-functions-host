@@ -62,7 +62,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) --version-suffix $(suffix) -c Release'
+      arguments: '-o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) --version-suffix "$(suffix)" -c Release'
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -136,7 +136,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages --version-suffix $(emgSuffix)'
+      arguments: '--no-build -c Release -o packages --version-suffix "$(emgSuffix)"'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
