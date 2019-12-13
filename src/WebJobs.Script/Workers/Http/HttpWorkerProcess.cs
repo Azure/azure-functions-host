@@ -51,14 +51,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        internal override void HandleWorkerProcessExitError(WorkerProcessExitException httpWorkerProcessExitException)
         {
-            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
+            if (httpWorkerProcessExitException == null)
             {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _workerProcessArguments.ExecutablePath);
-                _eventManager.Publish(new HttpWorkerErrorEvent(_workerId, langExc));
+                throw new ArgumentNullException(nameof(httpWorkerProcessExitException));
             }
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerProcessLogger.LogDebug(httpWorkerProcessExitException, $"Language Worker Process exited. Pid={httpWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _eventManager.Publish(new HttpWorkerErrorEvent(_workerId, httpWorkerProcessExitException));
         }
 
         internal override void HandleWorkerProcessRestart()
