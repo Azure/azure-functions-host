@@ -127,7 +127,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var coldStartLog = _loggerProvider.GetAllLogMessages().FirstOrDefault(p => p.Category == ScriptConstants.LogCategoryHostMetrics);
             JObject coldStartData = JObject.Parse(coldStartLog.FormattedMessage);
             Assert.Equal("Dynamic", coldStartData["sku"]);
-            Assert.True((int)coldStartData["dispatchDuration"] > 0);
+
+            // TODO: https://github.com/Azure/azure-functions-host/issues/5389
+            //Assert.True((int)coldStartData["dispatchDuration"] > 0);
             Assert.True((int)coldStartData["functionDuration"] > 0);
 
             // Verify that the internal cache has reset
