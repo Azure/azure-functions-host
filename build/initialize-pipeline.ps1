@@ -22,6 +22,7 @@ Write-Host "Build reason: '$buildReason'"
 Write-Host "Build number: '$buildNumber'"
 
 $buildNamePrefix = ""
+$isReleaseBuild = $false
 
 if ($buildReason -eq "PullRequest") {
   $sourceBranch = $env:SYSTEM_PULLREQUEST_SOURCEBRANCH
@@ -41,14 +42,20 @@ if ($buildReason -eq "PullRequest") {
     Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
     Write-Host "Setting 'BuildArtifacts' to true."
   }
+} else {
+  if ($sourceBranch.endswith("release/3.0")) {
+    Write-Host "This is a release build."
+    $isReleaseBuild = $true
+  }
 }
 
 $suffix = "ci"
 $emgSuffix = "ci$buildNumber" #ExtensionsMetadataGenerator suffix
 
-if ($branchName -eq "release/3.0") {
+if ($isReleaseBuild) {
   $suffix = ""
   $emgSuffix = ""
+  $buildNamePrefix = "(Release) "
 }
 
 $buildName = "$buildNamePrefix" + "3.0." + "$buildNumber"
