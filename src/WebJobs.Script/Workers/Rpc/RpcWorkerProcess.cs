@@ -47,15 +47,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        internal override void HandleWorkerProcessExitError(WorkerProcessExitException rpcWorkerProcessExitException)
         {
-            if (langExc == null)
+            if (rpcWorkerProcessExitException == null)
             {
-                throw new ArgumentNullException("WorkerProcessExitException for rpc worker process exit must exist.");
+                throw new ArgumentNullException(nameof(rpcWorkerProcessExitException));
             }
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited. Pid={langExc.Pid}.", _workerProcessArguments.ExecutablePath);
-            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
+            _workerProcessLogger.LogDebug(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
         }
 
         internal override void HandleWorkerProcessRestart()
