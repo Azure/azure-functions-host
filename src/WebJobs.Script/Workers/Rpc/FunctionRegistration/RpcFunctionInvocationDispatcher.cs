@@ -278,9 +278,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                AddOrUpdateErrorBucket(workerError);
-                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                if (string.Equals(_workerRuntime, workerError.Language))
+                {
+                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    AddOrUpdateErrorBucket(workerError);
+                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                }
+                else
+                {
+                    _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                }
             }
         }
 
@@ -297,20 +305,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
             bool isJobHostChannel = false;
-            if (!isWebHostChannel)
+
+            // Dispose old worker
+            if (isWebHostChannel)
             {
-                _logger.LogDebug("Disposing channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
+                _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
+            }
+            else
+            {
                 var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
                 if (channel != null)
                 {
+                    _logger.LogDebug("Disposing JobHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
                     isJobHostChannel = true;
                     _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
                 }
+                else
+                {
+                    _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: {channelId}, runtime:{language}", workerId, runtime);
+                }
             }
+
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
+            }
+            else
+            {
+                _logger.LogDebug("Skipping worker channel restart for errored worker runtime:{runtime}, current runtime:{currentRuntime}, isWebHostChannel:{isWebHostChannel}, isJobHostChannel:{isJobHostChannel}",
+                    runtime, _workerRuntime, isWebHostChannel, isJobHostChannel);
             }
         }
 
