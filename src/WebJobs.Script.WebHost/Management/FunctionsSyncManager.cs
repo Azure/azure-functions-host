@@ -8,10 +8,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Configuration;
@@ -29,8 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
         private const string Connection = "connection";
-        private const string DurableTaskStorageConnectionName = "azureStorageConnectionStringName";
+        private const string DurableTaskV1StorageConnectionName = "azureStorageConnectionStringName";
+        private const string DurableTaskV2StorageOptions = "storageOptions";
+        private const string DurableTaskV2StorageConnectionName = "connectionStringName";
         private const string DurableTask = "durableTask";
+
+        // 45 alphanumeric characters gives us a buffer in our table/queue/blob container names.
+        private const int MaxTaskHubNameSize = 45;
+        private const int MinTaskHubNameSize = 3;
+        private const string TaskHubPadding = "Hub";
+
+        private readonly Regex versionRegex = new Regex(@"Version=(?<majorversion>\d)\.\d\.\d");
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ILogger _logger;
@@ -323,32 +334,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
-            var durableTaskConfig = await ReadDurableTaskConfig();
             var triggers = (await functionsMetadata
                 .Where(f => !f.IsProxy)
                 .Select(f => f.ToFunctionTrigger(hostOptions))
                 .WhenAll())
-                .Where(t => t != null)
-                .Select(t =>
-                {
-                    // if we have a durableTask hub name and the function trigger is either orchestrationTrigger OR activityTrigger,
-                    // add a property "taskHubName" with durable task hub name.
-                    if (durableTaskConfig.Any()
-                        && (t["type"]?.ToString().Equals("orchestrationTrigger", StringComparison.OrdinalIgnoreCase) == true
-                            || t["type"]?.ToString().Equals("activityTrigger", StringComparison.OrdinalIgnoreCase) == true))
-                    {
-                        if (durableTaskConfig.ContainsKey(HubName))
-                        {
-                            t[TaskHubName] = durableTaskConfig[HubName];
-                        }
+                .Where(t => t != null);
 
-                        if (durableTaskConfig.ContainsKey(Connection))
-                        {
-                            t[Connection] = durableTaskConfig[Connection];
-                        }
-                    }
-                    return t;
-                });
+            if (triggers.Any(IsDurableTrigger))
+            {
+                DurableConfig durableTaskConfig = await ReadDurableTaskConfig();
+                // If any host level durable config values, we need to apply them to all durable triggers
+                if (durableTaskConfig.HasValues())
+                {
+                    triggers = triggers.Select(t => UpdateDurableFunctionConfig(t, durableTaskConfig));
+                }
+            }
 
             if (FileUtility.FileExists(Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
             {
@@ -359,48 +359,167 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return triggers;
         }
 
-        private async Task<Dictionary<string, string>> ReadDurableTaskConfig()
+        private static bool IsDurableTrigger(JObject trigger)
         {
-            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
-            var config = new Dictionary<string, string>();
-            if (FileUtility.FileExists(hostJsonPath))
-            {
-                var json = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+            return trigger["type"]?.ToString().Equals("orchestrationTrigger", StringComparison.OrdinalIgnoreCase) == true
+                || trigger["type"]?.ToString().Equals("entityTrigger", StringComparison.OrdinalIgnoreCase) == true
+                || trigger["type"]?.ToString().Equals("activityTrigger", StringComparison.OrdinalIgnoreCase) == true;
+        }
 
-                // get the DurableTask extension config section
-                JToken extensionsValue;
-                if (json.TryGetValue("extensions", StringComparison.OrdinalIgnoreCase, out extensionsValue) && extensionsValue != null)
+        private static JObject UpdateDurableFunctionConfig(JObject trigger, DurableConfig durableTaskConfig)
+        {
+            if (IsDurableTrigger(trigger))
+            {
+                if (durableTaskConfig.HubName != null)
                 {
-                    json = (JObject)extensionsValue;
+                    trigger[TaskHubName] = durableTaskConfig.HubName;
                 }
 
-                // we will allow case insensitivity given it is likely user hand edited
-                // see https://github.com/Azure/azure-functions-durable-extension/issues/111
-                JToken durableTaskValue;
-                if (json.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out durableTaskValue) && durableTaskValue != null)
+                if (durableTaskConfig.Connection != null)
                 {
-                    try
-                    {
-                        var kvp = (JObject)durableTaskValue;
-                        if (kvp.TryGetValue(HubName, StringComparison.OrdinalIgnoreCase, out JToken nameValue) && nameValue != null)
-                        {
-                            config.Add(HubName, nameValue.ToString());
-                        }
+                    trigger[Connection] = durableTaskConfig.Connection;
+                }
+            }
+            return trigger;
+        }
 
-                        if (kvp.TryGetValue(DurableTaskStorageConnectionName, StringComparison.OrdinalIgnoreCase, out nameValue) && nameValue != null)
-                        {
-                            config.Add(Connection, nameValue.ToString());
-                        }
-                    }
-                    catch (Exception)
+        private async Task<DurableConfig> ReadDurableTaskConfig()
+        {
+            JObject hostJson = null;
+            JObject durableHostConfig = null;
+            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
+            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            if (FileUtility.FileExists(hostJsonPath))
+            {
+                hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+
+                // get the DurableTask extension config section
+                if (hostJson != null &&
+                    hostJson.TryGetValue("extensions", StringComparison.OrdinalIgnoreCase, out JToken extensionsValue))
+                {
+                    // we will allow case insensitivity given it is likely user hand edited
+                    // see https://github.com/Azure/azure-functions-durable-extension/issues/111
+                    var extensions = extensionsValue as JObject;
+                    if (extensions != null &&
+                        extensions.TryGetValue(DurableTask, StringComparison.OrdinalIgnoreCase, out JToken durableTaskValue))
                     {
-                        throw new InvalidDataException("Invalid host.json configuration for 'durableTask'.");
+                        durableHostConfig = durableTaskValue as JObject;
                     }
                 }
             }
 
+            var durableMajorVersion = await GetDurableMajorVersionAsync(hostJson, hostOptions);
+            if (durableMajorVersion == null || durableMajorVersion.Equals("1"))
+            {
+                return GetDurableV1Config(durableHostConfig);
+            }
+            else
+            {
+                // v2 or greater
+                return GetDurableV2Config(durableHostConfig);
+            }
+        }
+
+        // This is a stopgap approach to get the Durable extension version. It duplicates some logic in ExtensionManager.cs.
+        private async Task<string> GetDurableMajorVersionAsync(JObject hostJson, ScriptJobHostOptions hostOptions)
+        {
+            bool isUsingBundles = hostJson != null && hostJson.TryGetValue("extensionBundle", StringComparison.OrdinalIgnoreCase, out _);
+            if (isUsingBundles)
+            {
+                // TODO: As of 2019-12-12, there are no extension bundles for version 2.x of Durable.
+                // This may change in the future.
+                return "1";
+            }
+
+            string binPath = binPath = Path.Combine(hostOptions.RootScriptPath, "bin");
+            string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
+            if (!FileUtility.FileExists(metadataFilePath))
+            {
+                return null;
+            }
+
+            var extensionMetadata = JObject.Parse(await FileUtility.ReadAsync(metadataFilePath));
+            var extensionItems = extensionMetadata["extensions"]?.ToObject<List<ExtensionReference>>();
+
+            var durableExtension = extensionItems?.FirstOrDefault(ext => string.Equals(ext.Name, "DurableTask", StringComparison.OrdinalIgnoreCase));
+            if (durableExtension == null)
+            {
+                return null;
+            }
+
+            var versionMatch = versionRegex.Match(durableExtension.TypeName);
+            if (!versionMatch.Success)
+            {
+                return null;
+            }
+
+            // Grab the captured group.
+            return versionMatch.Groups["majorversion"].Captures[0].Value;
+        }
+
+        private DurableConfig GetDurableV1Config(JObject durableHostConfig)
+        {
+            var config = new DurableConfig();
+            if (durableHostConfig != null)
+            {
+                if (durableHostConfig.TryGetValue(HubName, StringComparison.OrdinalIgnoreCase, out JToken nameValue) && nameValue != null)
+                {
+                    config.HubName = nameValue.ToString();
+                }
+
+                if (durableHostConfig.TryGetValue(DurableTaskV1StorageConnectionName, StringComparison.OrdinalIgnoreCase, out nameValue) && nameValue != null)
+                {
+                    config.Connection = nameValue.ToString();
+                }
+            }
+
             return config;
+        }
+
+        private DurableConfig GetDurableV2Config(JObject durableHostConfig)
+        {
+            var config = new DurableConfig();
+
+            if (durableHostConfig != null)
+            {
+                if (durableHostConfig.TryGetValue(HubName, StringComparison.OrdinalIgnoreCase, out JToken nameValue) && nameValue != null)
+                {
+                    config.HubName = nameValue.ToString();
+                }
+
+                if (durableHostConfig.TryGetValue(DurableTaskV2StorageOptions, StringComparison.OrdinalIgnoreCase, out JToken storageOptions) && (storageOptions as JObject) != null)
+                {
+                    if (((JObject)storageOptions).TryGetValue(DurableTaskV2StorageConnectionName, StringComparison.OrdinalIgnoreCase, out nameValue) && nameValue != null)
+                    {
+                        config.Connection = nameValue.ToString();
+                    }
+                }
+            }
+
+            if (config.HubName == null)
+            {
+                config.HubName = GetDefaultDurableV2HubName();
+            }
+
+            return config;
+        }
+
+        // This logic will eventually be moved to ScaleController once it has access to version information.
+        private string GetDefaultDurableV2HubName()
+        {
+            // See https://github.com/Azure/azure-functions-durable-extension/blob/eb186eadb73a21d0efdc33cd7603fde5d802cab9/src/WebJobs.Extensions.DurableTask/Options/DurableTaskOptions.cs#L42
+            string hubName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+            // See https://github.com/Azure/azure-functions-durable-extension/blob/eb186eadb73a21d0efdc33cd7603fde5d802cab9/src/WebJobs.Extensions.DurableTask/Options/AzureStorageOptions.cs#L145
+            hubName = new string(hubName.ToCharArray()
+                .Where(char.IsLetterOrDigit)
+                .Take(MaxTaskHubNameSize)
+                .ToArray());
+            if (hubName.Length < MinTaskHubNameSize)
+            {
+                hubName += TaskHubPadding;
+            }
+
+            return hubName;
         }
 
         internal HttpRequestMessage BuildSetTriggersRequest()
@@ -465,6 +584,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public void Dispose()
         {
             _syncSemaphore.Dispose();
+        }
+
+        private class DurableConfig
+        {
+            public string HubName { get; set; }
+
+            public string Connection { get; set; }
+
+            public bool HasValues()
+            {
+                return this.HubName != null || this.Connection != null;
+            }
         }
     }
 }
