@@ -1,5 +1,8 @@
-name: $(Build.BuildId) # This will be updated during InitializePipeline
+variables:
+  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
 
+name: 3.0.$(buildNumber)
+  
 pr:
   branches:
     include:
@@ -16,8 +19,6 @@ jobs:
 - job: InitializePipeline
   pool:
     vmImage: 'windows-2019'
-  variables:
-    counter: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -36,9 +37,13 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    suffix: $[ dependencies.InitializePipeline.outputs['Initialize.Suffix'] ]
-    emgSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.EmgSuffix'] ]
-    buildNumber: $[ dependencies.InitializePipeline.outputs['Initialize.BuildNumber'] ]
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), not( endswith( variables['Build.SourceBranch'], 'release/3.0' ) ) ) }}:
+      suffixTemp: ci
+      packSuffixSwitchTemp: --version-suffix ci
+      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
+    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
   pool:
     vmImage: 'windows-2019' 
   steps:
@@ -62,7 +67,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) --version-suffix "$(suffix)" -c Release'
+      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -136,7 +141,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages --version-suffix "$(emgSuffix)"'
+      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
