@@ -2,7 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
+using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 

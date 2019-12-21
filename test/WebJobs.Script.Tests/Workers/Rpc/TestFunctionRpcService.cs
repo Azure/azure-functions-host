@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 

@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using Google.Protobuf.Collections;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
