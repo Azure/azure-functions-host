@@ -76,6 +76,12 @@
     <None Update="Description\DotNet\TestFiles\DepsFiles\function.deps.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Description\DotNet\TestFiles\DepsFiles\function2.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Description\DotNet\TestFiles\DepsFiles\RidNativeDeps\function.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Description\DotNet\TestFiles\PackageReferences\FunctionWithNoProject\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
