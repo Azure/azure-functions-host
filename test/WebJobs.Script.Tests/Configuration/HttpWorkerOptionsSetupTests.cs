@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -208,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void GetUnusedTcpPort_Succeeds()
         {
-            int unusedPort = HttpWorkerOptionsSetup.GetUnusedTcpPort();
+            int unusedPort = WorkerHelpers.GetUnusedTcpPort();
             TcpListener tcpListener = null;
             try
             {

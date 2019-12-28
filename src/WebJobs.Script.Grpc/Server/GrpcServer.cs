@@ -2,43 +2,40 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using Grpc.Core;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public class GrpcServer : IRpcServer, IDisposable
     {
-        private Server _server;
+        private readonly string _ipAddress = "127.0.0.1";
         private bool _disposed = false;
-        public const int MaxMessageLengthBytes = 128 * 1024 * 1024;
+        private IHostBuilder _grpcHostBuilder;
+        private IHost _grpcHost;
+        private int _port;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
+        public GrpcServer(IScriptEventManager scriptEventManager)
         {
-            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, MaxMessageLengthBytes);
-            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, MaxMessageLengthBytes);
-            ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
-            _server = new Server(grpcChannelOptions)
-            {
-                Services = { FunctionRpc.BindService(serviceImpl) },
-                Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
-            };
+            _port = WorkerHelpers.GetUnusedTcpPort();
+            _grpcHostBuilder = GrpcHostBuilder.CreateHostBuilder(scriptEventManager, _ipAddress, _port);
         }
 
-        public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
+        public Uri Uri => new Uri($"http://{_ipAddress}:{_port}");
 
         public Task StartAsync()
         {
-            _server.Start();
+            _grpcHost = _grpcHostBuilder.Build();
+            _grpcHost.Start();
             return Task.CompletedTask;
         }
 
-        public Task ShutdownAsync() => _server.ShutdownAsync();
+        public Task ShutdownAsync() => _grpcHost.StopAsync();
 
-        public Task KillAsync() => _server.KillAsync();
+        public Task KillAsync() => _grpcHost.StopAsync();
 
         protected virtual void Dispose(bool disposing)
         {
@@ -46,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (disposing)
                 {
-                    _server.ShutdownAsync();
+                    _grpcHost.StopAsync().GetAwaiter().GetResult();
                 }
                 _disposed = true;
             }
