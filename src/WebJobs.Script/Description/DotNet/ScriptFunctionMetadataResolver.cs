@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
             {
                 new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
-                new DirectSharedAssemblyProvider(typeof(WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
+                new DirectSharedAssemblyProvider(typeof(Microsoft.WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
             };
 
         private static readonly string[] DefaultNamespaceImports =

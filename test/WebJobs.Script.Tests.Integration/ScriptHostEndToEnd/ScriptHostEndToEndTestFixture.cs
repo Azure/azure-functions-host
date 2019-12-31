@@ -16,12 +16,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.Cosmos.Table;
 using Moq;
 using Xunit;
+using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -93,7 +95,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
-            TableClient = storageAccount.CreateCloudTableClient();
+
+            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+            TableClient = tableStorageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
 

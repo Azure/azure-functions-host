@@ -1,6 +1,6 @@
-﻿#r "Microsoft.WindowsAzure.Storage"
+﻿#r "Microsoft.Azure.Storage"
 
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.Storage.Blob;
 
 public static async Task Run(CloudBlockBlob blob, CloudBlockBlob output, TraceWriter log)
 {
