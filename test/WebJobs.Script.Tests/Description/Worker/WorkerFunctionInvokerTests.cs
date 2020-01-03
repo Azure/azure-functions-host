@@ -18,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class WorkerFunctionInvokerTests
     {
         private readonly TestWorkerFunctionInvoker _testFunctionInvoker;
-        private readonly Mock<IScriptJobHostEnvironment> _mockJobHostEnvironment;
+        private readonly Mock<IApplicationLifetime> _applicationLifetime;
         private readonly Mock<IFunctionInvocationDispatcher> _mockFunctionInvocationDispatcher;
 
         public WorkerFunctionInvokerTests()
         {
-            _mockJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
+            _applicationLifetime = new Mock<IApplicationLifetime>();
             _mockFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             _mockFunctionInvocationDispatcher.Setup(a => a.ErrorEventsThreshold).Returns(0);
 
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sc = host.GetScriptHost();
 
             FunctionMetadata metaData = new FunctionMetadata();
-            _testFunctionInvoker = new TestWorkerFunctionInvoker(sc, null, metaData, NullLoggerFactory.Instance, null, new Collection<FunctionBinding>(), _mockFunctionInvocationDispatcher.Object, _mockJobHostEnvironment.Object);
+            _testFunctionInvoker = new TestWorkerFunctionInvoker(sc, null, metaData, NullLoggerFactory.Instance, null, new Collection<FunctionBinding>(), _mockFunctionInvocationDispatcher.Object, _applicationLifetime.Object);
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             catch (Exception)
             {
             }
-            _mockJobHostEnvironment.Verify(a => a.Shutdown(), Times.Once);
+            _applicationLifetime.Verify(a => a.StopApplication(), Times.Once);
         }
 
         [Fact]
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             catch (Exception)
             {
             }
-            _mockJobHostEnvironment.Verify(a => a.Shutdown(), Times.Never);
+            _applicationLifetime.Verify(a => a.StopApplication(), Times.Never);
         }
     }
 }
