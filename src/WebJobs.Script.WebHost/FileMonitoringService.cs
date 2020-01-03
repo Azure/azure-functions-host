@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
@@ -25,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
-        private readonly IScriptJobHostEnvironment _scriptEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly string _hostLogPath;
         private readonly ILogger _logger;
         private readonly IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
@@ -36,13 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
         private bool _shutdownScheduled;
+        private int _restartRequested;
         private bool _disposed = false;
 
-        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IScriptJobHostEnvironment scriptEnvironment)
+        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;
-            _scriptEnvironment = scriptEnvironment;
+            _applicationLifetime = applicationLifetime;
+            _scriptHostManager = scriptHostManager;
             _hostLogPath = Path.Combine(_scriptOptions.RootLogPath, "Host");
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
 
@@ -243,9 +245,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private Task RestartAsync()
         {
-            if (!_shutdownScheduled)
+            if (!_shutdownScheduled && Interlocked.Exchange(ref _restartRequested, 1) == 0)
             {
-                _scriptEnvironment.RestartHost();
+                return _scriptHostManager.RestartHostAsync();
             }
 
             return Task.CompletedTask;
@@ -253,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void Shutdown()
         {
-            _scriptEnvironment.Shutdown();
+            _applicationLifetime.StopApplication();
         }
 
         protected virtual void Dispose(bool disposing)

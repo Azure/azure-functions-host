@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.CodeAnalysis;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 
@@ -26,10 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
-        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
 
         internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IScriptJobHostEnvironment scriptJobHostEnvironment)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = functionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerFunctionInvoker>();
-            _scriptJobHostEnvironment = scriptJobHostEnvironment;
+            _applicationLifetime = applicationLifetime;
 
             InitializeFileWatcherIfEnabled();
 
@@ -100,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 if (result)
                 {
                     _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
-                    _scriptJobHostEnvironment.Shutdown();
+                    _applicationLifetime.StopApplication();
                 }
             }
         }

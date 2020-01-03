@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private readonly WebJobsScriptHostService _scriptHostService;
-        private readonly Mock<IScriptJobHostEnvironment> _mockJobHostEnvironment;
+        private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly TestFunctionHost _testHost;
         private readonly Collection<string> _exceededCounters = new Collection<string>();
@@ -51,12 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             };
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_healthMonitorOptions);
 
-            _mockJobHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-            _mockJobHostEnvironment.Setup(p => p.Shutdown())
-                .Callback(() =>
-                {
-                    _shutdownCalled = true;
-                });
+            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Loose);
+            _mockApplicationLifetime.Setup(p => p.StopApplication())
+               .Callback(() =>
+               {
+                   _shutdownCalled = true;
+               });
 
             _mockEnvironment = new Mock<IEnvironment>();
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("testapp");
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 configureWebHostServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
-                    services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
+                    services.AddSingleton<IApplicationLifetime>(_mockApplicationLifetime.Object);
                     services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
                     services.AddSingleton<HostPerformanceManager>(mockHostPerformanceManager.Object);
 
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             await TestHelpers.Await(() => _shutdownCalled);
 
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Once);
+            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
 
             // we expect a few restart iterations
             var scriptHostLogMessages = _testHost.GetScriptHostLogMessages();
@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 return allLogs.Contains("Host initialization: ConsecutiveErrors=3");
             });
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Never);
+            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
 
             // after a few retries, put the host back to health and verify
             // it starts successfully
@@ -294,7 +294,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                       o.MinLevel = LogLevel.Debug;
                   });
 
-                  services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
                   services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
 
                   services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>

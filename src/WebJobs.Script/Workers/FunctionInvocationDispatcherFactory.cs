@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -18,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public FunctionInvocationDispatcherFactory(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
-            IScriptJobHostEnvironment scriptJobHostEnvironment,
+            IApplicationLifetime applicationLifetime,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpWorkerChannelFactory httpWorkerChannelFactory,
@@ -38,13 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             if (httpWorkerOptions.Value.Description != null)
             {
-                _functionDispatcher = new HttpFunctionInvocationDispatcher(scriptHostOptions, metricsLogger, scriptJobHostEnvironment, eventManager, loggerFactory, httpWorkerChannelFactory);
+                _functionDispatcher = new HttpFunctionInvocationDispatcher(scriptHostOptions, metricsLogger, applicationLifetime, eventManager, loggerFactory, httpWorkerChannelFactory);
                 return;
             }
             _functionDispatcher = new RpcFunctionInvocationDispatcher(scriptHostOptions,
                 metricsLogger,
                 environment,
-                scriptJobHostEnvironment,
+                applicationLifetime,
                 eventManager,
                 loggerFactory,
                 rpcWorkerChannelFactory,

@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
-            ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
+            MockApplicationLifetime = new Mock<IApplicationLifetime>();
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestLoggerProvider LoggerProvider { get; }
 
-        public Mock<IScriptJobHostEnvironment> ScriptJobHostEnvironmentMock { get; }
+        public Mock<IApplicationLifetime> MockApplicationLifetime { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 
