@@ -62,13 +62,23 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
-        public static bool IsZipDeployment(this IEnvironment environment)
+        public static bool IsZipDeployment(this IEnvironment environment, bool validate = true)
         {
             // Run From Package app setting exists
-            return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            if (validate)
+            {
+                return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                    IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            }
+            else
+            {
+                return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            }
         }
 
         public static bool IsValidZipSetting(string appSetting)

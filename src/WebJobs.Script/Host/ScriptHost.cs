@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
-        private readonly IScriptJobHostEnvironment _scriptHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IScriptHostManager _scriptHostManager;
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
@@ -93,13 +95,14 @@ namespace Microsoft.Azure.WebJobs.Script
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
-            IScriptJobHostEnvironment scriptHostEnvironment,
+            IScriptHostManager scriptHostManager,
             IDebugStateProvider debugManager,
             IEnumerable<IScriptBindingProvider> bindingProviders,
             IPrimaryHostStateProvider primaryHostStateProvider,
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
             IHttpRoutesManager httpRoutesManager,
+            IApplicationLifetime applicationLifetime,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -113,13 +116,14 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
+            _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
             _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
-            _scriptHostEnvironment = scriptHostEnvironment;
+            _scriptHostManager = scriptHostManager;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
             EventManager = eventManager;
             _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
@@ -385,17 +389,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // TODO: DI (FACAVAL) Remove this method.
         // all restart/shutdown requests should go through the
-        // IScriptHostEnvironment implementation
         internal Task RestartAsync()
         {
-            _scriptHostEnvironment.RestartHost();
-
+            _scriptHostManager.RestartHostAsync();
             return Task.CompletedTask;
         }
 
         internal void Shutdown()
         {
-            _scriptHostEnvironment.Shutdown();
+            _applicationLifetime.StopApplication();
         }
 
         private void OnHostLeaseChanged(object sender, EventArgs e)
@@ -502,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _scriptHostEnvironment));
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
             }
             else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
@@ -512,7 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script
            else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _scriptHostEnvironment));
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
             }
         }
 

@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IHttpWorkerChannelFactory _httpWorkerChannelFactory;
-        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -37,14 +38,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
-            IScriptJobHostEnvironment scriptJobHostEnvironment,
+            IApplicationLifetime applicationLifetime,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpWorkerChannelFactory httpWorkerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
-            _scriptJobHostEnvironment = scriptJobHostEnvironment;
+            _applicationLifetime = applicationLifetime;
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
@@ -137,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             else
             {
                 _logger.LogError("Exceeded http worker restart retry count. Shutting down Functions Host");
-                _scriptJobHostEnvironment.Shutdown();
+                _applicationLifetime.StopApplication();
             }
         }
 

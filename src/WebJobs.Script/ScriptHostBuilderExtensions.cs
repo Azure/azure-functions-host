@@ -152,7 +152,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
                 services.TryAddSingleton<IHttpRoutesManager, DefaultHttpRouteManager>();
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
-                services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
                 services.AddTransient<IExtensionBundleContentProvider, ExtensionBundleContentProvider>();
 
                 // Script binding providers

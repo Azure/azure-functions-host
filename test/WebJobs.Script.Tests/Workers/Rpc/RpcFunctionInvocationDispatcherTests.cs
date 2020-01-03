@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -345,8 +346,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(string maxProcessCountValue = null, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false)
         {
             var eventManager = new ScriptEventManager();
-            var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var metricsLogger = new Mock<IMetricsLogger>();
+            var mockApplicationLifetime = new Mock<IApplicationLifetime>();
             var testEnv = new TestEnvironment();
 
             if (!string.IsNullOrEmpty(maxProcessCountValue))
@@ -385,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
-                scriptJobHostEnvironment.Object,
+                mockApplicationLifetime.Object,
                 eventManager,
                 loggerFactory,
                 testLanguageWorkerChannelFactory,

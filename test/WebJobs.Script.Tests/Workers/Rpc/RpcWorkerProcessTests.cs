@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-            var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
