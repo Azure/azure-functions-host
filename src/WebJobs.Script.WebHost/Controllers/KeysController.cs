@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 {
     [Authorize(Policy = PolicyNames.AdminAuthLevel)]
+    [ResourceContainsSecrets]
     public class KeysController : Controller
     {
         private const string MasterKeyName = "_master";

@@ -70,6 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
 
+        public string MasterKey { get; private set; }
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -131,6 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TableClient = storageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
+
+            MasterKey = await Host.GetMasterKeyAsync();
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
