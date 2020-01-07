@@ -6,9 +6,9 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc.Eventing
 {
-    public class RpcEvent : ScriptEvent
+    public class GrpcEvent : ScriptEvent
     {
-        internal RpcEvent(string workerId, StreamingMessage message, MessageOrigin origin = MessageOrigin.Host)
+        internal GrpcEvent(string workerId, StreamingMessage message, MessageOrigin origin = MessageOrigin.Host)
             : base(message.ContentCase.ToString(), EventSources.Rpc)
         {
             Message = message;

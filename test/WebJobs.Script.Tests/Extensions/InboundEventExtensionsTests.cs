@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(RpcLogCategory.User)]
         public void TestLogCategories(RpcLogCategory categoryToTest)
         {
-            InboundEvent inboundEvent = new InboundEvent(Guid.NewGuid().ToString(), new Grpc.Messages.StreamingMessage
+            InboundGrpcEvent inboundEvent = new InboundGrpcEvent(Guid.NewGuid().ToString(), new Grpc.Messages.StreamingMessage
             {
                 RpcLog = new Grpc.Messages.RpcLog
                 {

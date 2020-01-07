@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly RpcWorkerConfig _testWorkerConfig;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
-        private RpcWorkerChannel _workerChannel;
+        private GrpcWorkerChannel _workerChannel;
 
         public RpcWorkerChannelTests()
         {
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
-            _workerChannel = new RpcWorkerChannel(
+            _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
             mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
-            _workerChannel = new RpcWorkerChannel(
+            _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
-            RpcWorkerChannel channel = new RpcWorkerChannel(
+            GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,

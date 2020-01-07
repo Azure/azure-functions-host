@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class RpcWorkerProcessFactory : IRpcWorkerProcessFactory
     {

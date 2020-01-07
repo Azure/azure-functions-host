@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static InvocationRequest ToRpcInvocationRequest(this ScriptInvocationContext context, bool isTriggerMetadataPopulatedByWorker, ILogger logger, Capabilities capabilities)
+        public static InvocationRequest ToRpcInvocationRequest(this ScriptInvocationContext context, bool isTriggerMetadataPopulatedByWorker, ILogger logger, GrpcCapabilities capabilities)
         {
             InvocationRequest invocationRequest = new InvocationRequest()
             {

@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
 using Google.Protobuf;
@@ -20,7 +19,7 @@ using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataO
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal static class RpcMessageConversionExtensions
+    internal static class GrpcMessageConversionExtensions
     {
         private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
@@ -36,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
                 case RpcDataType.Http:
-                    return RpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
+                    return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
@@ -49,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
+        public static TypedData ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities)
         {
             TypedData typedData = new TypedData();
             if (value == null)
@@ -112,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        internal static TypedData ToRpcHttp(this HttpRequest request, ILogger logger, Capabilities capabilities)
+        internal static TypedData ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
         {
             TypedData typedData = new TypedData();
             var http = new RpcHttp()
@@ -198,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        private static void PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        private static void PopulateBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
         {
             object body = null;
             if (request.IsMediaTypeOctetOrMultipart() || IsRawBodyBytesRequested(capabilities))
@@ -212,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             http.Body = body.ToRpc(logger, capabilities);
         }
 
-        private static void PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        private static void PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
         {
             object body = null;
             string rawBodyString = null;
@@ -332,17 +331,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        private static bool IsRawBodyBytesRequested(Capabilities capabilities)
+        private static bool IsRawBodyBytesRequested(GrpcCapabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RawHttpBodyBytes));
         }
 
-        private static bool IsBodyOnlySupported(Capabilities capabilities)
+        private static bool IsBodyOnlySupported(GrpcCapabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpBodyOnly));
         }
 
-        private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
+        private static bool IsTypedDataCollectionSupported(GrpcCapabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.TypedDataCollection));
         }

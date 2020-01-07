@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager = eventManager;
             _logger = logger;
             _workerId = workerId;
-            _outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundEvent>()
+            _outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundGrpcEvent>()
                         .Where(evt => evt.WorkerId == workerId)
                         .Subscribe(evt =>
                         {
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponse = functionLoadResponse
             };
-            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
         public void PublishFunctionEnvironmentReloadResponseEvent()
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionEnvironmentReloadResponse = relaodEnvResponse
             };
-            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
         public void PublishWorkerInitResponseEvent()
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 WorkerInitResponse = initResponse
             };
-            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
         public void PublishSystemLogEvent(RpcLog.Types.Level inputLevel)
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 RpcLog = rpcLog
             };
-            _eventManager.Publish(new InboundEvent(_workerId, logMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, logMessage));
         }
 
         public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 InvocationResponse = invocationResponse
             };
-            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
         public void PublishStartStreamEvent(string workerId)
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            _eventManager.Publish(new InboundEvent(_workerId, responseMessage));
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
     }
 }

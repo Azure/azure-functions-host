@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     {
         private readonly TestLoggerProvider _loggerProvider;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
-        private readonly Capabilities _capabilities;
+        private readonly GrpcCapabilities _capabilities;
 
         private string testCapability1 = "TestCapability1";
         private string testCapability2 = "TestCapability2";
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory.AddProvider(_loggerProvider);
-            _capabilities = new Capabilities(_loggerFactory.CreateLogger<Capabilities>());
+            _capabilities = new GrpcCapabilities(_loggerFactory.CreateLogger<GrpcCapabilities>());
         }
 
         private enum TestCapability

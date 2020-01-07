@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -15,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    public class RpcWorkerChannelFactory : IRpcWorkerChannelFactory
+    public class GrpcWorkerChannelFactory : IRpcWorkerChannelFactory
     {
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerProcessFactory _rpcWorkerProcessFactory = null;
@@ -24,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IEnvironment _environment = null;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
 
-        public RpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
+        public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager)
         {
             _eventManager = eventManager;
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             string workerId = Guid.NewGuid().ToString();
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath);
-            return new RpcWorkerChannel(
+            return new GrpcWorkerChannel(
                          workerId,
                          _eventManager,
                          languageWorkerConfig,

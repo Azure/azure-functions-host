@@ -44,15 +44,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static RpcException GetRpcException(StatusResult statusResult)
+        public static Workers.Rpc.RpcException GetRpcException(StatusResult statusResult)
         {
             var ex = statusResult?.Exception;
             var status = statusResult?.Status.ToString();
             if (ex != null)
             {
-                return new RpcException(status, ex.Message, ex.StackTrace);
+                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace);
             }
-            return new RpcException(status, string.Empty, string.Empty);
+            return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);
         }
     }
 }

@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public class RpcException : Exception
     {

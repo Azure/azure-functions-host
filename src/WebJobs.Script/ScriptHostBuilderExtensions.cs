@@ -21,6 +21,7 @@ using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
+using Microsoft.Azure.WebJobs.Script.Rpc;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -216,6 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services
+            services.AddManagedHostedService<RpcInitializationService>();
+            services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();

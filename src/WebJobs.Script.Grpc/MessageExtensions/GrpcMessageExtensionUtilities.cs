@@ -10,7 +10,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    internal static class RpcMessageExtensionUtilities
+    internal static class GrpcMessageExtensionUtilities
     {
         public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
         {

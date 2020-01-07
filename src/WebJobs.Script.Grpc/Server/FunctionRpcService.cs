@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
                     _logger.LogDebug("Established RPC channel. WorkerId: {workerId}", workerId);
-                    outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundEvent>()
+                    outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundGrpcEvent>()
                         .Where(evt => evt.WorkerId == workerId)
                         .ObserveOn(NewThreadScheduler.Default)
                         .Subscribe(evt =>
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         {
                             _logger.LogDebug("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
                         }
-                        _eventManager.Publish(new InboundEvent(workerId, currentMessage));
+                        _eventManager.Publish(new InboundGrpcEvent(workerId, currentMessage));
                     }
                     while (await messageAvailable());
                 }
