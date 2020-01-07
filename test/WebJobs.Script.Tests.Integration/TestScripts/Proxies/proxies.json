@@ -199,8 +199,17 @@
         "response.headers.Content-Length": "888",
         "response.headers.Test": "test"
       }
-
+    },
+    "pingMakeResponseProxy": {
+      "matchCondition": {
+        "route": "pingMakeResponseProxy"
+      },
+      "backendUri": "http://localhost/api/pingMakeResponse",
+      "requestOverrides": {
+        "backend.request.headers.accept": "text/plain"
+      }
     }
+
 
 
 
