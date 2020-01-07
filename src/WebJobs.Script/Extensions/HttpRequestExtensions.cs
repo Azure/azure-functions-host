@@ -37,6 +37,16 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return request.GetRequestPropertyOrDefault<string>(ScriptConstants.AzureFunctionsRequestIdKey);
         }
 
+        public static bool HasHeader(this HttpRequest request, string headerName)
+        {
+            return !string.IsNullOrEmpty(request.GetHeaderValueOrDefault(headerName));
+        }
+
+        public static bool HasHeaderValue(this HttpRequest request, string headerName, string value)
+        {
+            return string.Equals(request.GetHeaderValueOrDefault(headerName), value, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string GetHeaderValueOrDefault(this HttpRequest request, string headerName)
         {
             StringValues values;
