@@ -180,7 +180,6 @@ jobs:
     artifact: packages
 
 - job: RunUnitTests
-  dependsOn: InitializePipeline
   pool:
     vmImage: 'windows-2019'
   steps: 
@@ -201,11 +200,8 @@ jobs:
         **\WebJobs.Script.Tests.csproj
 
 - job: RunNonE2EIntegrationTests
-  dependsOn: InitializePipeline
   pool:
     vmImage: 'windows-2019'
-  variables:
-    keyVaultSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -215,11 +211,27 @@ jobs:
   - task: UseNode@1
     inputs:      
       version: '10.x'
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
       azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: azure-functions-host-$(keyVaultSuffix)
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
   - task: DotNetCoreCLI@2
     displayName: 'Non-E2E integration tests'
@@ -236,13 +248,16 @@ jobs:
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
       AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
-  dependsOn: InitializePipeline
   pool:
     vmImage: 'windows-2019'
-  variables:
-    keyVaultSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -256,11 +271,27 @@ jobs:
     inputs:
       versionSpec: '3.7.x'
       addToPath: true
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
       azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: azure-functions-host-$(keyVaultSuffix)
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
       secretsFilter: '*'
   - task: PowerShell@2
     displayName: 'Set environment variables'
@@ -375,28 +406,9 @@ jobs:
       arguments: '--filter "Group=ContainerInstanceTests"'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
-        
-- job: FinishPipeline
-  dependsOn:
-  - InitializePipeline
-  - BuildArtifacts
-  - RunUnitTests
-  - RunIntegrationTests
-  - RunNonE2EIntegrationTests
-  condition: always()
-  variables:
-    leaseBlob: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseBlob'] ]
-    leaseToken: $[ dependencies.InitializePipeline.outputs['Initialize.LeaseToken'] ]
-  pool:
-    vmImage: 'windows-2019'
-  steps:
-  - task: AzureKeyVault@1
-    inputs:
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
   - task: PowerShell@2
-    displayName: 'Finish'
+    condition: always()
+    displayName: 'Checkin secrets'
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\finish-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(leaseBlob) -leaseToken $(leaseToken)'
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
