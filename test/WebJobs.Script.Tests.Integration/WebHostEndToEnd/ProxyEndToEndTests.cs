@@ -123,7 +123,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("201", response.StatusCode.ToString("D"));
-            Assert.True(response.Headers.Contains("test_header"));
+            Assert.Equal("test_header_from_function_value", response.Headers.GetValues("test_header_from_function").First());
+            Assert.Equal("test_header_from_override_value", response.Headers.GetValues("test_header_from_override").First());
             Assert.Equal(@"Pong", content);
         }
 

@@ -207,6 +207,9 @@
       "backendUri": "http://localhost/api/pingMakeResponse",
       "requestOverrides": {
         "backend.request.headers.accept": "text/plain"
+      },
+      "responseOverrides": {
+        "response.headers.test_header_from_override": "test_header_from_override_value"
       }
     }
 

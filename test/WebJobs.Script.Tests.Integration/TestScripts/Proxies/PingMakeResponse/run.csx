@@ -2,7 +2,7 @@
 {
     if (req.Headers.ContainsKey("return_test_header"))
     {
-        req.HttpContext.Response.Headers.Add("test_header", "boo");
+        req.HttpContext.Response.Headers.Add("test_header_from_function", "test_header_from_function_value");
     }
     if (req.Headers.ContainsKey("return_201"))
     {
