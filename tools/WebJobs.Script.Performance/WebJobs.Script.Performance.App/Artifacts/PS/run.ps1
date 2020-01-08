@@ -139,5 +139,9 @@ Foreach-Object {
     }
 }
 
+Write-Output "Cleaning $tempFolder"
 Remove-Item -Recurse -Force $tempFolder -ErrorAction SilentlyContinue
+Write-Output "Cleaning C:\Windows\Temp"
+Remove-Item -Recurse -Force C:\Windows\Temp  -ErrorAction SilentlyContinue
+
 Stop-Transcript
