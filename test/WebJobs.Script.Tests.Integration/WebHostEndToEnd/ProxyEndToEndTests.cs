@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await _fixture.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(22, metadata.Length);
+            Assert.Equal(24, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
             Assert.Equal("https://localhost/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
@@ -55,6 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             function = metadata.Single(p => p.Name == "LocalFunctionCall");
             Assert.Equal("https://localhost/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
 
+            function = metadata.Single(p => p.Name == "PingMakeResponse");
+            Assert.Equal("https://localhost/api/pingmakeresponse", function.InvokeUrlTemplate.AbsoluteUri);
+
             // get functions omitting proxies
             uri = "admin/functions";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -62,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await _fixture.HttpClient.SendAsync(request);
             metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
             Assert.False(metadata.Any(p => p.IsProxy));
-            Assert.Equal(3, metadata.Length);
+            Assert.Equal(4, metadata.Length);
         }
 
         [Fact]
@@ -109,6 +112,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
             Assert.Equal("Pong", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionCall_ModifyResponse()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"pingMakeResponseProxy");
+            req.Headers.Add("return_test_header", "1");
+            req.Headers.Add("return_201", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("201", response.StatusCode.ToString("D"));
+            Assert.Equal("test_header_from_function_value", response.Headers.GetValues("test_header_from_function").First());
+            Assert.Equal("test_header_from_override_value", response.Headers.GetValues("test_header_from_override").First());
+            Assert.Equal(@"Pong", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionCall_Redirect()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"pingMakeResponseProxy");
+            req.Headers.Add("redirect", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("302", response.StatusCode.ToString("D"));
+            Assert.Equal("http://www.redirects-regardless.com/", response.Headers.Location.ToString());
+            Assert.Equal(@"Pong", content);
         }
 
         [Fact]
