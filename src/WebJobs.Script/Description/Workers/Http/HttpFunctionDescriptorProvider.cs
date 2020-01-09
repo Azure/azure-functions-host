@@ -11,8 +11,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal class HttpFunctionDescriptorProvider : WorkerFunctionDescriptorProvider
     {
         public HttpFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory)
-            : base(host, config, bindingProviders, dispatcher, loggerFactory)
+            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IScriptJobHostEnvironment scriptJobHostEnvironment)
+            : base(host, config, bindingProviders, dispatcher, loggerFactory, scriptJobHostEnvironment)
         {
         }
     }
