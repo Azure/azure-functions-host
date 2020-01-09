@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
         {
             Task<bool> Condition() => Task.FromResult(condition());
             return DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, Condition, CancellationToken.None);

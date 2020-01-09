@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
 
             State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -93,6 +94,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
+
+        public int ErrorEventsThreshold { get; private set; }
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -345,7 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task RestartWorkerChannel(string runtime, string workerId)
         {
-            if (_languageWorkerErrors.Count < 3 * _maxProcessCount)
+            if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
                 await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
             }

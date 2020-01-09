@@ -502,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _scriptHostEnvironment));
             }
             else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
@@ -512,7 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script
            else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory));
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _scriptHostEnvironment));
             }
         }
 

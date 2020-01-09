@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
             State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3;
 
             _workerErrorSubscription = _eventManager.OfType<HttpWorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -58,6 +59,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
+
+        public int ErrorEventsThreshold { get; private set; }
 
         internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
@@ -126,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private async Task RestartWorkerChannel(string workerId)
         {
-            if (_invokerErrors.Count < 3)
+            if (_invokerErrors.Count < ErrorEventsThreshold)
             {
                 _logger.LogDebug("Restarting http invoker channel");
                 await InitializeHttpWorkerChannelAsync(_invokerErrors.Count);
