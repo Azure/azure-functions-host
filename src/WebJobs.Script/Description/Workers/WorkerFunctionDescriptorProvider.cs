@@ -20,13 +20,15 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionInvocationDispatcher _dispatcher;
+        private IScriptJobHostEnvironment _scriptJobHostEnvironment;
 
         public WorkerFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory)
+            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IScriptJobHostEnvironment scriptJobHostEnvironment)
             : base(host, config, bindingProviders)
         {
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
+            _scriptJobHostEnvironment = scriptJobHostEnvironment;
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
@@ -40,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new WorkerFunctionInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher);
+            return new WorkerFunctionInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher, _scriptJobHostEnvironment);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

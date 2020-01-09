@@ -26,9 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
+        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
 
         internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IScriptJobHostEnvironment scriptJobHostEnvironment)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = functionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerFunctionInvoker>();
+            _scriptJobHostEnvironment = scriptJobHostEnvironment;
 
             InitializeFileWatcherIfEnabled();
 
@@ -52,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
             // Need to wait for atleast one language worker process to be initialized before accepting invocations
-            await DelayUntilFunctionDispatcherInitialized();
+            await DelayUntilFunctionDispatcherInitializedOrShutdown();
             string invocationId = context.ExecutionContext.InvocationId.ToString();
 
             // TODO: fix extensions and remove
@@ -85,15 +87,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return result.Return;
         }
 
-        private async Task DelayUntilFunctionDispatcherInitialized()
+        private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
         {
             if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
+                bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });
+
+                if (result)
+                {
+                    _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
+                    _scriptJobHostEnvironment.Shutdown();
+                }
             }
         }
 
