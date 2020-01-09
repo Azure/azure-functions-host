@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -110,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)
         {
             var jObjectHttp = new JObject();
-            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}"; // [http|https]://{url}{path}{query}
+            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}";
             jObjectHttp["Method"] = request.Method.ToString();
             if (request.Query != null)
             {
@@ -131,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
             if (request.HttpContext?.User?.Identities != null)
             {
-                jObjectHttp["Identities"] = JsonConvert.SerializeObject(request.HttpContext.User.Identities);
+                jObjectHttp["Identities"] = GetUserIdentitiesAsString(request.HttpContext.User.Identities);
             }
 
             // parse request body as content-type
@@ -164,6 +165,15 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 queryParamsDictionary.Add(key, value.ToString());
             }
             return queryParamsDictionary;
+        }
+
+        internal static string GetUserIdentitiesAsString(IEnumerable<ClaimsIdentity> claimsIdentities)
+        {
+            return JsonConvert.SerializeObject(claimsIdentities, new JsonSerializerSettings
+            {
+                // Claims property in Identities had circular reference to property 'Subject'
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            });
         }
     }
 }
