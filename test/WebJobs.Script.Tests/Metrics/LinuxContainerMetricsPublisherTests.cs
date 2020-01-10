@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
         }
 
         [Fact]
@@ -160,14 +160,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
         }
 
         [Fact]
         public void SendRequest_FailsWithNullQueue()
         {
             ConcurrentQueue<string> testQueue = null;
-            Assert.Throws<NullReferenceException>(() => _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult());
+            _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult();
+            Assert.Matches("Failed to publish status to testPath", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Matches("NullReferenceException", _testLoggerProvider.GetAllLogMessages().Single().Exception.ToString());
+            Assert.Equal(LogLevel.Error, _testLoggerProvider.GetAllLogMessages().Single().Level);
         }
 
         [Fact]
