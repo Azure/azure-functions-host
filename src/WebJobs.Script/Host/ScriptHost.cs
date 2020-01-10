@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -106,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IHostIdProvider hostIdProvider,
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
+            IExtensionBundleManager extensionBundleManager,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -132,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             EventManager = eventManager;
             _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
+            ExtensionBundleManager = extensionBundleManager;
 
             _metricsLogger = metricsLogger;
 
@@ -165,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public string InstanceId => ScriptOptions.InstanceId;
 
         public IScriptEventManager EventManager { get; }
+
+        internal IExtensionBundleManager ExtensionBundleManager { get; }
 
         public ILogger Logger { get; internal set; }
 

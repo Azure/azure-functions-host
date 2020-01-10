@@ -11,6 +11,7 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -85,8 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (unresolvedBindings.Any())
             {
                 string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
-                throw new FunctionConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
-                        $"Please ensure the type is correct and the binding extension is installed.");
+                string errorMessage = CreateBindingError(allUnresolvedBindings);
+                throw new FunctionConfigurationException(errorMessage);
             }
         }
 
@@ -135,8 +136,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else
             {
-                throw new FunctionConfigurationException($"The binding type '{triggerMetadata.Type}' is not registered. " +
-                    $"Please ensure the type is correct and the binding extension is installed.");
+                string errorMessage = CreateBindingError(triggerMetadata.Type);
+                throw new FunctionConfigurationException(errorMessage);
             }
 
             return triggerParameter;
@@ -242,6 +243,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
+        }
+
+        private string CreateBindingError(string unresolvedBindings)
+        {
+            return (Host.ExtensionBundleManager?.IsExtensionBundleConfigured() ?? false)
+                    ? $"The binding type(s) '{unresolvedBindings}' were not found in the configured extension bundle. Please ensure the type is correct and the correct version of extension bundle is configured"
+                    : $"The binding type(s) '{unresolvedBindings}' are not registered. Please ensure the type is correct and the binding extension is installed.";
         }
     }
 }
