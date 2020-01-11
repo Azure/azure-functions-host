@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        public WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
 
-        public abstract Process CreateWorkerProcess();
+        internal abstract Process CreateWorkerProcess();
 
         public Task StartProcessAsync()
         {
@@ -162,9 +162,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        public abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
+        internal abstract void HandleWorkerProcessExitError(WorkerProcessExitException langExc);
 
-        public abstract void HandleWorkerProcessRestart();
+        internal abstract void HandleWorkerProcessRestart();
 
         public void Dispose()
         {

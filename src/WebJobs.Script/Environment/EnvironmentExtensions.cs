@@ -9,7 +9,7 @@ using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public static class EnvironmentExtensions
+    internal static class EnvironmentExtensions
     {
         // For testing
         internal static string BaseDirectory { get; set; }

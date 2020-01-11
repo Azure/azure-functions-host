@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
 {
     public class WorkerErrorEvent : RpcChannelEvent
     {
-        public WorkerErrorEvent(string language, string workerId, Exception exception, DateTime createdAt = default)
+        internal WorkerErrorEvent(string language, string workerId, Exception exception, DateTime createdAt = default)
             : base(workerId)
         {
             Exception = exception;

@@ -5,16 +5,16 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public class WorkerProcessExitException : Exception
+    internal class WorkerProcessExitException : Exception
     {
-        public WorkerProcessExitException(string message) : base(message)
+        internal WorkerProcessExitException(string message) : base(message)
         {
         }
 
-        public WorkerProcessExitException(string message, Exception innerException) : base(message, innerException)
+        internal WorkerProcessExitException(string message, Exception innerException) : base(message, innerException)
         {
         }
 
-        public int ExitCode { get; set; }
+        internal int ExitCode { get; set; }
     }
 }
