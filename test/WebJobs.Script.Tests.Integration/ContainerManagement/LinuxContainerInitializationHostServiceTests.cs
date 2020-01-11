@@ -5,10 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -24,25 +26,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
     {
         private const string ContainerStartContextUri = "https://containerstartcontexturi";
         private readonly Mock<IInstanceManager> _instanceManagerMock;
+        private readonly StartupContextProvider _startupContextProvider;
+        private readonly TestEnvironment _environment;
 
         public LinuxContainerInitializationHostServiceTests()
         {
             _instanceManagerMock = new Mock<IInstanceManager>(MockBehavior.Strict);
+
+            _environment = new TestEnvironment();
+            var loggerFactory = new LoggerFactory();
+            var loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            _startupContextProvider = new StartupContextProvider(_environment, loggerFactory.CreateLogger<StartupContextProvider>());
         }
 
         [Fact]
         public async Task Runs_In_Linux_Container_Mode_Only()
         {
-            // These settings being null will cause IsLinuxContainerEnvironment to return false.
-            var environmentMock = new Mock<IEnvironment>(MockBehavior.Strict);
-            environmentMock.Setup(env => env.GetEnvironmentVariable(ContainerName)).Returns<string>(null);
-            environmentMock.Setup(env => env.GetEnvironmentVariable(AzureWebsiteInstanceId)).Returns<string>(null);
+            _environment.SetEnvironmentVariable(ContainerName, null);
+            _environment.SetEnvironmentVariable(AzureWebsiteInstanceId, null);
+            Assert.False(_environment.IsLinuxConsumption());
 
-            var initializationHostService = new LinuxContainerInitializationHostService(environmentMock.Object, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
-
-            // Make sure no other environment variables were checked
-            environmentMock.Verify(env => env.GetEnvironmentVariable(It.Is<string>(p => p != ContainerName && p != AzureWebsiteInstanceId)), Times.Never);
         }
 
         [Fact]
@@ -50,25 +57,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         {
             var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
             var hostAssignmentContext = GetHostAssignmentContext();
+            var secrets = new FunctionAppSecrets();
+            secrets.Host = new FunctionAppSecrets.HostSecrets
+            {
+                Master = "test-key",
+                Function = new Dictionary<string, string>
+                {
+                    { "host-function-key-1", "test-key" }
+                },
+                System = new Dictionary<string, string>
+                {
+                    { "host-system-key-1", "test-key" }
+                }
+            };
+            hostAssignmentContext.Secrets = secrets;
+
             var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
             var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
 
-            var vars = new Dictionary<string, string>
-            {
-                { ContainerStartContext, serializedContext },
-                { ContainerEncryptionKey, containerEncryptionKey },
-            };
-
-            // Enable Linux Container
-            AddLinuxContainerSettings(vars);
+            _environment.SetEnvironmentVariable(ContainerStartContext, serializedContext);
+            _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
+            AddLinuxConsumptionSettings(_environment);
 
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w))).Returns(true);
 
-            var environment = new TestEnvironment(vars);
-            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w)), Times.Once);
+
+            var hostSecretw = _startupContextProvider.GetHostSecretsOrNull();
+            Assert.Equal("test-key", hostSecretw.MasterKey);
         }
 
         [Fact]
@@ -79,27 +98,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
             var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
 
-            var vars = new Dictionary<string, string>
-            {
-                { ContainerStartContextSasUri, ContainerStartContextUri },
-                { ContainerEncryptionKey, containerEncryptionKey },
-            };
+            _environment.SetEnvironmentVariable(ContainerStartContextSasUri, ContainerStartContextUri);
+            _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
+            AddLinuxConsumptionSettings(_environment);
 
-            AddLinuxContainerSettings(vars);
-
-            var environment = new TestEnvironment(vars);
-
-            var initializationHostService = new Mock<LinuxContainerInitializationHostService>(MockBehavior.Strict, environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
+            var initializationHostService = new Mock<LinuxContainerInitializationHostService>(MockBehavior.Strict, _environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
 
             initializationHostService.Setup(service => service.Read(ContainerStartContextUri))
                 .Returns(Task.FromResult(serializedContext));
 
             _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w))).Returns(true);
 
-            using (var env = new TestScopedEnvironmentVariable(vars))
-            {
-                await initializationHostService.Object.StartAsync(CancellationToken.None);
-            }
+            await initializationHostService.Object.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w)), Times.Once);
         }
@@ -107,11 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         [Fact]
         public async Task Does_Not_Assign_If_Context_Not_Available()
         {
-            var vars = new Dictionary<string, string>();
-            AddLinuxContainerSettings(vars);
-
-            var environment = new TestEnvironment(vars);
-            var initializationHostService = new LinuxContainerInitializationHostService(environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance);
+            var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>(), It.Is<bool>(w => !w)), Times.Never);
@@ -137,10 +143,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             return hostAssignmentContext;
         }
 
-        private static void AddLinuxContainerSettings(IDictionary<string, string> existing)
+        private static void AddLinuxConsumptionSettings(IEnvironment environment)
         {
-            existing[AzureWebsiteInstanceId] = string.Empty;
-            existing[ContainerName] = "ContainerName";
+            environment.SetEnvironmentVariable(AzureWebsiteInstanceId, string.Empty);
+            environment.SetEnvironmentVariable(ContainerName, "ContainerName");
         }
 
         public void Dispose()

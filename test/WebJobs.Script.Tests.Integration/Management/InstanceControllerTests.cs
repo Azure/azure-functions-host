@@ -53,10 +53,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 });
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null);
+            var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
 
-            var instanceController = new InstanceController(environment, instanceManager, loggerFactory);
+            var instanceController = new InstanceController(environment, instanceManager, loggerFactory, startupContextProvider);
 
             const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
@@ -92,8 +93,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
 
-            var instanceController = new InstanceController(environment, null, loggerFactory);
-
+            var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
+            var instanceController = new InstanceController(environment, null, loggerFactory, startupContextProvider);
             var scriptHostManager = new Mock<IScriptHostManager>();
 
             var fileSystem = new Mock<IFileSystem>();

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
@@ -30,6 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         [JsonProperty("EasyAuthSpecializationPayload")]
         public EasyAuthSettings EasyAuthSettings { get; set; }
+
+        [JsonProperty("Secrets")]
+        public FunctionAppSecrets Secrets { get; set; }
 
         public long? PackageContentLength { get; set; }
 
