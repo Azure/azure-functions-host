@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var hostNameProvider = new HostNameProvider(environment);
 
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider);
+                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()));
         }
 
         [Fact]

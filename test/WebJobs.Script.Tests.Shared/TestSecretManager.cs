@@ -4,7 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public virtual Task<bool> DeleteSecretAsync(string secretName, string keyScope, ScriptSecretsType secretsType)
@@ -31,8 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return Task.FromResult(true);
         }
 
-        public virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged)
+        public virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
         {
+            // for testing, any time we're asked for function keys, we return a static set
             return Task.FromResult<IDictionary<string, string>>(new Dictionary<string, string>
             {
                 { "Key1", $"{functionName}1".ToLowerInvariant() },
@@ -76,17 +77,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Reset()
         {
             _hostFunctionKeys = new Dictionary<string, string>
-                {
-                    { "HostKey1", "HostValue1" },
-                    { "HostKey2", "HostValue2" },
-                };
+            {
+                { "HostKey1", "HostValue1" },
+                { "HostKey2", "HostValue2" },
+            };
 
             _hostSystemKeys = new Dictionary<string, string>
-                {
-                    { "SystemKey1", "SystemValue1" },
-                    { "SystemKey2", "SystemValue2" },
-                    { "Test_Extension", "SystemValue3" },
-                };
+            {
+                { "SystemKey1", "SystemValue1" },
+                { "SystemKey2", "SystemValue2" },
+                { "Test_Extension", "SystemValue3" },
+            };
+        }
+
+        public async Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null)
+        {
+            return await SecretManager.GetAuthorizationLevelAsync(this, key, functionName);
         }
     }
 }

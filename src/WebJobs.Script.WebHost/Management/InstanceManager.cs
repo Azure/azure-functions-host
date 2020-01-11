@@ -139,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 return null;
             }
+
             _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
             _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");

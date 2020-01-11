@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -301,31 +302,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 string.Compare(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase) == 0 ||
                 string.Compare(secretsStorageType, "blob", StringComparison.OrdinalIgnoreCase) == 0)
             {
-                JObject secrets = new JObject();
-                result.Add("secrets", secrets);
+                var functionAppSecrets = new FunctionAppSecrets();
 
                 // add host secrets
                 var hostSecretsInfo = await _secretManagerProvider.Current.GetHostSecretsAsync();
-                var hostSecrets = new JObject();
-                hostSecrets.Add("master", hostSecretsInfo.MasterKey);
-                hostSecrets.Add("function", JObject.FromObject(hostSecretsInfo.FunctionKeys));
-                hostSecrets.Add("system", JObject.FromObject(hostSecretsInfo.SystemKeys));
-                secrets.Add("host", hostSecrets);
+                functionAppSecrets.Host = new FunctionAppSecrets.HostSecrets
+                {
+                    Master = hostSecretsInfo.MasterKey,
+                    Function = hostSecretsInfo.FunctionKeys,
+                    System = hostSecretsInfo.SystemKeys
+                };
 
                 // add function secrets
-                var functionSecrets = new JArray();
-                var httpFunctions = functionsMetadata.Where(p => !p.IsProxy && p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name);
-                foreach (var functionName in httpFunctions)
+                var httpFunctions = functionsMetadata.Where(p => !p.IsProxy && p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name).ToArray();
+                functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
+                for (int i = 0; i < httpFunctions.Length; i++)
                 {
-                    var currSecrets = await _secretManagerProvider.Current.GetFunctionSecretsAsync(functionName);
-                    var currElement = new JObject()
+                    var currFunctionName = httpFunctions[i];
+                    var currSecrets = await _secretManagerProvider.Current.GetFunctionSecretsAsync(currFunctionName);
+                    functionAppSecrets.Function[i] = new FunctionAppSecrets.FunctionSecrets
                     {
-                        { "name", functionName },
-                        { "secrets", JObject.FromObject(currSecrets) }
+                        Name = currFunctionName,
+                        Secrets = currSecrets
                     };
-                    functionSecrets.Add(currElement);
                 }
-                secrets.Add("function", functionSecrets);
+
+                result.Add("secrets", JObject.FromObject(functionAppSecrets));
             }
             else
             {

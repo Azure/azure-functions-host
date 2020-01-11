@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -165,12 +166,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SiteName = "TestApp",
                 Environment = environment
             };
-            var encryptedAssignmentContext = EncryptedHostAssignmentContext.Create(assignmentContext, encryptionKey);
+            var encryptedAssignmentContext = CreateEncryptedContext(assignmentContext, encryptionKey);
             string json = JsonConvert.SerializeObject(encryptedAssignmentContext);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
             var response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        }
+
+        private static EncryptedHostAssignmentContext CreateEncryptedContext(HostAssignmentContext context, string key)
+        {
+            string json = JsonConvert.SerializeObject(context);
+            var encryptionKey = Convert.FromBase64String(key);
+            string encrypted = SimpleWebTokenHelper.Encrypt(json, encryptionKey);
+
+            return new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
         }
     }
 }

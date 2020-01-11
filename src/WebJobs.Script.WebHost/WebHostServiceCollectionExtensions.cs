@@ -110,6 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());
+            services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -171,7 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
-                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger);
+                    var startupContextProvider = s.GetService<StartupContextProvider>();
+                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
                 }
 
                 return NullHostedService.Instance;
