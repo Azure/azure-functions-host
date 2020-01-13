@@ -356,6 +356,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
         }
 
+        [Fact]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionEmpty()
+        {
+            // Clear FUNCTIONS_WORKER_RUNTIME_VERSION setting
+            _testEnvironment.Clear();
+
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}",
+                DefaultRuntimeVersion = "3.6",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python"
+            };
+
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+              .AddInMemoryCollection(new Dictionary<string, string>
+              {
+                  ["languageWorker"] = "test"
+              });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            Assert.Collection(testLogger.GetLogMessages(),
+                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.6", p.FormattedMessage));
+        }
+
         [Theory]
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7/LINUX/X64")]
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7/X64")]
