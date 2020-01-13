@@ -391,7 +391,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
             workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
             Assert.Collection(testLogger.GetLogMessages(),
-                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.6", p.FormattedMessage));
+                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: ", p.FormattedMessage),
+                p => Assert.Equal("DefaultWorkerPath: 3.6/LINUX/X64", p.FormattedMessage));
         }
 
         [Theory]
@@ -439,7 +440,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
             Assert.Collection(testLogger.GetLogMessages(),
-                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.7", p.FormattedMessage));
+                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.7", p.FormattedMessage),
+                p => Assert.Equal($"DefaultWorkerPath: {expectedPath}", p.FormattedMessage));
         }
 
         [Theory]
