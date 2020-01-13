@@ -183,12 +183,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             OSPlatform os = systemRuntimeInformation.GetOSPlatform();
             Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
             string version = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-            logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
             if (!string.IsNullOrEmpty(version))
             {
                 DefaultRuntimeVersion = version;
             }
+            logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {DefaultRuntimeVersion}");
 
             ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
 
