@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
             _defaultHttpWorkerOptions = new HttpWorkerOptions();
             _scriptJobHostOptions.RootScriptPath = functionsPath;
-            _testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory());
+            _testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory());
         }
 
         [Theory]
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(false)).Returns(functionMetadataCollection.ToImmutableArray());
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors);
 
-            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory());
+            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), mockFunctionMetadataProvider.Object, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory());
 
             var validatedFunctionMetadataArray = testFunctionMetadataManager.LoadFunctionMetadata();
             Assert.Empty(validatedFunctionMetadataArray);
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void IsScriptFileDetermined_ScriptFile_Emtpy_HttpWorker_Returns_True(string scriptFile)
         {
             FunctionMetadata functionMetadata = GetTestFunctionMetadata(scriptFile);
-            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<LanguageWorkerOptions>(GetTestLanguageWorkerOptions()), new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
+            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), _mockFunctionMetadataProvider.Object, new OptionsWrapper<HttpWorkerOptions>(GetTestHttpWorkerOptions()), MockNullLoggerFactory.CreateLoggerFactory());
 
             Assert.True(testFunctionMetadataManager.IsScriptFileDetermined(functionMetadata));
         }

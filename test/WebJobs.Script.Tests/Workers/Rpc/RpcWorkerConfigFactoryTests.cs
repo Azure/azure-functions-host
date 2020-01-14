@@ -223,12 +223,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("python", "Python", true)]
-        [InlineData("python", "NOde", false)]
-        [InlineData("python", "", true)]
-        [InlineData("python", null, true)]
-        public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool expectedResult)
+        [InlineData("python", "Python", false, true)]
+        [InlineData("python", "NOde", false, false)]
+        [InlineData("python", "", false, true)]
+        [InlineData("python", null, false, true)]
+        [InlineData("python", "NOde", true, true)]
+        [InlineData("python", null, true, true)]
+        public void ShouldAddProvider_Returns_Expected(string workerLanguage, string workerRuntime, bool placeholderMode, bool expectedResult)
         {
+            if (placeholderMode)
+            {
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
