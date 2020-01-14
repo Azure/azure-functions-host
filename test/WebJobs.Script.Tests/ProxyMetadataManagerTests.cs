@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -49,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.NotSame(proxyMetadata1, proxyMetadata3);
 
-                Assert.Equal(19, proxyMetadata3.Functions.Length);
+                Assert.Equal(20, proxyMetadata3.Functions.Length);
             }
         }
     }
