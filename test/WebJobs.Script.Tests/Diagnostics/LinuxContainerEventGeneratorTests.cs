@@ -72,12 +72,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),
                 p => Assert.Equal(source, p),
-                p => Assert.Equal(details, JsonUnescape(p)),
-                p => Assert.Equal(summary, JsonUnescape(p)),
+                p => Assert.Equal(details, UnNormalize(JsonUnescape(p))),
+                p => Assert.Equal(summary, UnNormalize(JsonUnescape(p))),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, JsonUnescape(p)),
+                p => Assert.Equal(exceptionMessage, UnNormalize(JsonUnescape(p))),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
                 p => Assert.Equal(activityId, p),
@@ -91,6 +91,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             // Because the log data is being JSON serialized it ends up getting
             // escaped. This function reverses that escaping.
             return value.Replace("\\", string.Empty);
+        }
+
+        public static string UnNormalize(string normalized)
+        {
+            // We replace all double quotes to single before the writing the logs
+            // to avoid our logging agents parsing break
+            // TODO: we can remove this once platform is able to handle quotes in logs
+            return normalized.Replace("'", "\"");
         }
 
         private static string JsonSerializeEvent(string evt)
@@ -166,8 +174,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),
                 p => Assert.Equal(functionName, p),
-                p => Assert.Equal(inputBindings, JsonUnescape(p)),
-                p => Assert.Equal(outputBindings, JsonUnescape(p)),
+                p => Assert.Equal(inputBindings, UnNormalize(JsonUnescape(p))),
+                p => Assert.Equal(outputBindings, UnNormalize(JsonUnescape(p))),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
         }

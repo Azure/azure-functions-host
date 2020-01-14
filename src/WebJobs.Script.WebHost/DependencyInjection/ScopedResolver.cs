@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         internal ServiceScope CreateChildScope(IServiceScopeFactory rootScopeFactory)
         {
             var scopedRoot = rootScopeFactory.CreateScope();
-            Container scopedContext = Container.OpenScope() as Container;
+            var preferInterpretation = (Container as Container).PreferInterpretation;
+            Container scopedContext = Container.OpenScope(preferInterpretation: preferInterpretation) as Container;
 
             Rules rules = scopedContext.Rules;
             foreach (var unknownServiceResolver in scopedContext.Rules.UnknownServiceResolvers)

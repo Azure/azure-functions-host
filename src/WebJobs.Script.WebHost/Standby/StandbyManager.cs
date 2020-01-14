@@ -6,6 +6,7 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -182,7 +183,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task CreateStandbyWarmupFunctions()
         {
-            string scriptPath = _options.CurrentValue.ScriptPath;
+            ScriptApplicationHostOptions options = _options.CurrentValue;
+
+            if (!options.IsStandbyConfiguration)
+            {
+                _logger.LogDebug(new EventId(600, "StandByWarmupFunctionsCreationOnSpecializedSite"),
+                    $"{nameof(CreateStandbyWarmupFunctions)} called with a specialized site configuration. Skipping warmup function creation.");
+
+                return;
+            }
+
+            string scriptPath = options.ScriptPath;
             _logger.LogInformation($"Creating StandbyMode placeholder function directory ({scriptPath})");
 
             await FileUtility.DeleteDirectoryAsync(scriptPath, true);

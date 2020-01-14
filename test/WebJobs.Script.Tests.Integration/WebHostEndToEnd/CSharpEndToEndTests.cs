@@ -137,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             const string actualHost = "actual-host";
             const string actualProtocol = "https";
             const string path = "api/httptrigger-scenarios";
+            var protocolHeaders = new[] { "https", "http" };
             var request = new HttpRequestMessage
             {
                 RequestUri = new Uri(string.Format($"http://localhost/{path}")),
@@ -144,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
 
             request.Headers.TryAddWithoutValidation("DISGUISED-HOST", actualHost);
-            request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", actualProtocol);
+            request.Headers.Add("X-Forwarded-Proto", protocolHeaders);
 
             var input = new JObject
             {

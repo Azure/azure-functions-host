@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
-            _hostNameProvider = new HostNameProvider(_environment, loggerFactory.CreateLogger<HostNameProvider>());
+            _hostNameProvider = new HostNameProvider(_environment);
             _logger = new AzureMonitorDiagnosticLogger(_category, _hostInstanceId, _mockEventGenerator.Object, _environment, new LoggerExternalScopeProvider(), _hostNameProvider);
         }
 

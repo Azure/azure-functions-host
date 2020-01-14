@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
         {
             var httpConfig = new HttpConfiguration();
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
@@ -80,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureLogging(c =>
                 {
                     c.AddProvider(_loggerProvider);
+                    c.AddFilter((cat, lev) => true);
                 })
                 .ConfigureServices(c =>
                 {
@@ -99,7 +100,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     b.AddProvider(_loggerProvider);
                 });
 
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
+            return webHostBuilder;
+        }
+
+        protected async Task InitializeTestHostAsync(string testDirName, IEnvironment environment)
+        {
+            var webHostBuilder = await CreateWebHostBuilderAsync(testDirName, environment);
             _httpServer = new TestServer(webHostBuilder);
             _httpClient = _httpServer.CreateClient();
             _httpClient.BaseAddress = new Uri("https://localhost/");
@@ -166,9 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public virtual void Dispose()
         {
-            _loggerProvider.Dispose();
-            _httpServer.Dispose();
-            _httpClient.Dispose();
+            _loggerProvider?.Dispose();
+            _httpServer?.Dispose();
+            _httpClient?.Dispose();
             CleanupTestDirectory();
         }
     }

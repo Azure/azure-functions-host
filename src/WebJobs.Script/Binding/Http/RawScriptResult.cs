@@ -80,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 foreach (var cookie in Cookies)
                 {
-                    // Item3 (CookieOptions) should not be null, but this will behave correctly if it is
                     if (cookie.Item3 != null)
                     {
                         response.Cookies.Append(cookie.Item1, cookie.Item2, cookie.Item3);

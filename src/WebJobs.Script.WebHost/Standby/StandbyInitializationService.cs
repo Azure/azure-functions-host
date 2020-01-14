@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _standbyManager = standbyManager ?? throw new ArgumentNullException(nameof(standbyManager));
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        public Task StartAsync(CancellationToken cancellationToken)
         {
-            await _standbyManager.InitializeAsync();
+            return _standbyManager.InitializeAsync();
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
