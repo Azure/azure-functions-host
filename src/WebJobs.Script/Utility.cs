@@ -585,6 +585,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
                 string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+                if (string.IsNullOrEmpty(functionLanguage))
+                {
+                    return null;
+                }
+
                 if (IsDotNetLanguageFunction(functionLanguage))
                 {
                     return RpcWorkerConstants.DotNetLanguageWorkerName;
@@ -604,7 +609,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
-            return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
@@ -625,7 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             if (functions != null && functions.Any())
             {
-                return functions.Any(f => f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
+                return functions.Any(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
             return false;
         }

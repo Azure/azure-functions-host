@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
+using System.Security.Principal;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -39,5 +41,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Assert.True(request.IsAppServiceInternalRequest());
             }
         }
+
+        [Fact]
+        public void ConvertUserIdentitiesToString_RemovesCircularReference()
+        {
+            string expectedUserIdentities = "[{\"AuthenticationType\":\"TestAuthType\",\"IsAuthenticated\":true";
+            IIdentity identity = new TestIdentity();
+            Claim claim = new Claim("authlevel", "admin", "test", "LOCAL AUTHORITY", "LOCAL AUTHORITY");
+            List<Claim> claims = new List<Claim>() { claim };
+            ClaimsIdentity claimsIdentity = new ClaimsIdentity(identity, claims);
+            List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>() { claimsIdentity };
+            string userIdentitiesString = HttpRequestExtensions.GetUserIdentitiesAsString(claimsIdentities);
+            Assert.Contains(expectedUserIdentities, userIdentitiesString);
+        }
+    }
+
+    internal class TestIdentity : IIdentity
+    {
+        public string AuthenticationType => "TestAuthType";
+
+        public bool IsAuthenticated => true;
+
+        public string Name => "TestIdentityName";
     }
 }

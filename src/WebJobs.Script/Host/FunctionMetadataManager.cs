@@ -18,7 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly bool _isHttpWorker;
         private readonly Lazy<ImmutableArray<FunctionMetadata>> _functionMetadataArray;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
@@ -26,11 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
 
-        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider, IOptions<LanguageWorkerOptions> languageWorkerOptions, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
+        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _functionMetadataProvider = functionMetadataProvider;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _functionMetadataArray = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
             _isHttpWorker = httpWorkerOptions.Value.Description != null;

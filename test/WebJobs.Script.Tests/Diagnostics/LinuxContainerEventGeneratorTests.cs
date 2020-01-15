@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(operationName, p),
                 p => Assert.Equal(category, p),
                 p => Assert.Equal(regionName, p),
-                p => Assert.Equal(properties, p),
+                p => Assert.Equal(properties, UnNormalize(p)),
                 p => Assert.Equal(_containerName.ToUpperInvariant(), p),
                 p => Assert.Equal(_tenantId, p),
                 p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
