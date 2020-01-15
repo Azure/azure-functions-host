@@ -12,19 +12,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public class GrpcServer : IRpcServer, IDisposable
     {
-        private readonly string _ipAddress = "127.0.0.1";
+        private readonly IHostBuilder _grpcHostBuilder;
+        private readonly int _port;
         private bool _disposed = false;
-        private IHostBuilder _grpcHostBuilder;
         private IHost _grpcHost;
-        private int _port;
 
         public GrpcServer(IScriptEventManager scriptEventManager)
         {
-            _port = WorkerHelpers.GetUnusedTcpPort();
-            _grpcHostBuilder = GrpcHostBuilder.CreateHostBuilder(scriptEventManager, _ipAddress, _port);
+            _port = WorkerUtilities.GetUnusedTcpPort();
+            _grpcHostBuilder = GrpcHostBuilder.CreateHostBuilder(scriptEventManager, _port);
         }
 
-        public Uri Uri => new Uri($"http://{_ipAddress}:{_port}");
+        public Uri Uri => new Uri($"http://{WorkerConstants.HostName}:{_port}");
 
         public Task StartAsync()
         {
@@ -44,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (disposing)
                 {
                     _grpcHost.StopAsync().GetAwaiter().GetResult();
+                    _grpcHost.Dispose();
                 }
                 _disposed = true;
             }

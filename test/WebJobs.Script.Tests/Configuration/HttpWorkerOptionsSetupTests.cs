@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void GetUnusedTcpPort_Succeeds()
         {
-            int unusedPort = WorkerHelpers.GetUnusedTcpPort();
+            int unusedPort = WorkerUtilities.GetUnusedTcpPort();
             TcpListener tcpListener = null;
             try
             {
