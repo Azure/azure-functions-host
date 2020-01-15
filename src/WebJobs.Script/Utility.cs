@@ -44,6 +44,39 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        {
+            return (T)GetHierarchicalAttributeOrNull(method, typeof(T));
+        }
+
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        /// <param name="type">The attribute type to look for.</param>
+        internal static Attribute GetHierarchicalAttributeOrNull(MethodInfo method, Type type)
+        {
+            var attribute = method.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            attribute = method.DeclaringType.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            return null;
+        }
+
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
         {
             await InvokeWithRetriesAsync(() =>
@@ -552,6 +585,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
                 string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+                if (string.IsNullOrEmpty(functionLanguage))
+                {
+                    return null;
+                }
+
                 if (IsDotNetLanguageFunction(functionLanguage))
                 {
                     return RpcWorkerConstants.DotNetLanguageWorkerName;
@@ -571,7 +609,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
-            return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
@@ -592,7 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             if (functions != null && functions.Any())
             {
-                return functions.Any(f => f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
+                return functions.Any(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
             return false;
         }

@@ -914,6 +914,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(Utility.IsSupportedRuntime(RpcWorkerConstants.NodeLanguageWorkerName, TestHelpers.GetTestWorkerConfigs()));
         }
 
+        [Fact]
+        public void GetWorkerRuntime_Returns_null()
+        {
+            FunctionMetadata funcJs1 = new FunctionMetadata()
+            {
+                Name = "funcJs1",
+                Language = "node"
+            };
+            FunctionMetadata funcPython1 = new FunctionMetadata()
+            {
+                Name = "funcPython1",
+                Language = null,
+            };
+            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1, funcPython1
+            };
+            string actualRuntime = Utility.GetWorkerRuntime(functionsList);
+            Assert.Equal(null, actualRuntime);
+
+            FunctionMetadata funcLanguageNull = new FunctionMetadata()
+            {
+                Name = "func"
+            };
+            functionsList = new Collection<FunctionMetadata>()
+            {
+                funcJs1, funcPython1, funcLanguageNull
+            };
+            Assert.Equal(null, actualRuntime);
+        }
+
         [Theory]
         [InlineData("CSharp")]
         [InlineData("DotNetAssembly")]

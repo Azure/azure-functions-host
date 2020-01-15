@@ -143,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         workerDescription.FormatWorkerPathIfNeeded(_systemRuntimeInformation, _environment, _logger);
                         workerDescription.ThrowIfDefaultWorkerPathNotExists();
                         _workerDescripionDictionary[workerDescription.Language] = workerDescription;
+                        _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
                 }
                 catch (Exception ex)
@@ -226,6 +227,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal bool ShouldAddWorkerConfig(string workerDescriptionLanguage)
         {
             string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                return true;
+            }
+
             if (!string.IsNullOrEmpty(workerRuntime))
             {
                 _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {workerRuntime}");

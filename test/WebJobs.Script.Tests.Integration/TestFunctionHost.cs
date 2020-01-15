@@ -28,6 +28,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -185,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         /// <summary>
-        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level.
         /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
         /// </summary>
         /// <returns>The messages from the ScriptHost LoggerProvider</returns>
@@ -193,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public IEnumerable<LogMessage> GetScriptHostLogMessages(string category) => GetScriptHostLogMessages().Where(p => p.Category == category);
 
         /// <summary>
-        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level.
         /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
         /// </summary>
         /// <returns>The messages from the WebHost LoggerProvider</returns>
@@ -292,6 +294,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)
             {
+                // This middleware is only added when env.IsLinuxConsumption()
+                // It should be a no-op for most tests
+                app.UseMiddleware<AppServiceHeaderFixupMiddleware>();
+
                 _startup.Configure(app, applicationLifetime, env, loggerFactory);
             }
         }
