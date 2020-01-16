@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
             if (!exists)
             {
-                logger.LogWarning($"{EnvironmentSettingNames.ScmRunFromPackage} points to an empty location. Function app has no content.");
+                logger.LogWarning($"{EnvironmentVariableName} points to an empty location. Function app has no content.");
             }
 
             return exists;
