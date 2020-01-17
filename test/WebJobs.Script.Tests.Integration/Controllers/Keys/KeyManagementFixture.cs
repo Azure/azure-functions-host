@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             var result = response.Content.ReadAsAsync<JObject>().Result;
 
             var apimodel = new ApiModel();
-            apimodel.Merge(result);
+            apimodel.Merge(result); 
 
             if (result?["links"] != null)
             {
