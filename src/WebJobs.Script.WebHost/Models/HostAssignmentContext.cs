@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -112,13 +113,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return SiteId == other.SiteId && LastModifiedTime.CompareTo(other.LastModifiedTime) == 0;
         }
 
-        public void ApplyAppSettings(IEnvironment environment)
+        public void ApplyAppSettings(IEnvironment environment, ILogger logger)
         {
             foreach (var pair in Environment)
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
-
             if (CorsSettings != null)
             {
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials, CorsSettings.SupportCredentials.ToString());
@@ -128,6 +128,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                     var allowedOrigins = JsonConvert.SerializeObject(CorsSettings.AllowedOrigins);
                     environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins, allowedOrigins);
                 }
+            }
+
+            if (EasyAuthSettings != null)
+            {
+                // App settings take precedence over site config for easy auth enabled.
+                if (string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled)))
+                {
+                    logger.LogDebug($"ApplyAppSettings is adding {EnvironmentSettingNames.EasyAuthEnabled} = {EasyAuthSettings.SiteAuthEnabled.ToString()}");
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled, EasyAuthSettings.SiteAuthEnabled.ToString());
+                }
+                else
+                {
+                    logger.LogDebug($"ApplyAppSettings operating on existing {EnvironmentSettingNames.EasyAuthEnabled} = {environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled)}");
+                }
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.EasyAuthClientId, EasyAuthSettings.SiteAuthClientId);
             }
         }
     }
