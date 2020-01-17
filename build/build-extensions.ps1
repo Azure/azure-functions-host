@@ -9,6 +9,8 @@ $rootDir = Split-Path -Parent $currentDir
 $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
+$extensionVersionNoSuffix = $extensionVersion
+
 if ($hasSuffix) {
   $extensionVersion = "$extensionVersion-$suffix"
 }
@@ -113,7 +115,7 @@ function CreateSiteExtensions() {
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
-    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
