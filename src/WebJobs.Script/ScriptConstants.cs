@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
         public const string CorsMiddlewareRequestDelegate = "MS_CorsMiddlewareRequestDelegate";
+        public const string EasyAuthMiddlewareRequestDelegate = "MS_EasyAuthMiddlewareRequestDelegate";
 
         public const string LegacyPlaceholderTemplateSiteName = "FunctionsPlaceholderTemplateSite";
 
