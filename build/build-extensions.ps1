@@ -110,12 +110,20 @@ function CleanOutput([string] $rootPath) {
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
+
+    # The official site extension needs to be nested inside a folder with its version.
+    # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
-    Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $siteExtensionPath\32bit -Force -Recurse > $null
-    Copy-Item -Path $buildOutput\publish\win-x64 -Destination $siteExtensionPath\64bit -Force -Recurse > $null
-    Copy-Item -Path $siteExtensionPath\32bit\applicationHost.xdt -Destination $siteExtensionPath -Force > $null
+    Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
+    Copy-Item -Path $buildOutput\publish\win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
+    Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
+     
+    # This goes in the root dir
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
+    
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
