@@ -104,5 +104,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return Bindings.Where(p => p.Direction != BindingDirection.In);
             }
         }
+
+        public BindingMetadata Trigger
+        {
+            get { return InputBindings.FirstOrDefault(binding => binding.IsTrigger); }
+        }
     }
 }
