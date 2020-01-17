@@ -11,8 +11,11 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -27,11 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
         private readonly object _functionActivityTrackerLockObject = new object();
+        private readonly IMetricsPublisher _metricsPublisher;
+        private readonly ILinuxContainerActivityPublisher _linuxContainerActivityPublisher;
         private bool _disposed;
-        private IMetricsPublisher _metricsPublisher;
         private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
 
-        public MetricsEventManager(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
             // we read these in the ctor (not static ctor) since it can change on the fly
             _appServiceOptions = appServiceOptions;
@@ -43,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
 
             _metricsPublisher = metricsPublisher;
+            _linuxContainerActivityPublisher = linuxContainerActivityPublisher;
         }
 
         /// <summary>
@@ -162,7 +167,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 if (instance == null)
                 {
-                    instance = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
+                    instance = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, _metricsPublisher,
+                        _linuxContainerActivityPublisher, _functionActivityFlushIntervalSeconds);
                 }
                 instance.FunctionStarted(startedEvent);
             }
@@ -325,6 +331,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             private readonly string _executionId = Guid.NewGuid().ToString();
             private readonly object _functionMetricEventLockObject = new object();
+            private readonly IMetricsPublisher _metricsPublisher;
+            private readonly ILinuxContainerActivityPublisher _linuxContainerActivityPublisher;
             private ulong _totalExecutionCount = 0;
             private int _functionActivityFlushInterval;
             private CancellationTokenSource _etwTaskCancellationSource = new CancellationTokenSource();
@@ -332,14 +340,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
             private bool _disposed = false;
             private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
-            private IMetricsPublisher _metricsPublisher;
 
-            internal FunctionActivityTracker(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, int functionActivityFlushInterval)
+            internal FunctionActivityTracker(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, int functionActivityFlushInterval)
             {
                 MetricsEventGenerator = generator;
                 _appServiceOptions = appServiceOptions;
                 _functionActivityFlushInterval = functionActivityFlushInterval;
                 _metricsPublisher = metricsPublisher;
+                _linuxContainerActivityPublisher = linuxContainerActivityPublisher;
                 Task.Run(
                     async () =>
                     {
@@ -413,7 +421,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         if (!_runningFunctions.ContainsKey(key))
                         {
-                            _runningFunctions.Add(key, new RunningFunctionInfo(startedEvent.FunctionMetadata.Name, startedEvent.InvocationId, startedEvent.Timestamp, startedEvent.Success));
+                            _runningFunctions.Add(key,
+                                new RunningFunctionInfo(startedEvent.FunctionMetadata.Name, startedEvent.InvocationId,
+                                    startedEvent.Timestamp, startedEvent.Success,
+                                    startedEvent.FunctionMetadata.Trigger?.Type));
                         }
                     }
                 }
@@ -501,6 +512,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         currentTime,
                         runningFunctionInfo.StartTime);
                 }
+
+                _linuxContainerActivityPublisher.PublishFunctionExecutionActivity(
+                    new ContainerFunctionExecutionActivity(DateTime.UtcNow, runningFunctionInfo.Name,
+                        runningFunctionInfo.ExecutionStage, runningFunctionInfo.TriggerType,
+                        runningFunctionInfo.Success));
             }
 
             private static string GetDictionaryKey(string name, Guid invocationId)
@@ -547,13 +563,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             private class RunningFunctionInfo
             {
-                public RunningFunctionInfo(string name, Guid invocationId, DateTime startTime, bool success, ExecutionStage executionStage = ExecutionStage.InProgress)
+                public RunningFunctionInfo(string name, Guid invocationId, DateTime startTime, bool success, string triggerType, ExecutionStage executionStage = ExecutionStage.InProgress)
                 {
                     Name = name;
                     InvocationId = invocationId;
                     StartTime = startTime;
                     Success = success;
                     ExecutionStage = executionStage;
+                    TriggerType = triggerType;
                 }
 
                 public string Name { get; private set; }
@@ -567,6 +584,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 public DateTime EndTime { get; set; }
 
                 public bool Success { get; set; }
+
+                public string TriggerType { get; private set; }
             }
         }
     }
