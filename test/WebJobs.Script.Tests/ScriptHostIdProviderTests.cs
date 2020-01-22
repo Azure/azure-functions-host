@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("TEST-FUNCTIONS--", "123123", "test-functions")]
         [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx")]
         [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "123123", "test-functions-xxxxxxxxxxxxxxxx")] /* 32nd character is a '-' */
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", null, "f6c34226-637100850484032865")] // Linux consumption scenario where host id will be derived from the container name.
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", null, "testsite")] // Linux consumption scenario where host id will be derived from the host name.
         [InlineData(null, "123123", null)]
         public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected)
         {
@@ -52,7 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, azureWebsiteInstanceId);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "F6C34226-637100850484032865");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
             string hostId = ScriptHostIdProvider.GetDefaultHostId(environment, options);
             Assert.Equal(expected, hostId);
         }

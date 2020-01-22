@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.ContainerName, containerName },
+                { EnvironmentSettingNames.AzureWebsiteHostName, "testapp.azurewebsites.net" },
                 { EnvironmentSettingNames.AzureWebsiteName, "TestApp" },
                 { EnvironmentSettingNames.ContainerEncryptionKey, encryptionKey },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
@@ -97,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await _httpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-            string hostId = containerName.ToLowerInvariant();
+            string hostId = "testapp";
 
             // verify the expected logs
             var logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
