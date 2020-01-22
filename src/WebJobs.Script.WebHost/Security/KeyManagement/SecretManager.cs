@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class SecretManager : IDisposable, ISecretManager
     {
-        private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>();
+        private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly ILogger _logger;
         private readonly ISecretsRepository _repository;
@@ -475,10 +475,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // We want to store encryption keys hashes to investigate sudden regenerations
                 string hashes = GetEncryptionKeysHashes();
                 secrets.DecryptionKeyId = hashes;
-                _logger?.LogInformation("Encription keys hashes: {0}", hashes);
+                _logger?.LogInformation("Encryption keys hashes: {0}", hashes);
 
                 await _repository.WriteAsync(secretsType, keyScope, secrets);
             }
+
+            // do a direct/immediate cache update to avoid race conditions with
+            // file based notifications.
+            ClearCacheOnChange(secrets.SecretsType, keyScope);
         }
 
         private HostSecrets ReadHostSecrets(HostSecrets hostSecrets)
@@ -520,21 +524,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
         {
+            ClearCacheOnChange(e.SecretsType, e.Name);
+        }
+
+        private void ClearCacheOnChange(ScriptSecretsType secretsType, string functionName)
+        {
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
-            if (e.SecretsType == ScriptSecretsType.Host)
+            if (secretsType == ScriptSecretsType.Host &&
+                _hostSecrets != null)
             {
+                _logger.LogInformation("Host keys change detected. Clearing cache.");
                 _hostSecrets = null;
             }
             else
             {
-                if (string.IsNullOrEmpty(e.Name))
+                if (!string.IsNullOrEmpty(functionName) && _secretsMap.ContainsKey(functionName))
                 {
-                    _secretsMap.Clear();
+                    _logger.LogInformation($"Function keys change detected. Clearing cache for function '{functionName}'.");
+                    _secretsMap.TryRemove(functionName, out _);
                 }
-                else
+                else if (_secretsMap.Any())
                 {
-                    _secretsMap.TryRemove(e.Name, out _);
+                    _logger.LogInformation("Function keys change detected. Clearing all cached function keys.");
+                    _secretsMap.Clear();
                 }
             }
         }
