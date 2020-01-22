@@ -283,6 +283,155 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task AddOrUpdateFunctionSecret_ClearsCache_WhenFunctionSecretAdded()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+                KeyOperationResult result;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
+                {
+                    var keys = await secretManager.GetFunctionSecretsAsync("testfunction");
+                    Assert.Equal(2, keys.Count);
+
+                    // add a new key
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                }
+
+                string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "testfunction.json"));
+                var persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<FunctionSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal(result.Secret, "9876");
+
+                var logs = traceWriter.GetTraces();
+                Assert.Equal(1, logs.Count(p => string.Equals(p.Message, "Function keys change detected. Clearing cache for function 'TestFunction'.", StringComparison.OrdinalIgnoreCase)));
+                Assert.Equal(1, logs.Count(p => p.Message == "Function secret 'function-key-3' for 'TestFunction' Created."));
+            }
+        }
+
+        [Fact]
+        public async Task AddOrUpdateFunctionSecret_ClearsCache_WhenHostLevelFunctionSecretAdded()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+                KeyOperationResult result;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
+                {
+                    var hostKeys = await secretManager.GetHostSecretsAsync();
+                    Assert.Equal(2, hostKeys.FunctionKeys.Count);
+
+                    // add a new key
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-host-3", "9876", HostKeyScopes.FunctionKeys, ScriptSecretsType.Host);
+                }
+
+                string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "host.json"));
+                var persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal(result.Secret, "9876");
+
+                var logs = traceWriter.GetTraces();
+                Assert.Equal(1, logs.Count(p => p.Message == "Host keys change detected. Clearing cache."));
+                Assert.Equal(1, logs.Count(p => p.Message == "Host secret 'function-host-3' for 'functionkeys' Created."));
+            }
+        }
+
+        [Fact]
+        public async Task AddOrUpdateFunctionSecret_ClearsCache_WhenHostSystemSecretAdded()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                Mock<IKeyValueConverterFactory> mockValueConverterFactory = GetConverterFactoryMock(false);
+                KeyOperationResult result;
+                var traceWriter = new TestTraceWriter(TraceLevel.Verbose);
+                ISecretsRepository repository = new FileSystemSecretsRepository(directory.Path);
+                using (var secretManager = new SecretManager(repository, mockValueConverterFactory.Object, traceWriter))
+                {
+                    var hostKeys = await secretManager.GetHostSecretsAsync();
+                    Assert.Equal(2, hostKeys.SystemKeys.Count);
+
+                    // add a new key
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync("host-system-3", "123", HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
+                }
+
+                string secretsJson = File.ReadAllText(Path.Combine(directory.Path, "host.json"));
+                var persistedSecrets = ScriptSecretSerializer.DeserializeSecrets<HostSecrets>(secretsJson);
+
+                Assert.Equal(OperationResult.Created, result.Result);
+                Assert.Equal(result.Secret, "123");
+
+                var logs = traceWriter.GetTraces();
+                Assert.Equal(1, logs.Count(p => p.Message == "Host keys change detected. Clearing cache."));
+                Assert.Equal(1, logs.Count(p => p.Message == "Host secret 'host-system-3' for 'systemkeys' Created."));
+            }
+        }
+
+        private void CreateTestSecrets(string path)
+        {
+            string hostSecrets =
+                    @"{
+    'masterKey': {
+        'name': 'master',
+        'value': '1234',
+        'encrypted': false
+    },
+    'functionKeys': [
+        {
+            'name': 'function-host-1',
+            'value': '456',
+            'encrypted': false
+        },
+        {
+            'name': 'function-host-2',
+            'value': '789',
+            'encrypted': false
+        }
+    ],
+    'systemKeys': [
+        {
+            'name': 'host-system-1',
+            'value': '654',
+            'encrypted': false
+        },
+        {
+            'name': 'host-system-2',
+            'value': '321',
+            'encrypted': false
+        }
+    ]
+}";
+            string functionSecrets =
+                @"{
+    'keys': [
+        {
+            'name': 'function-key-1',
+            'value': '1234',
+            'encrypted': false
+        },
+        {
+            'name': 'function-key-2',
+            'value': '5678',
+            'encrypted': false
+        }
+    ]
+}";
+            File.WriteAllText(Path.Combine(path, ScriptConstants.HostMetadataFileName), hostSecrets);
+            File.WriteAllText(Path.Combine(path, "testfunction.json"), functionSecrets);
+        }
+
+        [Fact]
         public async Task AddOrUpdateFunctionSecrets_WithFunctionNameAndNoSecret_EncryptsSecretAndPersistsFile()
         {
             using (var directory = new TempDirectory())

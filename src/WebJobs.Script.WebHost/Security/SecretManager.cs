@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class SecretManager : IDisposable, ISecretManager
     {
-        private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>();
+        private readonly ConcurrentDictionary<string, Dictionary<string, string>> _secretsMap = new ConcurrentDictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
         private readonly IKeyValueConverterFactory _keyValueConverterFactory;
         private readonly TraceWriter _traceWriter;
         private readonly ISecretsRepository _repository;
@@ -149,8 +149,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (secrets == null)
                 {
                     // no secrets exist for this function so generate them
-                    string messageGeneratoin = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                    _traceWriter.Info(messageGeneratoin, traceProperties);
+                    string messageGeneration = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                    _traceWriter.Info(messageGeneration, traceProperties);
                     secrets = GenerateFunctionSecrets();
 
                     await PersistSecretsAsync(secrets, functionName);
@@ -471,11 +471,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // We want to store encryption keys hashes to investigate sudden regenerations
                 string hashes = GetEncryptionKeysHashes();
                 secrets.DecryptionKeyId = hashes;
-                string message = $"Encription keys hashes: {hashes}";
+                string message = $"Encryption keys hashes: {hashes}";
                 _traceWriter.Info(message);
 
                 await _repository.WriteAsync(secretsType, keyScope, ScriptSecretSerializer.SerializeSecrets<T>(secrets));
             }
+
+            // do a direct/immediate cache update to avoid race conditions with
+            // file based notifications.
+            ClearCacheOnChange(secrets.SecretsType, keyScope);
         }
 
         private HostSecrets ReadHostSecrets(HostSecrets hostSecrets)
@@ -517,16 +521,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
         {
+            ClearCacheOnChange(e.SecretsType, e.Name);
+        }
+
+        private void ClearCacheOnChange(ScriptSecretsType secretsType, string functionName)
+        {
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
-            if (e.SecretsType == ScriptSecretsType.Host)
+            if (secretsType == ScriptSecretsType.Host &&
+                _hostSecrets != null)
             {
+                _traceWriter.Info("Host keys change detected. Clearing cache.");
                 _hostSecrets = null;
             }
             else
             {
-                Dictionary<string, string> secrets;
-                _secretsMap.TryRemove(e.Name, out secrets);
+                if (!string.IsNullOrEmpty(functionName) && _secretsMap.ContainsKey(functionName))
+                {
+                    _traceWriter.Info($"Function keys change detected. Clearing cache for function '{functionName}'.");
+                    _secretsMap.TryRemove(functionName, out _);
+                }
+                else if (_secretsMap.Any())
+                {
+                    _traceWriter.Info("Function keys change detected. Clearing all cached function keys.");
+                    _secretsMap.Clear();
+                }
             }
         }
 
