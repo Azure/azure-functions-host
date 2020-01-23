@@ -2,10 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
-using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {

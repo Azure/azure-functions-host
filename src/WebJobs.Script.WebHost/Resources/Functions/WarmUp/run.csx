@@ -1,5 +1,5 @@
 ﻿#r "Newtonsoft.Json"
-#r "Microsoft.WindowsAzure.Storage"
+#r "Microsoft.Azure.Storage"
 
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
 
 public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
