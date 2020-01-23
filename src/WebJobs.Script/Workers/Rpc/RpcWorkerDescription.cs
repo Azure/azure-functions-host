@@ -50,8 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// <summary>
         /// Gets or sets the regex used for sanitizing the runtime version string.
         /// </summary>
-        [JsonProperty(PropertyName = "sanitizeRuntimeVersion")]
-        public string SanitizeRuntimeVersion { get; set; }
+        [JsonProperty(PropertyName = "sanitizeRuntimeVersionRegex")]
+        public string SanitizeRuntimeVersionRegex { get; set; }
 
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
@@ -217,15 +217,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private string GetSanitizedRuntimeVersion(string version)
         {
-            if (string.IsNullOrEmpty(SanitizeRuntimeVersion))
+            if (string.IsNullOrEmpty(SanitizeRuntimeVersionRegex))
             {
                 return version;
             }
 
-            var match = new Regex(SanitizeRuntimeVersion).Match(version);
+            var match = new Regex(SanitizeRuntimeVersionRegex).Match(version);
             if (!match.Success)
             {
-                throw new NotSupportedException($"Version {version} for language {Language} does not match the regular expression '{SanitizeRuntimeVersion}'");
+                throw new NotSupportedException($"Version {version} for language {Language} does not match the regular expression '{SanitizeRuntimeVersionRegex}'");
             }
 
             return match.Value;

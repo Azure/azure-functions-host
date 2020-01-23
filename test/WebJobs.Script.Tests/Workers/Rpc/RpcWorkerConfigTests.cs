@@ -376,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = defaultWorkerPath,
                 DefaultRuntimeVersion = "3.6",
-                SanitizeRuntimeVersion = sanitizeRuntimeVersionRegex,
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
                 SupportedOperatingSystems = new List<string>()
@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
                 DefaultRuntimeVersion = "3.6",
-                SanitizeRuntimeVersion = sanitizeRuntimeVersionRegex
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
@@ -577,7 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
-                SanitizeRuntimeVersion = sanitizeRuntimeVersionRegex,
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
