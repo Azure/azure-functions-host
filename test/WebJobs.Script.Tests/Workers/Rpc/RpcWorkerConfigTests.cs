@@ -413,10 +413,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.6/LINUX/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.6/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.6/LINUX")]
-        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(string defaultWorkerPath, string expectedPath)
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", null, "3.6/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", null, "3.6/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", null, "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "", "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "[\\d\\.]+", "3.6/LINUX")]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(
+            string defaultWorkerPath,
+            string sanitizeRuntimeVersionRegex,
+            string expectedPath)
         {
             // We fall back to the default version when this is not set
             // Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
@@ -437,7 +442,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
-                DefaultRuntimeVersion = "3.6"
+                DefaultRuntimeVersion = "3.6",
+                SanitizeRuntimeVersion = sanitizeRuntimeVersionRegex
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
