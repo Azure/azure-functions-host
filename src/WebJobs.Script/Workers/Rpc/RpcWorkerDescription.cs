@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -45,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// </summary>
         [JsonProperty(PropertyName = "supportedRuntimeVersions")]
         public List<string> SupportedRuntimeVersions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the regex used for sanitizing the runtime version string.
+        /// </summary>
+        [JsonProperty(PropertyName = "sanitizeRuntimeVersion")]
+        public string SanitizeRuntimeVersion { get; set; }
 
         /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
@@ -187,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!string.IsNullOrEmpty(version))
             {
-                DefaultRuntimeVersion = version;
+                DefaultRuntimeVersion = GetSanitizedRuntimeVersion(version);
             }
 
             ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
@@ -206,6 +213,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return workerPath.Contains(RpcWorkerConstants.OSPlaceholder) ||
                     workerPath.Contains(RpcWorkerConstants.ArchitecturePlaceholder) ||
                     workerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder);
+        }
+
+        private string GetSanitizedRuntimeVersion(string version)
+        {
+            if (string.IsNullOrEmpty(SanitizeRuntimeVersion))
+            {
+                return version;
+            }
+
+            var match = new Regex(SanitizeRuntimeVersion).Match(version);
+            if (!match.Success)
+            {
+                throw new NotSupportedException($"Version {version} for language {Language} does not match the regular expression '{SanitizeRuntimeVersion}'");
+            }
+
+            return match.Value;
         }
     }
 }
