@@ -46,6 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 }
             }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
 
+            if (!exists)
+            {
+                logger.LogWarning($"{EnvironmentVariableName} points to an empty location. Function app has no content.");
+            }
+
             return exists;
         }
     }
