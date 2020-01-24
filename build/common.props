@@ -9,7 +9,7 @@
     <Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix)-$(VersionSuffix)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
-    <FileVersion>$(VersionPrefix)</FileVersion>
+    <FileVersion>$(VersionPrefix).0</FileVersion>
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
     <InformationalVersion>$(Version) Commit hash: $(CommitHash)</InformationalVersion>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
