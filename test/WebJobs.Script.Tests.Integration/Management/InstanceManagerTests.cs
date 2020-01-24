@@ -222,6 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
+                p => Assert.StartsWith($"{EnvironmentSettingNames.ScmRunFromPackage} points to an empty location. Function app has no content.", p),
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
                 p => Assert.StartsWith("Triggering specialization", p));
