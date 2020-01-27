@@ -3,6 +3,10 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Microsoft.ApplicationInsights",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
