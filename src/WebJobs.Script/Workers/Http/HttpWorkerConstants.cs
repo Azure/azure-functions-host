@@ -12,5 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         // Child Process Env vars
         public const string PortEnvVarName = "FUNCTIONS_HTTPWORKER_PORT";
+        public const string WorkerIdEnvVarName = "FUNCTIONS_HTTPWORKER_ID";
     }
 }

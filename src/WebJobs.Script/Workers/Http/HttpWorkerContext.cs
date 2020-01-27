@@ -12,7 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public override string GetFormattedArguments()
         {
-           return $" --workerId {WorkerId} --port {Port}";
+            // Ensure parsing cmd args is not required by httpworker
+            return string.Empty;
         }
     }
 }
