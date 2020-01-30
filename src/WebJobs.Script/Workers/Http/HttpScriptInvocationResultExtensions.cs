@@ -3,8 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -16,49 +20,78 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 Outputs = new Dictionary<string, object>()
             };
-            if (httpScriptInvocationResult.Outputs != null && httpScriptInvocationResult.Outputs.Any())
+
+            foreach (var outputBindingMetadata in scriptInvocationContext.FunctionMetadata.OutputBindings)
             {
-                foreach (var outputFromHttpWorker in httpScriptInvocationResult.Outputs)
-                {
-                    BindingMetadata outputBindingMetadata = GetBindingMetadata(outputFromHttpWorker.Key, scriptInvocationContext);
-                    scriptInvocationResult.Outputs[outputFromHttpWorker.Key] = GetOutputValue(outputBindingMetadata, outputFromHttpWorker.Value);
-                }
+                scriptInvocationResult.Outputs[outputBindingMetadata.Name] = GetOutputValue(outputBindingMetadata.Name, outputBindingMetadata.Type, outputBindingMetadata.DataType, httpScriptInvocationResult.Outputs);
             }
+
             if (httpScriptInvocationResult.ReturnValue != null)
             {
                 BindingMetadata returnParameterBindingMetadata = GetBindingMetadata(ScriptConstants.SystemReturnParameterBindingName, scriptInvocationContext);
-                scriptInvocationResult.Return = GetOutputValue(returnParameterBindingMetadata, httpScriptInvocationResult.ReturnValue);
+                scriptInvocationResult.Return = GetBindingValue(returnParameterBindingMetadata.DataType, httpScriptInvocationResult.ReturnValue);
             }
             return scriptInvocationResult;
         }
 
-        private static object GetOutputValue(BindingMetadata bindingMetadata, object outputBindingValue)
+        internal static object GetOutputValue(string outputBindingName, string bindingType, DataType? bindingDataType, IDictionary<string, object> outputsFromWorker)
         {
-            if (bindingMetadata != null && outputBindingValue != null)
+            if (outputsFromWorker == null)
             {
-                if (bindingMetadata.DataType == DataType.Binary)
-                {
-                    return outputBindingValue;
-                }
-                else
-                {
-                    try
-                    {
-                        return Convert.FromBase64String((string)outputBindingValue);
-                    }
-                    catch
-                    {
-                        //ignore
-                    }
-                }
-                return outputBindingValue;
+                return null;
+            }
+            object outputBindingValue;
+            if (bindingType == "http" && !outputBindingName.Equals(ScriptConstants.SystemReturnParameterBindingName))
+            {
+                return GetHttpOutputBindingResponse(outputBindingName, outputsFromWorker);
+            }
+            if (outputsFromWorker.TryGetValue(outputBindingName, out outputBindingValue))
+            {
+                return GetBindingValue(bindingDataType, outputBindingValue);
             }
             return null;
         }
 
+        private static object GetBindingValue(DataType? bindingDataType, object outputBindingValue)
+        {
+            if (bindingDataType == DataType.Binary)
+            {
+                return outputBindingValue;
+            }
+            else
+            {
+                try
+                {
+                    return Convert.FromBase64String((string)outputBindingValue);
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+            return outputBindingValue;
+        }
+
+        internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
+        {
+            HttpOutputBindingResponse httpOut = new HttpOutputBindingResponse();
+            if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
+            {
+                try
+                {
+                    httpOut = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+            return JsonConvert.SerializeObject(httpOut);
+        }
+
         private static BindingMetadata GetBindingMetadata(string outputBidingName, ScriptInvocationContext scriptInvocationContext)
         {
-            // Find dataType for outputbinding if exists
+            // Find BindingMetadata that matches output form http response
             return scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault(outputBindingMetadata => outputBindingMetadata.Name == outputBidingName);
         }
     }
