@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool checkHash = false)
+        public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
             var result = new SyncTriggersResult
             {
@@ -99,27 +99,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await _syncSemaphore.WaitAsync();
 
                 var hashBlob = await GetHashBlobAsync();
-                if (checkHash && hashBlob == null)
+                if (isBackgroundSync && hashBlob == null)
                 {
-                    // short circuit before doing any work in cases where
-                    // we're asked to check/update hash but don't have
+                    // short circuit before doing any work in background sync
+                    // cases where we need to check/update hash but don't have
                     // storage access
                     return result;
                 }
 
-                string json = await GetSyncTriggersPayload();
+                var payload = await GetSyncTriggersPayload();
+                if (isBackgroundSync && payload.Count == 0)
+                {
+                    // We don't do background sync for empty triggers.
+                    // We've seen error cases where a site temporarily gets into a situation
+                    // where it's site content is empty. Doing the empty sync can cause the app
+                    // to go idle when it shouldn't.
+                    _logger.LogDebug("No functions found. Skipping Sync operation.");
+                    return result;
+                }
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (checkHash)
+                if (isBackgroundSync)
                 {
-                    newHash = await CheckHashAsync(hashBlob, json);
+                    newHash = await CheckHashAsync(hashBlob, payload.Content);
                     shouldSyncTriggers = newHash != null;
                 }
 
                 if (shouldSyncTriggers)
                 {
-                    var (success, error) = await SetTriggersAsync(json);
+                    var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
                         await UpdateHashAsync(hashBlob, newHash);
@@ -254,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return _hashBlob;
         }
 
-        public async Task<string> GetSyncTriggersPayload()
+        public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             var functionsMetadata = _functionMetadataProvider.GetFunctionMetadata();
@@ -262,11 +271,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
             var triggersArray = new JArray(triggers);
+            int count = triggersArray.Count;
 
             if (!ArmCacheEnabled)
             {
                 // extended format is disabled - just return triggers
-                return JsonConvert.SerializeObject(triggersArray);
+                return new SyncTriggersPayload
+                {
+                    Content = JsonConvert.SerializeObject(triggersArray),
+                    Count = count
+                };
             }
 
             // Add triggers to the payload
@@ -326,10 +340,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
                 _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
-                return JsonConvert.SerializeObject(triggersArray);
+                return new SyncTriggersPayload
+                {
+                    Content = JsonConvert.SerializeObject(triggersArray),
+                    Count = count
+                };
             }
 
-            return json;
+            return new SyncTriggersPayload
+            {
+                Content = json,
+                Count = count
+            };
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
@@ -584,6 +606,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public void Dispose()
         {
             _syncSemaphore.Dispose();
+        }
+
+        public class SyncTriggersPayload
+        {
+            public string Content { get; set; }
+
+            public int Count { get; set; }
         }
 
         private class DurableConfig
