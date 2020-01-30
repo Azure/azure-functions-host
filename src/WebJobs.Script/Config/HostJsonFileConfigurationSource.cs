@@ -195,6 +195,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigNotFound();
 
                         hostConfigObject = GetDefaultHostConfigObject();
+
+                        // Add bundle configuration if no file exists and file system is not read only
+                        TryAddBundleConfiguration(hostConfigObject);
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
 
@@ -204,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject GetDefaultHostConfigObject()
             {
-                var hostJsonJObj = JObject.Parse("{'version': '2.0', 'extensionBundle': { 'id': 'Microsoft.Azure.Functions.ExtensionBundle', 'version': '[1.*, 2.0.0)'}}");
+                var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
                 if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
                     && !_configurationSource.Environment.IsFileSystemReadOnly())
                 {
@@ -230,6 +233,16 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 else
                 {
                     _logger.HostConfigFileSystemReadOnly();
+                }
+            }
+
+            private void TryAddBundleConfiguration(JObject content)
+            {
+                if (!_configurationSource.Environment.IsFileSystemReadOnly())
+                {
+                    string bundleConfiguration = "{ 'id': 'Microsoft.Azure.Functions.ExtensionBundle', 'version': '[1.*, 2.0.0)'}";
+                    content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
+                    _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                 }
             }
 
