@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (!cancellationToken.IsCancellationRequested && ShouldSyncTriggers)
                 {
                     _logger.LogDebug("Initiating background SyncTriggers operation");
-                    await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                    await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 }
             }
             catch (Exception exc) when (!exc.IsFatal())
