@@ -109,7 +109,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             IConfiguration config = BuildHostJsonConfiguration(testMetricsLogger, environment);
             AreExpectedMetricsGenerated(testMetricsLogger);
+            var configList = config.AsEnumerable().ToList();
             Assert.Equal(config["AzureFunctionsJobHost:version"], "2.0");
+            Assert.Equal(configList.Count, 2);
+            Assert.True(configList.TrueForAll((k) => !k.Key.Contains("extensionBundle")));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
             Assert.Equal(LogLevel.Information, log.Level);
