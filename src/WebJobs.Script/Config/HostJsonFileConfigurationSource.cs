@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         hostConfigObject = GetDefaultHostConfigObject();
 
                         // Add bundle configuration if no file exists and file system is not read only
-                        TryAddBundleConfiguration(hostConfigObject);
+                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject);
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
 
@@ -236,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private void TryAddBundleConfiguration(JObject content)
+            private JObject TryAddBundleConfiguration(JObject content)
             {
                 if (!_configurationSource.Environment.IsFileSystemReadOnly())
                 {
@@ -244,6 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
                     _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                 }
+                return content;
             }
 
             internal static string SanitizeHostJson(JObject hostJsonObject)
