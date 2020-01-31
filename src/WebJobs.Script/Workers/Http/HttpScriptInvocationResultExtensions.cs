@@ -23,7 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             foreach (var outputBindingMetadata in scriptInvocationContext.FunctionMetadata.OutputBindings)
             {
-                scriptInvocationResult.Outputs[outputBindingMetadata.Name] = GetOutputValue(outputBindingMetadata.Name, outputBindingMetadata.Type, outputBindingMetadata.DataType, httpScriptInvocationResult.Outputs);
+                object outputValue = GetOutputValue(outputBindingMetadata.Name, outputBindingMetadata.Type, outputBindingMetadata.DataType, httpScriptInvocationResult.Outputs);
+                if (outputValue != null)
+                {
+                    scriptInvocationResult.Outputs[outputBindingMetadata.Name] = outputValue;
+                }
             }
 
             if (httpScriptInvocationResult.ReturnValue != null)
