@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                     string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                     JObject hostConfigObject = LoadHostConfig(hostFilePath);
-                    InitializeHostConfig(hostFilePath, hostConfigObject);
+                    hostConfigObject = InitializeHostConfig(hostFilePath, hostConfigObject);
                     string sanitizedJson = SanitizeHostJson(hostConfigObject);
 
                     _logger.HostConfigApplied();
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private void InitializeHostConfig(string hostJsonPath, JObject hostConfigObject)
+            private JObject InitializeHostConfig(string hostJsonPath, JObject hostConfigObject)
             {
                 using (_metricsLogger.LatencyEvent(MetricEventNames.InitializeHostConfiguration))
                 {
@@ -173,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
                     }
                 }
+                return hostConfigObject;
             }
 
             internal JObject LoadHostConfig(string configFilePath)
