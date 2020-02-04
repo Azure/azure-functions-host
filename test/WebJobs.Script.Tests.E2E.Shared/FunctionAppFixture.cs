@@ -153,11 +153,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                         await Task.Delay(delay);
                     }
 
-                    // Workaround for https://github.com/Azure/azure-functions-host/issues/2397 as the base URL
-                    // doesn't currently start the host.
-                    // var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
-                    var functions = await _kuduClient.GetFunctions();
-                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}/admin/functions/{functions.First().Name}/status?code={FunctionAppMasterKey}");
+                    var result = await client.GetAsync($"{Settings.SiteBaseAddress}");
                     statusCode = result.StatusCode;
                     if (statusCode == HttpStatusCode.OK)
                     {
