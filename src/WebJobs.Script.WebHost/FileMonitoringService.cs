@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _shutdownScheduled;
         private int _restartRequested;
         private bool _disposed = false;
+        private bool _watchersStopped = false;
+        private object _stopWatchersLock = new object();
 
         public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager)
         {
@@ -85,6 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            StopFileWatchers();
             return Task.CompletedTask;
         }
 
@@ -118,6 +121,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     .Subscribe((msg) => ScheduleRestartAsync(false)
                     .ContinueWith(t => _logger.LogCritical(t.Exception.Message),
                         TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
+        }
+
+        private void StopFileWatchers()
+        {
+            lock (_stopWatchersLock)
+            {
+                if (_watchersStopped)
+                {
+                    return;
+                }
+
+                _fileEventSource?.Dispose();
+
+                if (_debugModeFileWatcher != null)
+                {
+                    _debugModeFileWatcher.Changed -= OnDebugModeFileChanged;
+                    _debugModeFileWatcher.Dispose();
+                }
+
+                if (_diagnosticModeFileWatcher != null)
+                {
+                    _diagnosticModeFileWatcher.Changed -= OnDiagnosticModeFileChanged;
+                    _diagnosticModeFileWatcher.Dispose();
+                }
+
+                foreach (var subscription in _eventSubscriptions)
+                {
+                    subscription.Dispose();
+                }
+
+                _watchersStopped = true;
+            }
         }
 
         /// <summary>
@@ -264,24 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (disposing)
                 {
-                    _fileEventSource?.Dispose();
-
-                    if (_debugModeFileWatcher != null)
-                    {
-                        _debugModeFileWatcher.Changed -= OnDebugModeFileChanged;
-                        _debugModeFileWatcher.Dispose();
-                    }
-
-                    if (_diagnosticModeFileWatcher != null)
-                    {
-                        _diagnosticModeFileWatcher.Changed -= OnDiagnosticModeFileChanged;
-                        _diagnosticModeFileWatcher.Dispose();
-                    }
-
-                    foreach (var subscription in _eventSubscriptions)
-                    {
-                        subscription.Dispose();
-                    }
+                    StopFileWatchers();
                 }
 
                 _disposed = true;
