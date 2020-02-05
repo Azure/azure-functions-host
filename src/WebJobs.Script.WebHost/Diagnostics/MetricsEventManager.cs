@@ -12,7 +12,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -32,11 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly object _functionActivityTrackerLockObject = new object();
         private readonly IMetricsPublisher _metricsPublisher;
         private readonly ILinuxContainerActivityPublisher _linuxContainerActivityPublisher;
+        private readonly ILogger<MetricsEventManager> _logger;
         private bool _disposed;
         private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
 
-        public MetricsEventManager(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
+        public MetricsEventManager(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, int functionActivityFlushIntervalSeconds, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, ILogger<MetricsEventManager> logger, int metricsFlushIntervalMS = DefaultFlushIntervalMS)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             // we read these in the ctor (not static ctor) since it can change on the fly
             _appServiceOptions = appServiceOptions;
             _eventGenerator = generator;
@@ -303,6 +305,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         protected virtual void Dispose(bool disposing)
         {
+            _logger.LogDebug($"Disposing {nameof(MetricsEventManager)}");
+
             if (!_disposed)
             {
                 if (disposing)

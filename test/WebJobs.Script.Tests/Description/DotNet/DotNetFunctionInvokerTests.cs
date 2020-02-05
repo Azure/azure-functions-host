@@ -22,7 +22,6 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -367,7 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
-                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<AspNetCore.Hosting.IApplicationLifetime>();
 
                 // Create the invoker dependencies and setup the appropriate method to throw the exception
                 RunDependencies dependencies = CreateDependencies(s =>

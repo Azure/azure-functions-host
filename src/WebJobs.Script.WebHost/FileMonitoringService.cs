@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly AspNetCore.Hosting.IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly string _hostLogPath;
         private readonly ILogger _logger;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private int _restartRequested;
         private bool _disposed = false;
 
-        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager)
+        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;
