@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryCount = 3, int retryDelayMS = 1000)
+        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryCount = 20, int retryDelayMS = 1000)
         {
             int attempt = 0;
             do
@@ -222,7 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // though these should only happen in tests not production, because we only ever
                     // delete OLD tables and we'll never be attempting to recreate a table we just
                     // deleted outside of tests.
-                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict)
+                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
+                        attempt < retryCount)
                     {
                         // wait a bit and try again
                         await Task.Delay(retryDelayMS);
