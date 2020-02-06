@@ -39,9 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // create or update the debug sentinel file to trigger a
                 // debug timeout update across all instances
-                string debugSentinelFileName = Path.Combine(_scriptOptions.CurrentValue.LogPath, "Host", ScriptConstants.DebugSentinelFileName);
+                string debugSentinelDirectory = Path.Combine(_scriptOptions.CurrentValue.LogPath, "Host");
+                string debugSentinelFileName = Path.Combine(debugSentinelDirectory, ScriptConstants.DebugSentinelFileName);
                 if (!File.Exists(debugSentinelFileName))
                 {
+                    FileUtility.EnsureDirectoryExists(debugSentinelDirectory);
                     File.WriteAllText(debugSentinelFileName, "This is a system managed marker file used to control runtime debug mode behavior.");
                 }
                 else

@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class FileMonitoringService : IHostedService, IDisposable
     {
+        private const int _delayedWatchersDelaySeconds = 5;
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
         private readonly IApplicationLifetime _applicationLifetime;
@@ -101,16 +102,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private void InitializeFileWatchers()
         {
-            _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
-                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-            _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
-            _logger.LogDebug("Debug file watch initialized.");
-
-            _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
-                   includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
-            _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
-            _logger.LogDebug("Diagnostic file watch initialized.");
-
             if (_scriptOptions.FileWatchingEnabled)
             {
                 _fileEventSource = new FileWatcherEventSource(_eventManager, EventSources.ScriptFiles, _scriptOptions.RootScriptPath);
@@ -126,12 +117,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     .Subscribe((msg) => ScheduleRestartAsync(false)
                     .ContinueWith(t => _logger.LogCritical(t.Exception.Message),
                         TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
+
+            // Delay starting up for logging and debug file watchers to avoid long start up times
+            Utility.ExecuteAfterDelay(InitializeNonBlockingFileWatchers, TimeSpan.FromSeconds(_delayedWatchersDelaySeconds));
+        }
+
+        /// <summary>
+        /// Initializes the file and directory monitoring that does not need to happen as part of a Host startup
+        /// These watchers can be started after a delay to avoid startup performance issue
+        /// </summary>
+        private void InitializeNonBlockingFileWatchers()
+        {
+            if (_watchersStopped)
+            {
+                return;
+            }
+
+            lock (_stopWatchersLock)
+            {
+                // We need this duplication to avoid race if watchers were stopped just when we acquired the lock
+                if (!_watchersStopped)
+                {
+                    _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
+                            includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                    _debugModeFileWatcher.Changed += OnDebugModeFileChanged;
+                    _logger.LogDebug("Debug file watch initialized.");
+
+                    _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
+                           includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                    _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
+                    _logger.LogDebug("Diagnostic file watch initialized.");
+                }
+            }
         }
 
         private void StopFileWatchers()
         {
+            if (_watchersStopped)
+            {
+                return;
+            }
+
             lock (_stopWatchersLock)
             {
+                // We need this duplication to avoid race if watchers were stopped just when we acquired the lock
                 if (_watchersStopped)
                 {
                     return;
