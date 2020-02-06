@@ -53,7 +53,8 @@ if ([string]::IsNullOrEmpty($runtimeUrl)) {
 $scenariosDir = "C:\git\azure-functions-performance-scenarios"
 Write-Output "Getting latest 'azure-functions-performance-scenarios'"
 Push-Location $scenariosDir
-& git reset --hard master
+& git pull
+
 Pop-Location
 
 # Updating the tool
@@ -139,5 +140,8 @@ Foreach-Object {
     }
 }
 
+Write-Output "Cleaning $tempFolder"
 Remove-Item -Recurse -Force $tempFolder -ErrorAction SilentlyContinue
+Write-Output "Cleaning C:\Windows\Temp"
+Remove-Item -Recurse -Force C:\Windows\Temp -ErrorAction SilentlyContinue
 Stop-Transcript
