@@ -25,19 +25,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string MonitorIdPropertyName = "MonitorId";
         private const string SampleTimestampPropertyName = "SampleTimestamp";
         private const int MetricsPurgeDelaySeconds = 30;
+        private const int DefaultTableCreationRetries = 3;
 
         private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly ScaleOptions _scaleOptions;
         private readonly ILogger _logger;
+        private readonly int _tableCreationRetries;
         private CloudTableClient _tableClient;
 
         public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory)
+            : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries)
+        {
+        }
+
+        internal TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, int tableCreationRetries)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _scaleOptions = scaleOptions.Value;
             _logger = loggerFactory.CreateLogger<TableStorageScaleMetricsRepository>();
+            _tableCreationRetries = tableCreationRetries;
         }
 
         internal CloudTableClient TableClient
@@ -199,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryCount = 20, int retryDelayMS = 1000)
+        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryDelayMS = 1000)
         {
             int attempt = 0;
             do
@@ -223,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // delete OLD tables and we'll never be attempting to recreate a table we just
                     // deleted outside of tests.
                     if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
-                        attempt < retryCount)
+                        attempt < _tableCreationRetries)
                     {
                         // wait a bit and try again
                         await Task.Delay(retryDelayMS);
@@ -234,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return;
             }
-            while (attempt++ < retryCount);
+            while (attempt++ < _tableCreationRetries);
         }
 
         internal async Task AccumulateMetricsBatchAsync(TableBatchOperation batch, IScaleMonitor monitor, IEnumerable<ScaleMetrics> metrics, DateTime? now = null)
