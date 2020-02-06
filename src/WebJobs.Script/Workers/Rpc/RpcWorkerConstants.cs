@@ -30,14 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
 
-        // Rpc Http Constants
-        public const string RpcHttpBody = "body";
-        public const string RpcHttpHeaders = "headers";
-        public const string RpcHttpEnableContentNegotiation = "enableContentNegotiation";
-        public const string RpcHttpCookies = "cookies";
-        public const string RpcHttpStatusCode = "statusCode";
-        public const string RpcHttpStatus = "status";
-
         // Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
