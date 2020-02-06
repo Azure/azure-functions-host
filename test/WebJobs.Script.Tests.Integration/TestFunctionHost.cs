@@ -30,6 +30,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -114,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _hostService = manager as WebJobsScriptHostService;
 
             // Wire up StopApplication calls as they behave in hosted scenarios
-            var lifetime = WebHostServices.GetService<AspNetCore.Hosting.IApplicationLifetime>();
+            var lifetime = WebHostServices.GetService<IApplicationLifetime>();
             lifetime.ApplicationStopping.Register(async () => await _testServer.Host.StopAsync());
 
             StartAsync().GetAwaiter().GetResult();
@@ -297,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _postConfigure?.ConfigureServices(services);
             }
 
-            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)
+            public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
             {
                 // This middleware is only added when env.IsLinuxConsumption()
                 // It should be a no-op for most tests
@@ -318,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _optionsMonitor = optionsMonitor;
             }
 
-            public object GetService(System.Type serviceType)
+            public object GetService(Type serviceType)
             {
                 var workerOptions = new LanguageWorkerOptions
                 {

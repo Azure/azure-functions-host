@@ -27,6 +27,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -366,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
-                var mockApplicationLifetime = new Mock<AspNetCore.Hosting.IApplicationLifetime>();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
 
                 // Create the invoker dependencies and setup the appropriate method to throw the exception
                 RunDependencies dependencies = CreateDependencies(s =>

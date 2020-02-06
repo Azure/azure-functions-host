@@ -305,7 +305,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         protected virtual void Dispose(bool disposing)
         {
-            _logger.LogDebug($"Disposing {nameof(MetricsEventManager)}");
+            try
+            {
+                _logger.LogDebug($"Disposing {nameof(MetricsEventManager)}");
+            }
+            catch
+            {
+                // Best effort logging.
+            }
 
             if (!_disposed)
             {

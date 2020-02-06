@@ -19,12 +19,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IServiceProvider, IDisposable
     {
-        private readonly AspNetCore.Hosting.IApplicationLifetime _applicationLifetime;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly IScriptHostBuilder _scriptHostBuilder;
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger, AspNetCore.Hosting.IApplicationLifetime applicationLifetime)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime)
         {
             if (loggerFactory == null)
             {
