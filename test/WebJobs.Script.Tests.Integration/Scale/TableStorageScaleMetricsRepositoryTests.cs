@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             loggerFactory.AddProvider(_loggerProvider);
 
             // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
-            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 30);
+            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60);
 
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
