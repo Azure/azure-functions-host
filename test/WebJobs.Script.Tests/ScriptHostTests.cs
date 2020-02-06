@@ -89,17 +89,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public static async Task OnDebugModeFileChanged_TriggeredWhenDebugFileUpdated()
         {
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+
             var host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(runStartupHostedServices: true)
+                 .ConfigureDefaultTestWebScriptHost(_ => { },
+                options =>
+                {
+                    options.ScriptPath = Path.GetTempPath();
+                    options.LogPath = Path.GetTempPath();
+                },
+                runStartupHostedServices: true,
+                rootServices =>
+                {
+                    rootServices.AddSingleton<ILoggerFactory>(loggerFactory);
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<ILoggerFactory>(loggerFactory);
+                })
                 .Build();
 
             ScriptHost scriptHost = host.GetScriptHost();
-            string debugSentinelFilePath = Path.Combine(scriptHost.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
 
-            // Write the initial file.
+            string debugSentinelDirectory = Path.Combine(scriptHost.ScriptOptions.RootLogPath, "Host");
+            string debugSentinelFilePath = Path.Combine(debugSentinelDirectory, ScriptConstants.DebugSentinelFileName);
             if (!File.Exists(debugSentinelFilePath))
             {
-                File.WriteAllText(debugSentinelFilePath, string.Empty);
+                FileUtility.EnsureDirectoryExists(debugSentinelDirectory);
+                File.WriteAllText(debugSentinelFilePath, "This is a system managed marker file used to control runtime debug mode behavior.");
             }
 
             // first put the host into a non-debug state
@@ -113,6 +132,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return !scriptHost.InDebugMode;
             },
             userMessageCallback: () => $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {debugState.LastDebugNotify}.");
+
+            // File Watchers for debug and diagnostic task are delayed during startup.
+            await TestHelpers.Await(() =>
+            {
+                return loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Debug file watch initialized."));
+            }, timeout: 30000, userMessageCallback: () => $"File watchers did not initialize in time");
 
             // verify that our file watcher for the debug sentinel file is configured
             // properly by touching the file and ensuring that our host goes into
@@ -173,7 +198,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var debugManager = _fixture.Host.Services.GetService<IDebugManager>();
 
             string debugSentinelFileName = Path.Combine(host.ScriptOptions.RootLogPath, "Host", ScriptConstants.DebugSentinelFileName);
-            File.Delete(debugSentinelFileName);
+            if (File.Exists(debugSentinelFileName))
+            {
+                File.Delete(debugSentinelFileName);
+            }
+
             debugState.LastDebugNotify = DateTime.MinValue;
 
             Assert.False(host.InDebugMode);
