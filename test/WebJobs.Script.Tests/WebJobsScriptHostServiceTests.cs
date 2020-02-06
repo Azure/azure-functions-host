@@ -20,6 +20,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -397,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(mockEnvironment.Object);
-            var mockApplicationLifetime = new Mock<Microsoft.AspNetCore.Hosting.IApplicationLifetime>(MockBehavior.Strict);
+            var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
             var manager = new StandbyManager(_hostService, mockLanguageWorkerChannelManager.Object, mockConfiguration.Object, mockScriptWebHostEnvironment.Object, mockEnvironment.Object, _monitor, testLogger, hostNameProvider, mockApplicationLifetime.Object, new TestMetricsLogger());
             manager.SpecializeHostAsync().Wait();
         }

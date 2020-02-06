@@ -17,6 +17,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
@@ -48,7 +49,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<IFunctionInvocationDispatcherFactory>(services);
             AddMockedSingleton<IHttpWorkerService>(services);
-            AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
+            AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);

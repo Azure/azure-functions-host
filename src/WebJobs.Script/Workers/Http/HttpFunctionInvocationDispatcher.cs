@@ -8,10 +8,10 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -120,12 +120,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private async Task DisposeAndRestartWorkerChannel(string workerId)
         {
-                _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
-                if (_httpWorkerChannel != null)
-                {
-                    (_httpWorkerChannel as IDisposable)?.Dispose();
-                }
-                await RestartWorkerChannel(workerId);
+            _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
+            if (_httpWorkerChannel != null)
+            {
+                (_httpWorkerChannel as IDisposable)?.Dispose();
+            }
+            await RestartWorkerChannel(workerId);
         }
 
         private async Task RestartWorkerChannel(string workerId)

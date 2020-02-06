@@ -23,6 +23,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
