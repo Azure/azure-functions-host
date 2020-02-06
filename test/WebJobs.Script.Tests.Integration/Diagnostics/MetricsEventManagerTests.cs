@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<long>(),
                     It.IsAny<DateTime>(),
                     It.IsAny<string>(),
-                    It.IsAny<string>(), 
+                    It.IsAny<string>(),
                     It.IsAny<string>()))
                 .Callback((string subscriptionId, string appName, string functionName, string eventName, long average, long min, long max, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName) =>
                 {
@@ -86,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
             testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
             _linuxFunctionExecutionActivityPublisher = new Mock<ILinuxContainerActivityPublisher>();
-            _metricsEventManager = new MetricsEventManager(testAppServiceOptions.Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object, _linuxFunctionExecutionActivityPublisher.Object);
+            _metricsEventManager = new MetricsEventManager(testAppServiceOptions.Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object, _linuxFunctionExecutionActivityPublisher.Object, NullLogger<MetricsEventManager>.Instance);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -396,7 +397,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
             var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
             testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, NullLogger<MetricsEventManager>.Instance, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;
@@ -448,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         It.Is<ContainerFunctionExecutionActivity>(a =>
                             a.ExecutionStage == ExecutionStage.Finished && a.Success)));
 
-            var taskList = new List<Task> {ShortTestFunction(_metricsLogger)};
+            var taskList = new List<Task> { ShortTestFunction(_metricsLogger) };
             await AwaitFunctionTasks(taskList);
 
             _linuxFunctionExecutionActivityPublisher
@@ -464,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _linuxFunctionExecutionActivityPublisher
                 .Setup(client =>
                     client.PublishFunctionExecutionActivity(It.IsAny<ContainerFunctionExecutionActivity>()));
-            
+
             var taskList = new List<Task> { LongTestFunction(_metricsLogger) };
             await AwaitFunctionTasks(taskList);
 
