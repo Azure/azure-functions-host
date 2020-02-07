@@ -22,12 +22,12 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -367,12 +367,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var tempDirectory = new TempDirectory())
             {
-                var environmentMock = new Mock<IScriptJobHostEnvironment>();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
 
                 // Create the invoker dependencies and setup the appropriate method to throw the exception
                 RunDependencies dependencies = CreateDependencies(s =>
                 {
-                    s.AddSingleton<IScriptJobHostEnvironment>(environmentMock.Object);
+                    s.AddSingleton(mockApplicationLifetime.Object);
                 });
 
                 // Create a dummy file to represent our function
@@ -404,7 +404,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // and won't be made immediately
                 await Task.Delay(1000);
 
-                environmentMock.Verify(e => e.Shutdown(), Times.Exactly(shutdownExpected ? 1 : 0));
+                mockApplicationLifetime.Verify(e => e.StopApplication(), Times.Exactly(shutdownExpected ? 1 : 0));
             }
         }
 

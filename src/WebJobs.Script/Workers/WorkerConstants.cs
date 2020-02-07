@@ -40,5 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         // Language Worker process exit codes
         public const int SuccessExitCode = 0;
         public const int IntentionalRestartExitCode = 200;
+
+        // Http Constants
+        public const string HttpBody = "body";
+        public const string HttpHeaders = "headers";
+        public const string HttpEnableContentNegotiation = "enableContentNegotiation";
+        public const string HttpCookies = "cookies";
+        public const string HttpStatusCode = "statusCode";
+        public const string HttpStatus = "status";
     }
 }

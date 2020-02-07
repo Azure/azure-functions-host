@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
                     var environment = rootServiceProvider.GetService<IEnvironment>();
+
                     if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
                     {
                         services.AddSingleton<IHostedService, FunctionsSyncService>();
@@ -79,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
-                    services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
 
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());

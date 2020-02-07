@@ -10,9 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// <summary>
         /// Sync function triggers with Antares infrastructure.
         /// </summary>
-        /// <param name="checkHash">Indicates whether the last sync hash should be checked
-        /// to conditonally perform the sync.</param>
+        /// <param name="isBackgroundSync">Indicates whether this is a background sync operation.</param>
         /// <returns>The <see cref="SyncTriggersResult"/> for the request.</returns>
-        Task<SyncTriggersResult> TrySyncTriggersAsync(bool checkHash = false);
+        Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false);
     }
 }

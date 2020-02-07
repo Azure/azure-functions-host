@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IEnvironment _environment;
-        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
         private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
@@ -53,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
-            IScriptJobHostEnvironment scriptJobHostEnvironment,
+            IApplicationLifetime applicationLifetime,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IRpcWorkerChannelFactory rpcWorkerChannelFactory,
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
             _environment = environment;
-            _scriptJobHostEnvironment = scriptJobHostEnvironment;
+            _applicationLifetime = applicationLifetime;
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
@@ -82,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
 
             State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -93,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
+
+        public int ErrorEventsThreshold { get; private set; }
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -345,14 +349,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task RestartWorkerChannel(string runtime, string workerId)
         {
-            if (_languageWorkerErrors.Count < 3 * _maxProcessCount)
+            if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
                 await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
             {
                 _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down Functions Host", runtime);
-                _scriptJobHostEnvironment.Shutdown();
+                _applicationLifetime.StopApplication();
             }
         }
 

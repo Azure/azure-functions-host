@@ -303,8 +303,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 File.WriteAllText(Path.Combine(rootPath, ScriptConstants.HostMetadataFileName), config.ToString());
                 File.WriteAllText(Path.Combine(invalidFunctionNamePath, ScriptConstants.FunctionMetadataFileName), string.Empty);
-
-                var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
                 IHost host = new HostBuilder()
@@ -1373,7 +1371,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public async Task InitializeAsync()
             {
                 Directory.CreateDirectory(TestHelpers.FunctionsTestDirectory);
-                var environment = new Mock<IScriptJobHostEnvironment>();
                 var eventManager = new Mock<IScriptEventManager>();
 
                 Host = new HostBuilder()

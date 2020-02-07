@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 
-        [Fact]
+        [Fact(Skip = "Failing due to a change in connection string validation in the WebJobs SDK. Tracking issue: https://github.com/Azure/azure-webjobs-sdk/issues/2415")]
         public async Task FunctionWithIndexingError_ReturnsError()
         {
             FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("FunctionIndexingError");

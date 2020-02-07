@@ -41,7 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory);
+
+            // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
+            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60);
 
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
@@ -163,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             }
 
             await _repository.ExecuteBatchSafeAsync(batch);
-            
+
             var result = await _repository.ReadMetricsAsync(monitors);
 
             var resultMetrics = result[monitor1].Cast<TestScaleMetrics1>().ToArray();
@@ -327,7 +329,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         public async Task LogStorageException_LogsDetails()
         {
             StorageException ex = null;
-            var table =_repository.TableClient.GetTableReference("dne");
+            var table = _repository.TableClient.GetTableReference("dne");
             var continuationToken = new TableContinuationToken();
             try
             {

@@ -4,137 +4,116 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Microsoft.WebJobs.Script.Tests;
-using Moq;
-using WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 {
-    public class WebScriptHostManagerTimeoutTests : IDisposable
+    public class WebScriptHostManagerTimeoutTests
     {
-        private readonly TempDirectory _secretsDirectory = new TempDirectory();
-        private TestLoggerProvider _loggerProvider = new TestLoggerProvider();
-        
-        [Fact(Skip = "Investigate test failure")]
+        private TestDisposable _disposedService = new TestDisposable();
+
+        [Fact]
         public async Task OnTimeoutException_IgnoreToken_StopsManager()
         {
-            IHost host = null;
-            try
+            using (var host = await RunTimeoutExceptionTest(handleCancellation: false))
             {
-                IScriptJobHost scriptHost;
-                IScriptHostManager jobHostManager;
-                (host, scriptHost, jobHostManager) = await RunTimeoutExceptionTest(handleCancellation: false);
-                
+                var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
+
                 await TestHelpers.Await(() => !(jobHostManager.State == ScriptHostState.Running), userMessageCallback: () => "Expected host to not be running");
 
-                var traces = _loggerProvider.GetAllLogMessages();
-                Assert.DoesNotContain(traces, t => t.FormattedMessage.StartsWith("Done"));
-                Assert.Contains(traces, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
-                Assert.Contains(traces, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
+                var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
+                Assert.DoesNotContain(messages, t => t.FormattedMessage.StartsWith("Done"));
+                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
+                Assert.Contains(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
             }
-            finally
-            {
-                host?.Dispose();
-            }
+
+            // Validates a bug where WebHost services were not being disposed on a function timeout
+            Assert.True(_disposedService.IsDisposed, "Expected services to be disposed");
         }
 
-        [Fact(Skip = "Investigate test failure")]
+        [Fact]
         public async Task OnTimeoutException_UsesToken_ManagerKeepsRunning()
         {
-            IHost host = null;
-            try
+            using (var host = await RunTimeoutExceptionTest(handleCancellation: true))
             {
-                IScriptJobHost scriptHost;
-                IScriptHostManager jobHostManager;
-                (host, scriptHost, jobHostManager) = await RunTimeoutExceptionTest(handleCancellation: true);
+                var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 
                 // wait a few seconds to make sure the manager doesn't die
                 await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(jobHostManager.State == ScriptHostState.Running),
                 timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
 
-                var messages = _loggerProvider.GetAllLogMessages();
+                var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Done"));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Timeout value of 00:00:03 exceeded by function 'Functions.TimeoutToken' (Id: "));
                 Assert.DoesNotContain(messages, t => t.FormattedMessage == "A function timeout has occurred. Host is shutting down.");
             }
-            finally
-            {
-                host?.Dispose();
-            }
         }
 
-        private async Task<(IHost, IScriptJobHost, IScriptHostManager)> RunTimeoutExceptionTest(bool handleCancellation)
+        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation)
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
-            var (host, jobhost, jobHostManager) = await CreateAndStartWebScriptHost();
+            var host = CreateAndStartWebScriptHost();
 
-                string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
+            string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
 
             var args = new Dictionary<string, object>
             {
                 { "input", scenarioName }
             };
 
-            await Assert.ThrowsAsync<FunctionTimeoutException>(() => jobhost.CallAsync("TimeoutToken", args));
+            var jobHost = host.JobHostServices.GetService<IJobHost>();
 
-            return (host, jobhost, jobHostManager);
+            await Assert.ThrowsAsync<FunctionTimeoutException>(() => jobHost.CallAsync("TimeoutToken", args));
+
+            return host;
         }
 
-        private async Task<(IHost, IScriptJobHost, IScriptHostManager)> CreateAndStartWebScriptHost()
+        private TestFunctionHost CreateAndStartWebScriptHost()
         {
             var functions = new Collection<string> { "TimeoutToken" };
 
-            var options = new ScriptJobHostOptions()
-            {
-                RootScriptPath = $@"TestScripts\CSharp",
-                FileLoggingMode = FileLoggingMode.Always,
-                Functions = functions,
-                FunctionTimeout = TimeSpan.FromSeconds(3)
-            };
-
-            var mockEventManager = new Mock<IScriptEventManager>();
-            var mockRouter = new Mock<IWebJobsRouter>();
-
-            var host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost()
-                .ConfigureServices(s =>
-                {
-                    s.AddSingleton<IWebJobsRouter>(mockRouter.Object);
-                    s.AddSingleton<ISecretManagerProvider>(new TestSecretManagerProvider());
-                    s.AddSingleton<IScriptEventManager>(mockEventManager.Object);
-                    s.AddSingleton<IOptions<ScriptJobHostOptions>>(new OptionsWrapper<ScriptJobHostOptions>(options));
-                    s.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions { SecretsPath = _secretsDirectory.Path }));
-                    s.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-                    s.AddSingleton(ScriptSettingsManager.Instance);
-                })
-                .Build();
-
-
-            await host.StartAsync();
-
-            var manager = host.Services.GetService<IScriptHostManager>();
-            await TestHelpers.Await(() => manager.State == ScriptHostState.Running, userMessageCallback: () => "Expected host to be running");
-
-            IScriptJobHost scriptHost = host.GetScriptHost();
-
-            return (host, scriptHost, manager);
+            return new TestFunctionHost(
+                 @"TestScripts\CSharp",
+                 Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions"),
+                 configureWebHostServices: b =>
+                 {
+                     b.AddSingleton<IHostedService>(_ => _disposedService);
+                 },
+                 configureScriptHostWebJobsBuilder: b =>
+                 {
+                     b.Services.Configure<ScriptJobHostOptions>(o =>
+                     {
+                         o.Functions = functions;
+                         o.FunctionTimeout = TimeSpan.FromSeconds(3);
+                     });
+                 });
         }
 
-        public void Dispose()
+        private class TestDisposable : IHostedService, IDisposable
         {
-            _secretsDirectory.Dispose();
+            public bool IsDisposed { get; private set; } = false;
+
+            public void Dispose()
+            {
+                IsDisposed = true;
+            }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
         }
     }
 }

@@ -224,6 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                p => Assert.StartsWith($"{EnvironmentSettingNames.ScmRunFromPackage} points to an empty location. Function app has no content.", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
@@ -498,7 +499,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteName = "TestSite"
             };
 
-            var meshInitServiceClient = new Mock<IMeshInitServiceClient>(MockBehavior.Strict);
+            var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshInitServiceClient.Setup(client =>
                     client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1, targetPath1))
                 .Throws(new Exception("Mount failure"));
@@ -553,7 +554,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteName = "TestSite"
             };
 
-            var meshInitServiceClient = new Mock<IMeshInitServiceClient>(MockBehavior.Strict);
+            var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1, targetPath1)).Returns(Task.FromResult(true));

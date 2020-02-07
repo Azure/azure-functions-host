@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IHttpWorkerChannelFactory _httpWorkerChannelFactory;
-        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -37,19 +38,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public HttpFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
-            IScriptJobHostEnvironment scriptJobHostEnvironment,
+            IApplicationLifetime applicationLifetime,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IHttpWorkerChannelFactory httpWorkerChannelFactory)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
-            _scriptJobHostEnvironment = scriptJobHostEnvironment;
+            _applicationLifetime = applicationLifetime;
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
             State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3;
 
             _workerErrorSubscription = _eventManager.OfType<HttpWorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -58,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
+
+        public int ErrorEventsThreshold { get; private set; }
 
         internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
@@ -116,17 +120,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private async Task DisposeAndRestartWorkerChannel(string workerId)
         {
-                _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
-                if (_httpWorkerChannel != null)
-                {
-                    (_httpWorkerChannel as IDisposable)?.Dispose();
-                }
-                await RestartWorkerChannel(workerId);
+            _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
+            if (_httpWorkerChannel != null)
+            {
+                (_httpWorkerChannel as IDisposable)?.Dispose();
+            }
+            await RestartWorkerChannel(workerId);
         }
 
         private async Task RestartWorkerChannel(string workerId)
         {
-            if (_invokerErrors.Count < 3)
+            if (_invokerErrors.Count < ErrorEventsThreshold)
             {
                 _logger.LogDebug("Restarting http invoker channel");
                 await InitializeHttpWorkerChannelAsync(_invokerErrors.Count);
@@ -134,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             else
             {
                 _logger.LogError("Exceeded http worker restart retry count. Shutting down Functions Host");
-                _scriptJobHostEnvironment.Shutdown();
+                _applicationLifetime.StopApplication();
             }
         }
 
