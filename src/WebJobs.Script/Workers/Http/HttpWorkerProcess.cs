@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Port = _httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 

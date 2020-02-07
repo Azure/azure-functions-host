@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,15 +19,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebJobsScriptHostService : IHostedService, IScriptHostManager, IServiceProvider, IDisposable
     {
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IScriptWebHostEnvironment _scriptWebHostEnvironment;
         private readonly IScriptHostBuilder _scriptHostBuilder;
-        private readonly IServiceProvider _rootServiceProvider;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
@@ -46,9 +48,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private static IDisposable _telemetryConfiguration;
         private static IDisposable _requestTrackingModule;
 
-        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory, IServiceProvider rootServiceProvider,
+        private int _applicationStopping;
+        private int _applicationStopped;
+
+        public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime)
         {
             if (loggerFactory == null)
             {
@@ -58,10 +63,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // This will no-op if already initialized.
             InitializeApplicationInsightsRequestTracking();
 
+            _applicationLifetime = applicationLifetime;
+            RegisterApplicationLifetimeEvents();
+
             _metricsLogger = metricsLogger;
             _applicationHostOptions = applicationHostOptions ?? throw new ArgumentNullException(nameof(applicationHostOptions));
             _scriptWebHostEnvironment = scriptWebHostEnvironment ?? throw new ArgumentNullException(nameof(scriptWebHostEnvironment));
-            _rootServiceProvider = rootServiceProvider;
             _scriptHostBuilder = scriptHostBuilder ?? throw new ArgumentNullException(nameof(scriptHostBuilder));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
@@ -89,6 +96,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HandlingConfigurationParsingError = 8 | HandlingError,
             HandlingInitializationError = 16 | HandlingNonTransientError
         }
+
+        private bool ShutdownRequested => _applicationStopping == 1 || _applicationStopped == 1;
 
         private IHost ActiveHost
         {
@@ -123,6 +132,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            CheckFileSystem();
+            if (ShutdownRequested)
+            {
+                return;
+            }
+
             _startupLoopTokenSource = new CancellationTokenSource();
             var startupLoopToken = _startupLoopTokenSource.Token;
             var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(startupLoopToken, cancellationToken);
@@ -141,6 +156,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 // If the exception was triggered by our loop cancellation token, just ignore as
                 // it doesn't indicate an issue.
+            }
+        }
+
+        private void CheckFileSystem()
+        {
+            // Shutdown if RunFromZipFailed
+            if (_environment.IsZipDeployment(validate: false))
+            {
+                string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
+                if (File.Exists(path))
+                {
+                    _logger.LogError($"Shutting down host due to presence of {path}");
+                    _applicationLifetime.StopApplication();
+                }
             }
         }
 
@@ -373,6 +402,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
         {
+            if (ShutdownRequested)
+            {
+                return;
+            }
+
             using (_metricsLogger.LatencyEvent(MetricEventNames.ScriptHostManagerRestartService))
             {
                 // Do not invoke a restart if the host has not yet been started. This can lead
@@ -564,8 +598,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // the current time window exceeds the threshold, recover by
                 // initiating shutdown
                 _logger.UnhealthyCountExceeded(_healthMonitorOptions.Value.HealthCheckThreshold, _healthMonitorOptions.Value.HealthCheckWindow);
-                var environment = _rootServiceProvider.GetService<IScriptJobHostEnvironment>();
-                environment.Shutdown();
+                _applicationLifetime.StopApplication();
                 return true;
             }
 
@@ -610,6 +643,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     instance.Dispose();
                 }
             }
+        }
+
+        private void RegisterApplicationLifetimeEvents()
+        {
+            _applicationLifetime.ApplicationStopping.Register(() =>
+            {
+                Interlocked.Exchange(ref _applicationStopping, 1);
+            });
+
+            _applicationLifetime.ApplicationStopped.Register(() =>
+            {
+                Interlocked.Exchange(ref _applicationStopped, 1);
+            });
         }
 
         private static void InitializeApplicationInsightsRequestTracking()

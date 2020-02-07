@@ -188,6 +188,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        // Logic for this function is copied to:
+        // https://github.com/projectkudu/kudu/blob/master/Kudu.Core/Functions/FunctionManager.cs
+        // These two implementations must stay in sync!
+
         /// <summary>
         /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined
         /// </summary>

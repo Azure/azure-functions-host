@@ -13,6 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         FunctionInvocationDispatcherState State { get; }
 
+        int ErrorEventsThreshold { get; }
+
         Task InvokeAsync(ScriptInvocationContext invocationContext);
 
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);

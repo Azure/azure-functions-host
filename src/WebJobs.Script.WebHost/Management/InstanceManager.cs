@@ -27,20 +27,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IMeshInitServiceClient _meshInitServiceClient;
+        private readonly IMeshServiceClient _meshServiceClient;
         private readonly IEnvironment _environment;
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshInitServiceClient meshInitServiceClient)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;
-            _meshInitServiceClient = meshInitServiceClient;
+            _meshServiceClient = meshServiceClient;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString))
             {
-                await _meshInitServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
+                await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
             }
 
             // BYOS
@@ -283,10 +283,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 (await Task.WhenAll(storageVolumes.Where(v => v != null).Select(MountStorageAccount))).Where(
                     result => result).ToList();
 
-            if (mountedVolumes.Count != storageVolumes.Count)
+            if (storageVolumes.Any())
             {
-                _logger.LogWarning(
-                    $"Successfully mounted {mountedVolumes.Count} / {storageVolumes.Count} BYOS storage accounts");
+                if (mountedVolumes.Count != storageVolumes.Count)
+                {
+                    _logger.LogWarning(
+                        $"Successfully mounted {mountedVolumes.Count} / {storageVolumes.Count} BYOS storage accounts");
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        $"Successfully mounted {storageVolumes.Count} BYOS storage accounts");
+                }
             }
         }
 
@@ -306,10 +314,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             switch (storageInfoValue.Type)
                             {
                                 case AzureStorageType.AzureFiles:
-                                    await _meshInitServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    await _meshServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
                                     break;
                                 case AzureStorageType.AzureBlob:
-                                    await _meshInitServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    await _meshServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
                                     break;
                                 default:
                                     throw new NotSupportedException($"Unknown BYOS storage type {storageInfoValue.Type}");
@@ -437,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    await _meshInitServiceClient.MountFuse("squashfs", filePath, scriptPath);
+                    await _meshServiceClient.MountFuse("squashfs", filePath, scriptPath);
                 }
             }
             else if (packageType == CodePackageType.Zip)
@@ -445,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
-                    await _meshInitServiceClient.MountFuse("zip", filePath, scriptPath);
+                    await _meshServiceClient.MountFuse("zip", filePath, scriptPath);
                 }
                 else
                 {

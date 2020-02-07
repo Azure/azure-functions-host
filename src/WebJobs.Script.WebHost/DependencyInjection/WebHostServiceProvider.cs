@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
-    public class WebHostServiceProvider : IServiceProvider, IServiceScopeFactory
+    public class WebHostServiceProvider : IServiceProvider, IServiceScopeFactory, IDisposable
     {
         private static readonly Rules _defaultContainerRules;
         private readonly Container _container;
@@ -49,6 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         public IServiceScope CreateScope()
         {
             return new JobHostServiceScope(_container.OpenScope(preferInterpretation: _container.PreferInterpretation));
+        }
+
+        public void Dispose()
+        {
+            _container?.Dispose();
         }
     }
 }

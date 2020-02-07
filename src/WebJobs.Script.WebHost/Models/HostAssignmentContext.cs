@@ -28,6 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("CorsSpecializationPayload")]
         public CorsSettings CorsSettings { get; set; }
 
+        [JsonProperty("EasyAuthSpecializationPayload")]
+        public EasyAuthSettings EasyAuthSettings { get; set; }
+
         public long? PackageContentLength { get; set; }
 
         public string AzureFilesConnectionString

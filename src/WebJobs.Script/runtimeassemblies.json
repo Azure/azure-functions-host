@@ -3,6 +3,18 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "DotNetTI.BreakingChangeAnalysis",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Marklio.Metadata",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.ApplicationInsights",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -733,6 +745,10 @@
     {
       "name": "NuGet.Versioning",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "protobuf-net",
+      "resolutionPolicy": "private"
     },
     {
       "name": "SOS.NETCore",

@@ -22,6 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public partial class FunctionAssemblyLoadContext : AssemblyLoadContext
     {
+        private const string PrivateDependencyResolutionPolicy = "private";
+
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
         private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
         private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
@@ -129,7 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return new Dictionary<string, ResolutionPolicyEvaluator>
             {
                 { "minorMatchOrLower", IsMinorMatchOrLowerPolicyEvaluator },
-                { "runtimeVersion", RuntimeVersionPolicyEvaluator }
+                { "runtimeVersion", RuntimeVersionPolicyEvaluator },
+                { PrivateDependencyResolutionPolicy, (a, b) => false }
             };
         }
 
@@ -195,31 +198,42 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 return assembly;
             }
 
-            // If the assembly being requested matches a runtime assembly,
-            // we'll use the runtime assembly instead of loading it in this context:
-            if (TryLoadRuntimeAssembly(assemblyName, out assembly))
+            // If this is a runtime restricted assembly, load it based on unification rules
+            if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
+            {
+                return LoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly);
+            }
+
+            // If the assembly being requested matches a host assembly, we'll use
+            // the host assembly instead of loading it in this context:
+            if (TryLoadHostEnvironmentAssembly(assemblyName, out assembly))
             {
                 return assembly;
             }
 
-            if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
+            return LoadCore(assemblyName);
+        }
+
+        private Assembly LoadRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly)
+        {
+            // If this is a private runtime assembly, return function dependency
+            if (string.Equals(scriptRuntimeAssembly.ResolutionPolicy, PrivateDependencyResolutionPolicy))
             {
-                // If there was a failure loading a runtime assembly, ensure we gracefuly unify to
-                // the runtime version of the assembly if the version falls within a safe range.
-                if (TryLoadRuntimeAssembly(new AssemblyName(assemblyName.Name), out assembly))
-                {
-                    var policyEvaluator = GetResolutionPolicyEvaluator(scriptRuntimeAssembly.ResolutionPolicy);
-
-                    if (policyEvaluator.Invoke(assemblyName, assembly))
-                    {
-                        return assembly;
-                    }
-                }
-
-                return null;
+                return LoadCore(assemblyName);
             }
 
-            return LoadCore(assemblyName);
+            // Attempt to load the runtime version of the assembly based on the unification policy evaluation result.
+            if (TryLoadHostEnvironmentAssembly(assemblyName, allowPartialNameMatch: true, out Assembly assembly))
+            {
+                var policyEvaluator = GetResolutionPolicyEvaluator(scriptRuntimeAssembly.ResolutionPolicy);
+
+                if (policyEvaluator.Invoke(assemblyName, assembly))
+                {
+                    return assembly;
+                }
+            }
+
+            return null;
         }
 
         private bool TryLoadDepsDependency(AssemblyName assemblyName, out Assembly assembly)
@@ -280,7 +294,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return assemblyPath != null;
         }
 
-        private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, out Assembly assembly)
+        private bool TryLoadHostEnvironmentAssembly(AssemblyName assemblyName, bool allowPartialNameMatch, out Assembly assembly)
+        {
+            return TryLoadHostEnvironmentAssembly(assemblyName, out assembly)
+                || (allowPartialNameMatch && TryLoadHostEnvironmentAssembly(new AssemblyName(assemblyName.Name), out assembly));
+        }
+
+        private bool TryLoadHostEnvironmentAssembly(AssemblyName assemblyName, out Assembly assembly)
         {
             assembly = null;
             try

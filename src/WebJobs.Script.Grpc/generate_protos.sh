@@ -33,9 +33,14 @@
 
 # enter Script.Rpc directory
 
-echo "OS: $OSTYPE"
+ARCH=$(uname -m)
+echo "OS: $OSTYPE $ARCH"
 if [[ $OSTYPE == "darwin"* ]]; then
-     PLATFORM="macosx_x86"
+    if [[ $ARCH == "x86_64" ]]; then
+        PLATFORM="macosx_x64"
+    else
+        PLATFORM="macosx_x86"
+    fi
 elif [[ $OSTYPE == "linux"* ]];then
      PLATFORM="linux_x64"
 else

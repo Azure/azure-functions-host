@@ -58,6 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             set => SetSetting(EnvironmentSettingNames.AppInsightsInstrumentationKey, value);
         }
 
+        public virtual string ApplicationInsightsConnectionString
+        {
+            get => GetSetting(EnvironmentSettingNames.AppInsightsConnectionString);
+            set => SetSetting(EnvironmentSettingNames.AppInsightsConnectionString, value);
+        }
+
         public virtual string GetSetting(string settingKey)
         {
             if (string.IsNullOrEmpty(settingKey))

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -22,6 +23,7 @@ using Microsoft.WindowsAzure.Storage.Queue;
 using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -42,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
-            ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
+            MockApplicationLifetime = new Mock<IApplicationLifetime>();
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
@@ -54,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestLoggerProvider LoggerProvider { get; }
 
-        public Mock<IScriptJobHostEnvironment> ScriptJobHostEnvironmentMock { get; }
+        public Mock<IApplicationLifetime> MockApplicationLifetime { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 
@@ -106,41 +108,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-             Host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
-                {
-                    webjobsBuilder.AddAzureStorage();
-                },                
-                o =>
-                {
-                    o.ScriptPath = _rootPath;
-                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
-                },
-                runStartupHostedServices: true)
-                .ConfigureServices(services =>
-                {
-                    services.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.FileLoggingMode = FileLoggingMode.Always;
+            Host = new HostBuilder()
+               .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+               {
+                   webjobsBuilder.AddAzureStorage();
+               },
+               o =>
+               {
+                   o.ScriptPath = _rootPath;
+                   o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+               },
+               runStartupHostedServices: true)
+               .ConfigureServices(services =>
+               {
+                   services.Configure<ScriptJobHostOptions>(o =>
+                   {
+                       o.FileLoggingMode = FileLoggingMode.Always;
 
-                        if (_functions != null)
-                        {
-                            o.Functions = _functions;
-                        }
-                    });
+                       if (_functions != null)
+                       {
+                           o.Functions = _functions;
+                       }
+                   });
 
-                    if (_proxyClient != null)
-                    {
-                        services.AddSingleton<ProxyClientExecutor>(_proxyClient);
-                    }
+                   if (_proxyClient != null)
+                   {
+                       services.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                   }
 
-                    ConfigureServices(services);
-                })
-                .ConfigureLogging(b =>
-                {
-                    b.AddProvider(LoggerProvider);
-                })
-                .Build();
+                   ConfigureServices(services);
+               })
+               .ConfigureLogging(b =>
+               {
+                   b.AddProvider(LoggerProvider);
+               })
+               .Build();
 
             JobHost = Host.GetScriptHost();
 
