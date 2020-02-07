@@ -33,10 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             await _next(context);
 
-            IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
-
-            if (functionExecution == null
-                && context.Request.Path.Value == "/")
+            var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+            if (functionExecution == null && context.Request.Path.Value == "/")
             {
                 IActionResult result = null;
 

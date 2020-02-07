@@ -442,21 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
         {
-            if (state == null)
-            {
-                return false;
-            }
-
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
-            {
-                return false;
-            }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return Convert.ToBoolean(kvps.Last().Value);
+            return GetStateValueOrDefault<bool>(state, key);
         }
 
         public static TValue GetStateValueOrDefault<TValue>(IEnumerable<KeyValuePair<string, object>> state, string key)
@@ -466,20 +452,26 @@ namespace Microsoft.Azure.WebJobs.Script
                 return default(TValue);
             }
 
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            var value = state.LastOrDefault(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (value.Equals(default(KeyValuePair<string, object>)))
             {
                 return default(TValue);
             }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return (TValue)kvps.Last().Value;
+            else
+            {
+                return (TValue)value.Value;
+            }
         }
 
         public static string ResolveFunctionName(IEnumerable<KeyValuePair<string, object>> stateProps, IDictionary<string, object> scopeProps)
         {
+            if (stateProps == null)
+            {
+                return null;
+            }
+
             // State wins, then scope. To find function name, we'll look for any of these values.
             // "last" wins with state values, so reverse it.
             var firstKvp = stateProps

@@ -22,11 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         // Default time between flushes in seconds (every 30 seconds)
         private const int DefaultFlushIntervalMS = 30 * 1000;
 
-        private static FunctionActivityTracker instance = null;
+        private readonly FunctionActivityTracker _functionActivityTracker = null;
         private readonly IEventGenerator _eventGenerator;
         private readonly int _functionActivityFlushIntervalSeconds;
         private readonly Timer _metricsFlushTimer;
-        private readonly object _functionActivityTrackerLockObject = new object();
         private bool _disposed;
         private IMetricsPublisher _metricsPublisher;
         private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
@@ -43,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
 
             _metricsPublisher = metricsPublisher;
+            _functionActivityTracker = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
         }
 
         /// <summary>
@@ -158,31 +158,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal void FunctionStarted(FunctionStartedEvent startedEvent)
         {
-            lock (_functionActivityTrackerLockObject)
-            {
-                if (instance == null)
-                {
-                    instance = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, _metricsPublisher, _functionActivityFlushIntervalSeconds);
-                }
-                instance.FunctionStarted(startedEvent);
-            }
+            _functionActivityTracker.FunctionStarted(startedEvent);
         }
 
         internal void FunctionCompleted(FunctionStartedEvent completedEvent)
         {
-            lock (_functionActivityTrackerLockObject)
-            {
-                if (instance != null)
-                {
-                    instance.FunctionCompleted(completedEvent);
-                    if (!instance.IsActive)
-                    {
-                        instance.StopEtwTaskAndRaiseFinishedEvent();
-                        instance.Dispose();
-                        instance = null;
-                    }
-                }
-            }
+            _functionActivityTracker.FunctionCompleted(completedEvent);
         }
 
         internal void HostStarted(ScriptHost scriptHost)
@@ -308,6 +289,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         _metricsFlushTimer.Dispose();
                     }
+
+                    if (_functionActivityTracker != null)
+                    {
+                        if (!_functionActivityTracker.IsActive)
+                        {
+                            _functionActivityTracker.StopEtwTaskAndRaiseFinishedEvent();
+                        }
+                        _functionActivityTracker.Dispose();
+                    }
                 }
 
                 _disposed = true;
@@ -324,12 +314,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private class FunctionActivityTracker : IDisposable
         {
             private readonly string _executionId = Guid.NewGuid().ToString();
-            private readonly object _functionMetricEventLockObject = new object();
             private ulong _totalExecutionCount = 0;
             private int _functionActivityFlushInterval;
             private CancellationTokenSource _etwTaskCancellationSource = new CancellationTokenSource();
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
-            private Dictionary<string, RunningFunctionInfo> _runningFunctions = new Dictionary<string, RunningFunctionInfo>();
+            private ConcurrentDictionary<string, RunningFunctionInfo> _runningFunctions = new ConcurrentDictionary<string, RunningFunctionInfo>();
             private bool _disposed = false;
             private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
             private IMetricsPublisher _metricsPublisher;
@@ -406,44 +395,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 var metricEventPerFunction = new FunctionMetrics(startedEvent.FunctionMetadata.Name, ExecutionStage.Started, 0);
                 _functionMetricsQueue.Enqueue(metricEventPerFunction);
+
                 var key = GetDictionaryKey(startedEvent.FunctionMetadata.Name, startedEvent.InvocationId);
-                if (!_runningFunctions.ContainsKey(key))
-                {
-                    lock (_functionMetricEventLockObject)
-                    {
-                        if (!_runningFunctions.ContainsKey(key))
-                        {
-                            _runningFunctions.Add(key, new RunningFunctionInfo(startedEvent.FunctionMetadata.Name, startedEvent.InvocationId, startedEvent.Timestamp, startedEvent.Success));
-                        }
-                    }
-                }
+                var value = new RunningFunctionInfo(startedEvent.FunctionMetadata.Name, startedEvent.InvocationId, startedEvent.Timestamp, startedEvent.Success);
+                _runningFunctions.AddOrUpdate(key, value, (k, v) => value);
             }
 
             internal void FunctionCompleted(FunctionStartedEvent functionStartedEvent)
             {
                 var functionStage = (functionStartedEvent.Success == false) ? ExecutionStage.Failed : ExecutionStage.Succeeded;
                 long executionTimeInMS = (long)functionStartedEvent.Duration.TotalMilliseconds;
-
                 var monitoringEvent = new FunctionMetrics(functionStartedEvent.FunctionMetadata.Name, functionStage, executionTimeInMS);
                 _functionMetricsQueue.Enqueue(monitoringEvent);
+
                 var key = GetDictionaryKey(functionStartedEvent.FunctionMetadata.Name, functionStartedEvent.InvocationId);
                 if (_runningFunctions.ContainsKey(key))
                 {
-                    lock (_functionMetricEventLockObject)
-                    {
-                        if (_runningFunctions.ContainsKey(key))
-                        {
-                            var functionInfo = _runningFunctions[key];
-                            functionInfo.ExecutionStage = ExecutionStage.Finished;
-                            functionInfo.Success = functionStartedEvent.Success;
+                    var functionInfo = _runningFunctions[key];
+                    functionInfo.ExecutionStage = ExecutionStage.Finished;
+                    functionInfo.Success = functionStartedEvent.Success;
 
-                            var endTime = functionStartedEvent.Timestamp + functionStartedEvent.Duration;
-                            functionInfo.EndTime = functionStartedEvent.Timestamp + functionStartedEvent.Duration;
+                    var endTime = functionStartedEvent.Timestamp + functionStartedEvent.Duration;
+                    functionInfo.EndTime = functionStartedEvent.Timestamp + functionStartedEvent.Duration;
 
-                            RaiseFunctionMetricEvent(functionInfo, _runningFunctions.Keys.Count, endTime);
-                            _runningFunctions.Remove(key);
-                        }
-                    }
+                    RaiseFunctionMetricEvent(functionInfo, _runningFunctions.Keys.Count, endTime);
+
+                    _runningFunctions.TryRemove(key, out RunningFunctionInfo value);
                 }
             }
 
@@ -455,14 +432,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             private void RaiseFunctionMetricEvents()
             {
-                lock (_functionMetricEventLockObject)
+                var currentTime = DateTime.UtcNow;
+                var runningFunctions = _runningFunctions.Values.ToArray();
+                foreach (var runningFunction in runningFunctions)
                 {
-                    var currentTime = DateTime.UtcNow;
-                    foreach (var runningFunctionPair in _runningFunctions)
-                    {
-                        var runningFunctionInfo = runningFunctionPair.Value;
-                        RaiseFunctionMetricEvent(runningFunctionInfo, _runningFunctions.Keys.Count, currentTime);
-                    }
+                    RaiseFunctionMetricEvent(runningFunction, runningFunctions.Length, currentTime);
                 }
             }
 

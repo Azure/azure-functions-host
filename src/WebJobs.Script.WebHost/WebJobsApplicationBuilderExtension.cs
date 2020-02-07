@@ -48,7 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
 
-            builder.UseMiddleware<HostWarmupMiddleware>();
+            if (HostWarmupMiddleware.ShouldRegister(environment))
+            {
+                builder.UseMiddleware<HostWarmupMiddleware>();
+            }
 
             // This middleware must be registered before any other middleware depending on
             // JobHost/ScriptHost scoped services.

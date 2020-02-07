@@ -27,36 +27,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            SetRequestId(context.Request);
+            var requestId = SetRequestId(context.Request);
 
-            var sw = new Stopwatch();
-            sw.Start();
+            var start = DateTime.UtcNow;
             var request = context.Request;
             var details = new JObject
             {
-                { "requestId", request.GetRequestId() },
-                { "method", request.Method.ToString() },
+                { "requestId", requestId },
+                { "method", request.Method },
                 { "uri", request.Path.ToString() }
             };
             var logData = new Dictionary<string, object>
             {
-                [ScriptConstants.LogPropertyActivityIdKey] = request.GetRequestId()
+                [ScriptConstants.LogPropertyActivityIdKey] = requestId
             };
             _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executing HTTP request: {details}");
 
             await _next.Invoke(context);
 
-            sw.Stop();
+            var duration = DateTime.UtcNow - start;
             details["identities"] = GetIdentities(context);
             details["status"] = context.Response.StatusCode;
-            details["duration"] = sw.ElapsedMilliseconds;
+            details["duration"] = duration.TotalMilliseconds;
             _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executed HTTP request: {details}");
         }
 
-        internal static void SetRequestId(HttpRequest request)
+        internal static string SetRequestId(HttpRequest request)
         {
             string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
             request.HttpContext.Items[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
+            return requestID;
         }
 
         private static JArray GetIdentities(HttpContext context)

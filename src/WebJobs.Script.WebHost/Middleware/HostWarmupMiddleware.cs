@@ -2,10 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -23,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _hostManager;
         private readonly ILogger _logger;
+        private bool _isAppService;
+        private bool _isLinuxConsumption;
 
         public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger)
         {
@@ -31,6 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _environment = environment;
             _hostManager = hostManager;
             _logger = logger;
+            _isAppService = environment.IsAppService();
+            _isLinuxConsumption = environment.IsLinuxConsumption();
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -73,12 +74,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
+        public bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
         {
             return webHostEnvironment.InStandbyMode &&
-                ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsLinuxConsumption()) &&
+                ((_isAppService && request.IsAppServiceInternalRequest(environment)) || _isLinuxConsumption) &&
                 (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.FunctionName}")) ||
                 request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.AlternateRoute}")));
+        }
+
+        public static bool ShouldRegister(IEnvironment environment)
+        {
+            return environment.IsAppService() || environment.IsLinuxConsumption();
         }
     }
 }

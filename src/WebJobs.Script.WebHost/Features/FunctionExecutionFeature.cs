@@ -61,15 +61,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                 }
             }
 
-            var functionStopwatch = new Stopwatch();
-            functionStopwatch.Start();
+            var funcInvokeStart = DateTime.UtcNow;
             var arguments = GetFunctionArguments(_descriptor, request);
             await _host.CallAsync(_descriptor.Name, arguments, cancellationToken);
-            functionStopwatch.Stop();
+            var funcInvokeDuration = DateTime.UtcNow - funcInvokeStart;
 
             if (coldStartData != null)
             {
-                coldStartData.Add("functionDuration", functionStopwatch.ElapsedMilliseconds);
+                coldStartData.Add("functionDuration", funcInvokeDuration.TotalMilliseconds);
 
                 var logData = new Dictionary<string, object>
                 {
@@ -82,12 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 
         private static Dictionary<string, object> GetFunctionArguments(FunctionDescriptor function, HttpRequest request)
         {
-            ParameterDescriptor triggerParameter = function.Parameters.First(p => p.IsTrigger);
-            Dictionary<string, object> arguments = new Dictionary<string, object>();
-
-            arguments.Add(triggerParameter.Name, request);
-
-            return arguments;
+            var triggerParameter = function.Parameters.First(p => p.IsTrigger);
+            return new Dictionary<string, object>()
+            {
+                { triggerParameter.Name, request }
+            };
         }
     }
 }

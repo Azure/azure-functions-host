@@ -237,6 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
             _metrics.BeginEvent(_startedEvent);
+
             _invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, _metadata);
         }
 
@@ -244,7 +245,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public void End(bool success)
         {
             _startedEvent.Success = success;
-            string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
 
             var data = new JObject
             {
@@ -253,10 +253,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ["Success"] = success,
                 ["IsStopwatchHighResolution"] = Stopwatch.IsHighResolution
             };
-
             string jsonData = data.ToString();
-
             _startedEvent.Data = jsonData;
+            string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
             _metrics.LogEvent(eventName, _startedEvent.FunctionName, jsonData);
 
             _metrics.EndEvent(_startedEvent);

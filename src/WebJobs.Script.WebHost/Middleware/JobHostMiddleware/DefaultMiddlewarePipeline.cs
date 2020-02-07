@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
         private static Func<RequestDelegate, RequestDelegate> GetMiddlewareDelegate(IJobHostHttpMiddleware middleware)
         {
-            return c => async context => await middleware.Invoke(context, c);
+            return next => context => middleware.Invoke(context, next);
         }
     }
 }

@@ -15,17 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 {
     public class AuthUtility
     {
-        public static IEnumerable<string> DefaultAuthorizationSchemes => new[]
-        {
-            AuthLevelAuthenticationDefaults.AuthenticationScheme,
-            JwtBearerDefaults.AuthenticationScheme
-        };
+        private static IEnumerable<IAuthorizationRequirement> _requirements = new[] { new FunctionAuthorizationRequirement() };
+        private static IEnumerable<string> _defaultAuthorizationSchemes = new[] { AuthLevelAuthenticationDefaults.AuthenticationScheme, JwtBearerDefaults.AuthenticationScheme };
 
         public static AuthorizationPolicy CreateFunctionPolicy(IEnumerable<string> schemes = null)
         {
-            schemes = schemes ?? DefaultAuthorizationSchemes;
-            var requirements = new[] { new FunctionAuthorizationRequirement() };
-            return new AuthorizationPolicy(requirements, schemes);
+            schemes = schemes ?? _defaultAuthorizationSchemes;
+            return new AuthorizationPolicy(_requirements, schemes);
         }
 
         public static bool PrincipalHasAuthLevelClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel, string keyName = null)

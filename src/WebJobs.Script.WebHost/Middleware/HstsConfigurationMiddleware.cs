@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -36,10 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
             }
         }
 
-        public async Task Invoke(HttpContext context, RequestDelegate next)
+        public Task Invoke(HttpContext context, RequestDelegate next)
         {
             context.Items.Add(ScriptConstants.HstsMiddlewareRequestDelegate, next);
-            await _invoke(context);
+            return _invoke(context);
         }
     }
 }

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -42,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _category = LogCategories.CreateFunctionCategory(_functionName);
             _debugStateProvider = new Mock<IDebugStateProvider>(MockBehavior.Strict);
             _debugStateProvider.Setup(p => p.InDiagnosticMode).Returns(() => _inDiagnosticMode);
-            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions());
+            _logger = new SystemLogger(_hostInstanceId, _category, _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), standbyOptions);
         }
 
         [Fact]
@@ -162,7 +164,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Log_Ignores_FunctionUserCategory()
         {
             // Create a logger with the Function.{FunctionName}.User category, which is what determines user logs.
-            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions());
+            ILogger logger = new SystemLogger(Guid.NewGuid().ToString(), LogCategories.CreateFunctionUserCategory(_functionName), _mockEventGenerator.Object, new TestEnvironment(), _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), standbyOptions);
             logger.LogDebug("TestMessage");
 
             // Make sure it's never been called.
@@ -211,7 +214,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction2"
             };
 
-            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions());
+            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), standbyOptions);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction2", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
             logger.Log(LogLevel.Debug, 0, logState, null, (s, e) => "TestMessage");
@@ -228,7 +232,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 [key] = "TestFunction3"
             };
 
-            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider());
+            var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions());
+            var logger = new SystemLogger(_hostInstanceId, "Not.A.Function", _mockEventGenerator.Object, _environment, _debugStateProvider.Object, null, new LoggerExternalScopeProvider(), standbyOptions);
 
             _mockEventGenerator.Setup(p => p.LogFunctionTraceEvent(LogLevel.Debug, It.IsAny<string>(), It.IsAny<string>(), "TestFunction3", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()));
 

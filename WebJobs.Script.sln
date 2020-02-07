@@ -81,10 +81,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DocumentDB", "DocumentDB", 
 		sample\CSharp\DocumentDB\run.csx = sample\CSharp\DocumentDB\run.csx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{019D70FB-8E83-4A97-A1BA-43AF0C9AA174}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{019D70FB-8E83-4A97-A1BA-43AF0C9AA174}"
 	ProjectSection(SolutionItems) = preProject
-		sample\CSharp\HttpTrigger\function.json = sample\CSharp\HttpTrigger\function.json
-		sample\CSharp\HttpTrigger\run.csx = sample\CSharp\HttpTrigger\run.csx
+		sample\CSharp\Test\function.json = sample\CSharp\Test\function.json
+		sample\CSharp\Test\run.csx = sample\CSharp\Test\run.csx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-Compat", "HttpTrigger-Compat", "{658162B7-3DE1-4325-BCC8-467C268525F3}"

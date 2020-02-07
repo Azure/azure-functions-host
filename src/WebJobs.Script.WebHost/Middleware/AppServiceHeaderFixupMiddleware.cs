@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public Task Invoke(HttpContext httpContext)
         {
             if (httpContext.Request.Headers.TryGetValue(DisguisedHostHeader, out StringValues value))
             {
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 }
             }
 
-            await _next(httpContext);
+            return _next(httpContext);
         }
     }
 }

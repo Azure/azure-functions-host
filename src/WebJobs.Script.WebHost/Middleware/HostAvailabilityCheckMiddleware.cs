@@ -31,15 +31,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 {
                     Logger.InitiatingHostAvailabilityCheck(_logger);
 
-                    bool hostReady = await scriptHostManager.DelayUntilHostReady();
+                    bool hostReady = scriptHostManager.CanInvoke();
                     if (!hostReady)
                     {
-                        Logger.HostUnavailableAfterCheck(_logger);
+                        hostReady = await scriptHostManager.DelayUntilHostReady();
+                        if (!hostReady)
+                        {
+                            Logger.HostUnavailableAfterCheck(_logger);
 
-                        httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                        await httpContext.Response.WriteAsync("Function host is not running.");
+                            httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                            await httpContext.Response.WriteAsync("Function host is not running.");
 
-                        return;
+                            return;
+                        }
                     }
 
                     Logger.HostAvailabilityCheckSucceeded(_logger);

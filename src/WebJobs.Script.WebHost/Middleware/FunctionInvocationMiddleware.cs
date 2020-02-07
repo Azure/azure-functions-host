@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -11,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
-        private IApplicationLifetime _applicationLifetime;
 
         public FunctionInvocationMiddleware(RequestDelegate next)
         {
@@ -38,23 +35,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            // TODO: DI Need to make sure downstream services are getting what they need
-            // that includes proxies.
-            //if (scriptHost != null)
-            //{
-            //    // flow required context through the request pipeline
-            //    // downstream middleware and filters rely on this
-            //    context.Items[ScriptConstants.AzureFunctionsHostKey] = scriptHost;
-            //}
-
             if (_next != null)
             {
                 await _next(context);
             }
 
-            _applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-
-            IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+            var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
@@ -136,7 +122,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 using (logger.BeginScope(scopeState))
                 {
-                    CancellationToken cancellationToken = _applicationLifetime != null ? _applicationLifetime.ApplicationStopping : CancellationToken.None;
+                    var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
+                    CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
                 }
             }
