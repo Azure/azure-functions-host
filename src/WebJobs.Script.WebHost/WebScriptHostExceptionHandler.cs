@@ -4,6 +4,7 @@
 using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Extensions.Logging;
@@ -12,12 +13,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class WebScriptHostExceptionHandler : IWebJobsExceptionHandler
     {
-        private readonly IScriptJobHostEnvironment _jobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
 
-        public WebScriptHostExceptionHandler(IScriptJobHostEnvironment jobHostEnvironment, ILogger<WebScriptHostExceptionHandler> logger)
+        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger)
         {
-            _jobHostEnvironment = jobHostEnvironment ?? throw new ArgumentNullException(nameof(jobHostEnvironment));
+            _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -48,14 +49,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
 
-            _jobHostEnvironment.Shutdown();
+            _applicationLifetime.StopApplication();
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
         {
             LogErrorAndFlush("An unhandled exception has occurred. Host is shutting down.", exceptionInfo.SourceException);
 
-            _jobHostEnvironment.Shutdown();
+            _applicationLifetime.StopApplication();
             return Task.CompletedTask;
         }
 

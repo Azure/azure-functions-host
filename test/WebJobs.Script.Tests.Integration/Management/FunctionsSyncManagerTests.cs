@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
@@ -13,9 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -26,7 +23,6 @@ using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NuGet.Packaging.Signing;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -48,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
         private string _function1;
+        private bool _emptyContent;
 
         public FunctionsSyncManagerTests()
         {
@@ -284,14 +281,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_CheckHash_PostsExpectedContent()
+        public async Task TrySyncTriggers_BackgroundSync_DoesNotPostsEmptyContent()
+        {
+            _emptyContent = true;
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
+                Assert.Equal(0, _mockHttpHandler.RequestCount);
+                Assert.Equal(0, _contentBuilder.Length);
+                Assert.True(syncResult.Success);
+                Assert.Null(syncResult.Error);
+
+                var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+                Assert.Equal("No functions found. Skipping Sync operation.", logs.Single());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_BackgroundSync_PostsExpectedContent()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
                 await hashBlob.DeleteIfExistsAsync();
 
-                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(syncResult.Success);
                 Assert.Null(syncResult.Error);
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
@@ -318,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 _loggerProvider.ClearAllLogMessages();
                 ResetMockFileSystem();
                 _mockHttpHandler.Reset();
-                syncResult = await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.Equal(0, _mockHttpHandler.RequestCount);
                 Assert.Equal(0, _contentBuilder.Length);
                 Assert.True(syncResult.Success);
@@ -331,7 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 // simulate a function change resulting in a new hash value
                 ResetMockFileSystem("{}");
                 _mockHttpHandler.Reset();
-                syncResult = await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 Assert.True(syncResult.Success);
                 Assert.Null(syncResult.Error);
@@ -339,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public async Task TrySyncTriggers_CheckHash_SetTriggersFailure_HashNotUpdated()
+        public async Task TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated()
         {
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -347,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 await hashBlob.DeleteIfExistsAsync();
 
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
-                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(checkHash: true);
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.False(syncResult.Success);
                 string expectedErrorMessage = "SyncTriggers call failed (StatusCode=InternalServerError).";
                 Assert.Equal(expectedErrorMessage, syncResult.Error);
@@ -674,12 +689,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             dirBase.Setup(d => d.Exists(rootPath)).Returns(true);
             dirBase.Setup(d => d.Exists(Path.Combine(rootPath, "bin"))).Returns(true);
             dirBase.Setup(d => d.EnumerateDirectories(rootPath))
-                .Returns(new[]
+                .Returns(() =>
                 {
-                    Path.Combine(rootPath, "bin"),
-                    Path.Combine(rootPath, "function1"),
-                    Path.Combine(rootPath, "function2"),
-                    Path.Combine(rootPath, "function3")
+                    if (_emptyContent)
+                    {
+                        return new string[0];
+                    }
+                    else
+                    {
+                        return new[]
+                        {
+                            Path.Combine(rootPath, "bin"),
+                            Path.Combine(rootPath, "function1"),
+                            Path.Combine(rootPath, "function2"),
+                            Path.Combine(rootPath, "function3")
+                        };
+                    }
                 });
 
             _function1 = @"{

@@ -10,12 +10,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -27,8 +29,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -108,6 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
+
+            // Wire up StopApplication calls as they behave in hosted scenarios
+            var lifetime = WebHostServices.GetService<IApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(async () => await _testServer.Host.StopAsync());
+
             StartAsync().GetAwaiter().GetResult();
         }
 
@@ -269,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _postConfigure?.ConfigureServices(services);
             }
 
-            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)
+            public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
             {
                 // This middleware is only added when env.IsLinuxConsumption()
                 // It should be a no-op for most tests
@@ -290,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _optionsMonitor = optionsMonitor;
             }
 
-            public object GetService(System.Type serviceType)
+            public object GetService(Type serviceType)
             {
                 var workerOptions = new LanguageWorkerOptions
                 {

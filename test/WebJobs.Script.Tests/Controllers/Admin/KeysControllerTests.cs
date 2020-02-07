@@ -42,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testFunctionErrors = new Dictionary<string, Collection<string>>();
 
             string rootScriptPath = @"c:\test\functions";
-            var environment = new NullScriptHostEnvironment();
             var eventManager = new Mock<IScriptEventManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
 

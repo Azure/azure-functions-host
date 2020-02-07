@@ -152,7 +152,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
                 services.TryAddSingleton<IHttpRoutesManager, DefaultHttpRouteManager>();
                 services.TryAddSingleton<IMetricsLogger, MetricsLogger>();
-                services.TryAddSingleton<IScriptJobHostEnvironment, ConsoleScriptJobHostEnvironment>();
                 services.AddTransient<IExtensionBundleContentProvider, ExtensionBundleContentProvider>();
 
                 // Script binding providers
@@ -274,12 +273,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
         {
-            string appInsightsKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
+            string appInsightsInstrumentationKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
+            string appInsightsConnectionString = context.Configuration[EnvironmentSettingNames.AppInsightsConnectionString];
 
             // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
-            if (!string.IsNullOrEmpty(appInsightsKey) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
             {
-                builder.AddApplicationInsightsWebJobs(o => o.InstrumentationKey = appInsightsKey);
+                builder.AddApplicationInsightsWebJobs(o =>
+                {
+                    o.InstrumentationKey = appInsightsInstrumentationKey;
+                    o.ConnectionString = appInsightsConnectionString;
+                });
+
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 
                 builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();

@@ -20,16 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class FunctionAssemblyLoadContextTests
     {
         [Theory]
-        [InlineData("Microsoft.Azure.WebJobs")]
-        [InlineData("Microsoft.Azure.WebJobs.Extensions.Http")]
-        [InlineData("Microsoft.Azure.WebJobs.Host")]
-        [InlineData("Microsoft.Azure.WebJobs.Logging")]
-        [InlineData("Microsoft.Azure.WebJobs.Logging.ApplicationInsights")]
-        [InlineData("Microsoft.Azure.WebJobs.Script")]
-        [InlineData("Microsoft.Azure.WebJobs.Script.Grpc")]
-        [InlineData("Microsoft.Azure.WebJobs.Script.WebHost")]
-        [InlineData("Microsoft.Azure.WebSites.DataProtection")]
-        [InlineData("System.IO")] // System.*
+        [InlineData("Microsoft.Azure.WebJobs, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Extensions.Http, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Host, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Logging, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Script, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Script.Grpc, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Script.WebHost, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebSites.DataProtection, Version=0.0.0.0")]
+        [InlineData("System.IO, Version=0.0.0.0")] // System.*
         public void RuntimeAssemblies_AreLoadedInDefaultContext(string assemblyName)
         {
             var functionContext = new FunctionAssemblyLoadContext(AppContext.BaseDirectory);
