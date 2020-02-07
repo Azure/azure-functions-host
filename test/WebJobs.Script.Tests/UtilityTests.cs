@@ -565,53 +565,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(expectedConnectionString, Utility.BuildStorageConnectionString(accountName, accessKey, suffix));
         }
 
-        [Fact]
-        public void ResolveFunctionName_StateWins()
+        [Theory]
+        [InlineData("functionName", true)]
+        [InlineData(LogConstants.NameKey, true)]
+        [InlineData(ScopeKeys.FunctionName, true)]
+        [InlineData("somekey", false)]
+        public void IsFunctionName_ReturnsExpectedResult(string keyName, bool expected)
         {
-            var state = new Dictionary<string, object>
-            {
-                { "functionName", "A" }
-            };
-
-            var scope = new Dictionary<string, object>
-            {
-                { ScopeKeys.FunctionName, "B" }
-            };
-
-            Assert.Equal("A", Utility.ResolveFunctionName(state, scope));
+            var kvp = new KeyValuePair<string, object>(keyName, "test");
+            Assert.Equal(expected, Utility.IsFunctionName(kvp));
         }
 
-        [Fact]
-        public void ResolveFunctionName_LastStateWins()
+        [Theory]
+        [InlineData("functionName", true)]
+        [InlineData(LogConstants.NameKey, true)]
+        [InlineData(ScopeKeys.FunctionName, true)]
+        [InlineData("somekey", false)]
+        public void TryGetFunctionName_ReturnsExpectedResult(string keyName, bool expected)
         {
-            var state = new Dictionary<string, object>
+            var scopeProps = new Dictionary<string, object>
             {
-                { "functionName", "A" },
-                { LogConstants.NameKey, "C" },
+                { keyName, "test" },
+                { "someprop", "somevalue" },
+                { "anotherprop", "anothervalue" }
             };
-
-            var scope = new Dictionary<string, object>
+            Assert.Equal(expected, Utility.TryGetFunctionName(scopeProps, out string functionName));
+            if (expected)
             {
-                { ScopeKeys.FunctionName, "B" }
-            };
-
-            Assert.Equal("C", Utility.ResolveFunctionName(state, scope));
-        }
-
-        [Fact]
-        public void ResolveFunctionName_Scope()
-        {
-            var state = new Dictionary<string, object>
-            {
-                { "notFunctionName", "A" },
-            };
-
-            var scope = new Dictionary<string, object>
-            {
-                { ScopeKeys.FunctionName, "B" }
-            };
-
-            Assert.Equal("B", Utility.ResolveFunctionName(state, scope));
+                Assert.Equal("test", functionName);
+            }
         }
     }
 }

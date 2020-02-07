@@ -1,5 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly List<FunctionExecutionEventArguments> _functionExecutionEventArguments;
         private readonly List<SystemMetricEvent> _events;
         private readonly Mock<ILinuxContainerActivityPublisher> _linuxFunctionExecutionActivityPublisher;
+        private readonly object _syncLock = new object();
 
         public MetricsEventManagerTests()
         {
@@ -49,7 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<bool>()))
                 .Callback((string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success) =>
                 {
-                    _functionExecutionEventArguments.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
+                    lock (_syncLock)
+                    {
+                        _functionExecutionEventArguments.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
+                    }      
                 });
 
             _events = new List<SystemMetricEvent>();
@@ -80,7 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         RuntimeSiteName = runtimeSiteName,
                         SlotName = slotName
                     };
-                    _events.Add(evt);
+                    lock (_syncLock)
+                    {
+                        _events.Add(evt);
+                    }
                 });
 
             var mockMetricsPublisher = new Mock<IMetricsPublisher>();
@@ -436,7 +444,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             taskList.Add(ShortTestFunction(_metricsLogger));
             taskList.Add(LongTestFunction(_metricsLogger));
 
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
+
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, 2);
         }
 
@@ -450,7 +461,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                             a.ExecutionStage == ExecutionStage.Finished && a.Success)));
 
             var taskList = new List<Task> { ShortTestFunction(_metricsLogger) };
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
 
             _linuxFunctionExecutionActivityPublisher
                 .Verify(client =>
@@ -467,7 +480,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     client.PublishFunctionExecutionActivity(It.IsAny<ContainerFunctionExecutionActivity>()));
 
             var taskList = new List<Task> { LongTestFunction(_metricsLogger) };
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
 
             _linuxFunctionExecutionActivityPublisher
                 .Verify(client =>
@@ -493,7 +508,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 taskList.Add(ShortTestFunction(_metricsLogger));
             }
 
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
+
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
@@ -507,7 +525,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 taskList.Add(LongTestFunction(_metricsLogger));
             }
 
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
+
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
 
             // All events should have the same executionId
@@ -540,7 +561,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var concurrency = _randomNumberGenerator.Next(5, 100);
             for (int currentIndex = 0; currentIndex < concurrency; currentIndex++)
             {
-                if (_randomNumberGenerator.Next(100) < 50 ? true : false)
+                if (_randomNumberGenerator.Next(100) < 50)
                 {
                     taskList.Add(ShortTestFunction(_metricsLogger));
                 }
@@ -550,7 +571,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
             }
 
-            await AwaitFunctionTasks(taskList);
+            await Task.WhenAll(taskList);
+
+            _metricsEventManager.Flush();
+
             ValidateFunctionExecutionEventArgumentsList(_functionExecutionEventArguments, concurrency);
         }
 
@@ -559,15 +583,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await ShortTestFunction(_metricsLogger);
 
-            // Let's make sure that the tracker is not running anymore
-            await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
+            _metricsEventManager.Flush();
 
             await ShortTestFunction(_metricsLogger);
 
-            // Let's make sure that the tracker is not running anymore
-            await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
+            _metricsEventManager.Flush();
 
-            Assert.True(_functionExecutionEventArguments[0].ExecutionId != _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are same");
+            Assert.True(_functionExecutionEventArguments[0].ExecutionId == _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are not the same");
         }
 
         [Theory]
@@ -596,20 +618,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("(Function: Function1, Event: Event1, Count: 123)", debugValueProp.GetValue(evt));
         }
 
-        private static async Task AwaitFunctionTasks(List<Task> taskList)
-        {
-            Task.WaitAll(taskList.ToArray());
-
-            // Let's make sure that the tracker is not running anymore
-            await Task.Delay(TimeSpan.FromMilliseconds(MinimumRandomValueForLongRunningDurationInMs));
-        }
-
         private static void ValidateFunctionExecutionEventArgumentsList(List<FunctionExecutionEventArguments> list, int noOfFuncExecutions)
         {
-
             Assert.True(
                 ValidateFunctionExecutionEventArgumentsList(list, noOfFuncExecutions, out FunctionExecutionEventArguments invalidElement, out string errorMessage),
-                string.Format("ErrorMessage:{0} InvalidElement:{1} List:{2}", errorMessage, invalidElement.ToString(), SerializeFunctionExecutionEventArguments(list)));
+                string.Format("ErrorMessage:{0} InvalidElement:{1} List:{2}", errorMessage, invalidElement?.ToString(), SerializeFunctionExecutionEventArguments(list)));
         }
 
         private static bool ValidateFunctionExecutionEventArgumentsList(List<FunctionExecutionEventArguments> list, int noOfFuncExecutions, out FunctionExecutionEventArguments invalidElement, out string errorMessage)
@@ -660,7 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         if (relatedEventIds.Count < 2)
                         {
                             invalidElement = functionExecutionArgs;
-                            errorMessage = "There should be atleast one related event";
+                            errorMessage = "There should be at least one related event";
                             return false;
                         }
 

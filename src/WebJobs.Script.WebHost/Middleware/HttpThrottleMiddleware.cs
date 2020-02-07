@@ -28,6 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = loggerFactory?.CreateLogger("Host." + ScriptConstants.TraceSourceHttpThrottleMiddleware);
         }
 
+        public static bool ShouldEnable(HttpOptions options)
+        {
+            return HttpRequestQueue.IsEnabled(options) || options.DynamicThrottlesEnabled;
+        }
+
         public async Task Invoke(HttpContext httpContext, IOptions<HttpOptions> httpOptions, HttpRequestQueue requestQueue, HostPerformanceManager performanceManager, IMetricsLogger metricsLogger)
         {
             if (httpOptions.Value.DynamicThrottlesEnabled &&
@@ -35,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 // only check host status periodically
                 Collection<string> exceededCounters = new Collection<string>();
-                _rejectRequests = performanceManager.IsUnderHighLoad(exceededCounters);
+                _rejectRequests = await performanceManager.IsUnderHighLoadAsync(exceededCounters);
                 _lastPerformanceCheck = DateTime.UtcNow;
                 if (_rejectRequests)
                 {

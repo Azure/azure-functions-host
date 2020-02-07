@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext, IJobHostMiddlewarePipeline middleware)
+        public Task Invoke(HttpContext httpContext, IJobHostMiddlewarePipeline middleware)
         {
             httpContext.Items.Add(ScriptConstants.JobHostMiddlewarePipelineRequestDelegate, _next);
-            await middleware.Pipeline(httpContext);
+            return middleware.Pipeline(httpContext);
         }
     }
 }

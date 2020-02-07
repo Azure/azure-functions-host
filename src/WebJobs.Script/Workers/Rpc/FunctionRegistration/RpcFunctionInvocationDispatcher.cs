@@ -175,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (functions == null || functions.Count() == 0)
             {
-                // do not initialize function dispachter if there are no functions
+                // do not initialize function dispatcher if there are no functions
                 return;
             }
 
@@ -215,6 +215,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
+        public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
+        {
+            var workerChannels = (await GetInitializedWorkerChannelsAsync()).ToArray();
+            _logger.LogDebug($"[HostMonitor] Checking worker statuses (Count={workerChannels.Length})");
+
+            // invoke the requests to each channel in parallel
+            var workerStatuses = new Dictionary<string, WorkerStatus>(StringComparer.OrdinalIgnoreCase);
+            var tasks = new List<Task<WorkerStatus>>();
+            foreach (var channel in workerChannels)
+            {
+                tasks.Add(channel.GetWorkerStatusAsync());
+            }
+
+            await Task.WhenAll(tasks);
+
+            for (int i = 0; i < workerChannels.Length; i++)
+            {
+                var workerChannel = workerChannels[i];
+                var workerStatus = tasks[i].Result;
+                _logger.LogDebug($"[HostMonitor] Worker status: ID={workerChannel.Id}, Latency={Math.Round(workerStatus.Latency.TotalMilliseconds)}ms");
+                workerStatuses.Add(workerChannel.Id, workerStatus);
+            }
+
+            return workerStatuses;
+        }
+
         public async Task ShutdownAsync()
         {
             _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
@@ -239,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
             if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> bufferBlock))
             {
-                _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
+                _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
                 rpcWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.GetFunctionId()].Post(invocationContext);
             }
             else
@@ -250,19 +276,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync()
         {
-            Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+            var webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             List<IRpcWorkerChannel> webhostChannels = null;
             if (webhostChannelDictionary != null)
             {
                 webhostChannels = new List<IRpcWorkerChannel>();
-                foreach (string workerId in webhostChannelDictionary.Keys)
+                foreach (var pair in webhostChannelDictionary)
                 {
-                    if (webhostChannelDictionary.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
-                    {
-                        webhostChannels.Add(await initializedLanguageWorkerChannelTask.Task);
-                    }
+                    var workerChannel = await pair.Value.Task;
+                    webhostChannels.Add(workerChannel);
                 }
             }
+
             IEnumerable<IRpcWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
             return workerChannels;
         }

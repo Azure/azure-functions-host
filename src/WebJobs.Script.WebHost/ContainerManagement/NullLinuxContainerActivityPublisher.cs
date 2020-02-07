@@ -6,21 +6,21 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 {
     public class NullLinuxContainerActivityPublisher : ILinuxContainerActivityPublisher, IHostedService
     {
-        public NullLinuxContainerActivityPublisher(ILogger<NullLinuxContainerActivityPublisher> logger)
+        private static readonly Lazy<NullLinuxContainerActivityPublisher> _instance = new Lazy<NullLinuxContainerActivityPublisher>(new NullLinuxContainerActivityPublisher());
+
+        private NullLinuxContainerActivityPublisher()
         {
-            var nullLogger = logger ?? throw new ArgumentNullException(nameof(logger));
-            nullLogger.LogDebug($"Initializing {nameof(NullLinuxContainerActivityPublisher)}");
         }
+
+        public static NullLinuxContainerActivityPublisher Instance => _instance.Value;
 
         public void PublishFunctionExecutionActivity(ContainerFunctionExecutionActivity activity)
         {
-             //do nothing
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

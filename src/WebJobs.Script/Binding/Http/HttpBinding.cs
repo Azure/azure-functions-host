@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             int statusCode = StatusCodes.Status200OK;
             IDictionary<string, object> responseHeaders = null;
             bool enableContentNegotiation = false;
-            List<Tuple<string, string, CookieOptions>> cookies = new List<Tuple<string, string, CookieOptions>>();
+            List<Tuple<string, string, CookieOptions>> cookies = null;
             if (responseObject != null)
             {
                 ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out cookies, out enableContentNegotiation);

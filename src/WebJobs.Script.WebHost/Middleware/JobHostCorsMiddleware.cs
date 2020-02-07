@@ -20,20 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _corsMiddleware = middlewareFactory.CreateCorsMiddleware(InvokeNext, hostCorsOptions);
         }
 
-        public async Task Invoke(HttpContext context, RequestDelegate next)
+        public Task Invoke(HttpContext context, RequestDelegate next)
         {
             context.Items.Add(ScriptConstants.CorsMiddlewareRequestDelegate, next);
 
             // policy is supplied in the factory
-            await _corsMiddleware.Invoke(context, null);
+            return _corsMiddleware.Invoke(context, null);
         }
 
-        private async Task InvokeNext(HttpContext context)
+        private Task InvokeNext(HttpContext context)
         {
             if (context.Items.Remove(ScriptConstants.CorsMiddlewareRequestDelegate, out object requestDelegate) && requestDelegate is RequestDelegate next)
             {
-                await next(context);
+                return next(context);
             }
+
+            return Task.CompletedTask;
         }
     }
 }

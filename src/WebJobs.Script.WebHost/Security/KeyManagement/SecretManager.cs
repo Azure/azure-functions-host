@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
         private ConcurrentDictionary<string, IDictionary<string, string>> _functionSecrets;
+        private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
         private IMetricsLogger _metricsLogger;
@@ -76,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async virtual Task<HostSecretsInfo> GetHostSecretsAsync()
         {
-            using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerGetHostSecrets)))
+            if (_hostSecrets == null)
             {
-                if (_hostSecrets == null)
+                using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerGetHostSecrets)))
                 {
                     await _hostSecretsLock.WaitAsync();
 
@@ -131,23 +132,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         _hostSecretsLock.Release();
                     }
                 }
-
-                return _hostSecrets;
             }
+
+            return _hostSecrets;
         }
 
         public async virtual Task<IDictionary<string, string>> GetFunctionSecretsAsync(string functionName, bool merged = false)
         {
-            using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerGetFunctionSecrets), functionName))
+            if (string.IsNullOrEmpty(functionName))
             {
-                if (string.IsNullOrEmpty(functionName))
-                {
-                    throw new ArgumentNullException(nameof(functionName));
-                }
+                throw new ArgumentNullException(nameof(functionName));
+            }
 
-                functionName = functionName.ToLowerInvariant();
-
-                if (!_functionSecrets.TryGetValue(functionName, out IDictionary<string, string> functionSecrets))
+            functionName = functionName.ToLowerInvariant();
+            if (!_functionSecrets.TryGetValue(functionName, out IDictionary<string, string> functionSecrets))
+            {
+                using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerGetFunctionSecrets), functionName))
                 {
                     _logger.LogDebug($"Loading secrets for function '{functionName}'");
 
@@ -185,18 +185,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
                     functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
                 }
-
-                if (merged)
-                {
-                    // If merged is true, we combine function specific keys with host level function keys,
-                    // prioritizing function specific keys
-                    var hostSecrets = await GetHostSecretsAsync();
-                    functionSecrets = functionSecrets.Union(hostSecrets.FunctionKeys.Where(s => !functionSecrets.ContainsKey(s.Key)))
-                        .ToDictionary(kv => kv.Key, kv => kv.Value);
-                }
-
-                return functionSecrets;
             }
+
+            if (merged)
+            {
+                // If merged is true, we combine function specific keys with host level function keys,
+                // prioritizing function specific keys
+                var hostSecrets = await GetHostSecretsAsync();
+                functionSecrets = functionSecrets.Union(hostSecrets.FunctionKeys.Where(s => !functionSecrets.ContainsKey(s.Key)))
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+            }
+
+            return functionSecrets;
         }
 
         public async Task<KeyOperationResult> AddOrUpdateFunctionSecretAsync(string secretName, string secret, string keyScope, ScriptSecretsType secretsType)
@@ -385,6 +385,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (keyValue != null)
             {
+                if (_authorizationCache.TryGetValue(keyValue, out (string, AuthorizationLevel) value))
+                {
+                    // we've already authorized this key value so return the cached result
+                    return value;
+                }
+
                 // Before authorizing, check the cache load state. Do this first because checking the auth level will
                 // cause the secrets to be loaded into cache - we want to know if they were cached BEFORE this check.
                 bool secretsCached = _hostSecrets != null || _functionSecrets.Any();
@@ -393,6 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (result.Item2 != AuthorizationLevel.Anonymous)
                 {
                     // key match
+                    _authorizationCache[keyValue] = result;
                     return result;
                 }
                 else
@@ -611,6 +618,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // clear the cached secrets if they exist
             // they'll be reloaded on demand next time
+            _authorizationCache.Clear();
             if (secretsType == ScriptSecretsType.Host && _hostSecrets != null)
             {
                 _logger.LogInformation("Host keys change detected. Clearing cache.");

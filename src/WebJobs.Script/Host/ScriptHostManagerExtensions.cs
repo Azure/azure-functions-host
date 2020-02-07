@@ -12,20 +12,24 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public static async Task<bool> DelayUntilHostReady(this IScriptHostManager hostManager, int timeoutSeconds = ScriptConstants.HostTimeoutSeconds, int pollingIntervalMilliseconds = ScriptConstants.HostPollingIntervalMilliseconds)
         {
-            bool CanInvoke()
+            if (CanInvoke(hostManager))
             {
-                return hostManager.State == ScriptHostState.Running || hostManager.State == ScriptHostState.Initialized;
+                return true;
             }
-
-            await Utility.DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, () =>
+            else
             {
-                return !CanInvoke() &&
-                        hostManager.State != ScriptHostState.Error;
-            });
+                await Utility.DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, () =>
+                {
+                    return !CanInvoke(hostManager) && hostManager.State != ScriptHostState.Error;
+                });
 
-            bool hostReady = CanInvoke();
+                return CanInvoke(hostManager);
+            }
+        }
 
-            return hostReady;
+        public static bool CanInvoke(this IScriptHostManager hostManager)
+        {
+            return hostManager.State == ScriptHostState.Running || hostManager.State == ScriptHostState.Initialized;
         }
     }
 }

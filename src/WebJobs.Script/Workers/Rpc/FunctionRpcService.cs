@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
     internal class FunctionRpcService : FunctionRpc.FunctionRpcBase
     {
+        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private readonly IScriptEventManager _eventManager;
         private readonly ILogger _logger;
 
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             var cancelSource = new TaskCompletionSource<bool>();
             IDictionary<string, IDisposable> outboundEventSubscriptions = new Dictionary<string, IDisposable>();
+
             try
             {
                 context.CancellationToken.Register(() => cancelSource.TrySetResult(false));
@@ -52,29 +54,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundEvent>()
                         .Where(evt => evt.WorkerId == workerId)
                         .ObserveOn(NewThreadScheduler.Default)
-                        .Subscribe(evt =>
+                        .Subscribe(async evt =>
                         {
                             try
                             {
-                                // WriteAsync only allows one pending write at a time
-                                // For each responseStream subscription, observe as a blocking write, in series, on a new thread
                                 if (evt.MessageType == MsgType.InvocationRequest)
                                 {
-                                    _logger.LogDebug("Writing invocation request invocationId: {invocationId} to workerId: {workerId}", evt.Message.InvocationRequest.InvocationId, workerId);
+                                    _logger.LogTrace("Writing invocation request invocationId: {invocationId} to workerId: {workerId}", evt.Message.InvocationRequest.InvocationId, workerId);
                                 }
-                                responseStream.WriteAsync(evt.Message).GetAwaiter().GetResult();
+
+                                try
+                                {
+                                    // WriteAsync only allows one pending write at a time, so we
+                                    // serialize access to the stream for each subscription
+                                    await _writeLock.WaitAsync();
+                                    await responseStream.WriteAsync(evt.Message);
+                                }
+                                finally
+                                {
+                                    _writeLock.Release();
+                                }
                             }
                             catch (Exception subscribeEventEx)
                             {
                                 _logger.LogError(subscribeEventEx, "Error writing message type {messageType} to workerId: {workerId}", evt.MessageType, workerId);
                             }
                         }));
+
                     do
                     {
                         var currentMessage = requestStream.Current;
                         if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
                         {
-                            _logger.LogDebug("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
+                            _logger.LogTrace("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
                         }
                         _eventManager.Publish(new InboundEvent(workerId, currentMessage));
                     }

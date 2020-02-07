@@ -35,12 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
-        private static readonly string[] _allowedFunctionNameKeys = new[]
-        {
-            "functionName",
-            LogConstants.NameKey,
-            ScopeKeys.FunctionName
-        };
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
@@ -444,21 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
         {
-            if (state == null)
-            {
-                return false;
-            }
-
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
-            {
-                return false;
-            }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return Convert.ToBoolean(kvps.Last().Value);
+            return GetStateValueOrDefault<bool>(state, key);
         }
 
         public static TValue GetStateValueOrDefault<TValue>(IEnumerable<KeyValuePair<string, object>> state, string key)
@@ -468,28 +448,39 @@ namespace Microsoft.Azure.WebJobs.Script
                 return default(TValue);
             }
 
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            var value = state.LastOrDefault(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (value.Equals(default(KeyValuePair<string, object>)))
             {
                 return default(TValue);
             }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return (TValue)kvps.Last().Value;
+            else
+            {
+                return (TValue)value.Value;
+            }
         }
 
-        public static string ResolveFunctionName(IEnumerable<KeyValuePair<string, object>> stateProps, IDictionary<string, object> scopeProps)
+        public static bool TryGetFunctionName(IDictionary<string, object> scopeProps, out string functionName)
         {
-            // State wins, then scope. To find function name, we'll look for any of these values.
-            // "last" wins with state values, so reverse it.
-            var firstKvp = stateProps
-                .Reverse()
-                .Concat(scopeProps)
-                .FirstOrDefault(p => _allowedFunctionNameKeys.Contains(p.Key));
+            functionName = null;
 
-            return firstKvp.Value?.ToString();
+            object scopeValue = null;
+            if ((scopeProps.TryGetValue("functionName", out scopeValue) ||
+                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue) ||
+                 scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue)) && scopeValue != null)
+            {
+                functionName = scopeValue.ToString();
+            }
+
+            return functionName != null;
+        }
+
+        public static bool IsFunctionName(KeyValuePair<string, object> p)
+        {
+            return string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)

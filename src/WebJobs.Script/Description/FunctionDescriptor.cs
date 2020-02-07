@@ -33,32 +33,38 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Metadata = metadata;
             InputBindings = inputBindings;
             OutputBindings = outputBindings;
+
+            TriggerParameter = Parameters?.FirstOrDefault(p => p.IsTrigger);
+            TriggerBinding = InputBindings?.SingleOrDefault(p => p.Metadata.IsTrigger);
+            HttpTriggerAttribute = GetTriggerAttributeOrNull<HttpTriggerAttribute>();
         }
 
         public string Name { get; internal set; }
 
-        public Collection<ParameterDescriptor> Parameters { get; private set; }
+        public Collection<ParameterDescriptor> Parameters { get; }
 
-        public Collection<CustomAttributeBuilder> CustomAttributes { get; private set; }
+        public Collection<CustomAttributeBuilder> CustomAttributes { get; }
 
         public IFunctionInvoker Invoker { get; internal set; }
 
         public FunctionMetadata Metadata { get; internal set; }
 
-        public Collection<FunctionBinding> InputBindings { get; set; }
+        public Collection<FunctionBinding> InputBindings { get; }
 
-        public Collection<FunctionBinding> OutputBindings { get; set; }
+        public Collection<FunctionBinding> OutputBindings { get; }
 
-        public virtual TAttribute GetTriggerAttributeOrNull<TAttribute>()
+        public ParameterDescriptor TriggerParameter { get; }
+
+        public FunctionBinding TriggerBinding { get; }
+
+        public virtual HttpTriggerAttribute HttpTriggerAttribute { get; }
+
+        private TAttribute GetTriggerAttributeOrNull<TAttribute>()
         {
-            var triggerBinding = InputBindings.SingleOrDefault(p => p.Metadata.IsTrigger);
-            if (triggerBinding != null)
+            var extensionBinding = TriggerBinding as ExtensionBinding;
+            if (extensionBinding != null)
             {
-                ExtensionBinding extensionBinding = triggerBinding as ExtensionBinding;
-                if (extensionBinding != null)
-                {
-                    return extensionBinding.Attributes.OfType<TAttribute>().SingleOrDefault();
-                }
+                return extensionBinding.Attributes.OfType<TAttribute>().SingleOrDefault();
             }
 
             return default(TAttribute);

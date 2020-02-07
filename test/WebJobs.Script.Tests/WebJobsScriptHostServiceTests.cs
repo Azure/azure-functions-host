@@ -31,8 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private TestLoggerProvider _webHostLoggerProvider = new TestLoggerProvider();
         private TestLoggerProvider _jobHostLoggerProvider = new TestLoggerProvider();
         private ILoggerFactory _loggerFactory;
-        private Mock<IServiceProvider> _mockRootServiceProvider;
-        private Mock<IServiceScopeFactory> _mockRootScopeFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
@@ -52,12 +50,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _host = CreateMockHost();
 
-            _mockRootServiceProvider = new Mock<IServiceProvider>();
-            _mockRootScopeFactory = new Mock<IServiceScopeFactory>();
             _mockScriptWebHostEnvironment = new Mock<IScriptWebHostEnvironment>();
             _mockEnvironment = new Mock<IEnvironment>();
             _healthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(new HostHealthMonitorOptions());
-            _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions);
+            var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions, serviceProviderMock.Object);
         }
 
         private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)
@@ -106,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(hostB.Object);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootScopeFactory.Object,
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             await _hostService.StartAsync(CancellationToken.None);
@@ -131,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory, _mockRootScopeFactory.Object,
+                _monitor, hostBuilder.Object, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             await _hostService.StartAsync(CancellationToken.None);
@@ -183,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory, _mockRootScopeFactory.Object,
+                _monitor, hostBuilder.Object, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
@@ -256,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-                _monitor, hostBuilder.Object, _loggerFactory, _mockRootScopeFactory.Object,
+                _monitor, hostBuilder.Object, _loggerFactory,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
@@ -323,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(hostB.Object);
 
             _hostService = new WebJobsScriptHostService(
-               _monitor, hostBuilder.Object, NullLoggerFactory.Instance, _mockRootScopeFactory.Object,
+               _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
@@ -353,7 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-               _monitor, hostBuilder.Object, _loggerFactory, _mockRootScopeFactory.Object,
+               _monitor, hostBuilder.Object, _loggerFactory,
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This

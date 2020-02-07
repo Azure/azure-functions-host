@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public abstract void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName,
             string functionName, string eventName,
             string source, string details, string summary, string exceptionType, string exceptionMessage,
-            string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName);
+            string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp);
 
         public abstract void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName,
             string eventName, long average,

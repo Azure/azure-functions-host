@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -19,19 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _hostOptions = hostOptions.Value;
         }
 
-        public async Task Invoke(HttpContext context, RequestDelegate next)
+        public Task Invoke(HttpContext context, RequestDelegate next)
         {
-            context.Response.OnStarting(() =>
+            if (_hostOptions.Any())
             {
-                foreach (var header in _hostOptions)
+                context.Response.OnStarting(() =>
                 {
-                    context.Response.Headers.TryAdd(header.Key, header.Value);
-                }
+                    foreach (var header in _hostOptions)
+                    {
+                        context.Response.Headers.TryAdd(header.Key, header.Value);
+                    }
 
-                return Task.CompletedTask;
-            });
+                    return Task.CompletedTask;
+                });
+            }
 
-            await next(context);
+            return next(context);
         }
     }
 }

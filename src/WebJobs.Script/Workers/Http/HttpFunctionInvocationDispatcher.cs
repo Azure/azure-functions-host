@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
             // TODO: Add process managment for http invoker
+
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
             _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
                  {
@@ -159,6 +160,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
             }
             _invokerErrors.Push(currentErrorEvent);
+        }
+
+        public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
+        {
+            var workerStatus = await _httpWorkerChannel.GetWorkerStatusAsync();
+            return new Dictionary<string, WorkerStatus>
+            {
+                { _httpWorkerChannel.Id, workerStatus }
+            };
         }
 
         protected virtual void Dispose(bool disposing)

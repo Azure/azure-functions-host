@@ -52,7 +52,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.0-dev637091944077950638" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.0-preview2-11736" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227">
     </PackageReference>
     <PackageReference Include="xunit" Version="2.4.0" />

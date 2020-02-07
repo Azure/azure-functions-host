@@ -52,6 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environment = new TestEnvironment(vars);
 
+            Assert.True(environment.IsLinuxConsumption());
+
             await InitializeTestHostAsync("Linux", environment);
 
             // verify only the Warmup function is present

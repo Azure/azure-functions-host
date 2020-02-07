@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -23,9 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IExternalScopeProvider _scopeProvider;
+        private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
 
         public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,
-            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider)
+            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptions)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -37,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
             _scopeProvider = scopeProvider;
+            _appServiceOptions = appServiceOptions;
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
@@ -51,75 +55,108 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return logLevel >= _logLevel;
         }
 
-        private bool IsUserLog<TState>(TState state)
-        {
-            // User logs are determined by either the category or the presence of the LogPropertyIsUserLogKey
-            // in the log state.
-            // This check is extra defensive; the 'Function.{FunctionName}.User' category should never occur here
-            // as the SystemLoggerProvider checks that before creating a Logger.
-
-            return _isUserFunction ||
-                (state is IEnumerable<KeyValuePair<string, object>> stateDict &&
-                Utility.GetStateBoolValue(stateDict, ScriptConstants.LogPropertyIsUserLogKey) == true);
-        }
-
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
-            // propagate special exceptions through the EventManager
-            var stateProps = state as IEnumerable<KeyValuePair<string, object>> ?? new Dictionary<string, object>();
-
-            string source = _categoryName ?? Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertySourceKey);
-            if (exception is FunctionIndexingException && _eventManager != null)
-            {
-                _eventManager.Publish(new FunctionIndexingEvent("FunctionIndexingException", source, exception));
-            }
-
-            // User logs are not logged to system logs.
-            if (!IsEnabled(logLevel) || IsUserLog(state))
+            if (!IsEnabled(logLevel) || _isUserFunction)
             {
                 return;
             }
 
-            string formattedMessage = formatter?.Invoke(state, exception);
+            // enumerate all the state values once, capturing the values we'll use below
+            // last one wins
+            string stateSourceValue = null;
+            string stateFunctionName = null;
+            string stateEventName = null;
+            string stateActivityId = null;
+            if (state is IEnumerable<KeyValuePair<string, object>> stateProps)
+            {
+                foreach (var kvp in stateProps)
+                {
+                    if (string.Equals(kvp.Key, ScriptConstants.LogPropertySourceKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        stateSourceValue = kvp.Value?.ToString();
+                    }
+                    else if (string.Equals(kvp.Key, ScriptConstants.LogPropertyIsUserLogKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if ((bool)kvp.Value)
+                        {
+                            return;
+                        }
+                    }
+                    else if (Utility.IsFunctionName(kvp))
+                    {
+                        stateFunctionName = kvp.Value?.ToString();
+                    }
+                    else if (string.Equals(kvp.Key, ScriptConstants.LogPropertyEventNameKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        stateEventName = kvp.Value?.ToString();
+                    }
+                    else if (string.Equals(kvp.Key, ScriptConstants.LogPropertyActivityIdKey, StringComparison.OrdinalIgnoreCase))
+                    {
+                        stateActivityId = kvp.Value?.ToString();
+                    }
+                }
+            }
+
+            // propagate special exceptions through the EventManager
+            string source = _categoryName ?? stateSourceValue;
+            if (exception is FunctionIndexingException && _eventManager != null)
+            {
+                _eventManager.Publish(new FunctionIndexingEvent(nameof(FunctionIndexingException), source, exception));
+            }
 
             // If we don't have a message, there's nothing to log.
+            string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage))
             {
                 return;
             }
 
-            IDictionary<string, object> scopeProps = _scopeProvider.GetScopeDictionary();
+            var scopeProps = _scopeProvider.GetScopeDictionary();
+            string functionName = _functionName ?? stateFunctionName ?? string.Empty;
+            if (string.IsNullOrEmpty(functionName))
+            {
+                if (Utility.TryGetFunctionName(scopeProps, out string scopeFunctionName))
+                {
+                    functionName = scopeFunctionName;
+                }
+            }
+
+            string invocationId = string.Empty;
+            object scopeValue = null;
+            if (scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
+            {
+                invocationId = scopeValue.ToString();
+            }
 
             // Apply standard event properties
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently)
-            string subscriptionId = _environment.GetSubscriptionId() ?? string.Empty;
-            string appName = _environment.GetAzureWebsiteUniqueSlotName() ?? string.Empty;
-            string summary = Sanitizer.Sanitize(formattedMessage) ?? string.Empty;
+            string summary = formattedMessage ?? string.Empty;
+            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
+            string activityId = stateActivityId ?? string.Empty;
+            string subscriptionId = _appServiceOptions.CurrentValue.SubscriptionId ?? string.Empty;
+            string appName = _appServiceOptions.CurrentValue.AppName ?? string.Empty;
+            string runtimeSiteName = _appServiceOptions.CurrentValue.RuntimeSiteName ?? string.Empty;
+            string slotName = _appServiceOptions.CurrentValue.SlotName ?? string.Empty;
+
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
-            string functionName = _functionName ?? Utility.ResolveFunctionName(stateProps, scopeProps) ?? string.Empty;
-            string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertyEventNameKey) ?? string.Empty;
-            string functionInvocationId = Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyFunctionInvocationIdKey) ?? string.Empty;
-            string hostInstanceId = _hostInstanceId;
-            string activityId = Utility.GetStateValueOrDefault<string>(stateProps, ScriptConstants.LogPropertyActivityIdKey) ?? string.Empty;
-            string runtimeSiteName = _environment.GetRuntimeSiteName() ?? string.Empty;
-            string slotName = _environment.GetSlotName() ?? string.Empty;
-
-            // Populate details from the exception.
             string details = string.Empty;
             if (exception != null)
             {
+                // Populate details from the exception.
                 if (string.IsNullOrEmpty(functionName) && exception is FunctionInvocationException fex)
                 {
                     functionName = string.IsNullOrEmpty(fex.MethodName) ? string.Empty : fex.MethodName.Replace("Host.Functions.", string.Empty);
                 }
 
                 (innerExceptionType, innerExceptionMessage, details) = exception.GetExceptionDetails();
+                formattedMessage = Sanitizer.Sanitize(formattedMessage);
                 innerExceptionMessage = innerExceptionMessage ?? string.Empty;
             }
 
-            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName, slotName);
+            _eventGenerator.LogFunctionTraceEvent(logLevel, subscriptionId, appName, functionName, eventName, source, details, summary, innerExceptionType, innerExceptionMessage, invocationId, _hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
         }
     }
 }

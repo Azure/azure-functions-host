@@ -84,6 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ColdStartEventName = "ColdStart";
 
         public const string FunctionsUserAgent = "AzureFunctionsRuntime";
+        public const string HttpScaleUserAgent = "HttpScaleManager";
+        public const string HealthCheckQueryParam = "checkHealth";
+        public const string ScaleControllerUserAgent = "ElasticScaleController";
         public const string AntaresDefaultHostNameHeader = "WAS-DEFAULT-HOSTNAME";
         public const string AntaresARMRequestTrackingIdHeader = "x-ms-arm-request-tracking-id";
         public const string AntaresARMExtensionsRouteHeader = "X-MS-VIA-EXTENSIONS-ROUTE";
@@ -92,6 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresScaleOutHeaderName = "X-FUNCTION-SCALEOUT";
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
+        public const string EasyAuthIdentityHeader = "x-ms-client-principal";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";

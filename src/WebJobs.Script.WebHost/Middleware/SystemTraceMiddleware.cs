@@ -5,9 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using DryIoc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -27,58 +30,55 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            SetRequestId(context.Request);
+            var requestId = SetRequestId(context.Request);
 
-            var sw = new Stopwatch();
-            sw.Start();
-            var request = context.Request;
-            var details = new JObject
-            {
-                { "requestId", request.GetRequestId() },
-                { "method", request.Method.ToString() },
-                { "uri", request.Path.ToString() }
-            };
-            var logData = new Dictionary<string, object>
-            {
-                [ScriptConstants.LogPropertyActivityIdKey] = request.GetRequestId()
-            };
-            _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executing HTTP request: {details}");
+            var sw = Stopwatch.StartNew();
+            string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
+            _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
 
             await _next.Invoke(context);
 
             sw.Stop();
-            details["identities"] = GetIdentities(context);
-            details["status"] = context.Response.StatusCode;
-            details["duration"] = sw.ElapsedMilliseconds;
-            _logger.Log(LogLevel.Information, 0, logData, null, (s, e) => $"Executed HTTP request: {details}");
+            string identities = GetIdentities(context);
+            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, sw.ElapsedMilliseconds);
         }
 
-        internal static void SetRequestId(HttpRequest request)
+        internal static string SetRequestId(HttpRequest request)
         {
             string requestID = request.GetHeaderValueOrDefault(ScriptConstants.AntaresLogIdHeaderName) ?? Guid.NewGuid().ToString();
             request.HttpContext.Items[ScriptConstants.AzureFunctionsRequestIdKey] = requestID;
+            return requestID;
         }
 
-        private static JArray GetIdentities(HttpContext context)
+        private static string GetIdentities(HttpContext context)
         {
-            JArray identities = new JArray();
-            foreach (var identity in context.User.Identities.Where(p => p.IsAuthenticated))
-            {
-                var formattedIdentity = new JObject
-                {
-                    { "type", identity.AuthenticationType }
-                };
+            var sbIdentities = new StringBuilder();
 
-                var claim = identity.Claims.FirstOrDefault(p => p.Type == SecurityConstants.AuthLevelClaimType);
-                if (claim != null)
+            var identities = context.User.Identities.Where(p => p.IsAuthenticated);
+            if (identities.Any())
+            {
+                foreach (var identity in identities)
                 {
-                    formattedIdentity.Add("level", claim.Value);
+                    if (sbIdentities.Length > 0)
+                    {
+                        sbIdentities.Append(", ");
+                    }
+
+                    var sbIdentity = new StringBuilder(identity.AuthenticationType);
+                    var claim = identity.Claims.FirstOrDefault(p => p.Type == SecurityConstants.AuthLevelClaimType);
+                    if (claim != null)
+                    {
+                        sbIdentity.AppendFormat(":{0}", claim.Value);
+                    }
+
+                    sbIdentities.Append(sbIdentity);
                 }
 
-                identities.Add(formattedIdentity);
+                sbIdentities.Insert(0, "(");
+                sbIdentities.Append(")");
             }
 
-            return identities;
+            return sbIdentities.ToString();
         }
     }
 }

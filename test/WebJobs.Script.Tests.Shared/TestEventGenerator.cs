@@ -78,11 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
-        public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName)
+        public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
             FunctionTraceEvent traceEvent = new FunctionTraceEvent
             {
                 Timestamp = DateTimeOffset.UtcNow,
+                EventTimestamp = eventTimestamp,
                 Level = level,
                 SubscriptionId = subscriptionId,
                 AppName = appName,

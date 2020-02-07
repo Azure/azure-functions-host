@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# SA1008: Opening parenthesis should not be preceded by a space.
+dotnet_diagnostic.SA1008.severity = silent

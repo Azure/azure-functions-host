@@ -50,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
         public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
         public const string CloudName = "WEBSITE_CLOUD_NAME";
+        public const string RoleInstanceId = "RoleInstanceId";
+        public const string HealthPingEnabled = "WEBSITE_FUNCTIONS_HEALTH_PING_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to

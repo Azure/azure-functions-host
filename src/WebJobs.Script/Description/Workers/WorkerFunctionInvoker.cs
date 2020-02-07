@@ -54,19 +54,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            // Need to wait for atleast one language worker process to be initialized before accepting invocations
-            await DelayUntilFunctionDispatcherInitializedOrShutdown();
-            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            // Need to wait for at least one language worker process to be initialized before accepting invocations
+            if (!IsDispatcherReady())
+            {
+                await DelayUntilFunctionDispatcherInitializedOrShutdown();
+            }
 
-            // TODO: fix extensions and remove
-            object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
+            var bindingData = context.Binder.BindingData;
+            object triggerValue = TransformInput(parameters[0], bindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
-            var inputs = new[] { triggerInput }.Concat(await BindInputsAsync(context.Binder));
+            IEnumerable<(string, DataType, object)> inputs = new[] { triggerInput };
+            if (_inputBindings.Count > 1)
+            {
+                var nonTriggerInputs = await BindInputsAsync(context.Binder);
+                inputs = inputs.Concat(nonTriggerInputs);
+            }
 
-            ScriptInvocationContext invocationContext = new ScriptInvocationContext()
+            var invocationContext = new ScriptInvocationContext
             {
                 FunctionMetadata = Metadata,
-                BindingData = context.Binder.BindingData,   // This has duplicates too (of type DefaultHttpRequest). Needs to be removed after verifying this can indeed be constructed by the workers from the rest of the data being passed (https://github.com/Azure/azure-functions-host/issues/4735).
+                BindingData = bindingData,
                 ExecutionContext = context.ExecutionContext,
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
@@ -80,23 +87,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            _logger.LogDebug($"Sending invocation id:{invocationId}");
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            _logger.LogTrace($"Sending invocation id:{invocationId}");
             await _functionDispatcher.InvokeAsync(invocationContext);
-            ScriptInvocationResult result = await invocationContext.ResultSource.Task;
+            var result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
+        }
+
+        private bool IsDispatcherReady()
+        {
+            return _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
         }
 
         private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
         {
             // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
             // these reasons: started in placeholder, has no functions, functions do not match set language.
-            bool ready = _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
 
-            if (!ready)
+            if (!IsDispatcherReady())
             {
-                _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
+                _logger.LogTrace($"FunctionDispatcher state: {_functionDispatcher.State}");
                 bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;

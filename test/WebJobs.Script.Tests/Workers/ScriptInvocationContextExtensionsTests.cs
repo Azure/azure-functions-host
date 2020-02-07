@@ -4,8 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Google.Protobuf.Collections;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -64,11 +69,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Equal(1234, resultAsJObject["Id"]);
         }
 
+        [Fact]
+        public async Task ToRpcInvocationRequest_Http_OmitsDuplicateBindingData()
+        {
+            var logger = new TestLogger("test");
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Host = new HostString("local");
+            httpContext.Request.Path = "/test";
+            httpContext.Request.Method = "Post";
+
+            var inputs = new List<(string name, DataType type, object val)>
+            {
+                ("req", DataType.String, httpContext.Request)
+            };
+
+            var bindingData = new Dictionary<string, object>
+            {
+                { "req", httpContext.Request },
+                { "$request", httpContext.Request },
+                { "headers", httpContext.Request.Headers.ToDictionary(p => p.Key, p => p.Value) },
+                { "query", httpContext.Request.QueryString.ToString() },
+                { "sys", new SystemBindingData() }
+            };
+
+            var invocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = Guid.NewGuid(),
+                    FunctionName = "Test",
+                },
+                BindingData = bindingData,
+                Inputs = inputs,
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                Logger = logger,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+            };
+
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "Test"
+            };
+
+            var httpTriggerBinding = new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject()
+            };
+
+            var httpOutputBinding = new BindingMetadata
+            {
+                Name = "res",
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Raw = new JObject(),
+                DataType = DataType.String
+            };
+
+            functionMetadata.Bindings.Add(httpTriggerBinding);
+            functionMetadata.Bindings.Add(httpOutputBinding);
+            invocationContext.FunctionMetadata = functionMetadata;
+
+            Capabilities capabilities = new Capabilities(logger);
+            MapField<string, string> addedCapabilities = new MapField<string, string>
+            {
+                { RpcWorkerConstants.RpcHttpTriggerMetadataRemoved, "1" },
+                { RpcWorkerConstants.RpcHttpBodyOnly, "1" }
+            };
+            capabilities.UpdateCapabilities(addedCapabilities);
+
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities);
+            Assert.Equal(1, result.InputData.Count);
+            Assert.Equal(0, result.TriggerMetadata.Count);
+        }
+
         private class TestPoco
         {
             public string Name { get; set; }
 
             public int Id { get; set; }
+        }
+
+        private class SystemBindingData
+        {
         }
     }
 }

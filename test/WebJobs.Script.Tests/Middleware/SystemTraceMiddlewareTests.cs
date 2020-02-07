@@ -55,14 +55,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
 
             var headers = new HeaderDictionary();
             headers.Add(ScriptConstants.AntaresLogIdHeaderName, new StringValues(requestId));
+            headers.Add("User-Agent", new StringValues("TestAgent"));
             requestFeature.Headers = headers;
 
-            var claims = new List<Claim>
+            var principal = new ClaimsPrincipal();
+            principal.AddIdentity(new ClaimsIdentity(new List<Claim>
             {
                 new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Function.ToString())
-            };
-            var identity = new ClaimsIdentity(claims, AuthLevelAuthenticationDefaults.AuthenticationScheme);
-            context.User = new ClaimsPrincipal(identity);
+            }, AuthLevelAuthenticationDefaults.AuthenticationScheme));
+            principal.AddIdentity(new ClaimsIdentity(new List<Claim>
+            {
+                new Claim(SecurityConstants.AuthLevelClaimType, "CustomLevel")
+            }, "CustomScheme"));
+            context.User = principal;
 
             await _middleware.Invoke(context);
 
@@ -78,10 +83,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             Assert.Equal("Executing HTTP request", message);
             var details = log.FormattedMessage.Substring(idx + 1).Trim();
             var jo = JObject.Parse(details);
-            Assert.Equal(3, jo.Count);
+            Assert.Equal(4, jo.Count);
             Assert.Equal(requestId, jo["requestId"]);
             Assert.Equal("GET", jo["method"]);
             Assert.Equal("/api/testfunc", jo["uri"]);
+            Assert.Equal("TestAgent", jo["userAgent"]);
 
             // validate executed trace
             log = logs[1];
@@ -92,19 +98,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             Assert.Equal("Executed HTTP request", message);
             details = log.FormattedMessage.Substring(idx + 1).Trim();
             jo = JObject.Parse(details);
-            Assert.Equal(6, jo.Count);
+            Assert.Equal(4, jo.Count);
             Assert.Equal(requestId, jo["requestId"]);
-            Assert.Equal("GET", jo["method"]);
-            Assert.Equal("/api/testfunc", jo["uri"]);
             Assert.Equal(200, jo["status"]);
             var duration = (long)jo["duration"];
             Assert.True(duration > 0);
 
-            var authentication = (JArray)jo["identities"];
-            Assert.Equal(1, authentication.Count);
-            var keyIdentity = authentication.Single();
-            Assert.Equal(AuthLevelAuthenticationDefaults.AuthenticationScheme, keyIdentity["type"]);
-            Assert.Equal("Function", keyIdentity["level"]);
+            string identities = (string)jo["identities"];
+            Assert.Equal($"({AuthLevelAuthenticationDefaults.AuthenticationScheme}:Function, CustomScheme:CustomLevel)", identities);
         }
     }
 }

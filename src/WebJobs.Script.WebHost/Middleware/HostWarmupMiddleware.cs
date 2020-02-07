@@ -2,10 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -35,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext httpContext)
         {
-            if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment, _environment))
+            if (IsWarmUpRequest(httpContext.Request, _webHostEnvironment.InStandbyMode, _environment))
             {
                 PreJitPrepare();
 
@@ -73,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
-        public static bool IsWarmUpRequest(HttpRequest request, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
+        public static bool IsWarmUpRequest(HttpRequest request, bool inStandbyMode, IEnvironment environment)
         {
-            return webHostEnvironment.InStandbyMode &&
+            return inStandbyMode &&
                 ((environment.IsAppService() && request.IsAppServiceInternalRequest(environment)) || environment.IsLinuxConsumption()) &&
                 (request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.FunctionName}")) ||
                 request.Path.StartsWithSegments(new PathString($"/api/{WarmUpConstants.AlternateRoute}")));

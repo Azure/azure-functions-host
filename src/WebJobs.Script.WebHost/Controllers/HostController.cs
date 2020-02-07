@@ -12,17 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,32 +37,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class HostController : Controller
     {
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ILogger _logger;
-        private readonly IAuthorizationService _authorizationService;
-        private readonly IWebFunctionsManager _functionsManager;
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly HostPerformanceManager _performanceManager;
         private static int _warmupExecuted;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
-            IOptions<JobHostOptions> hostOptions,
             ILoggerFactory loggerFactory,
-            IAuthorizationService authorizationService,
-            IWebFunctionsManager functionsManager,
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
-            IFunctionsSyncManager functionsSyncManager)
+            IFunctionsSyncManager functionsSyncManager,
+            HostPerformanceManager performanceManager)
         {
             _applicationHostOptions = applicationHostOptions;
-            _hostOptions = hostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
-            _authorizationService = authorizationService;
-            _functionsManager = functionsManager;
             _environment = environment;
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
+            _performanceManager = performanceManager;
         }
 
         [HttpGet]
@@ -114,8 +105,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult Ping([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Ping([FromServices] IScriptHostManager scriptHostManager)
         {
+            var result = await _performanceManager.TryHandleHealthPingAsync(HttpContext.Request, _logger);
+            if (result != null)
+            {
+                return result;
+            }
+
             var pingStatus = new JObject
             {
                 { "hostState", scriptHostManager.State.ToString() }
