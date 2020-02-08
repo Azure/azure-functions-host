@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly string _testRootScriptPath;
         private readonly string _testHostConfigFilePath;
         private readonly ScriptHostConfiguration _hostConfig;
+        private readonly TestTraceWriter _traceWriter;
         private readonly FunctionsSyncManager _functionsSyncManager;
         private readonly Dictionary<string, string> _vars;
         private readonly StringBuilder _contentBuilder;
@@ -40,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         public FunctionsSyncManagerTests()
         {
+            _traceWriter = new TestTraceWriter(TraceLevel.Verbose);
             _testRootScriptPath = Path.GetTempPath();
             _testHostConfigFilePath = Path.Combine(_testRootScriptPath, ScriptConstants.HostMetadataFileName);
             FileUtility.DeleteFileSafe(_testHostConfigFilePath);
@@ -49,7 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 RootScriptPath = @"x:\root\site\wwwroot",
                 IsSelfHost = false,
                 RootLogPath = @"x:\root\LogFiles\Application\Functions",
-                TestDataPath = @"x:\root\data\functions\sampledata"
+                TestDataPath = @"x:\root\data\functions\sampledata",
+                TraceWriter = _traceWriter
             };
             _hostConfig.HostConfig.HostId = "testhostid123";
 
@@ -435,6 +439,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var httpRequest = FunctionsSyncManager.BuildSetTriggersRequest();
                 Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
                 Assert.Equal(HttpMethod.Post, httpRequest.Method);
+            }
+        }
+
+        [Fact]
+        public async Task Logging_ConfiguredCorrectly()
+        {
+            _scriptSettingsManagerMock.Setup(p => p.GetSetting(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns("1");
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+
+                var logs = _loggerProvider.GetAllLogMessages();
+                var log = logs.First();
+                int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
+                int endIdx = log.FormattedMessage.LastIndexOf(')');
+                var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
+                var logObject = JObject.Parse(triggersLog);
+
+                // just verifying here that we're logging to both loggers, to ensure
+                // we're writing system logs
+                var trace = _traceWriter.GetTraces().First();
+                Assert.Equal(log.FormattedMessage, trace.Message);
+                Assert.Equal(log.Category, trace.Source);
             }
         }
 

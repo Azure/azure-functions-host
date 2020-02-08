@@ -38,13 +38,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly bool _ownsHttpClient;
         private readonly ScriptSettingsManager _settings;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
+        private readonly TraceWriter _traceWriter;
 
         private CloudBlockBlob _hashBlob;
 
         public FunctionsSyncManager(ScriptHostConfiguration hostConfig, ILoggerFactory loggerFactory, ISecretManager secretManager, ScriptSettingsManager settings, HttpClient httpClient = null)
         {
             _hostConfig = hostConfig;
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _logger = loggerFactory.CreateLogger<FunctionsSyncManager>();
+            _traceWriter = hostConfig.TraceWriter.WithDefaults(typeof(FunctionsSyncManager).FullName);
             _secretManager = secretManager;
             _settings = settings;
 
@@ -76,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 result.Success = false;
                 result.Error = "Invalid environment for SyncTriggers operation.";
                 _logger.LogWarning(result.Error);
+                _traceWriter.Warning(result.Error);
                 return result;
             }
 
@@ -119,6 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 result.Success = false;
                 result.Error = "SyncTriggers operation failed.";
                 _logger.LogError(0, ex, result.Error);
+                _traceWriter.Error(result.Error, ex);
             }
             finally
             {
@@ -171,7 +175,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 if (await hashBlob.ExistsAsync())
                 {
                     lastHash = await hashBlob.DownloadTextAsync();
-                    _logger.LogDebug($"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')");
+                    string message = $"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')";
+                    _logger.LogDebug(message);
+                    _traceWriter.Verbose(message);
                 }
 
                 if (string.Compare(currentHash, lastHash) != 0)
@@ -184,7 +190,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception ex)
             {
                 // best effort
-                _logger.LogError(0, ex, "Error checking SyncTriggers hash");
+                string error = "Error checking SyncTriggers hash";
+                _logger.LogError(0, ex, error);
+                _traceWriter.Error(error, ex);
             }
 
             // if the last and current hash values are the same,
@@ -199,12 +207,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // hash value has changed or was not yet stored
                 // update the last hash value in storage
                 await hashBlob.UploadTextAsync(hash);
-                _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
+                string message = $"SyncTriggers hash updated to '{hash}'";
+                _logger.LogDebug(message);
+                _traceWriter.Verbose(message);
             }
             catch (Exception ex)
             {
                 // best effort
-                _logger.LogError(0, ex, "Error updating SyncTriggers hash");
+                string error = "Error updating SyncTriggers hash";
+                _logger.LogError(0, ex, error);
+                _traceWriter.Error(error, ex);
             }
         }
 
@@ -298,7 +310,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
-                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
+                string warning = $"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.";
+                _logger.LogWarning(warning);
+                _traceWriter.Warning(warning);
                 return JsonConvert.SerializeObject(triggersArray);
             }
 
@@ -428,18 +442,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add("x-ms-site-restricted-token", token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
-                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+                string message = $"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).";
+                _logger.LogDebug(message);
+                _traceWriter.Verbose(message);
 
                 var response = await _httpClient.SendAsync(request);
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug($"SyncTriggers call succeeded.");
+                    message = $"SyncTriggers call succeeded.";
+                    _logger.LogDebug(message);
+                    _traceWriter.Verbose(message);
                     return (true, null);
                 }
                 else
                 {
-                    string message = $"SyncTriggers call failed (StatusCode={response.StatusCode}).";
+                    message = $"SyncTriggers call failed (StatusCode={response.StatusCode}).";
                     _logger.LogDebug(message);
+                    _traceWriter.Verbose(message);
                     return (false, message);
                 }
             }
