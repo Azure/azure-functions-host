@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal(eventLevel, LinuxEventGenerator.ToEventLevel(logLevel));
         }
 
-        [Theory]
+        [Theory(Skip = "https://github.com/Azure/azure-functions-host/issues/5636")]
         [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitorEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
         public void ParseAzureMonitoringEvents(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
