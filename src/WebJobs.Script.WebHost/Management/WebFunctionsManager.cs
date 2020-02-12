@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         /// <param name="function">Function to be deleted</param>
         /// <returns>(success, errorMessage)</returns>
-        public (bool, string) TryDeleteFunction(FunctionMetadataResponse function)
+        public async Task<(bool, string)> TryDeleteFunction(FunctionMetadataResponse function)
         {
             try
             {
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 DeleteFunctionArtifacts(function);
 
-                _functionsSyncManager.TrySyncTriggersAsync();
+                await _functionsSyncManager.TrySyncTriggersAsync();
 
                 return (true, string.Empty);
             }
