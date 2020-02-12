@@ -11,10 +11,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +20,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -140,39 +137,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             string prefix = await WebFunctionsManager.GetRoutePrefix(_testRootScriptPath);
             Assert.Equal(expected, prefix);
-        }
-
-        [Fact]
-        public void GetFunctionInvokeUrlTemplate_ReturnsExpectedResult()
-        {
-            string baseUrl = "https://localhost";
-            var functionMetadata = new FunctionMetadata
-            {
-                Name = "TestFunction"
-            };
-            var httpTriggerBinding = new BindingMetadata
-            {
-                Name = "req",
-                Type = "httpTrigger",
-                Direction = BindingDirection.In,
-                Raw = new JObject()
-            };
-            functionMetadata.Bindings.Add(httpTriggerBinding);
-            var uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
-            Assert.Equal("https://localhost/api/testfunction", uri.ToString());
-
-            // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
-            Assert.Equal("https://localhost/testfunction", uri.ToString());
-
-            // with a custom route
-            httpTriggerBinding.Raw.Add("route", "catalog/products/{category:alpha?}/{id:int?}");
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
-            Assert.Equal("https://localhost/api/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
-
-            // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
-            Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
         }
 
         [Theory]
