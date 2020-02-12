@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost, IScriptJobHost
     {
         internal const int DebugModeTimeoutMinutes = 15;
+        private const int FileSystemCleanupDelay = 30;
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IProxyMetadataManager _proxyMetadataManager;
@@ -91,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
+            IFileLoggingStatusManager fileLoggingStatusManager,
             IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -116,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
+            _fileLoggingStatusManager = fileLoggingStatusManager;
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
@@ -296,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 GenerateFunctions(directTypes);
 
-                CleanupFileSystem();
+                ScheduleFileSystemCleanup();
             }
         }
 
@@ -445,7 +449,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void InitializeFileSystem()
         {
-            FileUtility.EnsureDirectoryExists(_hostLogPath);
+            if (_fileLoggingStatusManager.IsFileLoggingEnabled)
+            {
+                FileUtility.EnsureDirectoryExists(_hostLogPath);
+            }
 
             if (!_environment.IsFileSystemReadOnly())
             {
@@ -521,14 +528,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Clean up any old files or directories.
         /// </summary>
-        private void CleanupFileSystem()
+        private void ScheduleFileSystemCleanup()
         {
-            if (ScriptOptions.FileLoggingMode != FileLoggingMode.Never)
+            Utility.ExecuteAfterDelay(() =>
             {
-                // initiate the cleanup in a background task so we don't
-                // delay startup
-                Task.Run(() => PurgeOldLogDirectories());
-            }
+                if (ScriptOptions.FileLoggingMode != FileLoggingMode.Never)
+                {
+                    PurgeOldLogDirectories();
+                }
+            }, TimeSpan.FromSeconds(FileSystemCleanupDelay));
         }
 
         /// <summary>

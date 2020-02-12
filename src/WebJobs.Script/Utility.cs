@@ -681,6 +681,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
+        public static void ExecuteAfterDelay(Action targetAction, TimeSpan delay, CancellationToken cancellationToken = default)
+        {
+            Task.Delay(delay, cancellationToken).ContinueWith(_ =>
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    targetAction();
+                }
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+        }
+
         public static bool TryCleanUrl(string url, out string cleaned)
         {
             cleaned = null;
