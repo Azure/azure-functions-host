@@ -135,7 +135,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             lock (_stopWatchersLock)
             {
-                // We need this duplication to avoid race if watchers were stopped just when we acquired the lock
                 if (!_watchersStopped)
                 {
                     _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
@@ -160,7 +159,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             lock (_stopWatchersLock)
             {
-                // We need this duplication to avoid race if watchers were stopped just when we acquired the lock
                 if (_watchersStopped)
                 {
                     return;
