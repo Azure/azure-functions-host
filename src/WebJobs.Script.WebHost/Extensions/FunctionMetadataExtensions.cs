@@ -77,14 +77,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             // Read function.json as a JObject
             var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
 
-            // Find the trigger and add functionName to it
-            foreach (JObject binding in (JArray)functionConfig["bindings"])
+            if (functionConfig.TryGetValue("bindings", out JToken value) &&
+                value is JArray)
             {
-                var type = (string)binding["type"];
-                if (type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                // Find the trigger and add functionName to it
+                foreach (JObject binding in (JArray)value)
                 {
-                    binding.Add("functionName", functionMetadata.Name);
-                    return binding;
+                    var type = (string)binding["type"];
+                    if (type != null && type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                    {
+                        binding.Add("functionName", functionMetadata.Name);
+                        return binding;
+                    }
                 }
             }
 
