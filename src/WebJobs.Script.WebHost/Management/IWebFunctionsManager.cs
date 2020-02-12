@@ -16,6 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         Task<(bool, bool, FunctionMetadataResponse)> CreateOrUpdate(string name, FunctionMetadataResponse functionMetadata, HttpRequest request);
 
-        (bool, string) TryDeleteFunction(FunctionMetadataResponse function);
+        Task<(bool, string)> TryDeleteFunction(FunctionMetadataResponse function);
     }
 }
