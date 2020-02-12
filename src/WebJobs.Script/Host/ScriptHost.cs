@@ -278,20 +278,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    string runtimeStack = _workerRuntime;
-
-                    if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName)))
-                    {
-                        // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
-                        // Windows Consumption as well.
-                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-
-                        if (!string.IsNullOrEmpty(runtimeVersion))
-                        {
-                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
-                        }
-                    }
-
+                    // Appending the runtime version is currently only enabled for linux consumption.
+                    // This will be eventually enabled for Windows Consumption as well.
+                    string runtimeStack = GetPreciseRuntimeStack(_workerRuntime);
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
                 }
 
@@ -305,6 +294,35 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 ScheduleFileSystemCleanup();
             }
+        }
+
+        /// <summary>
+        /// Appends specific functions worker runtime version after runtime stack
+        /// </summary>
+        /// <returns>A string contains specific runtime stack (e.g. python-3.6, dotnet-~2) or single stack</returns>
+        private string GetPreciseRuntimeStack(string runtime)
+        {
+            string runtimeStack = runtime?.ToLower() ?? string.Empty;
+            string preciseRuntime = string.Empty;
+            switch (runtimeStack)
+            {
+                case "dotnet":
+                    // Get Dotnet version from FUNCTIONS_EXTENSION_VERSION
+                    preciseRuntime = $"dotnet-{_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)}";
+                    break;
+                case "node":
+                    // Get Node version from WEBSITE_NODE_DEFAULT_VERSION
+                    preciseRuntime = $"node-{_environment.GetEnvironmentVariable(EnvironmentSettingNames.WebsiteNodeDefaultVersion)}";
+                    break;
+                case "python":
+                    preciseRuntime = $"python-{_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName)}";
+                    break;
+                default:
+                    // PowerShell, Java only has single version
+                    preciseRuntime = runtimeStack;
+                    break;
+            }
+            return preciseRuntime.TrimEnd('-');
         }
 
         private async Task LogInitializationAsync()

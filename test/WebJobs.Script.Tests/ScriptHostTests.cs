@@ -435,19 +435,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("dotnet", "", "", "dotnet")]
-        [InlineData("dotnet", "", "~2", "dotnet-~2")]
-        [InlineData("python", "~2", "", "python")]
-        [InlineData("python", "~2", "3.6", "python-3.6")]
-        [InlineData("python", "~3", "3.7", "python-3.7")]
-        [InlineData("node", "~3", "~8", "node-~8")]
-        [InlineData("node", "~2", "~8", "node-~8")]
-        [InlineData("powershell", "~2", "", "powershell")]
-        [InlineData("powershell", "~2", "~7", "powershell-~7")]
-        [InlineData("java", "~3", "", "java")]
+        [InlineData("dotnet", "", "", "", "dotnet")]
+        [InlineData("dotnet", "~2", "", "", "dotnet-~2")]
+        [InlineData("python", "~2", "", "", "python")]
+        [InlineData("python", "~2", "", "3.6", "python-3.6")]
+        [InlineData("python", "~3", "~8", "3.7", "python-3.7")]
+        [InlineData("node", "~3", "", "3.6", "node")]
+        [InlineData("node", "~2", "~8", "3.6", "node-~8")]
+        [InlineData("powershell", "~2", "", "", "powershell")]
+        [InlineData("powershell", "~2", "~10", "3.6", "powershell")]
+        [InlineData("java", "~3", "", "", "java")]
+        [InlineData("java", "~3", "~8", "3.6", "java")]
         public async Task Initialize_WithRuntimeAndWorkerVersion_ReportRuntimeToMetricsTable(
             string functionsWorkerRuntime,
             string functionsExtensionVersion,
+            string websiteNodeDefaultVersion,
             string functionsWorkerRuntimeVersion,
             string expectedRuntimeStack)
         {
@@ -464,6 +466,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                         RpcWorkerConstants.FunctionWorkerRuntimeSettingName, functionsWorkerRuntime);
                     environment.SetEnvironmentVariable(
                         EnvironmentSettingNames.FunctionsExtensionVersion, functionsExtensionVersion);
+                    environment.SetEnvironmentVariable(
+                        EnvironmentSettingNames.WebsiteNodeDefaultVersion, websiteNodeDefaultVersion);
                     environment.SetEnvironmentVariable(
                         RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, functionsWorkerRuntimeVersion);
 
