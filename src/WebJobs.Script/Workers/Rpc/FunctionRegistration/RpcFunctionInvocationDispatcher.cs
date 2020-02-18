@@ -332,8 +332,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
+                // Set state to "Recovering" if there are no other workers to handle work
+                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
+                {
+                    State = FunctionInvocationDispatcherState.Recovering;
+                    _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
+                }
+                // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
+                State = FunctionInvocationDispatcherState.Initialized;
+                _logger.LogDebug("Restarted worker channel for runtime:{runtime}", runtime);
             }
             else
             {
@@ -393,6 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Dispose()
         {
             _disposing = true;
+            State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
     }

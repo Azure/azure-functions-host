@@ -20,6 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// invocations. All functions have been indexed. Listeners may not yet
         /// be not yet running.
         /// </summary>
-        Initialized
+        Initialized,
+
+        /// <summary>
+        /// The FunctionDispatcherState was fully initialized but has enconutered an error and is restarting
+        /// </summary>
+        Recovering,
+
+        /// <summary>
+        /// The FunctionDispatcherState is disposing
+        /// </summary>
+        Disposing
     }
 }
