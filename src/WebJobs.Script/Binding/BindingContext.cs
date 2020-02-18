@@ -3,7 +3,7 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {

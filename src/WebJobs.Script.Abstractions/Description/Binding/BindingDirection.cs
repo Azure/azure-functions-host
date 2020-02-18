@@ -1,12 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Text;
-
-namespace Microsoft.Azure.WebJobs.Script
+namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
 {
-    public interface IProxyMetadataManager
+    public enum BindingDirection
     {
-        ProxyMetadataInfo ProxyMetadata { get; }
+        In,
+        Out,
+        InOut
     }
 }

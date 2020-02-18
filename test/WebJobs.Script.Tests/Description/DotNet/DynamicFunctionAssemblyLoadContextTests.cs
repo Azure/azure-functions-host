@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
                 File.Copy(originalLocation, targetAssemblyLocation);
 
                 var metadata1Directory = @"c:\testroot\test1";
-                var metadata1 = new WebJobs.Script.Description.FunctionMetadata { Name = "Test1", ScriptFile = $@"{metadata1Directory}\test.tst" };
+                var metadata1 = new Abstractions.Description.FunctionMetadata { Name = "Test1", ScriptFile = $@"{metadata1Directory}\test.tst" };
 
                 var mockResolver = new Mock<IFunctionMetadataResolver>();
 
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         {
             private readonly FunctionAssemblyLoadContext _sharedContext;
 
-            public TestDynamicAssemblyLoadContext(WebJobs.Script.Description.FunctionMetadata functionMetadata,
+            public TestDynamicAssemblyLoadContext(Abstractions.Description.FunctionMetadata functionMetadata,
                 IFunctionMetadataResolver resolver, ILogger logger, FunctionAssemblyLoadContext sharedContext)
                 : base(functionMetadata, resolver, logger)
             {

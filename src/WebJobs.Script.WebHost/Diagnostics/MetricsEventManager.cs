@@ -8,8 +8,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
                     function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
                     function.Metadata.Language,
-                    function.Metadata != null ? function.Metadata.IsDisabled : false);
+                    function.Metadata != null ? function.Metadata.IsDisabled() : false);
             }
         }
 

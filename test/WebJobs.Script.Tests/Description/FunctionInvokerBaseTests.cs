@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -223,10 +224,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 : base(host, metadata, loggerFactory)
             {
                 var metadataManagerMock = new Mock<IFunctionMetadataManager>();
-                metadataManagerMock.Setup(m => m.Functions)
+                metadataManagerMock.Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>()))
                     .Returns(new[] { metadata }.ToImmutableArray());
-                var proxyMetadataManagerMock = new Mock<IProxyMetadataManager>();
-                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, proxyMetadataManagerMock.Object, metrics);
+                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, metrics);
             }
 
             protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
@@ -282,7 +282,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableDictionary<string, ImmutableArray<string>> Errors =>
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
-            public ImmutableArray<FunctionMetadata> Functions => _functions.ToImmutableArray();
+            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyWhitelist = true)
+            {
+                return _functions.ToImmutableArray();
+            }
         }
     }
 }

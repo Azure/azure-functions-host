@@ -17,7 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Abstractions.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {

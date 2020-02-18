@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -14,13 +15,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal sealed class ProxyFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
-        private ProxyClientExecutor _proxyClient;
 
         public ProxyFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory)
             : base(host, config, bindingProviders)
         {
-            _proxyClient = proxyClient;
             _loggerFactory = loggerFactory;
         }
 
@@ -31,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("functionMetadata");
             }
 
-            if (functionMetadata.IsProxy)
+            if (functionMetadata.IsProxy())
             {
                 return base.TryCreate(functionMetadata);
             }
@@ -41,7 +40,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new ProxyFunctionInvoker(Host, functionMetadata, _proxyClient, _loggerFactory);
+            if (!(functionMetadata is ProxyFunctionMetadata proxyFunctionMetada))
+            {
+                throw new InvalidCastException($"Expected {nameof(functionMetadata)} to be of type {nameof(ProxyFunctionMetadata)}");
+            }
+            return new ProxyFunctionInvoker(Host, proxyFunctionMetada, _loggerFactory);
         }
     }
 }

@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var isDirectValue = isDirect.ToString();
                 if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
                 {
-                    functionMetadata.IsDirect = true;
+                    functionMetadata.SetIsDirect(true);
                 }
                 else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
                 {

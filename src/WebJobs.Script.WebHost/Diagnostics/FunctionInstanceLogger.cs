@@ -10,6 +10,7 @@ using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -23,18 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const string Key = "metadata";
 
         private readonly ILogWriter _writer;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
 
         public FunctionInstanceLogger(
             IFunctionMetadataManager metadataManager,
-            IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metrics,
             IHostIdProvider hostIdProvider,
             IConfiguration configuration,
             ILoggerFactory loggerFactory)
-            : this(metadataManager, proxyMetadataManager, metrics)
+            : this(metadataManager, metrics)
         {
             if (hostIdProvider == null)
             {
@@ -66,10 +65,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal FunctionInstanceLogger(IFunctionMetadataManager metadataManager, IProxyMetadataManager proxyMetadataManager, IMetricsLogger metrics)
+        internal FunctionInstanceLogger(IFunctionMetadataManager metadataManager, IMetricsLogger metrics)
         {
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-            _proxyMetadataManager = proxyMetadataManager ?? throw new ArgumentNullException(nameof(proxyMetadataManager));
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
         }
 
@@ -129,8 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));
             }
 
-            return GetMetadataFromCollection(_metadataManager.Functions)
-                ?? GetMetadataFromCollection(_proxyMetadataManager.ProxyMetadata.Functions);
+            return GetMetadataFromCollection(_metadataManager.GetFunctionMetadata());
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))

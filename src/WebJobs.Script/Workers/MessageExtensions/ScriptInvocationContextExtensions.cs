@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             InvocationRequest invocationRequest = new InvocationRequest()
             {
-                FunctionId = context.FunctionMetadata.FunctionId,
+                FunctionId = context.FunctionMetadata.GetFunctionId(),
                 InvocationId = context.ExecutionContext.InvocationId.ToString(),
                 TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes, logger),
             };

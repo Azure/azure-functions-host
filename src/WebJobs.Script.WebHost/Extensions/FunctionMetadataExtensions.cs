@@ -5,7 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Newtonsoft.Json.Linq;
@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 Config = await GetFunctionConfig(functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
-                IsDirect = functionMetadata.IsDirect,
-                IsDisabled = functionMetadata.IsDisabled,
-                IsProxy = functionMetadata.IsProxy,
+                IsDirect = functionMetadata.IsDirect(),
+                IsDisabled = functionMetadata.IsDisabled(),
+                IsProxy = functionMetadata.IsProxy(),
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };

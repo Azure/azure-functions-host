@@ -8,7 +8,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -28,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostNameProvider _hostNameProvider;
-        private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
 
-        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
+        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -39,13 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _secretManagerProvider = secretManagerProvider;
             _functionsSyncManager = functionsSyncManager;
             _hostNameProvider = hostNameProvider;
-            _functionMetadataProvider = functionMetadataProvider;
+            _functionMetadataManager = functionMetadataManager;
         }
 
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = GetFunctionsMetadata(hostOptions, _logger, includeProxies);
+            var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
             return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
         }
@@ -59,22 +60,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return await tasks.WhenAll();
         }
 
-        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(ScriptJobHostOptions hostOptions, ILogger logger, bool includeProxies = false)
+        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies, bool forceRefresh)
         {
-            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataProvider.GetFunctionMetadata();
+            Func<FunctionMetadata, bool> filterPredicate;
 
-            if (includeProxies)
+            if (!includeProxies)
             {
-                // get proxies metadata
-                var values = ProxyMetadataManager.ReadProxyMetadata(hostOptions.RootScriptPath, logger);
-                var proxyFunctionsMetadata = values.Item1;
-                if (proxyFunctionsMetadata?.Count > 0)
-                {
-                    functionsMetadata = proxyFunctionsMetadata.Concat(functionsMetadata);
-                }
+                // Remove all codeless metadata (includes proxies)
+                filterPredicate = m => !m.IsCodeless();
+            }
+            else
+            {
+                // Allow either proxies or non codeless functions
+                filterPredicate = m => m.IsProxy() || !m.IsCodeless();
             }
 
-            return functionsMetadata;
+            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, applyWhitelist: false).Where(filterPredicate);
         }
 
         /// <summary>
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             string newConfig = null;
             string configPath = Path.Combine(functionDir, ScriptConstants.FunctionMetadataFileName);
-            string dataFilePath = FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
+            string dataFilePath = Extensions.FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
 
             // If files are included, write them out
             if (functionMetadata?.Files != null)
@@ -164,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata(true)
+            var functionMetadata = GetFunctionsMetadata(includeProxies: false, forceRefresh: true)
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
             if (functionMetadata != null)

@@ -10,8 +10,10 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
@@ -20,7 +22,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class ProxyMetadataManager : IProxyMetadataManager, IDisposable
+    public class ProxyFunctionProvider : IFunctionProvider, IDisposable
     {
         private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
@@ -28,15 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly IDisposable _fileChangeSubscription;
-        private Lazy<ProxyMetadataInfo> _metadata;
+        private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
+        private Lazy<ImmutableArray<FunctionMetadata>> _metadata;
         private bool _disposed = false;
 
-        public ProxyMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IEnvironment environment, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
+        public ProxyFunctionProvider(IOptions<ScriptJobHostOptions> scriptOptions, IEnvironment environment, IScriptEventManager eventManager, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
+            _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
 
             _fileChangeSubscription = eventManager.OfType<FileEvent>()
                        .Where(f => string.Equals(f.Source, EventSources.ScriptFiles, StringComparison.Ordinal) &&
@@ -44,19 +47,18 @@ namespace Microsoft.Azure.WebJobs.Script
                        .Subscribe(e => HandleProxyFileChange());
         }
 
-        public ProxyMetadataInfo ProxyMetadata
+        public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+
+        public Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()
         {
-            get
+            _metadataLock.EnterReadLock();
+            try
             {
-                _metadataLock.EnterReadLock();
-                try
-                {
-                    return _metadata.Value;
-                }
-                finally
-                {
-                    _metadataLock.ExitReadLock();
-                }
+                return Task.FromResult(_metadata.Value);
+            }
+            finally
+            {
+                _metadataLock.ExitReadLock();
             }
         }
 
@@ -67,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (_metadata.IsValueCreated)
                 {
-                    _metadata = new Lazy<ProxyMetadataInfo>(LoadFunctionMetadata);
+                    _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
                 }
             }
             finally
@@ -76,22 +78,22 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private ProxyMetadataInfo LoadFunctionMetadata()
+        private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
             var functionErrors = new Dictionary<string, ICollection<string>>();
-            (Collection<FunctionMetadata> proxies, ProxyClientExecutor client) = ReadProxyMetadata(_scriptOptions.Value.RootScriptPath, _logger, functionErrors);
+            Collection<ProxyFunctionMetadata> proxies = ReadProxyMetadata(_scriptOptions.Value.RootScriptPath, _logger, functionErrors);
 
             ImmutableArray<FunctionMetadata> metadata;
             if (proxies != null && proxies.Any())
             {
-                metadata = proxies.ToImmutableArray();
+                metadata = proxies.ToImmutableArray<FunctionMetadata>();
             }
 
-            var errors = functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
-            return new ProxyMetadataInfo(metadata, errors, client);
+            _functionErrors = functionErrors;
+            return metadata;
         }
 
-        internal static (Collection<FunctionMetadata>, ProxyClientExecutor) ReadProxyMetadata(string scriptPath, ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null)
+        internal static Collection<ProxyFunctionMetadata> ReadProxyMetadata(string scriptPath, ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null)
         {
             functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
 
@@ -99,24 +101,24 @@ namespace Microsoft.Azure.WebJobs.Script
             string proxyConfigPath = Path.Combine(scriptPath, ScriptConstants.ProxyMetadataFileName);
             if (!File.Exists(proxyConfigPath))
             {
-                return (null, null);
+                return null;
             }
 
             string proxiesJson = File.ReadAllText(proxyConfigPath);
             if (!string.IsNullOrWhiteSpace(proxiesJson))
             {
                 logger.LogInformation("Loading proxies metadata");
-                var values = LoadProxyMetadata(proxiesJson, functionErrors, logger);
-                logger.LogInformation($"{values.Item1.Count} proxies loaded");
-                return values;
+                var metadataCollection = LoadProxyMetadata(proxiesJson, functionErrors, logger);
+                logger.LogInformation($"{metadataCollection.Count} proxies loaded");
+                return metadataCollection;
             }
 
-            return (null, null);
+            return null;
         }
 
-        private static (Collection<FunctionMetadata>, ProxyClientExecutor) LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors, ILogger logger)
+        private static Collection<ProxyFunctionMetadata> LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors, ILogger logger)
         {
-            var proxies = new Collection<FunctionMetadata>();
+            var proxies = new Collection<ProxyFunctionMetadata>();
             ProxyClientExecutor client = null;
 
             var rawProxyClient = ProxyClientFactory.Create(proxiesJson, logger);
@@ -127,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (client == null)
             {
-                return (proxies, null);
+                return proxies;
             }
 
             var routes = client.GetProxyData();
@@ -139,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // Proxy names should follow the same naming restrictions as in function names. If not, invalid characters will be removed.
                     var proxyName = NormalizeProxyName(route.Name);
 
-                    var proxyMetadata = new FunctionMetadata();
+                    var proxyMetadata = new ProxyFunctionMetadata(client);
 
                     var json = new JObject
                     {
@@ -156,7 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     proxyMetadata.Bindings.Add(bindingMetadata);
 
                     proxyMetadata.Name = proxyName;
-                    proxyMetadata.IsProxy = true;
                     proxies.Add(proxyMetadata);
                 }
                 catch (Exception ex)
@@ -166,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            return (proxies, client);
+            return proxies;
         }
 
         internal static string NormalizeProxyName(string name)

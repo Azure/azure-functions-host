@@ -116,6 +116,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
                {
                    webjobsBuilder.AddAzureStorage();
+
+                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                   // it needs to change the services during its lifetime.
+                   webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
                },
                o =>
                {
