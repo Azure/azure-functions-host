@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             // If the function is disabled, return 'NotFound', unless the request is being made with Admin credentials
-            if (functionExecution.Descriptor.Metadata.IsDisabled &&
+            if (functionExecution.Descriptor.Metadata.IsDisabled() &&
                 !AuthUtility.PrincipalHasAuthLevelClaim(context.User, AuthorizationLevel.Admin))
             {
                 return new NotFoundResult();
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
         {
-            if (!descriptor.Metadata.IsProxy)
+            if (!descriptor.Metadata.IsProxy())
             {
                 var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
                 AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();

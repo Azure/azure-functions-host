@@ -18,6 +18,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestConfigurationBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestEnvironment.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestEventGenerator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestFunctionMetadataManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />

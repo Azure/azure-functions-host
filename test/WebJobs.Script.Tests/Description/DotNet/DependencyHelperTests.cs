@@ -48,5 +48,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description
 
             Assert.True(match, $"Mismatched fallbacks for unknown RID");
         }
+
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("", false)]
+        [InlineData("assembly:myassembly", true)]
+        [InlineData("Assembly:myassembly", false)]
+        [InlineData("assembly", false)]
+        [InlineData("assembly:", true)]
+        public void IsSharedAssemblyFormat_Works(string formatStr, bool expected)
+        {
+            var result = DependencyHelper.IsAssemblyReferenceFormat(formatStr);
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData(null, null)]
+        [InlineData("", null)]
+        [InlineData("assembly:myassembly", "myassembly")]
+        [InlineData("Assembly:myassembly", null)]
+        [InlineData("assembly", null)]
+        [InlineData("assembly:", "")]
+        public void TryGetSharedAssembly_Works(string formatStr, string expected)
+        {
+            DependencyHelper.TryGetAssemblyReference(formatStr, out string result);
+            Assert.Equal(expected, result);
+        }
     }
 }

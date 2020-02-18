@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     function.Metadata != null ? SerializeBindings(function.Metadata.InputBindings) : GetNormalizedString(null),
                     function.Metadata != null ? SerializeBindings(function.Metadata.OutputBindings) : GetNormalizedString(null),
                     function.Metadata.Language,
-                    function.Metadata != null ? function.Metadata.IsDisabled : false);
+                    function.Metadata != null ? function.Metadata.IsDisabled() : false);
             }
         }
 

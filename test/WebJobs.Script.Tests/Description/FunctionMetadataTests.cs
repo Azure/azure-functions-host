@@ -35,14 +35,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [MemberData(nameof(HttpInAndOutFunctionMetadata))]
         public void IsSimpleHttpTriggerFunction_Returns_True(FunctionMetadata functionMetadata)
         {
-            Assert.True(functionMetadata.IsHttpInAndOutFunction);
+            Assert.True(functionMetadata.IsHttpInAndOutFunction());
         }
 
         [Theory]
         [MemberData(nameof(TestFunctionMetadata))]
         public void IsSimpleHttpTriggerFunction_Returns_False(FunctionMetadata functionMetadata)
         {
-            Assert.False(functionMetadata.IsHttpInAndOutFunction);
+            Assert.False(functionMetadata.IsHttpInAndOutFunction());
         }
 
         public static FunctionMetadata GetTestFunctionMetadata(string name, bool addHttpTriggerBinding = true, bool addQueueInput = false, bool addQueueOutput = false, bool addHttpOut = false, bool addHttpReturn = false)

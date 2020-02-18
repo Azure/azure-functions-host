@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public static class DependencyHelper
     {
+        private const string AssemblyNamePrefix = "assembly:";
         private static readonly Lazy<Dictionary<string, string[]>> _ridGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
@@ -159,6 +160,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var rids = new List<string> { fallbacks.Runtime };
             rids.AddRange(fallbacks.Fallbacks);
             return rids;
+        }
+
+        /// <summary>
+        /// Checks if the string is in assembly representation format.
+        /// </summary>
+        /// <param name="assemblyFormatString"> string representing assembly information</param>
+        /// <returns> bool if string in was in proper assembly representation format. </returns>
+        public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
+        {
+           return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
+        }
+
+        /// <summary>
+        /// Gets the Assembly name from the assembly path string, if in the expected format for an assembly reference.
+        /// </summary>
+        /// <param name="assemblyFormatString"> The assembly name string in the expected format. </param>
+        /// <returns> bool if the string was in the proper assembly format. </returns>
+        public static bool TryGetAssemblyReference(string assemblyFormatString, out string assemblyName)
+        {
+            assemblyName = null;
+
+            var isSharedAssembly = IsAssemblyReferenceFormat(assemblyFormatString);
+            if (isSharedAssembly)
+            {
+                assemblyName = assemblyFormatString.Substring(AssemblyNamePrefix.Length);
+            }
+
+            return isSharedAssembly;
         }
     }
 }

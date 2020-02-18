@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             foreach (FunctionDescriptor function in functions)
             {
-                if (function.Metadata.IsDirect)
+                if (function.Metadata.IsDirect())
                 {
                     continue;
                 }

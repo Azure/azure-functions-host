@@ -71,6 +71,7 @@ jobs:
       arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
+        **\WebJobs.Script.Abstractions.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
   - task: DotNetCoreCLI@2
@@ -191,6 +192,8 @@ jobs:
     artifact: WebJobs.Script.Performance.App${{ variables.artifactSuffix }}
   - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.Grpc.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
     artifact: Microsoft.Azure.WebJobs.Script.Grpc.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
+  - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.Abstractions.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.Abstractions.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
   - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.WebHost.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
     artifact: Microsoft.Azure.WebJobs.Script.WebHost.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
 

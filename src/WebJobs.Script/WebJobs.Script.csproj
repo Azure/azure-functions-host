@@ -81,6 +81,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
