@@ -501,7 +501,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
-        public static string GetAssemblyNameFromMetadata(Description.FunctionMetadata metadata, string suffix)
+        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
         {
             return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
@@ -626,6 +626,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static bool ContainsFunctionWithWorkerRuntime(IEnumerable<FunctionMetadata> functions, string workerRuntime)
         {
+            // Codeless is allowed for all worker runtimes
+            if (functions.Any(f => string.Equals(f.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
             if (string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 return functions.Any(f => dotNetLanguages.Any(l => l.Equals(f.Language, StringComparison.OrdinalIgnoreCase)));

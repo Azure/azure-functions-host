@@ -177,13 +177,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
-            _functions = functions;
+            var languageFunctions = new List<FunctionMetadata>();
+
             foreach (FunctionMetadata metadata in functions)
             {
-                _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
-                _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+                if (Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(metadata, _workerConfig?.Description?.Language))
+                {
+                    _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
+                    _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+                    languageFunctions.Add(metadata);
+                }
             }
             _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
+            _functions = languageFunctions;
         }
 
         public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)

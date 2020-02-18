@@ -78,6 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, ICollection<IScriptBindingProvider> bindingProviders,
             FunctionMetadata functionMetadata, ILogger logger)
         {
+            if (DependencyHelper.IsSharedAssemblyFormat(functionMetadata.ScriptFile))
+            {
+                return new NoOpFunctionMetadataResolver();
+            }
+
             return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, bindingProviders, logger);
         }
 

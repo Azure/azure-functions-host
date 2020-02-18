@@ -529,6 +529,18 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
+                AddCodelessDescriptor();
+            }
+        }
+
+        /// <summary>
+        /// Adds a DotNetFunctionDescriptorProvider to the list of descriptors if any function metadata has language set to "codeless" in it.
+        /// </summary>
+        private void AddCodelessDescriptor()
+        {
+            if (_functionMetadataManager.Functions.Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
+            {
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
         }
 

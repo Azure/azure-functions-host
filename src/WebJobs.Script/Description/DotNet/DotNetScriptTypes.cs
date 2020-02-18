@@ -5,6 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class DotNetScriptTypes
     {
+        public const string Codeless = "Codeless";
         public const string CSharp = "CSharp";
         public const string DotNetAssembly = "DotNetAssembly";
         public const string RawDotNetAssembly = "RawDotNetAssembly";
