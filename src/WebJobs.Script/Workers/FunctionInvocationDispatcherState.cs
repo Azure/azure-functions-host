@@ -11,24 +11,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Default,
 
         /// <summary>
-        /// The FunctionDispatcherState is starting.
+        /// The FunctionDispatcher is starting.
         /// </summary>
         Initializing,
 
         /// <summary>
-        /// The FunctionDispatcherState has been fully initialized and can accept direct function
+        /// The FunctionDispatcher has been fully initialized and can accept direct function
         /// invocations. All functions have been indexed. Listeners may not yet
         /// be not yet running.
         /// </summary>
         Initialized,
 
         /// <summary>
-        /// The FunctionDispatcherState was fully initialized but has enconutered an error and is restarting
+        /// The FunctionDispatcher was previously "Initialized" but no longer has any initialized
+        /// worker processes to handle function invocations.
         /// </summary>
-        Recovering,
+        WorkerProcessRestarting,
 
         /// <summary>
-        /// The FunctionDispatcherState is disposing
+        /// The FunctionDispatcher is disposing
         /// </summary>
         Disposing
     }

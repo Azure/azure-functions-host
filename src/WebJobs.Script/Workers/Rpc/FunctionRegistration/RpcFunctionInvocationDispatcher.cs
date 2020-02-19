@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Set state to "Recovering" if there are no other workers to handle work
                 if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
                 {
-                    State = FunctionInvocationDispatcherState.Recovering;
+                    State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
                     _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
                 }
                 // Restart worker channel
