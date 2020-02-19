@@ -145,6 +145,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
         {
+            return ShutdownChannelIfExistsAsync(language, workerId, null);
+        }
+
+        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception exception)
+        {
             if (string.IsNullOrEmpty(language))
             {
                 throw new ArgumentNullException(nameof(language));
@@ -164,7 +169,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             IRpcWorkerChannel workerChannel = channelTask.Result;
                             if (workerChannel != null)
                             {
-                                (channelTask.Result as IDisposable)?.Dispose();
+                                // Set exception if exists
+                                workerChannel.TryFailExecutions(exception);
+                                (workerChannel as IDisposable)?.Dispose();
                             }
                         }
                     });

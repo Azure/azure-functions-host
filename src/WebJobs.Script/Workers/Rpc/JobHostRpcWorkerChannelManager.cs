@@ -25,9 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void DisposeAndRemoveChannel(IRpcWorkerChannel channel)
         {
+            DisposeAndRemoveChannel(channel, null);
+        }
+
+        public void DisposeAndRemoveChannel(IRpcWorkerChannel channel, Exception workerException)
+        {
             if (_channels.TryRemove(channel.Id, out IRpcWorkerChannel removedChannel))
             {
                 _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+                removedChannel.TryFailExecutions(workerException);
                 (removedChannel as IDisposable)?.Dispose();
             }
         }

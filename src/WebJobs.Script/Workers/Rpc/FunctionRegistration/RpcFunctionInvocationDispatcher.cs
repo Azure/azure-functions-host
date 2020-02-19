@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
                     AddOrUpdateErrorBucket(workerError);
-                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
                 }
                 else
                 {
@@ -305,9 +305,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
+        private Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
         {
-            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
+            return DisposeAndRestartWorkerChannel(runtime, workerId, null);
+        }
+
+        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException)
+        {
+            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
             bool isJobHostChannel = false;
 
             // Dispose old worker
@@ -322,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Disposing JobHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
                     isJobHostChannel = true;
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
+                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel, workerException);
                 }
                 else
                 {
@@ -341,8 +346,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
-                // State = FunctionInvocationDispatcherState.Initialized;
-                _logger.LogDebug("Restarted worker channel for runtime:{runtime}", runtime);
+                // State is set back to "Initialized" when worker channel is up again
             }
             else
             {
