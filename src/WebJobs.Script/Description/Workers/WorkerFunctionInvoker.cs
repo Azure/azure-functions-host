@@ -90,19 +90,26 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
         {
-            if (_functionDispatcher != null && _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized)
+            // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
+            // these reasons: started in placeholder, has no functions, functions do not match set language.
+            if (_functionDispatcher == null
+                || _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized
+                || _functionDispatcher.State == FunctionInvocationDispatcherState.Default)
             {
-                _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
-                {
-                    return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
-                });
+                return;
+            }
 
-                if (result)
-                {
-                    _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
-                    _applicationLifetime.StopApplication();
-                }
+            // Delay until functionDispatcher state is "Initialized"
+            _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
+            bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
+            {
+                return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
+            });
+
+            if (result)
+            {
+                _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
+                _applicationLifetime.StopApplication();
             }
         }
 
