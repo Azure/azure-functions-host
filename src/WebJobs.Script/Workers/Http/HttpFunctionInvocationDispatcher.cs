@@ -123,9 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             // Since we only have one HTTP worker process, as soon as we dispose it, InvokeAsync will fail. Set state to
             // indicate we are not ready to receive new requests.
             State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-
             _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
-            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
             if (_httpWorkerChannel != null)
             {
                 (_httpWorkerChannel as IDisposable)?.Dispose();
