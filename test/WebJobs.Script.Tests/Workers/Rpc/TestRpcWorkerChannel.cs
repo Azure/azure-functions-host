@@ -107,5 +107,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.WhenAll(ExecutionContexts);
             ExecutionContexts.Clear();
         }
+
+        public bool TryFailExecutions(Exception workerException)
+        {
+            return true;
+        }
     }
 }

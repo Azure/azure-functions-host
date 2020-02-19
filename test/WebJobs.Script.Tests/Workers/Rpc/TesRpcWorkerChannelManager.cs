@@ -82,7 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
         }
 
-        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
+        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
+        {
+            return ShutdownChannelIfExistsAsync(language, workerId, null);
+        }
+
+        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException)
         {
             if (string.IsNullOrEmpty(language))
             {
@@ -98,6 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         if (channel != null)
                         {
                             (channel as IDisposable)?.Dispose();
+                            channel.TryFailExecutions(workerException);
                             rpcWorkerChannels.Remove(workerId);
                             return true;
                         }
@@ -113,6 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         public void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions)
+        {
+        }
+
+        public void ShutdownStandbyChannels(IEnumerable<FunctionMetadata> functions, Exception workerException)
         {
         }
 
