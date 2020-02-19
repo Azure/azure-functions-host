@@ -341,7 +341,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
-                State = FunctionInvocationDispatcherState.Initialized;
+                // State = FunctionInvocationDispatcherState.Initialized;
                 _logger.LogDebug("Restarted worker channel for runtime:{runtime}", runtime);
             }
             else

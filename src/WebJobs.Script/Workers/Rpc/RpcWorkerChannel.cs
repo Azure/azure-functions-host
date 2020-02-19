@@ -457,6 +457,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (disposing)
                 {
+                    FailExecutions();
                     _startLatencyMetric?.Dispose();
                     _startSubscription?.Dispose();
 
@@ -474,6 +475,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
                 _disposed = true;
+            }
+        }
+
+        private void FailExecutions()
+        {
+            foreach (ScriptInvocationContext currContext in _executingInvocations.Values)
+            {
+                currContext.ResultSource.TrySetException(new Exception("faill"));
             }
         }
 
