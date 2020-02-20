@@ -90,7 +90,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
         {
-            if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
+            // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
+            // these reasons: started in placeholder, has no functions, functions do not match set language.
+            bool ready = _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
+
+            if (!ready)
             {
                 _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
                 bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
