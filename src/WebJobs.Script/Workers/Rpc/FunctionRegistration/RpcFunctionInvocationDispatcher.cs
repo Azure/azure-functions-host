@@ -332,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
-                // Set state to "Recovering" if there are no other workers to handle work
+                // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
                 if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
                 {
                     State = FunctionInvocationDispatcherState.WorkerProcessRestarting;

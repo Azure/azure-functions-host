@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task FunctionDispatcher_Restarting_DelaysInvoke()
+        public async Task FunctionDispatcher_WorkerProcessRestarting_DelaysInvoke()
         {
             _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.WorkerProcessRestarting);
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
@@ -70,18 +70,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(invokeCoreTask, result);
         }
 
-        [Fact]
-        public async Task FunctionDispatcher_DelaysInvoke_Restarting_And_Disposing()
+        [Theory]
+        [InlineData(FunctionInvocationDispatcherState.Default, false)]
+        [InlineData(FunctionInvocationDispatcherState.Initializing, true)]
+        [InlineData(FunctionInvocationDispatcherState.Initialized, false)]
+        [InlineData(FunctionInvocationDispatcherState.WorkerProcessRestarting, true)]
+        [InlineData(FunctionInvocationDispatcherState.Disposing, true)]
+        [InlineData(FunctionInvocationDispatcherState.Disposed, true)]
+        public async Task FunctionDispatcher_DelaysInvoke_WhenNotReady(FunctionInvocationDispatcherState state, bool delaysExecution)
         {
-            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.WorkerProcessRestarting);
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(state);
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
-            var result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask);
-            Assert.Equal(timeoutTask, result);
-
-            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.Disposing);
-            var timeoutTask2 = Task.Delay(TimeSpan.FromSeconds(5));
-            result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask2);
-            Assert.Equal(timeoutTask2, result);
+            var invokeCoreTask = _testFunctionInvoker.InvokeCore(new object[] { }, null);
+            var result = await Task.WhenAny(invokeCoreTask, timeoutTask);
+            if (delaysExecution)
+            {
+                Assert.Equal(timeoutTask, result);
+            }
+            else
+            {
+                Assert.Equal(invokeCoreTask, result);
+            }
         }
 
         [Fact]

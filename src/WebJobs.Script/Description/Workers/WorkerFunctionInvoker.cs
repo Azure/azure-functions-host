@@ -90,12 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
         {
-            // TODO: remove this. Keeping for targeted fix
-            if (_functionDispatcher == null)
-            {
-                return;
-            }
-
             // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
             // these reasons: started in placeholder, has no functions, functions do not match set language.
             bool ready = _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;

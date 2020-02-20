@@ -16,9 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Initializing,
 
         /// <summary>
-        /// The FunctionDispatcher has been fully initialized and can accept direct function
-        /// invocations. All functions have been indexed. Listeners may not yet
-        /// be not yet running.
+        /// The FunctionDispatcher has been fully initialized and can accept function
+        /// invocations. All functions have been indexed. At least one worker process is initialized.
         /// </summary>
         Initialized,
 
