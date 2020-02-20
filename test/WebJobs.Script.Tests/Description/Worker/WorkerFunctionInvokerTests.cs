@@ -56,6 +56,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _applicationLifetime.Verify(a => a.StopApplication(), Times.Once);
         }
 
+        [Theory]
+        [InlineData(FunctionInvocationDispatcherState.Default, false)]
+        [InlineData(FunctionInvocationDispatcherState.Initializing, true)]
+        [InlineData(FunctionInvocationDispatcherState.Initialized, false)]
+        [InlineData(FunctionInvocationDispatcherState.WorkerProcessRestarting, true)]
+        [InlineData(FunctionInvocationDispatcherState.Disposing, true)]
+        [InlineData(FunctionInvocationDispatcherState.Disposed, true)]
+        public async Task FunctionDispatcher_DelaysInvoke_WhenNotReady(FunctionInvocationDispatcherState state, bool delaysExecution)
+        {
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(state);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+            var invokeCoreTask = _testFunctionInvoker.InvokeCore(new object[] { }, null);
+            var result = await Task.WhenAny(invokeCoreTask, timeoutTask);
+            if (delaysExecution)
+            {
+                Assert.Equal(timeoutTask, result);
+            }
+            else
+            {
+                Assert.Equal(invokeCoreTask, result);
+            }
+        }
+
         [Fact]
         public async Task InvokeInitialized_DoesNotCallShutdown()
         {

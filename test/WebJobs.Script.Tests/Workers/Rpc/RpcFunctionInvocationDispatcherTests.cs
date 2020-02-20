@@ -200,8 +200,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.True(functionDispatcher.State == FunctionInvocationDispatcherState.Initializing || functionDispatcher.State == FunctionInvocationDispatcherState.Initialized);
+            Assert.Equal(FunctionInvocationDispatcherState.Initializing, functionDispatcher.State);
             await WaitForFunctionDispactherStateInitialized(functionDispatcher);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+        }
+
+        [Fact]
+        public async Task FunctionDispatcherState_Transitions_From_Default_To_Initialized_To_Disposing()
+        {
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher();
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "node"
+            };
+            var functions = new List<FunctionMetadata>()
+            {
+                func1
+            };
+            await functionDispatcher.InitializeAsync(functions);
+            Assert.Equal(FunctionInvocationDispatcherState.Initializing, functionDispatcher.State);
+            await WaitForFunctionDispactherStateInitialized(functionDispatcher);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+            functionDispatcher.Dispose();
+            Assert.True(functionDispatcher == null || functionDispatcher.State == FunctionInvocationDispatcherState.Disposing || functionDispatcher.State == FunctionInvocationDispatcherState.Disposed);
         }
 
         [Fact]
@@ -223,6 +246,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             }
             Assert.Equal(expectedProcessCount, finalChannelCount);
+        }
+
+        [Fact]
+        public async Task FunctionDispatcher_Restart_ErroredChannels_And_Changes_State()
+        {
+            int expectedProcessCount = 1;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
+            // Add worker
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            TestRpcWorkerChannel testWorkerChannel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            // Restart this channel
+            testWorkerChannel.RaiseWorkerRestart();
+            await TestHelpers.Await(() =>
+            {
+                return functionDispatcher.State == FunctionInvocationDispatcherState.WorkerProcessRestarting;
+            }, 3000);
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+        }
+
+        [Fact]
+        public async Task FunctionDispatcher_Restart_ErroredChannels_And_DoesNot_Change_State()
+        {
+            int expectedProcessCount = 2;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
+            // Add worker
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            TestRpcWorkerChannel testWorkerChannel = (TestRpcWorkerChannel)functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            // Restart one channel
+            testWorkerChannel.RaiseWorkerRestart();
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
         }
 
         [Fact]
