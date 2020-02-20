@@ -19,6 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public static DotNetCompilationResult FromPath(string assemblyPath)
             => new PathCompilationResult(assemblyPath);
 
+        public static DotNetCompilationResult FromAssemblyName(string assemblyName)
+            => new AssemblyReferenceCompilationResult(assemblyName);
+
         public abstract Assembly Load(FunctionMetadata metadata, IFunctionMetadataResolver metadataResolver, ILogger logger);
 
         private sealed class BinaryCompilationResult : DotNetCompilationResult
@@ -84,6 +87,24 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             public override Assembly Load(FunctionMetadata metadata, IFunctionMetadataResolver metadataResolver, ILogger logger)
                 => FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(AssemblyPath, true);
+        }
+
+        private sealed class AssemblyReferenceCompilationResult : DotNetCompilationResult
+        {
+            public AssemblyReferenceCompilationResult(string assemblyName)
+            {
+                if (string.IsNullOrWhiteSpace(assemblyName))
+                {
+                    throw new ArgumentException("Invalid assembly name string", nameof(assemblyName));
+                }
+
+                AssemblyName = assemblyName;
+            }
+
+            public string AssemblyName { get; }
+
+            public override Assembly Load(FunctionMetadata metadata, IFunctionMetadataResolver metadataResolver, ILogger logger)
+                => FunctionAssemblyLoadContext.Shared.LoadFromAssemblyName(new AssemblyName(AssemblyName));
         }
     }
 }
