@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (string.Equals(_workerRuntime, workerError.Language))
                 {
-                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
                     AddOrUpdateErrorBucket(workerError);
                     await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
                 }
@@ -332,8 +332,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
+                // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
+                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
+                {
+                    State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
+                    _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
+                }
+                // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
+                // State is set back to "Initialized" when worker channel is up again
             }
             else
             {
@@ -386,6 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
                 _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
+                State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
         }
@@ -393,6 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Dispose()
         {
             _disposing = true;
+            State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
     }
