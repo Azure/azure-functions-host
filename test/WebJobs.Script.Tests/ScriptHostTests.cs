@@ -15,7 +15,6 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -397,71 +396,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     var scriptHost = host.GetScriptHost();
                     await scriptHost.InitializeAsync();
                     Assert.Single(loggerProvider.GetAllLogMessages(), m => m.Level == LogLevel.Warning && m.FormattedMessage.StartsWith("Site extension version currently set to 'latest'."));
-                }
-            }
-            finally
-            {
-                EnvironmentExtensions.BaseDirectory = null;
-            }
-        }
-
-        [Theory]
-        [InlineData("dotnet", "", "", "", "dotnet")]
-        [InlineData("dotnet", "~2", "", "", "dotnet-~2")]
-        [InlineData("python", "~2", "", "", "python")]
-        [InlineData("python", "~2", "", "3.6", "python-3.6")]
-        [InlineData("python", "~3", "~8", "3.7", "python-3.7")]
-        [InlineData("node", "~3", "", "3.6", "node")]
-        [InlineData("node", "~2", "~8", "3.6", "node-~8")]
-        [InlineData("powershell", "~2", "", "", "powershell")]
-        [InlineData("powershell", "~2", "~10", "3.6", "powershell")]
-        [InlineData("java", "~3", "", "", "java")]
-        [InlineData("java", "~3", "~8", "3.6", "java")]
-        public async Task Initialize_WithRuntimeAndWorkerVersion_ReportRuntimeToMetricsTable(
-            string functionsWorkerRuntime,
-            string functionsExtensionVersion,
-            string websiteNodeDefaultVersion,
-            string functionsWorkerRuntimeVersion,
-            string expectedRuntimeStack)
-        {
-            try
-            {
-                using (var tempDirectory = new TempDirectory())
-                {
-                    string rootPath = Path.Combine(tempDirectory.Path, Guid.NewGuid().ToString());
-                    Directory.CreateDirectory(rootPath);
-                    var metricsLogger = new TestMetricsLogger();
-                    var environment = new TestEnvironment();
-
-                    environment.SetEnvironmentVariable(
-                        RpcWorkerConstants.FunctionWorkerRuntimeSettingName, functionsWorkerRuntime);
-                    environment.SetEnvironmentVariable(
-                        EnvironmentSettingNames.FunctionsExtensionVersion, functionsExtensionVersion);
-                    environment.SetEnvironmentVariable(
-                        EnvironmentSettingNames.WebsiteNodeDefaultVersion, websiteNodeDefaultVersion);
-                    environment.SetEnvironmentVariable(
-                        RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, functionsWorkerRuntimeVersion);
-
-                    IHost host = new HostBuilder()
-                        .ConfigureServices(s =>
-                        {
-                            s.AddSingleton<IEnvironment>(environment);
-                        })
-                        .ConfigureDefaultTestWebScriptHost(
-                        null,
-                        o =>
-                        {
-                            o.ScriptPath = rootPath;
-                        },
-                        false,
-                        s =>
-                        {
-                            s.AddSingleton<IMetricsLogger>(metricsLogger);
-                        })
-                        .Build();
-                    var scriptHost = host.GetScriptHost();
-                    await scriptHost.InitializeAsync();
-                    Assert.Single(metricsLogger.LoggedEvents, e => e.Equals($"host.startup.runtime.language.{expectedRuntimeStack}"));
                 }
             }
             finally
