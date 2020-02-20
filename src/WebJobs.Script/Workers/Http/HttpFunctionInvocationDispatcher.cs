@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}", workerError.WorkerId);
+                _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}. Failed with: {exception}", workerError.WorkerId, workerError.Exception);
                 AddOrUpdateErrorBucket(workerError);
                 await DisposeAndRestartWorkerChannel(workerError.WorkerId);
             }

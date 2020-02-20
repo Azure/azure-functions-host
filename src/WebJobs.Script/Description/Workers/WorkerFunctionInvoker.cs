@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
             // these reasons: started in placeholder, has no functions, functions do not match set language.
-            var ready = _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
+            bool ready = _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
 
             if (!ready)
             {

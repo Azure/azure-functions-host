@@ -284,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (string.Equals(_workerRuntime, workerError.Language))
                 {
-                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
                     AddOrUpdateErrorBucket(workerError);
                     await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
                 }
