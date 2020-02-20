@@ -57,6 +57,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task FunctionDispatcher_Restarting_DelaysInvoke()
+        {
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.WorkerProcessRestarting);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+            var result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask);
+            Assert.Equal(timeoutTask, result);
+
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.Initialized);
+            var invokeCoreTask = _testFunctionInvoker.InvokeCore(new object[] { }, null);
+            result = await Task.WhenAny(invokeCoreTask, Task.Delay(TimeSpan.FromSeconds(5)));
+            Assert.Equal(invokeCoreTask, result);
+        }
+
+        [Fact]
+        public async Task FunctionDispatcher_DelaysInvoke_Restarting_And_Disposing()
+        {
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.WorkerProcessRestarting);
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+            var result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask);
+            Assert.Equal(timeoutTask, result);
+
+            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.Disposing);
+            var timeoutTask2 = Task.Delay(TimeSpan.FromSeconds(5));
+            result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask2);
+            Assert.Equal(timeoutTask2, result);
+        }
+
+        [Fact]
         public async Task InvokeInitialized_DoesNotCallShutdown()
         {
             try

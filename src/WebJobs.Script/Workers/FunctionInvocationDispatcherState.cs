@@ -31,6 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// <summary>
         /// The FunctionDispatcher is disposing
         /// </summary>
-        Disposing
+        Disposing,
+
+        /// <summary>
+        /// The FunctionDispatcher is disposed
+        /// </summary>
+        Disposed
     }
 }

@@ -169,6 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
                 (_httpWorkerChannel as IDisposable)?.Dispose();
+                State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
         }

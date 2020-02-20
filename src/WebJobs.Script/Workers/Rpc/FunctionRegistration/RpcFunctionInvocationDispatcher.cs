@@ -394,6 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
                 _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
+                State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
         }
