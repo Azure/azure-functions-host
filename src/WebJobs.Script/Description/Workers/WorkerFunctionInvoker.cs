@@ -102,6 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!ready)
             {
+                _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
                 bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
