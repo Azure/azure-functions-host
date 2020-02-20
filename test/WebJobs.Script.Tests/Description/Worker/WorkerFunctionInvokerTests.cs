@@ -56,20 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _applicationLifetime.Verify(a => a.StopApplication(), Times.Once);
         }
 
-        [Fact]
-        public async Task FunctionDispatcher_WorkerProcessRestarting_DelaysInvoke()
-        {
-            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.WorkerProcessRestarting);
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
-            var result = await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), timeoutTask);
-            Assert.Equal(timeoutTask, result);
-
-            _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.Initialized);
-            var invokeCoreTask = _testFunctionInvoker.InvokeCore(new object[] { }, null);
-            result = await Task.WhenAny(invokeCoreTask, Task.Delay(TimeSpan.FromSeconds(5)));
-            Assert.Equal(invokeCoreTask, result);
-        }
-
         [Theory]
         [InlineData(FunctionInvocationDispatcherState.Default, false)]
         [InlineData(FunctionInvocationDispatcherState.Initializing, true)]
