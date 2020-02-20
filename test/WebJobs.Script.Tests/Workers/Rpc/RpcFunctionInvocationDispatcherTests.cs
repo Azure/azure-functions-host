@@ -220,8 +220,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 func1
             };
             await functionDispatcher.InitializeAsync(functions);
-            Assert.True(functionDispatcher.State == FunctionInvocationDispatcherState.Initializing || functionDispatcher.State == FunctionInvocationDispatcherState.Initialized);
+            Assert.Equal(FunctionInvocationDispatcherState.Initializing, functionDispatcher.State);
             await WaitForFunctionDispactherStateInitialized(functionDispatcher);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
             functionDispatcher.Dispose();
             Assert.True(functionDispatcher == null || functionDispatcher.State == FunctionInvocationDispatcherState.Disposing || functionDispatcher.State == FunctionInvocationDispatcherState.Disposed);
         }
@@ -264,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 return functionDispatcher.State == FunctionInvocationDispatcherState.WorkerProcessRestarting;
             }, 3000);
             await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-            Assert.True(functionDispatcher.State == FunctionInvocationDispatcherState.Initialized);
+            Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
         }
 
         [Fact]
