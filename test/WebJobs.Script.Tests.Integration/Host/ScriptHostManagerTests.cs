@@ -16,7 +16,7 @@
 //using Microsoft.Azure.WebJobs.Script.Scale;
 //using Microsoft.Extensions.Logging;
 //using Microsoft.WebJobs.Script.Tests;
-//using Microsoft.WindowsAzure.Storage.Blob;
+//using Microsoft.Azure.Storage.Blob;
 //using Moq;
 //using Moq.Protected;
 //using Newtonsoft.Json.Linq;

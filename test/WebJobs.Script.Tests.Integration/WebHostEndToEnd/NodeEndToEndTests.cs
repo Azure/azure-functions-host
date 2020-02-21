@@ -22,8 +22,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // write a binary queue message
             byte[] inputBytes = new byte[] { 1, 2, 3 };
-            CloudQueueMessage message = CloudQueueMessage.CreateCloudQueueMessageFromByteArray(inputBytes);
+            CloudQueueMessage message = new CloudQueueMessage(inputBytes);
             var queue = Fixture.QueueClient.GetQueueReference("test-input-byte");
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
