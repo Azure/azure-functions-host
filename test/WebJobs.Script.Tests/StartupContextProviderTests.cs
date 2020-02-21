@@ -142,6 +142,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void GetContext_ExpandsEnvironmentVariables()
+        {
+            string path = Path.Combine("%TEMP%", $"{Guid.NewGuid()}.txt");
+            WriteStartupContext(path: path);
+
+            Assert.NotNull(_startupContextProvider.Context);
+        }
+
+        [Fact]
         public void GetContext_EnvVarNotSet_ReturnsNull()
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, null);
@@ -193,9 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(_secrets.Host.System, secrets.SystemKeys);
         }
 
-        private string WriteStartupContext(string context = null)
+        private string WriteStartupContext(string context = null, string path = null)
         {
-            var path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
+            path = path ?? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");
+            path = Environment.ExpandEnvironmentVariables(path);
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, path);
 
             if (context == null)
