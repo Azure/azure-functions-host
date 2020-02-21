@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 try
                 {
+                    contextPath = Environment.ExpandEnvironmentVariables(contextPath);
                     _logger.LogDebug($"Loading startup context from {contextPath}");
                     string content = File.ReadAllText(contextPath);
 
