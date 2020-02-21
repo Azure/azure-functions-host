@@ -304,7 +304,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
-                await hashBlob.DeleteIfExistsAsync();
+                if (hashBlob != null)
+                {
+                    await hashBlob.DeleteIfExistsAsync();
+                }
 
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);
                 Assert.True(syncResult.Success);
@@ -359,7 +362,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
-                await hashBlob.DeleteIfExistsAsync();
+                if (hashBlob != null)
+                {
+                    await hashBlob.DeleteIfExistsAsync();
+                }
 
                 _mockHttpHandler.MockStatusCode = HttpStatusCode.InternalServerError;
                 var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: true);

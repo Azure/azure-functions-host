@@ -12,12 +12,12 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
 
             string result = await blob.DownloadTextAsync(Encoding.UTF8,
-                null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
+                null, new BlobRequestOptions(), new OperationContext());
 
             return result;
         }

@@ -17,12 +17,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.Cosmos.Table;
 using Moq;
 using Xunit;
+using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
+using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -129,7 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
-            TableClient = storageAccount.CreateCloudTableClient();
+
+            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+            TableClient = tableStorageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
 
@@ -240,6 +245,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, string.Empty);
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, string.Empty);
             return Task.CompletedTask;
+        }
+
+        public void AssertNoScriptHostErrors()
+        {
+            var logs = Host.GetScriptHostLogMessages();
+            var errors = logs.Where(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error).ToList();
+            if (errors.Count > 0)
+            {
+                var messageBuilder = new StringBuilder();
+
+                foreach (var e in errors)
+                    messageBuilder.AppendLine(e.FormattedMessage);
+
+                Assert.True(errors.Count == 0, messageBuilder.ToString());
+            }
         }
 
         private class TestExtensionBundleManager : IExtensionBundleManager

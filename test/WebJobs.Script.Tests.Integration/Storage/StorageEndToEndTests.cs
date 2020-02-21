@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage.Queue;
 using Xunit;
+using System.Text;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
@@ -21,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Fact]
         public async Task QueueTriggerToBlobRich()
         {
-            var logs = _fixture.Host.GetScriptHostLogMessages();
+            _fixture.AssertNoScriptHostErrors();               
 
             string id = Guid.NewGuid().ToString();
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.Storage",
-                        Version = "3.0.10"
+                        Version = "4.0.0-dev637091944077950638"
                     }
                 };
             }
@@ -67,11 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
     }
 
 
-    public class StorageV9EndToEndTests : IClassFixture<StorageV9EndToEndTests.StorageReferenceTestFixture>
+    public class NoExplicitStorageReferenceEndToEndTests : IClassFixture<NoExplicitStorageReferenceEndToEndTests.NoStorageReferenceTestFixture>
     {
         private EndToEndTestFixture _fixture;
 
-        public StorageV9EndToEndTests(StorageReferenceTestFixture fixture)
+        public NoExplicitStorageReferenceEndToEndTests(NoStorageReferenceTestFixture fixture)
         {
             _fixture = fixture;
         }
@@ -80,7 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         public async Task CanUseStorageV9Types()
         {
             // The point of this test is to verify back compat behavior that a user can still #r and use storage v9 types in CSX, 
-            // regardless of whether the storage extension installed (and of what version)
+            // even if storage extension is not installed 
+
+            _fixture.AssertNoScriptHostErrors();
 
             string testData = Guid.NewGuid().ToString();
 
@@ -94,9 +98,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             }, userMessageCallback: _fixture.Host.GetLog);
         }
 
-        public class StorageReferenceTestFixture : EndToEndTestFixture
+        [Fact]
+        public async Task CanUseStorageV11Types()
         {
-            public StorageReferenceTestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
+            // The point of this test is to verify back compat behavior that a user can still #r and use storage v11 types in CSX, 
+            // even if storage extension is not installed 
+
+            _fixture.AssertNoScriptHostErrors();
+
+            string testData = Guid.NewGuid().ToString();
+
+            await _fixture.Host.BeginFunctionAsync("StorageReferenceV11", testData);
+
+            await TestHelpers.Await(() =>
+            {
+                // make sure the function executed successfully
+                var logs = _fixture.Host.GetScriptHostLogMessages();
+                return logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
+            }, userMessageCallback: _fixture.Host.GetLog);
+        }
+
+        public class NoStorageReferenceTestFixture : EndToEndTestFixture
+        {
+            public NoStorageReferenceTestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
             }
 
@@ -115,9 +139,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     o.Functions = new[]
                     {
                         "StorageReferenceV9",
+                        "StorageReferenceV11"
                     };
                 });
             }
         }
-    }
+    }  
 }
