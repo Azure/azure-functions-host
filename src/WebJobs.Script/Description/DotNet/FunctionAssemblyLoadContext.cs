@@ -154,8 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(runtimeAssembly);
 
-            return requestedAssembly.Version.Major == runtimeAssemblyName.Version.Major &&
-                requestedAssembly.Version.Minor <= runtimeAssemblyName.Version.Minor;
+            return requestedAssembly.Version == null || (requestedAssembly.Version.Major == runtimeAssemblyName.Version.Major &&
+                requestedAssembly.Version.Minor <= runtimeAssemblyName.Version.Minor);
         }
 
         private bool IsRuntimeAssembly(AssemblyName assemblyName)
