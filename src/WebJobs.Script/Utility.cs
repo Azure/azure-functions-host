@@ -44,6 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
+        public static int ColdStartDelayMS { get; set; } = 5000;
+
         /// <summary>
         /// Walk from the method up to the containing type, looking for an instance
         /// of the specified attribute type, returning it if found.
@@ -690,6 +692,19 @@ namespace Microsoft.Azure.WebJobs.Script
                     targetAction();
                 }
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
+        }
+
+        public static void ExecuteAfterColdStartDelay(IEnvironment environment, Action targetAction, CancellationToken cancellationToken = default)
+        {
+            // for Dynamic SKUs where coldstart is important, we want to delay the action
+            if (environment.IsDynamicSku())
+            {
+                ExecuteAfterDelay(targetAction, TimeSpan.FromMilliseconds(ColdStartDelayMS), cancellationToken);
+            }
+            else
+            {
+                targetAction();
+            }
         }
 
         public static bool TryCleanUrl(string url, out string cleaned)

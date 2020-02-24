@@ -20,17 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
-        private readonly CloudBlobContainer _blobContainer;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnectionString;
+        private CloudBlobContainer _blobContainer;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName)
-            : this(secretSentinelDirectoryPath, accountConnectionString, siteSlotName, null)
-        {
-        }
-
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName, ILogger logger)
-            : base(secretSentinelDirectoryPath, logger)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName, ILogger logger, IEnvironment environment)
+            : base(secretSentinelDirectoryPath, logger, environment)
         {
             if (secretSentinelDirectoryPath == null)
             {
@@ -47,9 +42,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
-
             _accountConnectionString = accountConnectionString;
-            _blobContainer = CreateBlobContainer(_accountConnectionString);
+        }
+
+        private CloudBlobContainer Container
+        {
+            get
+            {
+                if (_blobContainer == null)
+                {
+                    _blobContainer = CreateBlobContainer(_accountConnectionString);
+                }
+                return _blobContainer;
+            }
         }
 
         public override bool IsEncryptionSupported
@@ -62,12 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual CloudBlobContainer CreateBlobContainer(string connectionString)
         {
-            CloudStorageAccount account = CloudStorageAccount.Parse(_accountConnectionString);
-            CloudBlobClient client = account.CreateCloudBlobClient();
-            CloudBlobContainer container = client.GetContainerReference(_secretsContainerName);
+            var account = CloudStorageAccount.Parse(connectionString);
+            var client = account.CreateCloudBlobClient();
+            var container = client.GetContainerReference(_secretsContainerName);
 
-            // TODO: Remove this (it is already slated to be removed)
-            container.CreateIfNotExistsAsync().GetAwaiter().GetResult();
+            container.CreateIfNotExists();
 
             return container;
         }
@@ -78,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string blobPath = GetSecretsBlobPath(type, functionName);
             try
             {
-                CloudBlockBlob secretBlob = _blobContainer.GetBlockBlobReference(blobPath);
+                CloudBlockBlob secretBlob = Container.GetBlockBlobReference(blobPath);
                 if (await secretBlob.ExistsAsync())
                 {
                     secretsContent = await secretBlob.DownloadTextAsync();
@@ -150,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             BlobResultSegment segmentResult;
             try
             {
-                segmentResult = await _blobContainer.ListBlobsSegmentedAsync(string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()), null);
+                segmentResult = await Container.ListBlobsSegmentedAsync(string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()), null);
             }
             catch (Exception e)
             {
@@ -169,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task WriteToBlobAsync(string blobPath, string secretsContent)
         {
-            CloudBlockBlob secretBlob = _blobContainer.GetBlockBlobReference(blobPath);
+            CloudBlockBlob secretBlob = Container.GetBlockBlobReference(blobPath);
             using (StreamWriter writer = new StreamWriter(await secretBlob.OpenWriteAsync()))
             {
                 await writer.WriteAsync(secretsContent);
