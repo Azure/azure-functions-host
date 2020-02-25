@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task StartWorkerProcessAsync()
         {
             // To verify FunctionDispatcher transistions
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
 
             if (_throwOnProcessStartUp)
             {

@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}", workerError.WorkerId);
+                _logger.LogDebug("Handling WorkerErrorEvent for workerId:{workerId}. Failed with: {exception}", workerError.WorkerId, workerError.Exception);
                 AddOrUpdateErrorBucket(workerError);
                 await DisposeAndRestartWorkerChannel(workerError.WorkerId);
             }
@@ -120,6 +120,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private async Task DisposeAndRestartWorkerChannel(string workerId)
         {
+            // Since we only have one HTTP worker process, as soon as we dispose it, InvokeAsync will fail. Set state to
+            // indicate we are not ready to receive new requests.
+            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
             _logger.LogDebug("Disposing channel for workerId: {channelId}", workerId);
             if (_httpWorkerChannel != null)
             {
@@ -166,6 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _workerErrorSubscription.Dispose();
                 _workerRestartSubscription.Dispose();
                 (_httpWorkerChannel as IDisposable)?.Dispose();
+                State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
         }
@@ -173,6 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public void Dispose()
         {
             _disposing = true;
+            State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
 

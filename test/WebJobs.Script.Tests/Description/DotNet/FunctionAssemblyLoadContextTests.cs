@@ -28,8 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("Microsoft.Azure.WebJobs.Script, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Script.Grpc, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Script.WebHost, Version=3.0.0.0")]
-        [InlineData("Microsoft.Azure.WebSites.DataProtection, Version=0.0.0.0")]
-        [InlineData("System.IO, Version=0.0.0.0")] // System.*
+        [InlineData("Microsoft.Azure.WebSites.DataProtection")]
+        [InlineData("System.IO")] // System.*
         public void RuntimeAssemblies_AreLoadedInDefaultContext(string assemblyName)
         {
             var functionContext = new FunctionAssemblyLoadContext(AppContext.BaseDirectory);
