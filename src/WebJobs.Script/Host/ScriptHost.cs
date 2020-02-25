@@ -280,13 +280,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     string runtimeStack = _workerRuntime;
 
-                    // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
-                    // Windows Consumption as well.
-                    string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-
-                    if (!string.IsNullOrEmpty(runtimeVersion))
+                    if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName)))
                     {
-                        runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                        // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
+                        // Windows Consumption as well.
+                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+
+                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        {
+                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                        }
                     }
 
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
