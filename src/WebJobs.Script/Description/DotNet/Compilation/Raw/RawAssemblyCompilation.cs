@@ -14,6 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class RawAssemblyCompilation : IDotNetCompilation
     {
+        private const string AssemblyNamePrefix = "assembly:";
         private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
         private readonly string _assemblyFilePath;
         private readonly string _entryPointName;
@@ -29,7 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(DotNetCompilationResult.FromPath(_assemblyFilePath));
+            DotNetCompilationResult result = null;
+            if (_assemblyFilePath != null && _assemblyFilePath.StartsWith(AssemblyNamePrefix))
+            {
+                result = DotNetCompilationResult.FromAssemblyName(_assemblyFilePath.Substring(AssemblyNamePrefix.Length));
+            }
+            else
+            {
+                result = DotNetCompilationResult.FromPath(_assemblyFilePath);
+            }
+
+            return Task.FromResult(result);
         }
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray<Diagnostic>.Empty;

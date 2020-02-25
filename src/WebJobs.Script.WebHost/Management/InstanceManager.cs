@@ -10,12 +10,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.File;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -139,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 return null;
             }
+
             _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
             _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");

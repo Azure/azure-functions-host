@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound();
             }
 
-            (var deleted, var error) = _functionsManager.TryDeleteFunction(function);
+            (var deleted, var error) = await _functionsManager.TryDeleteFunction(function);
 
             if (deleted)
             {

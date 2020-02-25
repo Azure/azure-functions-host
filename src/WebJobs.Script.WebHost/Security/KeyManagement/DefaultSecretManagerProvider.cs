@@ -22,10 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly StartupContextProvider _startupContextProvider;
         private Lazy<ISecretManager> _secretManagerLazy;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider)
+            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
         {
             if (loggerFactory == null)
             {
@@ -37,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
+            _startupContextProvider = startupContextProvider ?? throw new ArgumentNullException(nameof(startupContextProvider));
 
             _loggerFactory = loggerFactory;
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -50,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void ResetSecretManager() => Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider);
+        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
 
         internal ISecretsRepository CreateSecretsRepository()
         {
