@@ -23,11 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class FileMonitoringService : IHostedService, IDisposable
     {
-        private const int _delayedWatchersDelaySeconds = 5;
         private readonly ScriptJobHostOptions _scriptOptions;
         private readonly IScriptEventManager _eventManager;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
+        private readonly IEnvironment _environment;
         private readonly string _hostLogPath;
         private readonly ILogger _logger;
         private readonly ILogger<FileMonitoringService> _typedLogger;
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private bool _watchersStopped = false;
         private object _stopWatchersLock = new object();
 
-        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager)
+        public FileMonitoringService(IOptions<ScriptJobHostOptions> scriptOptions, ILoggerFactory loggerFactory, IScriptEventManager eventManager, IApplicationLifetime applicationLifetime, IScriptHostManager scriptHostManager, IEnvironment environment)
         {
             _scriptOptions = scriptOptions.Value;
             _eventManager = eventManager;
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _scriptHostManager = scriptHostManager;
             _hostLogPath = Path.Combine(_scriptOptions.RootLogPath, "Host");
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _environment = environment;
 
             // Use this for newer logs as we can't change existing categories of log messages
             _typedLogger = loggerFactory.CreateLogger<FileMonitoringService>();
@@ -119,14 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously)));
 
             // Delay starting up for logging and debug file watchers to avoid long start up times
-            Utility.ExecuteAfterDelay(InitializeNonBlockingFileWatchers, TimeSpan.FromSeconds(_delayedWatchersDelaySeconds));
+            Utility.ExecuteAfterColdStartDelay(_environment, InitializeSecondaryFileWatchers);
         }
 
         /// <summary>
         /// Initializes the file and directory monitoring that does not need to happen as part of a Host startup
         /// These watchers can be started after a delay to avoid startup performance issue
         /// </summary>
-        private void InitializeNonBlockingFileWatchers()
+        private void InitializeSecondaryFileWatchers()
         {
             if (_watchersStopped)
             {
@@ -137,6 +138,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (!_watchersStopped)
                 {
+                    FileUtility.EnsureDirectoryExists(_hostLogPath);
+
                     _debugModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DebugSentinelFileName,
                             includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
                     _debugModeFileWatcher.Changed += OnDebugModeFileChanged;

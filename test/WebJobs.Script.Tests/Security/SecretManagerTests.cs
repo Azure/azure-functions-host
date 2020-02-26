@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
     public class SecretManagerTests
     {
+        private const int TestSentinelWatcherInitializationDelayMS = 50;
         private const string TestEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
         private readonly HostNameProvider _hostNameProvider;
         private readonly TestEnvironment _testEnvironment;
@@ -79,9 +80,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
 
                 var logs = _loggerProvider.GetAllLogMessages();
-                Assert.Equal($"Loading startup context from {startupContextPath}", logs[0].FormattedMessage);
-                Assert.Equal($"Loaded keys for 2 functions from startup context", logs[1].FormattedMessage);
-                Assert.Equal($"Loaded host keys from startup context", logs[2].FormattedMessage);
+                Assert.Equal($"Sentinel watcher initialized for path {directory.Path}", logs[0].FormattedMessage);
+                Assert.Equal($"Loading startup context from {startupContextPath}", logs[1].FormattedMessage);
+                Assert.Equal($"Loaded keys for 2 functions from startup context", logs[2].FormattedMessage);
+                Assert.Equal($"Loaded host keys from startup context", logs[3].FormattedMessage);
             }
         }
 
@@ -394,7 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(result.Secret, "9876");
 
                 var logs = _loggerProvider.GetAllLogMessages();
-                Assert.Equal(1, logs.Count(p => string.Equals(p.FormattedMessage, "Function keys change detected. Clearing cache for function 'TestFunction'.", StringComparison.OrdinalIgnoreCase)));
+                Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Function keys change detected. Clearing cache for function 'TestFunction'.", StringComparison.OrdinalIgnoreCase)));
                 Assert.Equal(1, logs.Count(p => p.FormattedMessage == "Function secret 'function-key-3' for 'TestFunction' Created."));
             }
         }
@@ -617,7 +619,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public void Constructor_WithCreateHostSecretsIfMissingSet_CreatesHostSecret()
+        public async Task Constructor_WithCreateHostSecretsIfMissingSet_CreatesHostSecret()
         {
             var secretsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             var hostSecretPath = Path.Combine(secretsPath, ScriptConstants.HostMetadataFileName);
@@ -630,6 +632,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 Assert.False(preExistingFile);
                 Assert.True(fileCreated);
+
+                await Task.Delay(TestSentinelWatcherInitializationDelayMS);
+
+                var logs = _loggerProvider.GetAllLogMessages().ToArray();
+                Assert.Single(logs.Where(t => t.Level == LogLevel.Debug && t.FormattedMessage.StartsWith("Sentinel watcher initialized")));
             }
             finally
             {
@@ -642,7 +649,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         {
             using (var directory = new TempDirectory())
             {
-                string expectedTraceMessage = Resources.TraceNonDecryptedHostSecretRefresh;
                 string hostSecretsJson =
                     @"{
     'masterKey': {
@@ -677,7 +683,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 using (var directory = new TempDirectory())
                 {
                     string functionName = "testfunction";
-                    string expectedTraceMessage = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, string.Empty);
                     string functionSecretsJson =
                          @"{
     'keys': [
@@ -697,7 +702,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     IDictionary<string, string> functionSecrets;
                     using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: true, setStaleValue: false))
                     {
-                            functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
+                        functionSecrets = await secretManager.GetFunctionSecretsAsync(functionName);
                     }
 
                     Assert.NotNull(functionSecrets);
@@ -1015,7 +1020,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 keyConverterFactory = mockValueConverterFactory.Object;
             }
 
-            ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath);
+            ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
             var secretManager = new SecretManager(repository, keyConverterFactory, logger, metricsLogger, _hostNameProvider, _startupContextProvider);
 
             if (createHostSecretsIfMissing)

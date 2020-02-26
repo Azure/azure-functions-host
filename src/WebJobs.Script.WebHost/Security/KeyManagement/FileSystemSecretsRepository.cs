@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly int _retryCount = 5;
         private readonly int _retryDelay = 100;
 
-        public FileSystemSecretsRepository(string secretsPath) : base(secretsPath)
+        public FileSystemSecretsRepository(string secretsPath, ILogger logger, IEnvironment environment) : base(secretsPath, logger, environment)
         {
             if (secretsPath == null)
             {
