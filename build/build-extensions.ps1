@@ -104,7 +104,8 @@ function CleanOutput([string] $rootPath) {
 
     $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Write-Host "  Removing all powershell runtimes except $keepRuntimes"
-    Get-ChildItem "$rootPath\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
+    Get-ChildItem "$rootPath\workers\powershell" -Directory -ErrorAction SilentlyContinue |
+      ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
