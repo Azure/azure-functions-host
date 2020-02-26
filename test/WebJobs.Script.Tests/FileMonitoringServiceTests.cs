@@ -81,10 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockApplicationLifetime = new Mock<IApplicationLifetime>();
                 var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
 
                 // Act
                 FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
-                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object);
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
                 var offlineEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, fileName);
@@ -132,9 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockApplicationLifetime = new Mock<IApplicationLifetime>();
             var mockScriptHostManager = new Mock<IScriptHostManager>();
             var mockEventManager = new ScriptEventManager();
+            var environment = new TestEnvironment();
 
             // Act
-            return new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object);
+            return new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
         }
     }
 }

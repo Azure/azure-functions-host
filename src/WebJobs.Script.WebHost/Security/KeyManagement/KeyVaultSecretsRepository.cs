@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<KeyVaultClient> _keyVaultClient;
         private readonly string _vaultName;
 
-        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultName, string connectionString) : base(secretsSentinelFilePath)
+        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultName, string connectionString, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
         {
             if (secretsSentinelFilePath == null)
             {

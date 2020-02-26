@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptHostTests(TestFixture fixture)
         {
+            Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
 
@@ -134,11 +135,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             },
             userMessageCallback: () => $"Expected InDebugMode to be false. Now: {DateTime.UtcNow}; Sentinel LastWriteTime: {File.GetLastWriteTimeUtc(debugSentinelFilePath)}; LastDebugNotify: {debugState.LastDebugNotify}.");
 
-            // File Watchers for debug and diagnostic task are delayed during startup.
+            // File Watchers for debug and diagnostic task are delayed during startup
+            // for dynamic skus
             await TestHelpers.Await(() =>
             {
                 return loggerProvider.GetAllLogMessages().Any(m => m.FormattedMessage.Contains("Debug file watch initialized."));
-            }, timeout: 30000, userMessageCallback: () => $"File watchers did not initialize in time");
+            }, timeout: 2 * Utility.ColdStartDelayMS, userMessageCallback: () => $"File watchers did not initialize in time");
 
             // verify that our file watcher for the debug sentinel file is configured
             // properly by touching the file and ensuring that our host goes into
