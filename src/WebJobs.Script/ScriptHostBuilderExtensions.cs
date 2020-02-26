@@ -299,11 +299,6 @@ namespace Microsoft.Azure.WebJobs.Script
             AddProcessRegistry(services);
         }
 
-        public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, ScriptStartupTypeLocator locator)
-        {
-            return builder.UseExternalStartup(locator);
-        }
-
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)
         {
             if (builder == null)

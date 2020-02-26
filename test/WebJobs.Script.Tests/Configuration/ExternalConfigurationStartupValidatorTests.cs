@@ -3,9 +3,11 @@
 
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.Tests.FunctionInvokerBaseTests;
 
@@ -13,37 +15,79 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ExternalConfigurationStartupValidatorTests
     {
-        [Fact]
-        public void Validates_AllProperties()
+        private const string _testName = "TestFunction";
+        private const string _lookup = "lookup";
+        private readonly IFunctionMetadataManager _metadataManager;
+        private readonly BindingMetadata _bindingMetadata;
+
+        public ExternalConfigurationStartupValidatorTests()
         {
-            BindingMetadata bindingMetadata = new BindingMetadata();
-            bindingMetadata.Type = "testTrigger";
-            bindingMetadata.Raw["key"] = "lookup";
+            _bindingMetadata = new BindingMetadata();
+            _bindingMetadata.Type = "testTrigger";
+            _bindingMetadata.Raw = JObject.FromObject(new
+            {
+                key0 = _lookup,
+                key1 = "nonlookup",
+                key2 = true,
+                key3 = 1234
+            });
 
             FunctionMetadata functionMetadata = new FunctionMetadata();
-            functionMetadata.Bindings.Add(bindingMetadata);
+            functionMetadata.Name = _testName;
+            functionMetadata.Bindings.Add(_bindingMetadata);
 
             ICollection<FunctionMetadata> metadata = new Collection<FunctionMetadata>();
             metadata.Add(functionMetadata);
 
-            var metadataManager = new MockMetadataManager(metadata);
+            _metadataManager = new MockMetadataManager(metadata);
+        }
 
-            var configBuilder = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>()
-                {
-                    { "lookup", "abc" }
-                });
+        [Fact]
+        public void ChangedLookup_ReturnsInvalidValues()
+        {
+            var configBuilder = AddInMemory(new ConfigurationBuilder(), _lookup, "abc");
 
             var orig = configBuilder.Build();
 
-            configBuilder
+            // Simulate changing the lookup in an ExternalConfigurationStartup
+            AddInMemory(configBuilder, _lookup, "123");
+
+            var current = configBuilder.Build();
+
+            var validator = new ExternalConfigurationStartupValidator(current, _metadataManager);
+            var invalidValues = validator.Validate(orig);
+
+            Assert.Equal(1, invalidValues.Count);
+            string invalidValue = invalidValues[_testName].Single();
+            Assert.Equal(_lookup, invalidValue);
+        }
+
+        [Fact]
+        public void NoChanges_ReturnsEmpty()
+        {
+            var configBuilder = AddInMemory(new ConfigurationBuilder(), _lookup, "abc");
+
+            var orig = configBuilder.Build();
+
+            // Simulate changing another value an ExternalConfigurationStartup
+            AddInMemory(configBuilder, "anotherLookup", "123");
+
+            var current = configBuilder.Build();
+
+            var validator = new ExternalConfigurationStartupValidator(current, _metadataManager);
+            var invalidValues = validator.Validate(orig);
+
+            Assert.NotNull(invalidValues);
+            Assert.Equal(0, invalidValues.Count);
+        }
+
+        private static IConfigurationBuilder AddInMemory(IConfigurationBuilder configBuilder, string key, string value)
+        {
+            return configBuilder
                 .AddInMemoryCollection(new Dictionary<string, string>()
                 {
-                    { "lookup", "123" }
+                    { key, value }
                 });
-
-            var validator = new ExternalConfigurationStartupValidator(orig, metadataManager);
-            var invalidServices = validator.Validate(orig);
         }
     }
 }

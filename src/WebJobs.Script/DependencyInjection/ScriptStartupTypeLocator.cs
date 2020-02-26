@@ -152,16 +152,19 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                             _logger.ScriptStartUpLoadedExtension(startupExtensionName, assembly.GetName().Version.ToString());
                             return assembly?.GetType(typeName, false, ignoreCase);
                         }, false, true);
+
                     if (extensionType == null)
                     {
                         _logger.ScriptStartUpUnableToLoadExtension(startupExtensionName, extensionItem.TypeName);
                         continue;
                     }
+
                     if (!typeof(IWebJobsStartup).IsAssignableFrom(extensionType) && !typeof(IWebJobsConfigurationStartup).IsAssignableFrom(extensionType))
                     {
                         _logger.ScriptStartUpTypeIsNotValid(extensionItem.TypeName, nameof(IWebJobsStartup), nameof(IWebJobsConfigurationStartup));
                         continue;
                     }
+
                     startupTypes.Add(extensionType);
                 }
             }
