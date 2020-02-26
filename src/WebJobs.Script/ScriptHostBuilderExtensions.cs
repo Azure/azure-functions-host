@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 context.Properties[BundleManagerKey] = bundleManager;
                 context.Properties[StartupTypeLocatorKey] = locator;
 
-                if (context.Properties[DelayedConfigurationActionKey] is Action<IWebJobsConfigurationStartupTypeLocator> delayedConfigAction)
+                if (context.Properties[DelayedConfigurationActionKey] is Action<IWebJobsStartupTypeLocator> delayedConfigAction)
                 {
                     context.Properties.Remove(DelayedConfigurationActionKey);
 
@@ -130,18 +130,18 @@ namespace Microsoft.Azure.WebJobs.Script
 
             builder.ConfigureServices((context, services) =>
             {
+                services.AddSingleton<ExternalConfigurationStartupValidator>();
                 services.AddSingleton<IHostedService>(s =>
                 {
                     var environment = s.GetService<IEnvironment>();
                     var originalConfig = context.Properties.GetAndRemove<IConfigurationRoot>(ConfigurationSnapshotKey);
 
-                    if (environment.IsWindowsConsumption() || environment.IsCoreTools())
+                    if (environment.IsWindowsConsumption() || environment.IsLinuxConsumption() || environment.IsCoreTools())
                     {
-                        var config = s.GetService<IConfiguration>();
-                        var metadataManager = s.GetService<IFunctionMetadataManager>();
+                        var validator = s.GetService<ExternalConfigurationStartupValidator>();
                         var logger = s.GetService<ILoggerFactory>().CreateLogger<ExternalConfigurationStartupValidator>();
 
-                        return new ExternalConfigurationStartupValidator(originalConfig, config, metadataManager, logger);
+                        return new ExternalConfigurationStartupValidatorService(validator, originalConfig, logger);
                     }
 
                     return NullHostedService.Instance;
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!skipHostInitialization)
                 {
                     // Delay this call so we can call the customer's setup last.
-                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsConfigurationStartupTypeLocator>(locator => webJobsConfigBuilder.UseExternalConfigurationStartup(locator));
+                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsStartupTypeLocator>(locator => webJobsConfigBuilder.UseExternalConfigurationStartup(locator, loggerFactory));
                 }
             });
 

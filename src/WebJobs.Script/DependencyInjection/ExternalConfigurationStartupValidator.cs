@@ -3,86 +3,63 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 {
-    internal class ExternalConfigurationStartupValidator : IHostedService
+    internal class ExternalConfigurationStartupValidator
     {
-        private readonly IConfigurationRoot _originalConfig;
         private readonly IConfiguration _config;
         private readonly IFunctionMetadataManager _metadataManager;
-        private readonly ILogger<ExternalConfigurationStartupValidator> _logger;
 
-        private static readonly IDictionary<string, KnownTrigger> _knownTriggers = new Dictionary<string, KnownTrigger>
+        public ExternalConfigurationStartupValidator(IConfiguration config, IFunctionMetadataManager metadataManager)
         {
-            { "blobTrigger", new KnownTrigger("connection", "AzureWebJobsStorage") },
-            { "queueTrigger", new KnownTrigger("connection", "AzureWebJobsStorage") },
-            { "cosmosDBTrigger", new KnownTrigger("connectionStringSetting", "ConnectionStrings:CosmosDB") }
-            // TODO: the rest
-        };
-
-        public ExternalConfigurationStartupValidator(IConfigurationRoot originalConfig, IConfiguration config, IFunctionMetadataManager metadataManager, ILogger<ExternalConfigurationStartupValidator> logger)
-        {
-            _originalConfig = originalConfig;
             _config = config;
             _metadataManager = metadataManager;
-            _logger = logger;
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        /// <summary>
+        /// Validates the current configuration against the original configuration. If any values for a trigger
+        /// do not match, they are returned via the return value.
+        /// </summary>
+        /// <param name="originalConfig">The original configuration</param>
+        /// <returns>A dictionary mapping function name to a list of the invalid values for that function.</returns>
+        public IDictionary<string, IEnumerable<string>> Validate(IConfigurationRoot originalConfig)
         {
+            IDictionary<string, IEnumerable<string>> invalidValues = new Dictionary<string, IEnumerable<string>>();
+
             var functions = _metadataManager.Functions;
 
             foreach (var function in functions)
             {
                 var trigger = function.Bindings.SingleOrDefault(b => b.IsTrigger);
-                if (_knownTriggers.TryGetValue(trigger?.Type, out KnownTrigger details))
-                {
-                    // If connection is used, you cannot override it.
-                    string connection = trigger.Raw[details.ConnectionSettingName]?.ToString() ?? details.DefaultConnectionSetting;
 
-                    if (!string.IsNullOrEmpty(connection))
+                IList<string> invalidValuesForFunction = new List<string>();
+
+                // make sure none of the resolved values have changed for the trigger.
+                foreach (KeyValuePair<string, JToken> property in trigger.Raw)
+                {
+                    string lookup = property.Value?.ToString();
+
+                    if (lookup != null)
                     {
-                        string originalKey = _originalConfig[connection];
-                        string key = _config[connection];
+                        string originalKey = originalConfig[property.Value?.ToString()];
+                        string key = _config[property.Value?.ToString()];
                         if (originalKey != key)
                         {
-                            _logger.LogWarning($"The configuration value '{connection}' was changed in an external startup class. The Functions scale controller may not scale the function '{function.Name}' correctly.");
+                            invalidValuesForFunction.Add(lookup);
                         }
                     }
                 }
+
+                if (invalidValuesForFunction.Any())
+                {
+                    invalidValues[function.Name] = invalidValuesForFunction;
+                }
             }
 
-            return Task.CompletedTask;
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
-
-        private class KnownTrigger
-        {
-            public KnownTrigger(string connectionSettingName, string defaultConnectionSetting)
-            {
-                ConnectionSettingName = connectionSettingName;
-                DefaultConnectionSetting = defaultConnectionSetting;
-            }
-
-            /// <summary>
-            /// Gets the default connection key ("AzureWebJobsStorage", "AzureWebJobsCosmosDb") for the binding.
-            /// </summary>
-            public string DefaultConnectionSetting { get; }
-
-            /// <summary>
-            /// Gets the connection key ("connection", "connectionStringSetting", etc) for the binding.
-            /// </summary>
-            public string ConnectionSettingName { get; }
+            return invalidValues;
         }
     }
 }
