@@ -10,12 +10,13 @@ using System.Threading.Tasks;
 using Microsoft.Azure.KeyVault;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -29,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public SecretsRepositoryTests(SecretsRepositoryTests.Fixture fixture)
         {
+            Utility.ColdStartDelayMS = 50;
             _fixture = fixture;
         }
 
@@ -40,36 +42,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             KeyVault
         }
 
-        [Fact]
-        public async Task FileSystemRepo_Constructor_CreatesSecretPathIfNotExists()
-        {
-            await Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.FileSystem);
-        }
-
         [Theory]
-        [InlineData(SecretsRepositoryType.BlobStorage)]
-        [InlineData(SecretsRepositoryType.BlobStorageSas)]
-        public async Task BlobStorageRepo_Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType)
-        {
-            await Constructor_CreatesSecretPathIfNotExists(repositoryType);
-        }
-
-        [Fact]
-        public async Task KeyVaultStorageeRepo_Constructor_CreatesSecretPathIfNotExists()
-        {
-            await Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType.KeyVault);
-        }
-
-        private async Task Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType)
+        [InlineData(SecretsRepositoryType.BlobStorage, "Dedicated")]
+        [InlineData(SecretsRepositoryType.BlobStorage, "Dynamic")]
+        [InlineData(SecretsRepositoryType.BlobStorageSas, "Dedicated")]
+        [InlineData(SecretsRepositoryType.FileSystem, "Dedicated")]
+        [InlineData(SecretsRepositoryType.KeyVault, "Dedicated")]
+        public async Task Constructor_CreatesSecretPathIfNotExists(SecretsRepositoryType repositoryType, string sku)
         {
             string path = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            _fixture.Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
             await _fixture.TestInitialize(repositoryType, path);
+
             try
             {
                 bool preConstDirExists = Directory.Exists(path);
                 var target = _fixture.GetNewSecretRepository();
-                bool postConstDirExists = Directory.Exists(path);
 
+                if (_fixture.Environment.IsDynamicSku())
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(2 * Utility.ColdStartDelayMS));
+                }
+
+                bool postConstDirExists = Directory.Exists(path);
                 Assert.False(preConstDirExists);
                 Assert.True(postConstDirExists);
             }
@@ -87,28 +82,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Function)]
-        public async Task BlobStorageRepo_ReadAsync_ReadsExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
-        {
-            await ReadAsync_ReadsExpectedFile(repositoryType, secretsType);
-        }
-
-        [Theory]
-        [InlineData(ScriptSecretsType.Host)]
-        [InlineData(ScriptSecretsType.Function)]
-        public async Task FileSystemRepo_ReadAsync_ReadsExpectedFile(ScriptSecretsType secretsType)
-        {
-            await ReadAsync_ReadsExpectedFile(SecretsRepositoryType.FileSystem, secretsType);
-        }
-
-        [Theory]
-        [InlineData(ScriptSecretsType.Host)]
-        [InlineData(ScriptSecretsType.Function)]
-        public async Task KeyVaultRepo_ReadAsync_ReadsExpectedFile(ScriptSecretsType secretsType)
-        {
-            await ReadAsync_ReadsExpectedFile(SecretsRepositoryType.KeyVault, secretsType);
-        }
-
-        private async Task ReadAsync_ReadsExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
+        public async Task ReadAsync_ReadsExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
             using (var directory = new TempDirectory())
             {
@@ -119,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     testSecrets = new HostSecrets()
                     {
                         MasterKey = new Key("master", "test"),
-                        FunctionKeys = new List<Key>() {new Key(KeyName, "test")},
+                        FunctionKeys = new List<Key>() { new Key(KeyName, "test") },
                         SystemKeys = new List<Key>() { new Key(KeyName, "test") }
                     };
                 }
@@ -161,28 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Function)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Host)]
         [InlineData(SecretsRepositoryType.BlobStorageSas, ScriptSecretsType.Function)]
-        public async Task BlobStorageRepo_WriteAsync_CreatesExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
-        {
-            await WriteAsync_CreatesExpectedFile(repositoryType, secretsType);
-        }
-
-        [Theory]
-        [InlineData(ScriptSecretsType.Host)]
-        [InlineData(ScriptSecretsType.Function)]
-        public async Task FileSystemRepo_WriteAsync_CreatesExpectedFile(ScriptSecretsType secretsType)
-        {
-            await WriteAsync_CreatesExpectedFile(SecretsRepositoryType.FileSystem, secretsType);
-        }
-
-        [Theory]
-        [InlineData(ScriptSecretsType.Host)]
-        [InlineData(ScriptSecretsType.Function)]
-        public async Task KeyVaultRepo_WriteAsync_CreatesExpectedFile(ScriptSecretsType secretsType)
-        {
-            await WriteAsync_CreatesExpectedFile(SecretsRepositoryType.KeyVault, secretsType);
-        }
-
-        private async Task WriteAsync_CreatesExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.FileSystem, ScriptSecretsType.Function)]
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
+        public async Task WriteAsync_CreatesExpectedFile(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
         {
             using (var directory = new TempDirectory())
             {
@@ -236,21 +197,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
-        public async Task FileSystemRepo_WriteAsync_ChangeNotificationUpdatesExistingSecret()
-        {
-            await WriteAsync_ChangeNotificationUpdatesExistingSecret(SecretsRepositoryType.FileSystem);
-        }
-
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage)]
         [InlineData(SecretsRepositoryType.BlobStorageSas)]
-        public async Task BlobStorageRepo_WriteAsync_ChangeNotificationUpdatesExistingSecret(SecretsRepositoryType repositoryType)
-        {
-            await WriteAsync_ChangeNotificationUpdatesExistingSecret(repositoryType);
-        }
-
-        private async Task WriteAsync_ChangeNotificationUpdatesExistingSecret(SecretsRepositoryType repositoryType)
+        [InlineData(SecretsRepositoryType.FileSystem)]
+        public async Task WriteAsync_ChangeNotificationUpdatesExistingSecret(SecretsRepositoryType repositoryType)
         {
             using (var directory = new TempDirectory())
             {
@@ -356,7 +307,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
                 AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);
                 KeyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
+                Environment = new TestEnvironment();
             }
+
+            public IEnvironment Environment { get; private set; }
 
             public string TestSiteName { get; private set; }
 
@@ -375,6 +329,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public string KeyVaultConnectionString { get; private set; }
 
             public SecretsRepositoryType RepositoryType { get; private set; }
+
+            public ILoggerProvider LoggerProvider { get; private set; }
 
             public async Task TestInitialize(SecretsRepositoryType repositoryType, string secretsDirectory, string testSiteName = null)
             {
@@ -398,25 +354,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await ClearAllBlobSecrets();
                 ClearAllFileSecrets();
                 await ClearAllKeyVaultSecrets();
+
+                LoggerProvider = new TestLoggerProvider();
+                var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(LoggerProvider);
             }
 
             public ISecretsRepository GetNewSecretRepository()
             {
+                var logger = LoggerProvider.CreateLogger("Test");
                 if (RepositoryType == SecretsRepositoryType.BlobStorage)
                 {
-                    return new BlobStorageSecretsRepository(SecretsDirectory, BlobConnectionString, TestSiteName);
+                    return new BlobStorageSecretsRepository(SecretsDirectory, BlobConnectionString, TestSiteName, logger, Environment);
                 }
                 else if (RepositoryType == SecretsRepositoryType.BlobStorageSas)
                 {
-                    return new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName);
+                    return new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName, logger, Environment);
                 }
                 else if (RepositoryType == SecretsRepositoryType.FileSystem)
                 {
-                    return new FileSystemSecretsRepository(SecretsDirectory);
+                    return new FileSystemSecretsRepository(SecretsDirectory, logger, Environment);
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultName, KeyVaultConnectionString);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultName, KeyVaultConnectionString, logger, Environment);
                 }
             }
 
