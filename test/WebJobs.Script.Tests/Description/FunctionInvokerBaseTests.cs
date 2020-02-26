@@ -269,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public bool Throw { get; set; }
         }
 
-        private class MockMetadataManager : IFunctionMetadataManager
+        internal class MockMetadataManager : IFunctionMetadataManager
         {
             private readonly ICollection<FunctionMetadata> _functions;
 

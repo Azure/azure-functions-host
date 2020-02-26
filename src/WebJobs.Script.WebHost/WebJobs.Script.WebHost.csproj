@@ -62,7 +62,7 @@
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.0" />    
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.17" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.18-dev637182674348342908" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.0" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />

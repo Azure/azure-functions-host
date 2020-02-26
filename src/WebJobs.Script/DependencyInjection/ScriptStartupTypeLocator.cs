@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     /// An implementation of an <see cref="IWebJobsStartupTypeLocator"/> that locates startup types
     /// from extension registrations.
     /// </summary>
-    public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator, IWebJobsConfigurationStartupTypeLocator
+    public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
@@ -56,15 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public Type[] GetStartupTypes()
         {
             return _startupTypes.Value
-                .Where(t => typeof(IWebJobsStartup).IsAssignableFrom(t))
-                .Distinct(new TypeNameEqualityComparer())
-                .ToArray();
-        }
-
-        public Type[] GetConfigurationStartupTypes()
-        {
-            return _startupTypes.Value
-                .Where(t => typeof(IWebJobsConfigurationStartup).IsAssignableFrom(t))
+                .Where(t => typeof(IWebJobsStartup).IsAssignableFrom(t) || typeof(IWebJobsConfigurationStartup).IsAssignableFrom(t))
                 .Distinct(new TypeNameEqualityComparer())
                 .ToArray();
         }
