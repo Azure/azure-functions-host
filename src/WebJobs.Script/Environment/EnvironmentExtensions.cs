@@ -156,6 +156,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool IsDynamicSku(this IEnvironment environment)
+        {
+            return environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium() || environment.IsLinuxConsumption();
+        }
+
         /// <summary>
         /// Gets a value indicating whether the application is running in an Azure Windows managed hosting environment
         /// (i.e. Windows Consumption or Windows Dedicated)

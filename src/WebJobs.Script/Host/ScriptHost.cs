@@ -39,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script
     public class ScriptHost : JobHost, IScriptJobHost
     {
         internal const int DebugModeTimeoutMinutes = 15;
-        private const int FileSystemCleanupDelay = 30;
         private const string HostAssemblyName = "ScriptHost";
         private const string GeneratedTypeNamespace = "Host";
         internal const string GeneratedTypeName = "Functions";
@@ -533,13 +532,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void ScheduleFileSystemCleanup()
         {
-            Utility.ExecuteAfterDelay(() =>
+            Utility.ExecuteAfterColdStartDelay(_environment, () =>
             {
                 if (ScriptOptions.FileLoggingMode != FileLoggingMode.Never)
                 {
                     PurgeOldLogDirectories();
                 }
-            }, TimeSpan.FromSeconds(FileSystemCleanupDelay));
+            });
         }
 
         /// <summary>
