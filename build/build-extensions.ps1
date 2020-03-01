@@ -84,11 +84,11 @@ function GetFolderSizeInMb([string] $rootPath) {
 }
 
 function deleteDuplicateWorkers() {
-    Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
+    Write-Host "Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
+    Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    Write-Host "Moving workers directory:$officialSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
 
-    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+    Move-Item -Path "$officialSiteExtensionPath\64bit\workers"  -Destination "$officialSiteExtensionPath\workers" 
 }
 
 function CleanOutput([string] $rootPath) {
