@@ -83,14 +83,6 @@ function GetFolderSizeInMb([string] $rootPath) {
   return [math]::Round((Get-ChildItem $rootPath -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1Mb, 2)
 }
 
-function deleteDuplicateWorkers() {
-    Write-Host "Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
-    Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$officialSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-
-    Move-Item -Path "$officialSiteExtensionPath\64bit\workers"  -Destination "$officialSiteExtensionPath\workers" 
-}
-
 function CleanOutput([string] $rootPath) {
     Write-Host "Cleaning build output under $rootPath"
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
@@ -116,8 +108,6 @@ function CleanOutput([string] $rootPath) {
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     
-    deleteDuplicateWorkers
-
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
@@ -134,6 +124,12 @@ function CreateSiteExtensions() {
     Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
     Copy-Item -Path $buildOutput\publish\win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
+
+    Write-Host "======================================"
+    Write-Host "Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
+    Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    Write-Host "Moving workers directory:$officialSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
+    Move-Item -Path "$officialSiteExtensionPath\64bit\workers"  -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
