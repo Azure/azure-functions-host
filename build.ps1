@@ -228,14 +228,6 @@ function CreateZips([string] $runtimeSuffix) {
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 }
 
-function deleteDuplicateWorkers() {
-    Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-    
-    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
-}
-
 function cleanExtension([string] $bitness) {
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\publish" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
@@ -252,7 +244,11 @@ function cleanExtension([string] $bitness) {
     $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    deleteDuplicateWorkers
+
+    Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath     
+    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
 }
   
 dotnet --version
