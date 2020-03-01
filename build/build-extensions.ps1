@@ -83,6 +83,14 @@ function GetFolderSizeInMb([string] $rootPath) {
   return [math]::Round((Get-ChildItem $rootPath -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1Mb, 2)
 }
 
+function deleteDuplicateWorkers() {
+    Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
+    Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
+
+    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+}
+
 function CleanOutput([string] $rootPath) {
     Write-Host "Cleaning build output under $rootPath"
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
@@ -108,6 +116,8 @@ function CleanOutput([string] $rootPath) {
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
     
+    deleteDuplicateWorkers
+
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
