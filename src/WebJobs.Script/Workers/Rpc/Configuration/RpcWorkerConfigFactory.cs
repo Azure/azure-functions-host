@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
+        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
         {
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
             string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);

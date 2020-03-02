@@ -52,10 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var expectedWorkersDirIsParentDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
 
-            Assert.Equal(expectedWorkersDirIsCurrentDir, configFactory.GetDefaultWorkersDirectory(Directory.Exists));
-            Assert.Equal(expectedWorkersDirIsParentDir, configFactory.GetDefaultWorkersDirectory(testDirectoryExists));
+            Assert.Equal(expectedWorkersDirIsCurrentDir, RpcWorkerConfigFactory.GetDefaultWorkersDirectory(Directory.Exists));
+            Assert.Equal(expectedWorkersDirIsParentDir, RpcWorkerConfigFactory.GetDefaultWorkersDirectory(testDirectoryExists));
         }
 
         [Fact]
