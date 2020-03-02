@@ -32,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
-            WorkersDirPath = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
+            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
+            WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
             if (!string.IsNullOrEmpty(workersDirectorySection.Value))
             {
@@ -74,6 +75,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
                 return result;
             }
+        }
+
+        internal static string GetDefaultWorkersDirectory(Func<string, bool> directoryExists)
+        {
+            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
+            string workersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            if (!directoryExists(workersDirPath))
+            {
+                // Site Extension. Default to parent directory
+                workersDirPath = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            }
+            return workersDirPath;
         }
 
         internal void BuildWorkerProviderDictionary()
