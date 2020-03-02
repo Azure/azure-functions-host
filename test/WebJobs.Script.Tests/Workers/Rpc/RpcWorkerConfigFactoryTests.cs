@@ -30,12 +30,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void DefaultLanguageWorkersDir()
+        public void DefaultLanguageWorkersDir_Set_To_CurrentDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
+        }
+
+        [Fact]
+        public void DefaultLanguageWorkersDir_Set_To_ParentDir()
+        {
+            string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
+            string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            Func<string, bool> testDirectoryExists = path =>
+            {
+                return false;
+            };
+            var expectedWorkersDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var config = new ConfigurationBuilder().Build();
+            var testLogger = new TestLogger("test");
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), testDirectoryExists);
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
