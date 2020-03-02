@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void DefaultLanguageWorkersDir_Set_To_CurrentDir()
+        public void DefaultLanguageWorkersDir()
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void DefaultLanguageWorkersDir_Set_To_ParentDir()
+        public void GetDefaultWorkersDirectory_Returns_Expected()
         {
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
             string defaultWorkersDirPath = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
@@ -48,11 +48,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 return false;
             };
-            var expectedWorkersDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDirIsCurrentDir = Path.Combine(assemblyLocalPath, RpcWorkerConstants.DefaultWorkersDirectoryName);
+            var expectedWorkersDirIsParentDir = Path.Combine(Directory.GetParent(assemblyLocalPath).FullName, RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger(), testDirectoryExists);
-            Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+
+            Assert.Equal(expectedWorkersDirIsCurrentDir, configFactory.GetDefaultWorkersDirectory(Directory.Exists));
+            Assert.Equal(expectedWorkersDirIsParentDir, configFactory.GetDefaultWorkersDirectory(testDirectoryExists));
         }
 
         [Fact]
