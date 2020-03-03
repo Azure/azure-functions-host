@@ -187,7 +187,7 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension ""
 
-
+        deleteDuplicateWorkers
 
         # Make the zip
         ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion$runtimeSuffix.zip"
@@ -196,6 +196,8 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension "32bit"
         cleanExtension "64bit"
+
+        deleteDuplicateWorkers
 
         # Create private extension for internal usage. To minimize size remove 64bit folder.
         $tempPath = "$buildOutput\win-x32.inproc.temp\SiteExtensions"
@@ -252,7 +254,6 @@ function cleanExtension([string] $bitness) {
     $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    deleteDuplicateWorkers
 }
   
 dotnet --version
