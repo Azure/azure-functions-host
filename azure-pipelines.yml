@@ -34,7 +34,7 @@ jobs:
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016' 
+    vmImage: 'windows-2019' 
   steps:
   - task: UseDotNet@2
     inputs:
