@@ -14,7 +14,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -89,17 +89,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // Linux containers always start out in placeholder mode
                 SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
             }
 
             // Some environments only set the auth key. Ensure that is used as the encryption key if that is not set
             string authEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
             if (authEncryptionKey != null &&
-                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) == null)
+                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey) == null)
             {
-                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
+                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
 
             ConfigureMinimumThreads(SystemEnvironment.Instance.IsWindowsConsumption());
+        }
+
+        private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            // Fallback console logs in case kusto logging fails.
+            Console.WriteLine($"{nameof(CurrentDomainOnUnhandledException)}: {e.ExceptionObject}");
+
+            LinuxContainerEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
         }
 
         private static void ConfigureMinimumThreads(bool isDynamicSku)

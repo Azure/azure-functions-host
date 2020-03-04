@@ -261,11 +261,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private void OnProcessMonitorTimer(object state)
         {
-            _process.Refresh();
-            var commitSizeBytes = _process.WorkingSet64;
-            if (commitSizeBytes != 0)
+            try
             {
-                AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                _process.Refresh();
+                var commitSizeBytes = _process.WorkingSet64;
+                if (commitSizeBytes != 0)
+                {
+                    AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                }
+            }
+            catch (Exception e)
+            {
+                // throwing this exception will mask other underlying exceptions.
+                // Log and let other interesting exceptions bubble up.
+                _logger.LogError(e, nameof(OnProcessMonitorTimer));
             }
         }
 
