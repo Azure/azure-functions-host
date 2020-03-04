@@ -16,7 +16,7 @@ trigger:
 jobs:
 - job: InitializePipeline
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -31,9 +31,76 @@ jobs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
+- job: BuildArtifacts
+  dependsOn: InitializePipeline
+  pool:
+    vmImage: 'vs2017-win2016' 
+  steps:
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '2.2.x'
+      performMultiLevelLookup: true
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+      architecture: 'x64'
+  - task: UseNode@1
+    inputs:
+      version: '10.0.0'
+  - task: PowerShell@2
+    displayName: "Build artifacts"
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build.ps1'
+      arguments: '-buildNumber "$(buildNumber)"'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      Contents: '*.zip'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - task: DotNetCoreCLI@2
+    displayName: 'Build host packages'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      projects: |
+        **\WebJobs.Script.csproj
+        **\WebJobs.Script.WebHost.csproj
+        **\WebJobs.Script.Grpc.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build performance package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '-o packages'
+      projects: |
+        **\WebJobs.Script.Performance.App.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build ExtensionsMetadataGenerator'
+    inputs:
+      command: 'build'      
+      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Pack ExtensionsMetadataGenerator package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
+        steps:
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: artifacts
+  - publish: $(Build.Repository.LocalPath)\packages
+    artifact: packages
+
 - job: RunUnitTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -53,7 +120,7 @@ jobs:
 
 - job: RunNonE2EIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -109,7 +176,7 @@ jobs:
 
 - job: RunIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
