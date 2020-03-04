@@ -16,7 +16,7 @@ trigger:
 jobs:
 - job: InitializePipeline
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -34,13 +34,21 @@ jobs:
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   pool:
-    vmImage: 'windows-2019' 
+    vmImage: 'vs2017-win2016' 
   steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
       version: '2.2.x'
       performMultiLevelLookup: true
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+      architecture: 'x64'
+  - task: UseNode@1
+    inputs:
+      version: '10.0.0'
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -92,7 +100,7 @@ jobs:
 
 - job: RunUnitTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -112,7 +120,7 @@ jobs:
 
 - job: RunNonE2EIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
@@ -168,7 +176,7 @@ jobs:
 
 - job: RunIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    vmImage: 'vs2017-win2016'
   steps: 
   - task: UseDotNet@2
     inputs:
