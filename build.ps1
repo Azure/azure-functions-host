@@ -233,9 +233,6 @@ function CreateZips([string] $runtimeSuffix) {
 function deleteDuplicateWorkers() {
     Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-    
-    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
 }
 
 function cleanExtension([string] $bitness) {
