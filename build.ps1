@@ -101,7 +101,18 @@ function AddDiaSymReaderToPath()
             $_ -replace '\s+Base Path:',''
         }
 
-    $diaSymPath = Join-Path $sdkBasePath.Trim() "Roslyn\bincore\runtimes\win\native"
+    $parent = Split-Path -Path $sdkBasePath.Trim()
+    $maxValue = 0
+    Get-ChildItem $parent\2.2.* | 
+        ForEach-Object {
+            $newVal = $_.Extension -replace '\.',''
+            if($newVal -gt $maxValue) {
+                $maxValue = $newVal
+            }
+        }
+        
+    $finalPath = $parent + "\2.2.$maxValue"
+    $diaSymPath = Join-Path $finalPath.Trim() "Roslyn\bincore\runtimes\win\native"
 
     Write-Host "Adding DiaSymReader location to path ($diaSymPath)" -ForegroundColor Yellow
     $env:Path = "$diaSymPath;$env:Path"
