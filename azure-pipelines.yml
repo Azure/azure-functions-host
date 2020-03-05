@@ -41,14 +41,6 @@ jobs:
       packageType: 'sdk'
       version: '2.2.x'
       performMultiLevelLookup: true
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.x'
-      addToPath: true
-      architecture: 'x64'
-  - task: UseNode@1
-    inputs:
-      version: '10.0.0'
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -61,7 +53,7 @@ jobs:
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '..\..\..\..\buildoutput'
+      SourceFolder: '..\..\buildoutput'
       Contents: '*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: CopyFiles@2
