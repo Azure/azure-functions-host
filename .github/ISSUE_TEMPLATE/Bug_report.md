@@ -16,7 +16,7 @@ Please provide a succinct description of the issue. Please make an effort to fil
 Please provide the following:
 
 - Timestamp:
-- Function App version (1.0 or 2.0):
+- Function App version:
 - Function App name:
 - Function name(s) (as appropriate):
 - Invocation ID:
