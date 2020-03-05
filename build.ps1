@@ -10,9 +10,7 @@ if ($includeSuffix)
 }
 
 $pullRequestNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER + $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-$buildArtifacts = $(BuildArtifacts)
 Write-Host "Pull request number: $pullRequestNumber"
-Write-Host "Build Artifacts: $buildArtifacts"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
