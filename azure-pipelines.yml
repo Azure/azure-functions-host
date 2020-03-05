@@ -56,8 +56,13 @@ jobs:
       arguments: '-buildNumber "$(buildNumber)"'
   - task: CopyFiles@2
     inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)'
+      Contents: '*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - task: CopyFiles@2
+    inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '**'
+      Contents: '*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
