@@ -8,5 +8,6 @@ if ($buildReason -eq "PullRequest") {
   if ($title.Contains("[pack]")) {
     Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
     Write-Host "Setting 'BuildArtifacts' to true."
+    $env:BuildArtifacts="true"
   }
 }
