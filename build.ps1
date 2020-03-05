@@ -8,9 +8,10 @@ if ($includeSuffix)
 {
     $extensionVersion += "-prerelease"
 }
-
-$pullRequestNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER + $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-Write-Host "Pull request number: $pullRequestNumber"
+$buildReason = $env:BUILD_REASON
+$buildArtifacts = $env:BuildArtifacts
+Write-Host "Reason: $buildReason"
+Write-Host "Build artifacts: $buildArtifacts"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -289,7 +290,9 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
-$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+$pullRequestNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER + $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+$titleContainsPack = $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]") -or ($buildArtifacts -eq "true")
+$bypassPackaging = $pullRequestNumber -and -not $titleContainsPack
 
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
@@ -302,6 +305,9 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    & ".\tools\RunSigningJob.ps1" 
+    if(!$buildReason) {
+        Write-Host "Running signing job"
+        & ".\tools\RunSigningJob.ps1" 
+	}
     if (-not $?) { exit 1 }
 }
