@@ -67,40 +67,6 @@ jobs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - task: DotNetCoreCLI@2
-    displayName: 'Build host packages'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
-      projects: |
-        **\WebJobs.Script.csproj
-        **\WebJobs.Script.WebHost.csproj
-        **\WebJobs.Script.Grpc.csproj
-  - task: DotNetCoreCLI@2
-    displayName: 'Build performance package'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '-o packages'
-      projects: |
-        **\WebJobs.Script.Performance.App.csproj
-  - task: DotNetCoreCLI@2
-    displayName: 'Build ExtensionsMetadataGenerator'
-    inputs:
-      command: 'build'      
-      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
-      projects: |
-        **\ExtensionsMetadataGenerator.csproj
-  - task: DotNetCoreCLI@2
-    displayName: 'Pack ExtensionsMetadataGenerator package'
-    inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
-      projects: |
-        **\ExtensionsMetadataGenerator.csproj
-        steps:
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
   - publish: $(Build.Repository.LocalPath)\packages
