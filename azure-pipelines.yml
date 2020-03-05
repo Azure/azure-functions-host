@@ -65,12 +65,12 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '*.zip'
+      Contents: |
+        '*.zip'
+        '*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
-  - publish: $(Build.Repository.LocalPath)\packages
-    artifact: packages
 
 - job: RunUnitTests
   pool:
