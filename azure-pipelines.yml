@@ -33,14 +33,6 @@ jobs:
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
-  variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), not( endswith( variables['Build.SourceBranch'], 'release/3.0' ) ) ) }}:
-      suffixTemp: ci
-      packSuffixSwitchTemp: --version-suffix ci
-      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
-    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
-    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
   pool:
     vmImage: 'vs2017-win2016' 
   steps:
@@ -66,8 +58,8 @@ jobs:
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: |
-        '*.zip'
-        '*.nupkg'
+        *.zip
+        *.nupkg
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
