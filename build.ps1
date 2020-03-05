@@ -289,10 +289,7 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
-
-$pullRequestNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER + $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-$titleContainsPack = $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]") -or ($buildArtifacts -eq "true")
-$bypassPackaging = $pullRequestNumber -and -not $titleContainsPack
+$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
 
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
@@ -306,7 +303,6 @@ if ($bypassPackaging){
     BuildPackages 0
 
     if(!$buildReason) {
-        Write-Host "Running signing job"
         & ".\tools\RunSigningJob.ps1" 
 	}
     if (-not $?) { exit 1 }
