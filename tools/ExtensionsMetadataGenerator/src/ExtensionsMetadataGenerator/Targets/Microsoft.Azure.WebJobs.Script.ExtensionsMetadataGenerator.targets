@@ -39,7 +39,7 @@
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
 
   <Target Name="_GenerateFunctionsExtensionsMetadataPostBuild"
-          AfterTargets="Build">
+          AfterTargets="_GenerateFunctionsPostBuild">
 
     <GenerateFunctionsExtensionsMetadata
       SourcePath="$(_FunctionsExtensionsDir)"
