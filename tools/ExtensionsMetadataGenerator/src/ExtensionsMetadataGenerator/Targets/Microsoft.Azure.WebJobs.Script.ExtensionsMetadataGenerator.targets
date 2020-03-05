@@ -27,7 +27,7 @@
   <UsingTask TaskName="RemoveRuntimeDependencies"
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
   
-  <Target Name="_FunctionsBuildCleanOutput" AfterTargets="_GenerateFunctionsPostBuild" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
+  <Target Name="_FunctionsBuildCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostBuild" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
     <RemoveRuntimeDependencies OutputPath="$(TargetDir)bin"/>
   </Target>
 
