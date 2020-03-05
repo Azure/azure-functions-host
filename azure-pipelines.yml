@@ -31,7 +31,21 @@ jobs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
-- job: BuildArtifacts
+- job: BuildArtifacts_Ubuntu
+  pool:
+    vmImage: 'ubuntu-18.04'
+  steps:
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        mkdir .dotnet &&
+        chmod +x dotnet-install.sh &&
+        ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet &&
+        PATH=".dotnet:"$PATH && dotnet --info
+        dotnet build WebJobs.Script.sln
+
+- job: BuildArtifacts_Windows
   dependsOn: InitializePipeline
   pool:
     vmImage: 'vs2017-win2016' 
