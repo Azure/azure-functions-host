@@ -57,9 +57,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: |
-        *.zip
-        *.nupkg
+      Contents: '**'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
