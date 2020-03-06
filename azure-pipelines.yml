@@ -51,7 +51,7 @@ jobs:
   variables:
     includeSuffix: $true
     titleContainsPack: $false
-    ${{ if eq( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
+    ${{ if endswith( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
       includeSuffix: $false
   pool:
     vmImage: 'vs2017-win2016' 
