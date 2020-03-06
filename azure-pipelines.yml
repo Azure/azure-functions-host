@@ -49,7 +49,6 @@ jobs:
   dependsOn: InitializePipeline
   condition: succeeded()
   variables:
-    includeSuffix: $true
     titleContainsPack: $false
     ${{ if endswith( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
       includeSuffix: $false
