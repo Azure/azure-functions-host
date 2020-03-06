@@ -12,11 +12,13 @@ if ($includeSuffix)
 $buildReason = $env:BUILD_REASON
 $buildArtifacts = $(BuildArtifacts)
 $prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+$sourceBranch = $env:BUILD_SOURCEBRANCH
 Write-Host "Reason: $buildReason"
 Write-Host "Build artifacts: $buildArtifacts"
 Write-Host "PR number: $prNumber"
 Write-Host "Title contains pack: $titleContainsPack"
 Write-Host "IncludeSuffix: $includeSuffix"
+Write-Host "SourceBranch: $sourceBranch"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
