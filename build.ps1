@@ -297,7 +297,7 @@ $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerato
 & dotnet $cmd
 
 $isDevOpsPullRequest = $false
-if(Test-Path $env:BUILD_REASON -and $env:BUILD_REASON -eq "PullRequest")) {
+if(Test-Path $env:BUILD_REASON -and $env:BUILD_REASON -eq "PullRequest") {
     $isDevOpsPullRequest = $true
 }
 
