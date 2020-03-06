@@ -185,6 +185,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(_scriptWebEnvironment.InStandbyMode);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            foreach(string log in logs)
+            {
+                Console.WriteLine($"Failure Test log: {log}");
+            }
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
