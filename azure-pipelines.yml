@@ -49,7 +49,6 @@ jobs:
   dependsOn: InitializePipeline
   condition: succeeded()
   variables:
-    titleContainsPack: $false
     ${{ if endswith( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
       includeSuffix: $false
   pool:
@@ -64,7 +63,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -includeSuffix $(includeSuffix) -titleContainsPack $(titleContainsPack)'
+      arguments: '-buildNumber "$(buildNumber)" -includeSuffix $(includeSuffix)'
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
