@@ -243,7 +243,7 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:
