@@ -12,7 +12,7 @@ function AcquireLease($blob) {
 }
 
 # use this for tracking metadata in lease blobs
-$buildName = "2.0." + $env:buildNumber + "_" + $env:SYSTEM_JOBDISPLAYNAME
+$buildName = "3.0." + $env:buildNumber + "_" + $env:SYSTEM_JOBDISPLAYNAME
 
 $azVersion = "1.11.0"
 Import-Module Az.Storage
