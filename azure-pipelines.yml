@@ -51,9 +51,9 @@ jobs:
   variables:
     includeSuffix: $true
     titleContainsPack: $false
-    ${{ if equals( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
+    ${{ if eq( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
       includeSuffix: $false
-    ${{ if equals( dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true )  }}:
+    ${{ if eq( dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true )  }}:
       titleContainsPack: $true
   pool:
     vmImage: 'vs2017-win2016' 
