@@ -10,7 +10,7 @@ if ($includeSuffix)
     $extensionVersion += "-prerelease"
 }
 $buildReason = $env:BUILD_REASON
-$buildArtifacts = $env:BuildArtifacts
+$buildArtifacts = $(BuildArtifacts)
 $prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
 Write-Host "Reason: $buildReason"
 Write-Host "Build artifacts: $buildArtifacts"
