@@ -108,7 +108,7 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
-    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'devops_experiment')), contains($(PullRequest.Title), 'pack')))
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'devops_experiment')), contains(variables[PullRequest.Title], 'pack')))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
@@ -137,7 +137,7 @@ jobs:
              "ToolVersion": "1.0"
            }
        ]
-    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'devops_experiment')), contains($(PullRequest.Title), 'pack')))
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'devops_experiment')), contains(variables[PullRequest.Title], 'pack')))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
