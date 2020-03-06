@@ -297,17 +297,24 @@ $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerato
 & dotnet $cmd
 
 $isDevOpsPullRequest = $false
-if(Test-Path $env:BUILD_REASON -and $env:BUILD_REASON -eq "PullRequest") {
-    $isDevOpsPullRequest = $true
+if(Test-Path $env:BUILD_REASON) {
+    if($env:BUILD_REASON -eq "PullRequest") {
+        $isDevOpsPullRequest = $true
+    }
 }
 
 $appVeyorTitleContainsPack = $false
 $devopsTitleContainsPack = $false
-if(Test-Path $env:APPVEYOR_PULL_REQUEST_TITLE -and $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")) {
-    $appVeyorTitleContainsPack = $true
+if(Test-Path $env:APPVEYOR_PULL_REQUEST_TITLE) {
+    if($env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")) {
+        $appVeyorTitleContainsPack = $true
+    }
 }
-if(Test-Path $env:PULLREQUEST_TITLE -and $env:PULLREQUEST_TITLE.Contains("[pack]")) {
-    $devopsTitleContainsPack = $true
+
+if(Test-Path $env:PULLREQUEST_TITLE) {
+    if($env:PULLREQUEST_TITLE.Contains("[pack]")) {
+        $devopsTitleContainsPack = $true
+    }
 }
 
 $isPullRequest = $env:APPVEYOR_PULL_REQUEST_NUMBER -or $isDevOpsPullRequest
@@ -325,7 +332,7 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    if(!$buildReason) {
+    if(!(Test-Path $env:BUILD_REASON)) {
         & ".\tools\RunSigningJob.ps1" 
 	}
     if (-not $?) { exit 1 }
