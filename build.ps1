@@ -8,7 +8,6 @@ if ($includeSuffix)
 {
     $extensionVersion += "-prerelease"
 }
-$buildReason = $env:BUILD_REASON
 $buildArtifacts = $env:BuildArtifacts
 $prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
 $sourceBranch = $env:BUILD_SOURCEBRANCH
@@ -296,26 +295,16 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
-$isDevOpsPullRequest = $false
-$appveyorPRNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER
-if($buildReason -and ($buildReason -eq "PullRequest")) {        
-    $isDevOpsPullRequest = $true
-}
-
-$appVeyorTitleContainsPack = $false
-$devopsTitleContainsPack = $false
 $appveyorPRTitle = $env:APPVEYOR_PULL_REQUEST_TITLE
 $devopsPRTitle = $env:PULLREQUEST_TITLE
-if($appveyorPRTitle -and ($appveyorPRTitle.Contains("[pack]"))) {
-    $appVeyorTitleContainsPack = $true
-}
-if($devopsPRTitle -and ($devopsPRTitle.Contains("[pack]"))) {        
-    $devopsTitleContainsPack = $true
-}
+$buildReason = $env:BUILD_REASON
 
-$isPullRequest = $appveyorPRNumber -or $isDevOpsPullRequest
-$titleContainsPack = $appVeyorTitleContainsPack -or $devopsTitleContainsPack
+$isPullRequest = $appveyorPRNumber -or ($buildReason -and ($buildReason -eq "PullRequest"))
+$titleContainsPack = ($appveyorPRTitle -and ($appveyorPRTitle.Contains("[pack]"))) -or ($devopsPRTitle -and ($devopsPRTitle.Contains("[pack]")))
 $bypassPackaging = $isPullRequest -and -not $titleContainsPack
+
+Write-Host "IsPullRequest:$isPullRequest"
+Write-Host "TitleContainsPack:$titleContainsPack"
 
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
