@@ -47,6 +47,14 @@ jobs:
 
 - job: BuildArtifacts_Windows
   dependsOn: InitializePipeline
+  condition: succeeded()
+  variables:
+    includeSuffix: $true
+    titleContainsPack: $false
+    ${{ if equals( variables['Build.SourceBranch'], 'devops_experiment' )  }}:
+      includeSuffix: $false
+    ${{ if equals( dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true )  }}:
+      titleContainsPack: $true
   pool:
     vmImage: 'vs2017-win2016' 
   steps:
@@ -59,7 +67,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build.ps1'
-      arguments: '-buildNumber "$(buildNumber)"'
+      arguments: '-buildNumber "$(buildNumber)" -includeSuffix $(includeSuffix) -titleContainsPack $(titleContainsPack)'
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
