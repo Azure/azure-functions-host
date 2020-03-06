@@ -6,7 +6,7 @@ if ($buildReason -eq "PullRequest") {
   $title = $response.title.ToLowerInvariant()
   Write-Host "Pull request '$title'"
   # For testing
-  Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
+  $env:BuildArtifacts = $true
   
   if ($title.Contains("[pack]")) {
     Write-Host "##vso[task.setvariable variable=BuildArtifacts;isOutput=true]true"
