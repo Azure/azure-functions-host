@@ -297,27 +297,23 @@ $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerato
 & dotnet $cmd
 
 $isDevOpsPullRequest = $false
-if(Test-Path $env:BUILD_REASON) {
-    if($env:BUILD_REASON -eq "PullRequest") {
-        $isDevOpsPullRequest = $true
-    }
+$appveyorPRNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER
+if($buildReason -and ($buildReason -eq "PullRequest")) {        
+    $isDevOpsPullRequest = $true
 }
 
 $appVeyorTitleContainsPack = $false
 $devopsTitleContainsPack = $false
-if(Test-Path $env:APPVEYOR_PULL_REQUEST_TITLE) {
-    if($env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")) {
-        $appVeyorTitleContainsPack = $true
-    }
+$appveyorPRTitle = $env:APPVEYOR_PULL_REQUEST_TITLE
+$devopsPRTitle = $env:PULLREQUEST_TITLE
+if($appveyorPRTitle -and ($appveyorPRTitle.Contains("[pack]"))) {
+    $appVeyorTitleContainsPack = $true
+}
+if($devopsPRTitle -and ($devopsPRTitle.Contains("[pack]"))) {        
+    $devopsTitleContainsPack = $true
 }
 
-if(Test-Path $env:PULLREQUEST_TITLE) {
-    if($env:PULLREQUEST_TITLE.Contains("[pack]")) {
-        $devopsTitleContainsPack = $true
-    }
-}
-
-$isPullRequest = $env:APPVEYOR_PULL_REQUEST_NUMBER -or $isDevOpsPullRequest
+$isPullRequest = $appveyorPRNumber -or $isDevOpsPullRequest
 $titleContainsPack = $appVeyorTitleContainsPack -or $devopsTitleContainsPack
 $bypassPackaging = $isPullRequest -and -not $titleContainsPack
 
@@ -332,7 +328,7 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    if(!(Test-Path $env:BUILD_REASON)) {
+    if(!$buildReason) {
         & ".\tools\RunSigningJob.ps1" 
 	}
     if (-not $?) { exit 1 }
