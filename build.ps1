@@ -12,8 +12,9 @@ $buildReason = $env:BUILD_REASON
 $buildArtifacts = $env:BuildArtifacts
 $prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
 $sourceBranch = $env:BUILD_SOURCEBRANCH
+$prTitle = $env:PULLREQUEST_TITLE 
 Write-Host "Reason: $buildReason"
-Write-Host "Build artifacts: $buildArtifacts"
+Write-Host "PR Title: $prTitle"
 Write-Host "PR number: $prNumber"
 Write-Host "IncludeSuffix: $includeSuffix"
 Write-Host "SourceBranch: $sourceBranch"
@@ -295,8 +296,22 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
-$isPullRequest = $env:APPVEYOR_PULL_REQUEST_NUMBER -or (-not ([string]::IsNullOrEmpty($env:BUILD_REASON) -and ($env:BUILD_REASON -eq "PullRequest")))
-$titleContainsPack = (-not ([string]::IsNullOrEmpty($env:APPVEYOR_PULL_REQUEST_TITLE) -and $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]"))) -or $(-not ([string]::IsNullOrEmpty($env:BuildArtifacts) -and ($env:BuildArtifacts -eq $true)))
+$isDevOpsPullRequest = $false
+if(-not ([string]::IsNullOrEmpty($env:BUILD_REASON) -and $env:BUILD_REASON -eq "PullRequest")) {
+    $isDevOpsPullRequest = $true
+}
+
+$appVeyorTitleContainsPack = $false
+$devopsTitleContainsPack = $false
+if(-not ([string]::IsNullOrEmpty($env:APPVEYOR_PULL_REQUEST_TITLE) -and $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]"))) {
+    $appVeyorTitleContainsPack = $true
+}
+if(-not ([string]::IsNullOrEmpty($env:PULLREQUEST_TITLE) -and $env:PULLREQUEST_TITLE.Contains("[pack]"))) {
+    $devopsTitleContainsPack = $true
+}
+
+$isPullRequest = $env:APPVEYOR_PULL_REQUEST_NUMBER -or $isDevOpsPullRequest
+$titleContainsPack = $appVeyorTitleContainsPack -or $devopsTitleContainsPack
 $bypassPackaging = $isPullRequest -and -not $titleContainsPack
 
 if ($bypassPackaging){
