@@ -1,7 +1,8 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeSuffix = $true
+  [bool]$includeSuffix = $true,
+  [bool]$titleContainsPack = $false
 )
 
 if ($includeSuffix)
@@ -10,8 +11,12 @@ if ($includeSuffix)
 }
 $buildReason = $env:BUILD_REASON
 $buildArtifacts = $env:BuildArtifacts
+$prNumber = $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
 Write-Host "Reason: $buildReason"
 Write-Host "Build artifacts: $buildArtifacts"
+Write-Host "PR number: $prNumber"
+Write-Host "Title contains pack: $titleContainsPack"
+Write-Host "IncludeSuffix: $includeSuffix"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -289,7 +294,10 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
-$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+
+$pullRequestNumber = $env:APPVEYOR_PULL_REQUEST_NUMBER + $env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+$titleContainsPackString = $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]") -or $titleContainsPack
+$bypassPackaging = $pullRequestNumber -and -not $titleContainsPackString
 
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
