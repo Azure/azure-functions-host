@@ -297,16 +297,16 @@ $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerato
 & dotnet $cmd
 
 $isDevOpsPullRequest = $false
-if(-not ([string]::IsNullOrEmpty($env:BUILD_REASON) -and $env:BUILD_REASON -eq "PullRequest")) {
+if(Test-Path $env:BUILD_REASON -and $env:BUILD_REASON -eq "PullRequest")) {
     $isDevOpsPullRequest = $true
 }
 
 $appVeyorTitleContainsPack = $false
 $devopsTitleContainsPack = $false
-if(-not ([string]::IsNullOrEmpty($env:APPVEYOR_PULL_REQUEST_TITLE) -and $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]"))) {
+if(Test-Path $env:APPVEYOR_PULL_REQUEST_TITLE -and $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")) {
     $appVeyorTitleContainsPack = $true
 }
-if(-not ([string]::IsNullOrEmpty($env:PULLREQUEST_TITLE) -and $env:PULLREQUEST_TITLE.Contains("[pack]"))) {
+if(Test-Path $env:PULLREQUEST_TITLE -and $env:PULLREQUEST_TITLE.Contains("[pack]")) {
     $devopsTitleContainsPack = $true
 }
 
