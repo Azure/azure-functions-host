@@ -257,6 +257,15 @@ jobs:
     inputs:
       targetType: 'inline'
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+  - task: PowerShell@2
+    displayName: 'Install and add unsquashfs to path'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Invoke-WebRequest https://github.com/pmq20/squashfuse/files/691217/sqfs43-win32.zip -OutFile "$PWD\sqfs43-win32.zip"
+        Expand-Archive -Path "$PWD\sqfs43-win32.zip" -DestinationPath $PWD
+        [System.Environment]::SetEnvironmentVariable('Path',"$PWD;$env:Path",[System.EnvironmentVariableTarget]::User);
+      pwsh: true
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
