@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         {
             return IsExtensionBundleConfigured()
                 && _options.Id == ScriptConstants.DefaultExtensionBundleId
-                && _options.Version.MaxVersion < ScriptConstants.ExtensionBundleVersionTwo;
+                && (_options.Version.MaxVersion <= ScriptConstants.ExtensionBundleVersionTwo && !_options.Version.IsMaxInclusive);
         }
 
         /// <summary>

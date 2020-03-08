@@ -1,8 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using NuGet.Versioning;
 using System.Collections.Immutable;
+using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
