@@ -59,6 +59,13 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return !string.IsNullOrEmpty(_options.Id) && !string.IsNullOrEmpty(_options.Version?.OriginalString);
         }
 
+        public bool IsLegacyExtensionBundle()
+        {
+            return IsExtensionBundleConfigured()
+                && _options.Id == ScriptConstants.DefaultExtensionBundleId
+                && _options.Version.MaxVersion < ScriptConstants.ExtensionBundleVersionTwo;
+        }
+
         /// <summary>
         /// Attempts to locate the extension bundle inside the probing paths and download paths. If the extension bundle is not found then it will download the extension bundle.
         /// </summary>
