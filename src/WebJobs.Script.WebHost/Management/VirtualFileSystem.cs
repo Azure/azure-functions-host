@@ -27,6 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class VirtualFileSystem
     {
+        private static string[] _filteredExtensions = new string[] { ".csproj" };
+        private static string[] _specialFileWhitelist = new string[] { ScriptConstants.ExtensionsProjectFileName };
+
         public const char UriSegmentSeparator = '/';
         private const string DirectoryEnumerationSearchPattern = "*";
         private const string DummyRazorExtension = ".func777";
@@ -70,8 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (info.Attributes < 0)
             {
-                var notFoundResponse = CreateResponse(HttpStatusCode.NotFound, string.Format("'{0}' not found.", info.FullName));
-                return Task.FromResult(notFoundResponse);
+                return Task.FromResult(CreateNotFoundResponse(info.FullName));
             }
             else if ((info.Attributes & FileAttributes.Directory) != 0)
             {
@@ -246,6 +248,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         protected Task<HttpResponseMessage> CreateItemGetResponse(HttpRequest request, FileSystemInfoBase info, string localFilePath)
         {
+            if (!TryValidateRequest(info, out HttpResponseMessage response))
+            {
+                return Task.FromResult(response);
+            }
+
             // Get current etag
             var currentEtag = CreateEntityTag(info);
             var lastModified = info.LastWriteTimeUtc;
@@ -638,15 +645,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             //}
         }
 
-        protected HttpResponseMessage CreateResponse(HttpStatusCode statusCode, object payload = null)
+        internal static HttpResponseMessage CreateResponse(HttpStatusCode statusCode, object payload = null, string mediaType = null)
         {
             var response = new HttpResponseMessage(statusCode);
             if (payload != null)
             {
                 var content = payload is string ? payload as string : JsonConvert.SerializeObject(payload);
-                response.Content = new StringContent(content, Encoding.UTF8, "application/json");
+                mediaType = mediaType ?? "application/json";
+                response.Content = new StringContent(content, Encoding.UTF8, mediaType);
             }
             return response;
+        }
+
+        internal static HttpResponseMessage CreateNotFoundResponse(string fileName)
+        {
+            return CreateResponse(HttpStatusCode.NotFound, $"'{fileName}' not found.", "text/plain");
+        }
+
+        internal static bool TryValidateRequest(FileSystemInfoBase info, out HttpResponseMessage response)
+        {
+            response = null;
+
+            // Some file extensions (e.g. .csproj) are by default filtered out by IIS.
+            // We've adjusted the filter rules for the host to allow some of these extensions,
+            // but we only want to allow specific files.
+            if (_filteredExtensions.Contains(info.Extension, StringComparer.OrdinalIgnoreCase) &&
+                !_specialFileWhitelist.Contains(info.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                response = CreateNotFoundResponse(info.FullName);
+                return false;
+            }
+
+            return true;
         }
     }
 }

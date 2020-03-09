@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
@@ -230,6 +231,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             fileInfo.Verify(f => f.Delete());
+        }
+
+        [Theory]
+        [InlineData("d:/test/extensions.csproj", true)]
+        [InlineData("d:/test/host.json", true)]
+        [InlineData("d:/test/test.txt", true)]
+        [InlineData("d:/test/foo.csproj", false)]
+        public async Task TryValidateRequest_FiltersFilesCorrectly(string filePath, bool expectedResult)
+        {
+            var fileInfo = new Mock<FileInfoBase>();
+            fileInfo.SetupGet(f => f.FullName).Returns(filePath);
+            fileInfo.SetupGet(f => f.Name).Returns(Path.GetFileName(filePath));
+            fileInfo.SetupGet(f => f.Extension).Returns(Path.GetExtension(filePath));
+
+            var result = VirtualFileSystem.TryValidateRequest(fileInfo.Object, out HttpResponseMessage response);
+            Assert.Equal(expectedResult, result);
+
+            if (!expectedResult)
+            {
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+                string content = await response.Content.ReadAsStringAsync();
+                Assert.Equal($"'{filePath}' not found.", content);
+                Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            }
+            else
+            {
+                Assert.Null(response);
+            }
         }
 
         private static HttpRequest CreateRequest(string path)
