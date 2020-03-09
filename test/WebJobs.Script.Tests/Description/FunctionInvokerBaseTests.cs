@@ -223,10 +223,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 : base(host, metadata, loggerFactory)
             {
                 var metadataManagerMock = new Mock<IFunctionMetadataManager>();
-                metadataManagerMock.Setup(m => m.Functions)
+                metadataManagerMock.Setup(m => m.GetFunctionsMetadata())
                     .Returns(new[] { metadata }.ToImmutableArray());
-                var proxyMetadataManagerMock = new Mock<IProxyMetadataManager>();
-                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, proxyMetadataManagerMock.Object, metrics);
+                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, metrics);
             }
 
             protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)

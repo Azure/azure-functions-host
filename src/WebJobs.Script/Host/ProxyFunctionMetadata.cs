@@ -6,12 +6,13 @@ using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public interface IFunctionMetadataManager
+    public class ProxyFunctionMetadata : FunctionMetadata
     {
-        ImmutableDictionary<string, ImmutableArray<string>> Errors { get; }
+        public ProxyFunctionMetadata(ProxyClientExecutor proxyClient)
+        {
+            ProxyClient = proxyClient;
+        }
 
-        ImmutableArray<FunctionMetadata> GetFunctionsMetadata(bool forceRefresh = false);
-
-        void ResetProviders();
+        public ProxyClientExecutor ProxyClient { get; }
     }
 }

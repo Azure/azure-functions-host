@@ -53,12 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
-        private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
 
         private CloudBlockBlob _hashBlob;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _webHostEnvironment = webHostEnvironment;
             _environment = environment;
             _hostNameProvider = hostNameProvider;
-            _functionMetadataProvider = functionMetadataProvider;
+            _functionMetadataManager = functionMetadataManager;
         }
 
         internal bool ArmCacheEnabled
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = _functionMetadataProvider.GetFunctionMetadata();
+            var functionsMetadata = Utility.FilterOutProxyMetadata(_functionMetadataManager.GetFunctionsMetadata());
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);

@@ -141,8 +141,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
-                services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-                services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
+                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
+
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
@@ -233,8 +233,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, ScriptApplicationHostOptions applicationHostOptions, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager, IMetricsLogger metricsLogger)
         {
             var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            var metadataServiceProvider = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataProvider>();
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, metadataServiceProvider, metricsLogger), loggerFactory);
+            var metadataServiceManager = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, metadataServiceManager, metricsLogger), loggerFactory);
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

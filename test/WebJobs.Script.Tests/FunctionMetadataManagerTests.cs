@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functionMetadataCollection.Add(GetTestFunctionMetadata(scriptFile, name: "anotherFunction"));
             mockFunctionErrors["anotherFunction"] = new List<string>() { "error" };
 
-            mockFunctionProvider.Setup(m => m.GetFunctionMetadata()).Returns(functionMetadataCollection.ToImmutableArray());
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).Returns(functionMetadataCollection.ToImmutableArray());
             mockFunctionProvider.Setup(m => m.GetFunctionErrors()).Returns(mockFunctionErrors);
 
             FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "anotherFunction"));
 
-            mockFunctionProvider.Setup(m => m.GetFunctionMetadata()).Returns(functionMetadataCollection.ToImmutableArray());
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).Returns(functionMetadataCollection.ToImmutableArray());
             mockFunctionProvider.Setup(m => m.GetFunctionErrors()).Returns(mockFunctionErrors);
 
             FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),

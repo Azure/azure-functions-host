@@ -29,11 +29,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var environment = new TestEnvironment();
                 var eventManager = new ScriptEventManager();
 
-                var manager = new ProxyMetadataManager(options, environment, eventManager, NullLoggerFactory.Instance);
+                var manager = new ProxyFunctionProvider(options, environment, eventManager, NullLoggerFactory.Instance);
 
                 // Get metadata before proxies exist
-                ProxyMetadataInfo proxyMetadata1 = manager.ProxyMetadata;
-                ProxyMetadataInfo proxyMetadata2 = manager.ProxyMetadata;
+                ProxyFunctionMetadata proxyMetadata1 = manager.GetFunctionMetadata;
+                ProxyFunctionMetadata proxyMetadata2 = manager.GetFunctionMetadata;
 
                 Assert.True(proxyMetadata2.Functions.IsDefaultOrEmpty);
                 Assert.Same(proxyMetadata1, proxyMetadata2);
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 eventManager.Publish(new FileEvent(EventSources.ScriptFiles,
                     new FileSystemEventArgs(WatcherChangeTypes.Changed, tempDirectory.Path, ScriptConstants.ProxyMetadataFileName)));
 
-                ProxyMetadataInfo proxyMetadata3 = manager.ProxyMetadata;
+                ProxyFunctionMetadata proxyMetadata3 = manager.GetFunctionMetadata;
 
                 Assert.NotSame(proxyMetadata1, proxyMetadata3);
 

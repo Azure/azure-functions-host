@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -20,43 +22,61 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private readonly bool _isHttpWorker;
-        private readonly Lazy<ImmutableArray<FunctionMetadata>> _functionMetadataArray;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
-        private readonly IEnumerable<IFunctionProvider> _functionProviders;
         private readonly ILogger _logger;
+        private bool _providersReset = false;
+        private ImmutableArray<FunctionMetadata> _functionMetadataArray;
+        private IEnumerable<IFunctionProvider> _functionProviders;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
 
-        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider, IEnumerable<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
+        public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider, IEnumerable<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
+            _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _functionMetadataArray = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             _functionProviders = functionProviders;
         }
 
-        public ImmutableArray<FunctionMetadata> Functions => _functionMetadataArray.Value;
-
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
+
+        public ImmutableArray<FunctionMetadata> GetFunctionsMetadata(bool forceRefresh)
+        {
+            if (!forceRefresh && !_providersReset && !_functionMetadataArray.IsDefaultOrEmpty)
+            {
+                return _functionMetadataArray;
+            }
+
+            _functionMetadataArray = LoadFunctionMetadata(forceRefresh);
+            _providersReset = false;
+            return _functionMetadataArray;
+        }
+
+        public void ResetProviders()
+        {
+            _functionProviders = _serviceProvider?.GetService<IEnumerable<IFunctionProvider>>();
+            _providersReset = true;
+        }
 
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
+        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false)
         {
             ICollection<string> functionsWhiteList = _scriptOptions.Value.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
-            List<FunctionMetadata> functionMetadataList = _functionMetadataProvider.GetFunctionMetadata().ToList();
+            var functionMetadataList = new List<FunctionMetadata>(_functionMetadataProvider.GetFunctionMetadata(forceRefresh));
             _functionErrors = _functionMetadataProvider.FunctionErrors.ToDictionary(kvp => kvp.Key, kvp => (ICollection<string>)kvp.Value.ToList());
 
-            // Load metadata and errors from custom function providers
-            if (_functionProviders.Count() > 0)
+            // Add metadata and errors from any additional function providers
+            if (_functionProviders != null && _functionProviders.Any())
             {
-                functionMetadataList.AddRange(GetMetadataFromCustomProviders());
-                _functionErrors.AddRange(GetErrorsFromCustomProviders());
+                AddMetadataFromCustomProviders(functionMetadataList);
+                AddErrorsFromCustomProviders();
             }
 
             // Validate
@@ -100,28 +120,31 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        private List<FunctionMetadata> GetMetadataFromCustomProviders()
+        private void AddMetadataFromCustomProviders(List<FunctionMetadata> functionMetadataList)
         {
-            var metadataList = new List<FunctionMetadata>();
-
-            foreach (var provider in _functionProviders)
+            var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
+            foreach (var functionProvider in _functionProviders)
             {
-                metadataList.AddRange(provider.GetFunctionMetadata());
+                functionProviderTasks.Add(functionProvider.GetFunctionMetadataAsync());
             }
 
-            return metadataList;
+            var functionMetadataListArray = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
+
+            foreach (var someArray in functionMetadataListArray)
+            {
+                if (!someArray.IsDefault && !someArray.IsEmpty)
+                {
+                    someArray.ToList().ForEach(el => functionMetadataList.Add(el));
+                }
+            }
         }
 
-        private Dictionary<string, ICollection<string>> GetErrorsFromCustomProviders()
+        private void AddErrorsFromCustomProviders()
         {
-            var errorList = new Dictionary<string, ICollection<string>>();
-
             foreach (var provider in _functionProviders)
             {
-                provider.GetFunctionErrors().ToList().ForEach(kvp => errorList[kvp.Key] = kvp.Value);
+                provider.FunctionErrors.ToList().ForEach(kvp => _functionErrors[kvp.Key] = kvp.Value);
             }
-
-            return errorList;
         }
     }
 }

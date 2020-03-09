@@ -28,9 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostNameProvider _hostNameProvider;
-        private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
 
-        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataProvider functionMetadataProvider)
+        public WebFunctionsManager(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILoggerFactory loggerFactory, HttpClient client, ISecretManagerProvider secretManagerProvider, IFunctionsSyncManager functionsSyncManager, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -39,13 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _secretManagerProvider = secretManagerProvider;
             _functionsSyncManager = functionsSyncManager;
             _hostNameProvider = hostNameProvider;
-            _functionMetadataProvider = functionMetadataProvider;
+            _functionMetadataManager = functionMetadataManager;
         }
 
         public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = GetFunctionsMetadata(hostOptions, _logger, includeProxies);
+            var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
 
             return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
         }
@@ -59,22 +59,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return await tasks.WhenAll();
         }
 
-        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(ScriptJobHostOptions hostOptions, ILogger logger, bool includeProxies = false)
+        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies, bool forceRefresh)
         {
-            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataProvider.GetFunctionMetadata();
+            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataManager.GetFunctionsMetadata(forceRefresh);
 
-            if (includeProxies)
+            if (!includeProxies)
             {
-                // get proxies metadata
-                var values = ProxyMetadataManager.ReadProxyMetadata(hostOptions.RootScriptPath, logger);
-                var proxyFunctionsMetadata = values.Item1;
-                if (proxyFunctionsMetadata?.Count > 0)
-                {
-                    functionsMetadata = proxyFunctionsMetadata.Concat(functionsMetadata);
-                }
+                // remove proxies metadata
+                functionsMetadata = Utility.FilterOutProxyMetadata(functionsMetadata);
             }
 
-            return functionsMetadata;
+            // Currently we don't want to return codeless functions in any web based APIs
+            return Utility.FilterOutCodeless(functionsMetadata);
         }
 
         /// <summary>
@@ -164,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionMetadata = _functionMetadataProvider.GetFunctionMetadata(true)
+            var functionMetadata = GetFunctionsMetadata(includeProxies: false, forceRefresh: true)
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
             if (functionMetadata != null)

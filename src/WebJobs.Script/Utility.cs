@@ -656,6 +656,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
         }
 
+        internal static IEnumerable<FunctionMetadata> FilterOutCodeless(IEnumerable<FunctionMetadata> functions)
+        {
+            return functions?.Where(m => !string.Equals(m.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase));
+        }
+
         public static async Task MarkContainerDisabled(ILogger logger)
         {
             logger.LogDebug("Setting container instance offline");
@@ -766,6 +771,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string BuildStorageConnectionString(string accountName, string accessKey)
         {
             return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accessKey}";
+        }
+
+        public static IEnumerable<FunctionMetadata> FilterOutProxyMetadata(IEnumerable<FunctionMetadata> functionMetadataList)
+        {
+            return functionMetadataList.Where(m => !m?.IsProxy ?? true);
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

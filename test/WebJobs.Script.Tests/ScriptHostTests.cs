@@ -833,7 +833,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("my proxy %")]
         public void UpdateProxyName(string proxyName)
         {
-            Assert.Equal("myproxy", ProxyMetadataManager.NormalizeProxyName(proxyName));
+            Assert.Equal("myproxy", ProxyFunctionProvider.NormalizeProxyName(proxyName));
         }
 
         [Fact]

@@ -51,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
@@ -94,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.Script
             IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IFileLoggingStatusManager fileLoggingStatusManager,
-            IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
@@ -124,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
-            _proxyMetadataManager = proxyMetadataManager;
             _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
@@ -303,7 +300,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions), cancellationToken);
+                // Codeless functions do not need a dispatcher, and need to be filtered
+                var functionMetadataListFiltered = Utility.FilterOutCodeless(functionMetadataList);
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataListFiltered, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
 
@@ -340,22 +339,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A metadata collection of functions and proxies configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.Functions;
+            // We need to reset providers first to ensure any delayed registrations
+            // for providers are taken care of.
+            _functionMetadataManager.ResetProviders();
+            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionsMetadata();
             foreach (var error in _functionMetadataManager.Errors)
-            {
-                FunctionErrors.Add(error.Key, error.Value.ToArray());
-            }
-
-            // Get proxies metadata
-            var proxyMetadata = _proxyMetadataManager.ProxyMetadata;
-            if (!proxyMetadata.Functions.IsDefaultOrEmpty)
-            {
-                // Add the proxy descriptor provider
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, proxyMetadata.ProxyClient, _loggerFactory));
-                functionMetadata = proxyMetadata.Functions.Concat(functionMetadata);
-            }
-
-            foreach (var error in proxyMetadata.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
             }
@@ -495,7 +483,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            AddFunctionDescriptors();
+            AddFunctionDescriptors(functionMetadata);
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
@@ -507,8 +495,14 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private void AddFunctionDescriptors()
+        private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
+            // Add the proxy descriptor provider if needed
+            if (functionMetadata.Any(m => m?.IsProxy ?? false))
+            {
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+            }
+
             if (_environment.IsPlaceholderModeEnabled())
             {
                 _logger.HostIsInPlaceholderMode();
@@ -538,7 +532,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void AddCodelessDescriptor()
         {
-            if (_functionMetadataManager.Functions.Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
+            if (_functionMetadataManager.GetFunctionsMetadata().Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
