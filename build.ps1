@@ -1,13 +1,19 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeSuffix = $true
+  [bool]$includeSuffix = $true,
+  [string]$devopsPRTitle = ""
 )
 
 if ($includeSuffix)
 {
     $extensionVersion += "-prerelease"
 }
+$sourceBranch = $env:BUILD_SOURCEBRANCH
+Write-Host "PR Title (devops): $devopsPRTitle"
+Write-Host "IncludeSuffix: $includeSuffix"
+Write-Host "SourceBranch: $sourceBranch"
+Write-Host "DevopsTitle: $devopsPRTitle"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -43,7 +49,7 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
     # Modify web.config for inproc
-    dotnet tool install -g dotnet-xdt --version 2.1.0 2> $null
+    dotnet tool install -g dotnet-xdt --version 2.1.0 | Out-Null
     dotnet-xdt -s "$privateSiteExtensionPath\web.config" -t "$privateSiteExtensionPath\web.InProcess.$runtime.xdt" -o "$privateSiteExtensionPath\web.config"
 
     $successfullDlls =@()
@@ -101,7 +107,18 @@ function AddDiaSymReaderToPath()
             $_ -replace '\s+Base Path:',''
         }
 
-    $diaSymPath = Join-Path $sdkBasePath.Trim() "Roslyn\bincore\runtimes\win\native"
+    $parent = Split-Path -Path $sdkBasePath.Trim()
+    $maxValue = 0
+    Get-ChildItem $parent\2.2.* | 
+        ForEach-Object {
+            $newVal = $_.Extension -replace '\.',''
+            if($newVal -gt $maxValue) {
+                $maxValue = $newVal
+            }
+        }
+        
+    $finalPath = $parent + "\2.2.$maxValue"
+    $diaSymPath = Join-Path $finalPath.Trim() "Roslyn\bincore\runtimes\win\native"
 
     Write-Host "Adding DiaSymReader location to path ($diaSymPath)" -ForegroundColor Yellow
     $env:Path = "$diaSymPath;$env:Path"
@@ -233,9 +250,6 @@ function CreateZips([string] $runtimeSuffix) {
 function deleteDuplicateWorkers() {
     Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-    
-    Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
 }
 
 function cleanExtension([string] $bitness) {
@@ -259,6 +273,10 @@ function cleanExtension([string] $bitness) {
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
 
+if($LASTEXITCODE -ne 0) {
+	throw "Build failed"
+}
+
 $projects = 
   "WebJobs.Script",
   "WebJobs.Script.WebHost",
@@ -278,7 +296,16 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
-$bypassPackaging = $env:APPVEYOR_PULL_REQUEST_NUMBER -and -not $env:APPVEYOR_PULL_REQUEST_TITLE.Contains("[pack]")
+$appveyorPRTitle = $env:APPVEYOR_PULL_REQUEST_TITLE
+$buildReason = $env:BUILD_REASON
+Write-Host "Build Reason(devops): $buildReason"
+
+$isPullRequest = $appveyorPRNumber -or ($buildReason -and ($buildReason -eq "PullRequest"))
+$titleContainsPack = ($appveyorPRTitle -and ($appveyorPRTitle.Contains("[pack]"))) -or ($devopsPRTitle -and ($devopsPRTitle.Contains("[pack]")))
+$bypassPackaging = $isPullRequest -and -not $titleContainsPack
+
+Write-Host "IsPullRequest:$isPullRequest"
+Write-Host "TitleContainsPack:$titleContainsPack"
 
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
@@ -291,6 +318,9 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    & ".\tools\RunSigningJob.ps1" 
+    # Execute this only if appveyor build
+    if(!$buildReason) {
+        & ".\tools\RunSigningJob.ps1" 
+	}
     if (-not $?) { exit 1 }
 }

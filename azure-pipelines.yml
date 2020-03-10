@@ -1,0 +1,416 @@
+variables:
+  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
+
+name: 2.0.$(buildNumber)
+  
+pr:
+  branches:
+    include:
+    - master
+    - dev
+
+trigger:
+  branches:
+    include:
+    - master
+    - dev
+
+jobs:
+- job: InitializePipeline
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+
+- job: BuildArtifacts_Ubuntu
+  pool:
+    vmImage: 'ubuntu-18.04'
+  steps:
+  - task: Bash@3
+    inputs:
+      targetType: 'inline'
+      script: |
+        mkdir .dotnet &&
+        chmod +x dotnet-install.sh &&
+        ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet &&
+        PATH=".dotnet:"$PATH && dotnet --info
+        dotnet build WebJobs.Script.sln
+
+- job: BuildArtifacts_Windows
+  dependsOn: InitializePipeline
+  condition: succeeded()
+  pool:
+    vmImage: 'vs2017-win2016' 
+  steps:
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '2.2.x'
+      performMultiLevelLookup: true
+  - task: PowerShell@2
+    displayName: "Determine suffix and populate PR title"
+    inputs:
+      targetType: 'inline'
+      script: |
+        $sourceBranch = $env:BUILD_SOURCEBRANCH
+        $buildReason = $env:BUILD_REASON
+        $title = ""
+        Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
+        if($sourceBranch.endsWith('master') -and ($buildReason -ne "PullRequest"))
+        {
+          "##vso[task.setvariable variable=IncludeSuffix]0" #Setting to false
+        }
+        else
+        {
+          "##vso[task.setvariable variable=IncludeSuffix]1"
+          if($buildReason -eq "PullRequest")
+          {
+            $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
+            $title = $response.title.ToLowerInvariant()
+          }
+        }
+        "##vso[task.setvariable variable=PullRequestTitle]$title"
+      pwsh: true
+  - task: PowerShell@2
+    displayName: "Build artifacts"
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build.ps1'
+      arguments: '-buildNumber "$(buildNumber)" -includeSuffix $(IncludeSuffix) -devopsPRTitle "$(PullRequestTitle)"'
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: 'tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\bin\Release'
+      Pattern: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.dll
+      signConfigType: inlineSignParams
+      inlineOperation: |
+        [
+          {
+              "KeyCode" : "CP-233863-SN",
+              "OperationCode" : "StrongNameSign",
+              "Parameters" : {},
+              "ToolName" : "sign",
+              "ToolVersion" : "1.0"
+          },
+          {
+              "KeyCode" : "CP-233863-SN",
+              "OperationCode" : "StrongNameVerify",
+              "Parameters" : {},
+              "ToolName" : "sign",
+              "ToolVersion" : "1.0"
+          },
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolSign",
+            "Parameters": {
+              "OpusName": "Microsoft",
+              "OpusInfo": "http://www.microsoft.com",
+              "FileDigest": "/fd \"SHA256\"",
+              "PageHash": "/NPH",
+              "TimeStamp": "/tr \"http://rfc3161.gtm.corp.microsoft.com/TSS/HttpTspServer\" /td sha256"
+            },
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          },
+          {
+            "KeyCode": "CP-230012",
+            "OperationCode": "SigntoolVerify",
+            "Parameters": {},
+            "ToolName": "sign",
+            "ToolVersion": "1.0"
+          }
+        ]
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+  - task: DeleteFiles@1
+    displayName: 'Delete CodeSignSummary files'
+    inputs:
+      contents: '**\CodeSignSummary-*.md'
+  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    displayName: 'ESRP CodeSigning: Nupkg'
+    inputs:
+      ConnectedServiceName: 'ESRP Service'
+      FolderPath: '..\..\..\buildoutput'
+      Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+      signConfigType: inlineSignParams
+      inlineOperation: |
+       [
+           {
+             "KeyCode": "CP-401405",
+             "OperationCode": "NuGetSign",
+             "Parameters": {},
+             "ToolName": "sign",
+             "ToolVersion": "1.0"
+           },
+           {
+             "KeyCode": "CP-401405",
+             "OperationCode": "NuGetVerify",
+             "Parameters": {},
+             "ToolName": "sign",
+             "ToolVersion": "1.0"
+           }
+       ]
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+  - task: DeleteFiles@1
+    displayName: 'Delete CodeSignSummary files'
+    inputs:
+      contents: '**\CodeSignSummary-*.md'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '..\..\..\buildoutput'
+      Contents: '*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '..\..\buildoutput'
+      Contents: '*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      Contents: '*.zip'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: artifacts
+    condition: and(succeeded(), or(and(ne(variables['Build.Reason'], 'PullRequest'), endswith( variables['Build.SourceBranch'], 'master')), contains(variables['PullRequestTitle'], '[pack]')))
+
+- job: RunUnitTests
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps: 
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '2.2.x'
+      performMultiLevelLookup: true
+  - task: DotNetCoreCLI@2
+    displayName: 'Unit Tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'Unit Tests'
+      arguments: '-v n'
+      projects: |
+        **\ExtensionsMetadataGeneratorTests.csproj
+        **\WebJobs.Script.Scaling.Tests.csproj
+        **\WebJobs.Script.Tests.csproj
+
+- job: RunNonE2EIntegrationTests
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps: 
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '2.2.x'
+      performMultiLevelLookup: true
+  - task: UseNode@1
+    inputs:      
+      version: '10.x'
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
+      secretsFilter: '*'
+  - task: DotNetCoreCLI@2
+    displayName: 'Non-E2E integration tests'
+    inputs:
+      command: 'test'
+      testRunTitle: 'Non-E2E integration tests'
+      arguments: '--filter "Category!=E2E"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+    env:
+      AzureWebJobsStorage: $(Storage)
+      ConnectionStrings__CosmosDB: $(CosmosDB)
+      AzureWebJobsEventHubSender: $(EventHub)
+      AzureWebJobsEventHubReceiver: $(EventHub)
+      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
+      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
+
+- job: RunIntegrationTests
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps: 
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '2.2.x'
+      performMultiLevelLookup: true
+  - task: UseNode@1
+    inputs:
+      version: '10.x'
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.7.x'
+      addToPath: true
+  - task: PowerShell@2
+    displayName: 'Install Az.Storage Powershell module'
+    inputs:
+      targetType: 'inline'
+      script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: 'azure-functions-host-ci'
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Checkout secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkout-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+  - task: AzureKeyVault@1
+    inputs:
+      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
+      azureSubscription: 'Azure-Functions-Host-CI'
+      keyVaultName: azure-functions-host-$(LeaseBlob)
+      secretsFilter: '*'
+  - task: PowerShell@2
+    displayName: 'Set environment variables'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
+        Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
+    env:
+      AzureWebJobsStorageSecretMap: $(Storage)
+      CosmosDbSecretMap: $(CosmosDb)
+      AzureWebJobsEventHubSenderSecretMap: $(EventHub)
+      AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
+  - task: DotNetCoreCLI@2
+    displayName: "C# end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "C# end to end tests"
+      arguments: '--filter "Group=CSharpEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Node end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Node end to end tests"
+      arguments: '--filter "Group=NodeEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Direct load end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Direct load end to end tests"
+      arguments: '--filter "Group=DirectLoadEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "F# end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "F# end to end tests"
+      arguments: '--filter "Group=FSharpEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Language worker end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Language worker end to end tests"
+      arguments: '--filter "Group=LanguageWorkerSelectionEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Node script host end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Node script host end to end tests"
+      arguments: '--filter "Group=NodeScriptHostTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Raw assembly end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Raw assembly end to end tests"
+      arguments: '--filter "Group=RawAssemblyEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj                        
+  - task: DotNetCoreCLI@2
+    displayName: "Samples end to end tests"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Samples end to end tests"
+      arguments: '--filter "Group=SamplesEndToEndTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Standby mode end to end tests Windows"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Standby mode end to end tests Windows"
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Windows"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Standby mode end to end tests Linux"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Standby mode end to end tests Linux"
+      arguments: '--filter "Group=StandbyModeEndToEndTests_Linux"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Linux container end to end tests Windows"    
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Linux container end to end tests Windows"
+      arguments: '--filter "Group=ContainerInstanceTests"'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: PowerShell@2
+    condition: always()
+    displayName: 'Checkin secrets'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\checkin-secrets.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
