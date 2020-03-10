@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public FunctionConfigurationException() { }
 
-        public FunctionConfigurationException(string message) : age) { }
+        public FunctionConfigurationException(string message) : base(message) { }
 
         public FunctionConfigurationException(string message, Exception inner) : base(message, inner) { }
 
