@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies, bool forceRefresh)
         {
-            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataManager.GetFunctionsMetadata(forceRefresh);
+            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh, includeBlocked: true);
 
             if (!includeProxies)
             {

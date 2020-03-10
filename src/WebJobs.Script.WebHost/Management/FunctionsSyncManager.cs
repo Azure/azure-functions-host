@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = Utility.FilterOutProxyMetadata(_functionMetadataManager.GetFunctionsMetadata());
+            var functionsMetadata = Utility.FilterOutProxyMetadata(_functionMetadataManager.GetFunctionMetadata());
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);

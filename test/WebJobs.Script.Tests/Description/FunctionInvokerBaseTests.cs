@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 : base(host, metadata, loggerFactory)
             {
                 var metadataManagerMock = new Mock<IFunctionMetadataManager>();
-                metadataManagerMock.Setup(m => m.GetFunctionsMetadata())
+                metadataManagerMock.Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>()))
                     .Returns(new[] { metadata }.ToImmutableArray());
                 _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, metrics);
             }
@@ -281,7 +281,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableDictionary<string, ImmutableArray<string>> Errors =>
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
-            public ImmutableArray<FunctionMetadata> Functions => _functions.ToImmutableArray();
+            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool includeBlocked = false)
+            {
+                return _functions.ToImmutableArray();
+            }
         }
     }
 }

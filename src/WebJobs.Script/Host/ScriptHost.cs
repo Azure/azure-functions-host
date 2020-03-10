@@ -339,10 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A metadata collection of functions and proxies configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            // We need to reset providers first to ensure any delayed registrations
-            // for providers are taken care of.
-            _functionMetadataManager.ResetProviders();
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionsMetadata();
+            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
@@ -532,7 +529,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void AddCodelessDescriptor()
         {
-            if (_functionMetadataManager.GetFunctionsMetadata().Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
+            if (_functionMetadataManager.GetFunctionMetadata().Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }

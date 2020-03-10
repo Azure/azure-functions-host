@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));
             }
 
-            return GetMetadataFromCollection(_metadataManager.GetFunctionsMetadata());
+            return GetMetadataFromCollection(_metadataManager.GetFunctionMetadata());
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))

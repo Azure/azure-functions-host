@@ -86,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public event EventHandler HostInitializing;
+
         [Flags]
         private enum JobHostStartupMode
         {
@@ -483,6 +485,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // we check host health before starting to avoid starting
             // the host when connection or other issues exist
             IsHostHealthy(throwWhenUnhealthy: true);
+
+            // We invoke any registered event delegates during Host Initialization
+            HostInitializing?.Invoke(sender, e);
         }
 
         /// <summary>

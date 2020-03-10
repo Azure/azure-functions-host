@@ -21,13 +21,14 @@ namespace Microsoft.Azure.WebJobs.Script
     public class FunctionMetadataManager : IFunctionMetadataManager
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
-        private readonly bool _isHttpWorker;
         private readonly IServiceProvider _serviceProvider;
-        private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
-        private readonly ILogger _logger;
-        private bool _providersReset = false;
-        private ImmutableArray<FunctionMetadata> _functionMetadataArray;
+        private bool _isHttpWorker;
+        private bool _servicesReset = false;
+        private ILogger _logger;
+        private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private ImmutableArray<FunctionMetadata> _functionMetadataFilteredArray;
+        private ImmutableArray<FunctionMetadata> _functionMetadataAllArray;
         private IEnumerable<IFunctionProvider> _functionProviders;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
 
@@ -37,40 +38,71 @@ namespace Microsoft.Azure.WebJobs.Script
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
-            _isHttpWorker = httpWorkerOptions.Value.Description != null;
+            _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _functionProviders = functionProviders;
+
+            scriptHostManager.HostInitializing += ResetScriptHostServices;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
 
-        public ImmutableArray<FunctionMetadata> GetFunctionsMetadata(bool forceRefresh)
+        /// <summary>
+        /// Gets the function metadata array from all providers.
+        /// </summary>
+        /// <param name="forceRefresh">Forces reload from all providers.</param>
+        /// <param name="includeBlocked">Includes all functions, including blocked ones.</param>
+        /// <returns>An Immmutable array of FunctionMetadata.</returns>
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool includeBlocked = false)
         {
-            if (!forceRefresh && !_providersReset && !_functionMetadataArray.IsDefaultOrEmpty)
+            var currentlyLoaded = GetLoadedMetadata(includeBlocked);
+            if (!forceRefresh && !_servicesReset && !currentlyLoaded.IsDefaultOrEmpty)
             {
-                return _functionMetadataArray;
+                return currentlyLoaded;
             }
 
-            _functionMetadataArray = LoadFunctionMetadata(forceRefresh);
-            _providersReset = false;
-            return _functionMetadataArray;
+            LoadFunctionMetadata(forceRefresh);
+            _servicesReset = false;
+
+            return GetLoadedMetadata(includeBlocked);
         }
 
-        public void ResetProviders()
+        internal ImmutableArray<FunctionMetadata> GetLoadedMetadata(bool includeBlocked)
+        {
+            return includeBlocked ? _functionMetadataAllArray : _functionMetadataFilteredArray;
+        }
+
+        private void ResetScriptHostServices(object sender, EventArgs e)
         {
             _functionProviders = _serviceProvider?.GetService<IEnumerable<IFunctionProvider>>();
-            _providersReset = true;
+            _isHttpWorker = _serviceProvider?.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
+            _scriptOptions = _serviceProvider?.GetService<IOptions<ScriptJobHostOptions>>();
+
+            // Resetting the logger switches the logger scope to Script Host level,
+            // also making the logs available to Application Insights
+            _logger = _serviceProvider?.GetService<ILoggerFactory>().CreateLogger(LogCategories.Startup);
+            _servicesReset = true;
         }
 
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false)
+        internal void LoadFunctionMetadata(bool forceRefresh = false)
         {
-            ICollection<string> functionsWhiteList = _scriptOptions.Value.Functions;
+            ICollection<string> functionsWhiteList = _scriptOptions?.Value?.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
-            var functionMetadataList = new List<FunctionMetadata>(_functionMetadataProvider.GetFunctionMetadata(forceRefresh));
-            _functionErrors = _functionMetadataProvider.FunctionErrors.ToDictionary(kvp => kvp.Key, kvp => (ICollection<string>)kvp.Value.ToList());
+            var immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(forceRefresh);
+            var functionMetadataList = new List<FunctionMetadata>();
+
+            if (!immutableFunctionMetadata.IsDefaultOrEmpty)
+            {
+                functionMetadataList.AddRange(immutableFunctionMetadata);
+            }
+
+            if (!_functionMetadataProvider.FunctionErrors?.IsEmpty ?? false)
+            {
+                _functionErrors = _functionMetadataProvider.FunctionErrors.ToDictionary(kvp => kvp.Key, kvp => (ICollection<string>)kvp.Value.ToList());
+            }
 
             // Add metadata and errors from any additional function providers
             if (_functionProviders != null && _functionProviders.Any())
@@ -89,23 +121,25 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+            var functionMetadataFilteredList = functionMetadataList;
 
             if (functionsWhiteList != null)
             {
                 _logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionsWhiteList)}]");
-                functionMetadataList = functionMetadataList.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
+                functionMetadataFilteredList = functionMetadataList.Where(function => functionsWhiteList.Any(functionName => functionName.Equals(function.Name, StringComparison.CurrentCultureIgnoreCase))).ToList();
                 Errors = _functionErrors.Where(kvp => functionsWhiteList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
-            _logger.FunctionMetadataManagerFunctionsLoaded(functionMetadataList.Count());
+            _logger.FunctionMetadataManagerFunctionsLoaded(functionMetadataFilteredList.Count());
 
-            return functionMetadataList.ToImmutableArray();
+            _functionMetadataAllArray = functionMetadataList.ToImmutableArray();
+            _functionMetadataFilteredArray = functionMetadataFilteredList.ToImmutableArray();
         }
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
         {
             try
             {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker)
+                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy)
                 {
                     throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
                 }
@@ -132,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var someArray in functionMetadataListArray)
             {
-                if (!someArray.IsDefault && !someArray.IsEmpty)
+                if (!someArray.IsDefaultOrEmpty)
                 {
                     someArray.ToList().ForEach(el => functionMetadataList.Add(el));
                 }
@@ -143,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             foreach (var provider in _functionProviders)
             {
-                provider.FunctionErrors.ToList().ForEach(kvp => _functionErrors[kvp.Key] = kvp.Value);
+                provider.FunctionErrors?.ToList().ForEach(kvp => _functionErrors[kvp.Key] = kvp.Value.ToList());
             }
         }
     }

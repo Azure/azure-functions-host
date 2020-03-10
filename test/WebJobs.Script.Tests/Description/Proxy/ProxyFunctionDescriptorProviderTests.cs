@@ -5,20 +5,25 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.AppService.Proxy.Client;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -44,13 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _proxyClient = GetMockProxyClient();
             _settingsManager = ScriptSettingsManager.Instance;
             _host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(o =>
+                .ConfigureDefaultTestWebScriptHost(null, o =>
                 {
                     o.ScriptPath = rootPath;
                     o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                }, configureRootServices: services =>
+                {
+                    AddProxyProvider(services, rootPath);
                 })
                 .Build();
-
             _scriptHost = _host.GetScriptHost();
         }
 
@@ -58,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             await _scriptHost.StartAsync();
 
-            _metadataCollection = _host.Services.GetService<IProxyMetadataManager>()
-                .ProxyMetadata.Functions;
+            _metadataCollection = _host.Services.GetService<IFunctionMetadataManager>().GetFunctionMetadata();
+            _metadataCollection = AddProxyClient(_metadataCollection);
         }
 
         public async Task DisposeAsync()
@@ -92,13 +99,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new ProxyClientExecutor(proxyClient.Object);
         }
 
+        private ImmutableArray<FunctionMetadata> AddProxyClient(ImmutableArray<FunctionMetadata> functionMetadataArray)
+        {
+            var proxyMetadata = new List<FunctionMetadata>();
+
+            foreach (var metadata in functionMetadataArray)
+            {
+                if (!metadata.IsProxy)
+                {
+                    continue;
+                }
+                var proxydata = new ProxyFunctionMetadata(_proxyClient);
+                metadata.Bindings.ToList().ForEach(b => proxydata.Bindings.Add(b));
+                proxydata.EntryPoint = metadata.EntryPoint;
+                proxydata.FunctionDirectory = metadata.FunctionDirectory;
+                proxydata.FunctionId = metadata.FunctionId;
+                proxydata.IsProxy = metadata.IsProxy;
+                proxydata.IsDirect = metadata.IsDirect;
+                proxydata.IsDisabled = metadata.IsDisabled;
+                proxydata.Language = metadata.Language;
+                proxydata.Name = metadata.Name;
+                proxydata.ScriptFile = metadata.ScriptFile;
+
+                proxyMetadata.Add(proxydata);
+            }
+
+            return proxyMetadata.ToImmutableArray();
+        }
+
         [Fact]
         public async Task ValidateProxyFunctionDescriptor()
         {
             var proxy = _proxyClient as ProxyClientExecutor;
             Assert.NotNull(proxy);
 
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), proxy, NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
@@ -112,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task ValidateProxyFunctionInvoker()
         {
-            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), _proxyClient, NullLoggerFactory.Instance);
+            var proxyFunctionDescriptor = new ProxyFunctionDescriptorProvider(_scriptHost, _scriptHost.ScriptOptions, _host.Services.GetService<ICollection<IScriptBindingProvider>>(), NullLoggerFactory.Instance);
 
             var (created, functionDescriptor) = await proxyFunctionDescriptor.TryCreate(_metadataCollection[0]);
 
@@ -146,6 +181,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        private void AddProxyProvider(IServiceCollection services, string rootPath)
+        {
+            var jobHostOptions = new ScriptJobHostOptions
+            {
+                RootLogPath = rootPath,
+                RootScriptPath = rootPath
+            };
+            var jobHostOptionsWrapped = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
+            var nullLogger = new NullLoggerFactory();
+            var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, new Mock<IEnvironment>().Object, new Mock<IScriptEventManager>().Object, nullLogger);
+            var functionMetadataManager = new FunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
+                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new Mock<IScriptHostManager>().Object, nullLogger);
+
+            services.AddSingleton<IFunctionMetadataManager>(functionMetadataManager);
         }
     }
 }
