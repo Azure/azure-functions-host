@@ -253,13 +253,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             services.AddSingleton<ITestSomething, TestSomethingA>();
             services.AddSingleton<ITestSomething, TestSomethingB>();
             services.AddSingleton<ITestSomething, TestSomethingC>();
+            services.AddSingleton<ITestSomething, TestSomethingD>();
+
+            services.AddSingleton<IJobHost, JobHost>();
 
             ExpectedDependencyBuilder validator = new ExpectedDependencyBuilder();
 
             validator.ExpectCollection<ITestSomething>()
                 .Expect<TestSomethingA>()
                 .Optional<TestSomethingB>()
+                .OptionalExternal(typeof(TestSomethingD).FullName, typeof(TestSomethingD).Assembly.GetName().Name, null)
                 .Expect<TestSomethingC>();
+
+            validator.ExpectCollection<IJobHost>()
+                .OptionalExternal("Microsoft.Azure.WebJobs.JobHost", "Microsoft.Azure.WebJobs.Host", "31bf3856ad364e35");
 
             var invalidDescriptors = validator.FindInvalidServices(services);
             Assert.Empty(invalidDescriptors);
@@ -351,6 +358,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var missingC = invalidDescriptors.Single(p => p.Descriptor.ImplementationType == typeof(TestSomethingC));
             Assert.Equal(InvalidServiceDescriptorReason.Missing, missingC.Reason);
             Assert.Equal(typeof(ITestSomething), missingC.Descriptor.ServiceType);
+        }
+
+        [Fact]
+        public void ExpectCollection_OptionalExternalService_IncorrectKey()
+        {
+            ServiceCollection services = new ServiceCollection();
+            services.AddSingleton<IJobHost, JobHost>();
+
+            ExpectedDependencyBuilder validator = new ExpectedDependencyBuilder();
+
+            validator.ExpectCollection<IJobHost>()
+                .OptionalExternal("Microsoft.Azure.WebJobs.JobHost", "Microsoft.Azure.WebJobs.Host", "abcdef");
+
+            var invalidDescriptor = validator.FindInvalidServices(services).Single();
+            Assert.Equal(InvalidServiceDescriptorReason.Invalid, invalidDescriptor.Reason);
+            Assert.Equal(typeof(IJobHost), invalidDescriptor.Descriptor.ServiceType);
+        }
+
+        [Fact]
+        public void ExpectCollection_OptionalExternalService_Factory()
+        {
+            ServiceCollection services = new ServiceCollection();
+            services.AddSingleton<IJobHost>(s => (JobHost)null);
+
+            ExpectedDependencyBuilder validator = new ExpectedDependencyBuilder();
+
+            validator.ExpectCollection<IJobHost>()
+                .OptionalExternal("Microsoft.Azure.WebJobs.JobHost", "Microsoft.Azure.WebJobs.Host", "31bf3856ad364e35");
+
+            var invalidDescriptor = validator.FindInvalidServices(services).Single();
+            Assert.Equal(InvalidServiceDescriptorReason.Invalid, invalidDescriptor.Reason);
+            Assert.Equal(typeof(IJobHost), invalidDescriptor.Descriptor.ServiceType);
         }
 
         [Fact]
