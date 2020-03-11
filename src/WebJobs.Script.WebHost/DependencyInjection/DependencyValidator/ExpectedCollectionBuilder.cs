@@ -43,5 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             _match.AddOptional<TImplementation>(lifetime);
             return this;
         }
+
+        public ExpectedCollectionBuilder OptionalExternal(string externalTypeName, string assemblyName, string assemblyPublicKeyToken)
+        {
+            _match.AddOptionalExternal(externalTypeName, assemblyName, assemblyPublicKeyToken);
+            return this;
+        }
     }
 }
