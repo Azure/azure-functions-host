@@ -69,6 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                         HttpOnly = true,
                         MaxAge = TimeSpan.FromSeconds(20),
                         SameSite = SameSiteMode.Unspecified
+                    }),
+                    new Tuple<string, string, CookieOptions>("thirdCookie", "cookieValue3", new CookieOptions()
+                    {
+                        SameSite = SameSiteMode.None
                     })
                 }
             };
@@ -78,10 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             await result.ExecuteResultAsync(context);
             context.HttpContext.Response.Headers.TryGetValue("Set-Cookie", out StringValues cookies);
 
-            Assert.Equal(2, cookies.Count);
+            Assert.Equal(3, cookies.Count);
             Assert.Equal("firstCookie=cookieValue; path=/; samesite=lax", cookies[0]);
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4890
             Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; httponly", cookies[1]);
+            Assert.Equal("thirdCookie=cookieValue3; path=/; samesite=none", cookies[2]);
         }
 
         [Fact]

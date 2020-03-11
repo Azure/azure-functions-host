@@ -87,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     return SameSiteMode.Lax;
                 case RpcHttpCookie.Types.SameSite.None:
                     return SameSiteMode.Unspecified;
+                case RpcHttpCookie.Types.SameSite.ExplicitNone:
+                    return SameSiteMode.None;
                 default:
                     return SameSiteMode.Unspecified;
             }
