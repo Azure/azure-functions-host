@@ -50,7 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Optional<FunctionsScaleMonitorService>()
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
-                .Optional<FunctionsSyncService>(); // Conditionally registered.
+                .Optional<FunctionsSyncService>() // Conditionally registered.
+                .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60"); // Popularly-registered by DataProtection.
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<AzureMonitorDiagnosticLoggerProvider>()
