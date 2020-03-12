@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.IO;
 using System.Text;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Moq;
 using WebJobs.Script.Tests;

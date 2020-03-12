@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.WebJobs.Script.Abstractions;
+﻿using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;

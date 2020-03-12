@@ -15,7 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Abstractions.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {

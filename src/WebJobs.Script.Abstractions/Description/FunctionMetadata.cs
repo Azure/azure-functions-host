@@ -7,7 +7,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Description
+namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
 {
     public class FunctionMetadata
     {

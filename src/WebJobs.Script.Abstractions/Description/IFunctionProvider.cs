@@ -3,9 +3,8 @@
 
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions
+namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
 {
     public interface IFunctionProvider
     {

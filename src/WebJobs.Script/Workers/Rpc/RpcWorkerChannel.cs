@@ -19,7 +19,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Abstractions.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc

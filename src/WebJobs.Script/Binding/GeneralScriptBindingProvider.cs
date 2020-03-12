@@ -7,7 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

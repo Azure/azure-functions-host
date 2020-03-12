@@ -27,7 +27,7 @@ using Moq;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
-using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Abstractions.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
