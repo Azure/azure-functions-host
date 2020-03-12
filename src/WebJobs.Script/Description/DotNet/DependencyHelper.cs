@@ -168,28 +168,28 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         /// <summary>
-        /// Checks if the string is in shared assembly representation format.
+        /// Checks if the string is in assembly representation format.
         /// </summary>
         /// <param name="assemblyFormatString"> string representing assembly information</param>
-        /// <returns> bool if string in shared assembly representation format. </returns>
-        public static bool IsSharedAssemblyFormat(string assemblyFormatString)
+        /// <returns> bool if string in was in proper assembly representation format. </returns>
+        public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
         {
            return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
         }
 
         /// <summary>
-        /// Gets the Assembly name from the assembly path string, if in the expected format for a shared assembly.
+        /// Gets the Assembly name from the assembly path string, if in the expected format for an assembly reference.
         /// </summary>
         /// <param name="assemblyFormatString"> The assembly name string in the expected format. </param>
-        /// <returns> bool if the string was in the shared assembly format. </returns>
-        public static bool TryGetSharedAssembly(string assemblyFormatString, out string sharedAssembly)
+        /// <returns> bool if the string was in the proper assembly format. </returns>
+        public static bool TryGetAssemblyReference(string assemblyFormatString, out string assemblyName)
         {
-            sharedAssembly = null;
+            assemblyName = null;
 
-            var isSharedAssembly = IsSharedAssemblyFormat(assemblyFormatString);
+            var isSharedAssembly = IsAssemblyReferenceFormat(assemblyFormatString);
             if (isSharedAssembly)
             {
-                sharedAssembly = assemblyFormatString.Substring(AssemblyNamePrefix.Length);
+                assemblyName = assemblyFormatString.Substring(AssemblyNamePrefix.Length);
             }
 
             return isSharedAssembly;

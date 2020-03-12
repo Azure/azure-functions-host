@@ -82,9 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // If the function references a shared assembly for invocation, it doesn't need a
             // metadata resolver. There's no additional dependencies that will need to be loaded,
             // as all shared assembly should already be resolved.
-            if (DependencyHelper.IsSharedAssemblyFormat(functionMetadata.ScriptFile))
+            if (DependencyHelper.IsAssemblyReferenceFormat(functionMetadata.ScriptFile))
             {
-                return new NoOpFunctionMetadataResolver();
+                return NoOpFunctionMetadataResolver.GetInstance();
             }
 
             return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, bindingProviders, logger);

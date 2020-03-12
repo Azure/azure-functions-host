@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         [Theory]
         [InlineData("")]
-        // [InlineData(null)]
+        [InlineData(null)]
         public void FunctionMetadataManager_Verify_FunctionErrors_FromFunctionProviders(string scriptFile)
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();
@@ -121,6 +121,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(0, testFunctionMetadataManager.Errors.Count);
             Assert.Equal(1, testFunctionMetadataManager.GetFunctionMetadata(true).Length);
             Assert.Equal("anotherFunction", testFunctionMetadataManager.GetFunctionMetadata(true).FirstOrDefault()?.Name);
+        }
+
+        [Fact]
+        public void FunctionMetadataManager_ThrowsError_DuplicateFunctions_FromFunctionProviders()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            var mockFunctionProviderDuplicate = new Mock<IFunctionProvider>();
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "duplicateFunction"));
+
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+            mockFunctionProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors.ToImmutableDictionary());
+
+            mockFunctionProviderDuplicate.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+            mockFunctionProviderDuplicate.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors.ToImmutableDictionary());
+
+            FunctionMetadataManager testFunctionMetadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object, mockFunctionProviderDuplicate.Object },
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), new Mock<IScriptHostManager>().Object, MockNullLoggerFactory.CreateLoggerFactory());
+
+            var ex = Assert.Throws<InvalidOperationException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
+            Assert.Equal("Found duplicate FunctionMetadata with the name duplicateFunction", ex.Message);
         }
 
         [Theory]

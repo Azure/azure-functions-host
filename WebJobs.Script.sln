@@ -308,11 +308,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger"
 		sample\Python\HttpTrigger\function.json = sample\Python\HttpTrigger\function.json
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebJobs.Script.Abstractions", "src\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj", "{9A522D9D-2D86-4572-B7D1-ECBFBFAF312C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Abstractions", "src\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj", "{9A522D9D-2D86-4572-B7D1-ECBFBFAF312C}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

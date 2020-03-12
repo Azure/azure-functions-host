@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description
         [InlineData("assembly:", true)]
         public void IsSharedAssemblyFormat_Works(string formatStr, bool expected)
         {
-            var result = DependencyHelper.IsSharedAssemblyFormat(formatStr);
+            var result = DependencyHelper.IsAssemblyReferenceFormat(formatStr);
             Assert.Equal(expected, result);
         }
 
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description
         [InlineData("assembly:", "")]
         public void TryGetSharedAssembly_Works(string formatStr, string expected)
         {
-            DependencyHelper.TryGetSharedAssembly(formatStr, out string result);
+            DependencyHelper.TryGetAssemblyReference(formatStr, out string result);
             Assert.Equal(expected, result);
         }
     }

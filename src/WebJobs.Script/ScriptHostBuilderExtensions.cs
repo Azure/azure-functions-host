@@ -234,8 +234,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, ScriptApplicationHostOptions applicationHostOptions, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager, IMetricsLogger metricsLogger)
         {
             var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            var metadataServiceManager = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, metadataServiceManager, metricsLogger), loggerFactory);
+            var functionMetadataManager = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, functionMetadataManager, metricsLogger), loggerFactory);
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

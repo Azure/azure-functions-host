@@ -52,12 +52,15 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
         /// </summary>
         public bool IsDirect { get; set; }
 
-        public string FunctionId { get; set; } = Guid.NewGuid().ToString();
-
         /// <summary>
-        /// Gets or sets a value indicating whether this function is a wrapper for Azure Function Proxy
+        /// Gets or sets a value indicating whether this function should be treated as a codeless function.
+        /// <remarks>
+        /// Codeless function by default will be excluded when quering functions from List API calls
+        /// </remarks>
         /// </summary>
-        public bool IsProxy { get; set; }
+        public bool IsCodeless { get; set; }
+
+        public string FunctionId { get; set; } = Guid.NewGuid().ToString();
 
         public Collection<BindingMetadata> Bindings { get; }
 

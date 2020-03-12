@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             foreach (var metadata in functionMetadataArray)
             {
-                if (!metadata.IsProxy)
+                if (!(metadata is ProxyFunctionMetadata))
                 {
                     continue;
                 }
@@ -114,7 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 proxydata.EntryPoint = metadata.EntryPoint;
                 proxydata.FunctionDirectory = metadata.FunctionDirectory;
                 proxydata.FunctionId = metadata.FunctionId;
-                proxydata.IsProxy = metadata.IsProxy;
                 proxydata.IsDirect = metadata.IsDirect;
                 proxydata.IsDisabled = metadata.IsDisabled;
                 proxydata.Language = metadata.Language;

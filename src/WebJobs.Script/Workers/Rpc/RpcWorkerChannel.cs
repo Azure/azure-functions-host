@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy
+                    IsProxy = metadata is ProxyFunctionMetadata
                 }
             };
 

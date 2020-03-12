@@ -15,6 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class NoOpFunctionMetadataResolver : IFunctionMetadataResolver
     {
         private readonly Lazy<Task<PackageRestoreResult>> _emptyPackageResult = new Lazy<Task<PackageRestoreResult>>(GetEmptyPackageResult);
+        private static NoOpFunctionMetadataResolver _functionMetadataResolverSingleton;
+
+        private NoOpFunctionMetadataResolver()
+        {
+        }
+
+        public static NoOpFunctionMetadataResolver GetInstance()
+        {
+            if (_functionMetadataResolverSingleton == null)
+            {
+                _functionMetadataResolverSingleton = new NoOpFunctionMetadataResolver();
+            }
+
+            return _functionMetadataResolverSingleton;
+        }
 
         public ScriptOptions CreateScriptOptions()
         {

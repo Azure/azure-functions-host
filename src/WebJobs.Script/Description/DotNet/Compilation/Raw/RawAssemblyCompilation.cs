@@ -30,9 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
             DotNetCompilationResult result = null;
-            if (DependencyHelper.TryGetSharedAssembly(_assemblyFilePath, out string sharedAssemblyName))
+            if (DependencyHelper.TryGetAssemblyReference(_assemblyFilePath, out string assemblyName))
             {
-                result = DotNetCompilationResult.FromAssemblyName(sharedAssemblyName);
+                result = DotNetCompilationResult.FromAssemblyName(assemblyName);
             }
             else
             {

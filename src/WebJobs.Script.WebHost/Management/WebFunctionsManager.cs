@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -61,16 +62,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies, bool forceRefresh)
         {
-            IEnumerable<FunctionMetadata> functionsMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh, includeBlocked: true);
+            Func<FunctionMetadata, bool> filterPredicate;
 
             if (!includeProxies)
             {
-                // remove proxies metadata
-                functionsMetadata = Utility.FilterOutProxyMetadata(functionsMetadata);
+                // Remove all codeless metadata (includes proxies)
+                filterPredicate = m => !m.IsCodeless;
+            }
+            else
+            {
+                // Allow either proxies or non codeless functions
+                filterPredicate = m => (m is ProxyFunctionMetadata) || !m.IsCodeless;
             }
 
-            // Currently we don't want to return codeless functions in any web based APIs
-            return Utility.FilterOutCodeless(functionsMetadata);
+            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, includeBlocked: true).Where(filterPredicate);
         }
 
         /// <summary>
@@ -98,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             string newConfig = null;
             string configPath = Path.Combine(functionDir, ScriptConstants.FunctionMetadataFileName);
-            string dataFilePath = FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
+            string dataFilePath = Extensions.FunctionMetadataExtensions.GetTestDataFilePath(name, hostOptions);
 
             // If files are included, write them out
             if (functionMetadata?.Files != null)

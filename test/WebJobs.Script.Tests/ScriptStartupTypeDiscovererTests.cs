@@ -362,8 +362,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
 
-                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -392,8 +392,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(bundlePath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
 
-                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -455,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private IFunctionMetadataProvider GetTestFunctionMetadataProvider(ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false)
+        private IFunctionMetadataManager GetTestFunctionMetadataManager(ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false)
         {
             var functionMetdata = new FunctionMetadata();
             functionMetdata.Bindings.Add(new BindingMetadata() { Type = "blob" });

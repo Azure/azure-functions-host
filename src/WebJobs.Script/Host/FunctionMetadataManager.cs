@@ -10,6 +10,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,11 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Add metadata and errors from any additional function providers
-            if (_functionProviders != null && _functionProviders.Any())
-            {
-                AddMetadataFromCustomProviders(functionMetadataList);
-                AddErrorsFromCustomProviders();
-            }
+            LoadCustomProvidersFunctions(functionMetadataList);
 
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
@@ -139,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy)
+                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !(functionMetadata is ProxyFunctionMetadata))
                 {
                     throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
                 }
@@ -154,6 +151,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
+        private void LoadCustomProvidersFunctions(List<FunctionMetadata> functionMetadataList)
+        {
+            if (_functionProviders != null && _functionProviders.Any())
+            {
+                AddMetadataFromCustomProviders(functionMetadataList);
+                AddErrorsFromCustomProviders();
+            }
+        }
+
         private void AddMetadataFromCustomProviders(List<FunctionMetadata> functionMetadataList)
         {
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
@@ -164,11 +170,26 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var functionMetadataListArray = Task.WhenAll(functionProviderTasks).GetAwaiter().GetResult();
 
-            foreach (var someArray in functionMetadataListArray)
+            // This is used to make sure no duplicates are registered
+            var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
+
+            foreach (var metadataArray in functionMetadataListArray)
             {
-                if (!someArray.IsDefaultOrEmpty)
+                if (!metadataArray.IsDefaultOrEmpty)
                 {
-                    someArray.ToList().ForEach(el => functionMetadataList.Add(el));
+                    foreach (var metadata in metadataArray)
+                    {
+                        if (distinctFunctionNames.Contains(metadata.Name))
+                        {
+                            throw new InvalidOperationException($"Found duplicate {nameof(FunctionMetadata)} with the name {metadata.Name}");
+                        }
+
+                        // All custom provided functions are considered codeless functions
+                        metadata.IsCodeless = true;
+
+                        distinctFunctionNames.Add(metadata.Name);
+                        functionMetadataList.Add(metadata);
+                    }
                 }
             }
         }

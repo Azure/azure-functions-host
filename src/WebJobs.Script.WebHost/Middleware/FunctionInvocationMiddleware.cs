@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             context.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount);
 
-            if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
+            if (functionExecution != null && !(functionExecution.Descriptor.Metadata is ProxyFunctionMetadata) && nestedProxiesCount == null)
             {
                 // HttpBufferingService is disabled for non-proxy functions.
                 var bufferingFeature = context.Features.Get<IScriptHttpBufferedStream>();
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
         {
-            if (!descriptor.Metadata.IsProxy)
+            if (!(descriptor.Metadata is ProxyFunctionMetadata))
             {
                 var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
                 AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();

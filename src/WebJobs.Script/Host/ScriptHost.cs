@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -300,9 +301,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Codeless functions do not need a dispatcher, and need to be filtered
-                var functionMetadataListFiltered = Utility.FilterOutCodeless(functionMetadataList);
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataListFiltered, Functions), cancellationToken);
+                // We do not need any dipatcher for all codeless functions except Proxies.
+                var functionMetadataListFiltered = functionMetadataList.Where(m => (m is ProxyFunctionMetadata) || !m.IsCodeless);
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
 
@@ -494,12 +495,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            // Add the proxy descriptor provider if needed
-            if (functionMetadata.Any(m => m?.IsProxy ?? false))
-            {
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
-            }
-
             if (_environment.IsPlaceholderModeEnabled())
             {
                 _logger.HostIsInPlaceholderMode();
@@ -520,16 +515,28 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
-                AddCodelessDescriptor();
             }
+
+            // Codeless functions run side by side with regular functions.
+            // In addition to descriptors already added here, we need to ensure all codeless functions
+            // also have associated descriptors.
+            AddCodelessDescriptors(functionMetadata);
         }
 
         /// <summary>
         /// Adds a DotNetFunctionDescriptorProvider to the list of descriptors if any function metadata has language set to "codeless" in it.
         /// </summary>
-        private void AddCodelessDescriptor()
+        private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (_functionMetadataManager.GetFunctionMetadata().Any(m => string.Equals(m?.Language, DotNetScriptTypes.Codeless, StringComparison.OrdinalIgnoreCase)))
+            if (functionMetadata.Any(m => m is ProxyFunctionMetadata))
+            {
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+            }
+
+            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
+            // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
+            if (functionMetadata.Any(m => m.IsCodeless && !(m is ProxyFunctionMetadata))
+                && !_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -725,7 +732,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
             if (httpTrigger != null)
             {
-                bool isProxy = function.Metadata != null && function.Metadata.IsProxy;
+                bool isProxy = function.Metadata != null && (function.Metadata is ProxyFunctionMetadata);
 
                 ValidateHttpFunction(function.Name, httpTrigger, isProxy);
 

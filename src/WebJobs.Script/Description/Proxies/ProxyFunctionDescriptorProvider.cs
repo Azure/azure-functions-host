@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException("functionMetadata");
             }
 
-            if (functionMetadata.IsProxy)
+            if (functionMetadata is ProxyFunctionMetadata)
             {
                 return base.TryCreate(functionMetadata);
             }

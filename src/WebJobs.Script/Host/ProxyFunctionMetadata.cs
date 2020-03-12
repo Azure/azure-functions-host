@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ProxyFunctionMetadata(ProxyClientExecutor proxyClient)
         {
             ProxyClient = proxyClient;
+            IsCodeless = true;
         }
 
         public ProxyClientExecutor ProxyClient { get; }

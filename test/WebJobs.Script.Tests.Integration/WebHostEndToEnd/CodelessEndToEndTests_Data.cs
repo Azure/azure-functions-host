@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 FunctionDirectory = null,
                 ScriptFile = $"assembly:{Assembly.GetExecutingAssembly().FullName}",
                 EntryPoint = $"{Assembly.GetExecutingAssembly().GetName().Name}.{endToendAssemblySuffix}.{typeof(CodelessEndToEndTests_Data).Name}.{invokeFunction.Method.Name}",
-                Language = "Codeless"
+                Language = "DotNetAssembly"
             };
 
             JObject functionConfig = JObject.Parse(_sampleBindingsJson);
