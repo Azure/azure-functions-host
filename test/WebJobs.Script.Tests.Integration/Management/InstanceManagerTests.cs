@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.EndsWith(" bytes written", p),
                 p => Assert.StartsWith("Running: ", p),
                 p => Assert.StartsWith("Output:", p),
-                p => Assert.StartsWith("bash:", p),
+                p => Assert.True(p.StartsWith("bash:") || p.StartsWith("/usr/bin/bash:")),
                 p => Assert.StartsWith("exitCode:", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
