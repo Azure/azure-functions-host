@@ -20,5 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 
         Task ShutdownAsync();
+
+        Task RestartAsync();
     }
 }

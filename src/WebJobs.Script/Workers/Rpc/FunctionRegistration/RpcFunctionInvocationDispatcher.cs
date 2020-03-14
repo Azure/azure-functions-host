@@ -399,5 +399,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
+
+        public async Task RestartAsync()
+        {
+            // Dispose and restart all initialized channels
+            var channels = await GetInitializedWorkerChannelsAsync();
+            foreach (var channel in channels)
+            {
+                await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+            }
+        }
     }
 }

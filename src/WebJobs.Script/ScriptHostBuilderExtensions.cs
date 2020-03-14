@@ -138,7 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 //Worker Function Invocation dispatcher
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
-
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
@@ -196,6 +195,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
+
+                // Testing
+                if (!string.Equals(Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "dotnet", StringComparison.OrdinalIgnoreCase))
+                {
+                    services.AddSingleton(s => s.GetRequiredService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher());
+                }
             });
 
             RegisterFileProvisioningService(builder);

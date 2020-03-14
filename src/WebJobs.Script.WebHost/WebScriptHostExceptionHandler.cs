@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -15,10 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
+        private readonly IFunctionInvocationDispatcher _functionInvocationDispatcher;
+        private readonly string _workerRuntime;
 
-        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger)
+        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IEnvironment environment, IFunctionInvocationDispatcher functionInvocationDispatcher)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
+            _workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _functionInvocationDispatcher = functionInvocationDispatcher;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -48,8 +54,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
-
-            _applicationLifetime.StopApplication();
+            if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                _applicationLifetime.StopApplication();
+            }
+            else
+            {
+                await _functionInvocationDispatcher.RestartAsync();
+            }
         }
 
         public Task OnUnhandledExceptionAsync(ExceptionDispatchInfo exceptionInfo)
