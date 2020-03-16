@@ -2,7 +2,8 @@
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
   [bool]$includeSuffix = $true,
-  [string]$devopsPRTitle = ""
+  [bool]$bypassPackaging = $true,
+  [bool]$signOutput = $true
 )
 
 if ($includeSuffix)
@@ -10,10 +11,9 @@ if ($includeSuffix)
     $extensionVersion += "-prerelease"
 }
 $sourceBranch = $env:BUILD_SOURCEBRANCH
-Write-Host "PR Title (devops): $devopsPRTitle"
+Write-Host "Bypass packaging: $bypassPackaging"
 Write-Host "IncludeSuffix: $includeSuffix"
 Write-Host "SourceBranch: $sourceBranch"
-Write-Host "DevopsTitle: $devopsPRTitle"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
@@ -296,17 +296,6 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
 
-$appveyorPRTitle = $env:APPVEYOR_PULL_REQUEST_TITLE
-$buildReason = $env:BUILD_REASON
-Write-Host "Build Reason(devops): $buildReason"
-
-$isPullRequest = $appveyorPRNumber -or ($buildReason -and ($buildReason -eq "PullRequest"))
-$titleContainsPack = ($appveyorPRTitle -and ($appveyorPRTitle.Contains("[pack]"))) -or ($devopsPRTitle -and ($devopsPRTitle.Contains("[pack]")))
-$bypassPackaging = $isPullRequest -and -not $titleContainsPack
-
-Write-Host "IsPullRequest:$isPullRequest"
-Write-Host "TitleContainsPack:$titleContainsPack"
-
 if ($bypassPackaging){
     Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
 } else {
@@ -318,8 +307,7 @@ if ($bypassPackaging){
     #build win-x86 and win-x64 extension
     BuildPackages 0
 
-    # Execute this only if appveyor build
-    if(!$buildReason) {
+    if($signOutput) {
         & ".\tools\RunSigningJob.ps1" 
 	}
     if (-not $?) { exit 1 }
