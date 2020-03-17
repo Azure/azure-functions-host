@@ -196,11 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
 
-                // Testing
-                if (!string.Equals(Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "dotnet", StringComparison.OrdinalIgnoreCase))
-                {
-                    services.AddSingleton(s => s.GetRequiredService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher());
-                }
+                services.AddSingleton(s => s.GetRequiredService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher());
             });
 
             RegisterFileProvisioningService(builder);

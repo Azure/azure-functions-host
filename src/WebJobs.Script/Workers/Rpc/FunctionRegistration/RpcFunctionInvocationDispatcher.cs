@@ -403,6 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task RestartAsync()
         {
             // Dispose and restart all initialized channels
+            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
             var channels = await GetInitializedWorkerChannelsAsync();
             foreach (var channel in channels)
             {

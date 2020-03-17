@@ -18,12 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _functionInvocationDispatcher;
-        private readonly string _workerRuntime;
+        private readonly IEnvironment _environment;
 
         public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IEnvironment environment, IFunctionInvocationDispatcher functionInvocationDispatcher)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
-            _workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _environment = environment;
             _functionInvocationDispatcher = functionInvocationDispatcher;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -54,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
-            if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
                 _applicationLifetime.StopApplication();
             }
