@@ -54,9 +54,9 @@ else
 	NUGET_PATH=$NUGET_ROOT/packages
 fi
 
-GRPC_TOOLS_PATH=$NUGET_PATH/grpc.tools/1.20.1/tools/$PLATFORM
+GRPC_TOOLS_PATH=$NUGET_PATH/grpc.tools/2.27.0/tools/$PLATFORM
 PROTO_PATH=./azure-functions-language-worker-protobuf/src/proto
-PROTOBUF_TOOLS=$NUGET_PATH/google.protobuf.tools/3.7.0/tools
+PROTOBUF_TOOLS=$NUGET_PATH/google.protobuf.tools/3.11.4/tools
 PROTO=./azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto
 MSGDIR=./Messages
 
