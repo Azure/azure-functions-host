@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            // This could throw if no initialized workers are found to execute
+            // This could throw if no initialized workers are found. Shut down instance and retry.
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
             try {
