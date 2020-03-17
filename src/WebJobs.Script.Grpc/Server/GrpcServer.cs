@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private int _shutdown = 0;
         private Server _server;
         private bool _disposed = false;
-        public const int MaxMessageLengthBytes = 128 * 1024 * 1024;
+        public const int MaxMessageLengthBytes = int.MaxValue;
 
         public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
