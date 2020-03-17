@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
 
         // Rpc message length
-        public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
+        public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 
         // Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
