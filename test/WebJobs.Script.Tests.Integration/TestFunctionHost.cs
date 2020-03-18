@@ -317,6 +317,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public bool IsExtensionBundleConfigured() => false;
 
+            public bool IsLegacyExtensionBundle() => true;
+
         }
 
         private class PostConfigureServices

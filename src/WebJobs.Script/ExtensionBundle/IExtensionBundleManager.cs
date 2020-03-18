@@ -15,6 +15,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         bool IsExtensionBundleConfigured();
 
+        bool IsLegacyExtensionBundle();
+
         Task<ExtensionBundleDetails> GetExtensionBundleDetails();
     }
 }

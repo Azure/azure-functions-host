@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Immutable;
+using NuGet.Versioning;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -152,9 +153,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionBundleBindingMetadataFile = "bindings.json";
         public const string ExtensionBundleTemplatesFile = "templates.json";
         public const string ExtensionBundleResourcesFile = "Resources.json";
+        public const string DefaultExtensionBundleId = "Microsoft.Azure.Functions.ExtensionBundle";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
+        public static readonly NuGetVersion ExtensionBundleVersionTwo = new NuGetVersion("2.0.0");
     }
 }
