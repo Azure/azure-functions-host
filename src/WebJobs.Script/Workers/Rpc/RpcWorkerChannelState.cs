@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         InvocationBuffersInitialized = 1,
 
         /// <summary>
-        /// The LanguageWorkerChannel is created.Worker process is starting
+        /// The LanguageWorkerChannel is created. Worker process is starting
         /// </summary>
         Initializing = 2,
 

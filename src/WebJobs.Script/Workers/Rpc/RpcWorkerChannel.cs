@@ -313,6 +313,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             try
             {
+                // Set channel to errored state if cancellation requested. Guaranteed to run even if cancellation has been requested before entering here.
+                context.CancellationToken.Register(() =>
+                {
+                    _state = RpcWorkerChannelState.Errored;
+                });
+
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
@@ -328,7 +334,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
-
                     SendStreamingMessage(new StreamingMessage
                     {
                         InvocationRequest = invocationRequest

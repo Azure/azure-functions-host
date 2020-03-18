@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -18,12 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _functionInvocationDispatcher;
-        private readonly IEnvironment _environment;
 
         public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IEnvironment environment, IFunctionInvocationDispatcher functionInvocationDispatcher)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
-            _environment = environment;
             _functionInvocationDispatcher = functionInvocationDispatcher;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -45,8 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
-            LogErrorAndFlush("A function timeout has occurred. Host is shutting down.", exceptionInfo.SourceException);
-
             // We can't wait on this as it may cause a deadlock if the timeout was fired
             // by a Listener that cannot stop until it has completed.
             // TODO: DI (FACAVAL) The shutdown call will invoke the host stop... but we may need to do this
@@ -54,14 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
-            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (string.IsNullOrEmpty(workerRuntime) || string.Equals(workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
+            if (_functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Initialized))
             {
-                _applicationLifetime.StopApplication();
+                _logger.LogWarning("Restarting language worker processes due to function timing out.", exceptionInfo.SourceException);
+                await _functionInvocationDispatcher.RestartAsync();
+                _logger.LogWarning("Restart of language worker process completed.", exceptionInfo.SourceException);
             }
             else
             {
-                await _functionInvocationDispatcher.RestartAsync();
+                LogErrorAndFlush("A function timeout has occurred. Host is shutting down.", exceptionInfo.SourceException);
+                _applicationLifetime.StopApplication();
             }
         }
 

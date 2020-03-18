@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
             Task timeoutTask = Task.Delay(_shutdownTimeout);
-            IList<Task> workerChannelTasks = (await GetInitializedWorkerChannelsAsync()).Select(a => a.DrainInvocationsAsync()).ToList();
+            IList<Task> workerChannelTasks = (await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized)).Select(a => a.DrainInvocationsAsync()).ToList();
             Task completedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(workerChannelTasks));
 
             if (completedTask.Equals(timeoutTask))
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetWorkerChannelsInStateAsync(RpcWorkerChannelState state)
         {
             Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             List<IRpcWorkerChannel> webhostChannels = null;
@@ -267,9 +267,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
-                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
+                throw new InvalidOperationException($"Number of initialized language workers exceeded:{listOfWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
             }
-            return initializedWorkers;
+            return listOfWorkers;
         }
 
         public async void WorkerError(WorkerErrorEvent workerError)
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
                 // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
-                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
+                if ((await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized)).Count() == 0)
                 {
                     State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
                     _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
@@ -402,9 +402,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task RestartAsync()
         {
-            // Dispose and restart all initialized channels
+            // Dispose and restart all errored channels
             State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-            var channels = await GetInitializedWorkerChannelsAsync();
+            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Errored);
             foreach (var channel in channels)
             {
                 await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
