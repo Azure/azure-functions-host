@@ -28,11 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(302, nameof(ScriptStartUpErrorLoadingExtensionBundle)),
             "Unable to find or download extension bundle");
 
-        private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
-            LoggerMessage.Define<string>(
+        private static readonly Action<ILogger, string, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
+            LoggerMessage.Define<string, bool, bool, bool>(
             LogLevel.Information,
-            new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
-            "Loading Extention bundle from {path}");
+            new EventId(303, nameof(ScriptStartNotLoadingExtensionBundle)),
+            "Loading extensions from {path}. BundleConfigured:{bundleConfigured}, PrecompiledFunctionApp:{isPrecompiledFunctionApp}, LegacyBundle:{isLegacyExtensionBundle}");
+
+        private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
+           LoggerMessage.Define<string>(
+           LogLevel.Information,
+           new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
+           "Loading extension bundle from {path}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingStartUpExtension =
             LoggerMessage.Define<string>(
@@ -196,6 +202,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpLoadingExtensionBundle(this ILogger logger, string path)
         {
             _scriptStartUpLoadingExtensionBundle(logger, path, null);
+        }
+
+        public static void ScriptStartNotLoadingExtensionBundle(this ILogger logger, string path, bool bundleConfigured, bool isPrecompiledFunctionApp, bool isLegacyExtensionBundle)
+        {
+            _scriptStartUpNotLoadingExtensionBundle(logger, path, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, null);
         }
 
         public static void ScriptStartUpLoadingStartUpExtension(this ILogger logger, string startupExtensionName)

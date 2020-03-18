@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
+            bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             if (bundleConfigured && (!isPrecompiledFunctionApp || _extensionBundleManager.IsLegacyExtensionBundle()))
             {
                 string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
@@ -95,6 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             else
             {
+                _logger.ScriptStartNotLoadingExtensionBundle(_rootScriptPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
                 binPath = Path.Combine(_rootScriptPath, "bin");
             }
 

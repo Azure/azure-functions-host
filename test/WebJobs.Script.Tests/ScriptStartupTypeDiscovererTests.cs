@@ -351,44 +351,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(true)]
         public async Task GetExtensionsStartupTypes_LegacyBundles_UsesExtensionBundleBinaries(bool hasPrecompiledFunctions)
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            sendGridExtensionReference.Bindings.Add("sendGrid");
-            var references = new[] { storageExtensionReference, sendGridExtensionReference };
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
-
-            var extensions = new JObject
+            using (var directory = GetTempDirectory())
             {
-                { "extensions", JArray.FromObject(references) }
-            };
-
-            using (var directory = new TempDirectory())
-            {
-                var binPath = Path.Combine(directory.Path, "bin");
-                Directory.CreateDirectory(binPath);
-
-                void CopyToBin(string path)
-                {
-                    File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
-                }
-
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
-
-                File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
-
-                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
-                LoggerFactory factory = new LoggerFactory();
-                factory.AddProvider(testLoggerProvider);
-                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-
-                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                var testLogger = GetTestLogger();
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
 
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
@@ -406,46 +379,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(true)]
         public async Task GetExtensionsStartupTypes_NonLegacyBundles_UsesBundlesForNonPrecompiledFunctions(bool hasPrecompiledFunctions)
         {
-            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            storageExtensionReference.Bindings.Add("blob");
-            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
-            sendGridExtensionReference.Bindings.Add("sendGrid");
-            var references = new[] { storageExtensionReference, sendGridExtensionReference };
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
-
-            var extensions = new JObject
+            using (var directory = GetTempDirectory())
             {
-                { "extensions", JArray.FromObject(references) }
-            };
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                var testLogger = GetTestLogger();
 
-            using (var directory = new TempDirectory())
-            {
-                var binPath = Path.Combine(directory.Path, "bin");
-                Directory.CreateDirectory(binPath);
-
-                void CopyToBin(string path)
-                {
-                    File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
-                }
-
-                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
-
-                File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
-
-                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
-                LoggerFactory factory = new LoggerFactory();
-                factory.AddProvider(testLoggerProvider);
-                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
-
-                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
+                string bundlePath = hasPrecompiledFunctions ? "FakePath" : directory.Path;
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-
-                string bundlePath = hasPrecompiledFunctions ? "FakePath" : directory.Path;
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(bundlePath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
 
+                var mockFunctionMetadataProvider = GetTestFunctionMetadataProvider(hasPrecompiledFunction: hasPrecompiledFunctions);
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataProvider, testMetricsLogger);
 
                 // Act
@@ -528,6 +474,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private bool AreExpectedMetricsGenerated(TestMetricsLogger metricsLogger)
         {
             return metricsLogger.EventsBegan.Contains(MetricEventNames.ParseExtensions) && metricsLogger.EventsEnded.Contains(MetricEventNames.ParseExtensions);
+        }
+
+        private TempDirectory GetTempDirectory()
+        {
+            var directory = new TempDirectory();
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            storageExtensionReference.Bindings.Add("blob");
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            sendGridExtensionReference.Bindings.Add("sendGrid");
+            var references = new[] { storageExtensionReference, sendGridExtensionReference };
+
+            var extensions = new JObject
+            {
+                { "extensions", JArray.FromObject(references) }
+            };
+
+            var binPath = Path.Combine(directory.Path, "bin");
+            Directory.CreateDirectory(binPath);
+
+            void CopyToBin(string path)
+            {
+                File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+            }
+
+            CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+
+            File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
+            return directory;
+        }
+
+        private ILogger<ScriptStartupTypeLocator> GetTestLogger()
+        {
+            TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+            LoggerFactory factory = new LoggerFactory();
+            factory.AddProvider(testLoggerProvider);
+            var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+            return testLogger;
         }
     }
 }
