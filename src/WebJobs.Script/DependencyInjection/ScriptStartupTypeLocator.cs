@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             var functionMetadataCollection = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true);
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
+            bool isPrecompiledFunctionApp = false;
 
             if (bundleConfigured)
             {
@@ -77,8 +78,13 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     {
                         bindingsSet.Add(binding.Type);
                     }
+                    isPrecompiledFunctionApp = isPrecompiledFunctionApp || functionMetadata.Language == DotNetScriptTypes.DotNetAssembly;
                 }
+            }
 
+            bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
+            if (bundleConfigured && (!isPrecompiledFunctionApp || _extensionBundleManager.IsLegacyExtensionBundle()))
+            {
                 string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
                 if (string.IsNullOrEmpty(extensionBundlePath))
                 {
@@ -91,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             else
             {
                 binPath = Path.Combine(_rootScriptPath, "bin");
+                _logger.ScriptStartNotLoadingExtensionBundle(binPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
             }
 
             string metadataFilePath = Path.Combine(binPath, ScriptConstants.ExtensionsMetadataFileName);
