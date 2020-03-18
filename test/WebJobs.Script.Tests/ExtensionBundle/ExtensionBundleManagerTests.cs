@@ -91,6 +91,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         }
 
         [Theory]
+        [InlineData(BundleId, "[1.*, 2.0.0)", true)]
+        [InlineData(BundleId, "[2.*, 3.0.0)", false)]
+        [InlineData(BundleId, "[2.0.0, 3.0.0)", false)]
+        [InlineData("TestBundleId", "[1.*, 2.0.0)", false)]
+        public void IsLegacyExtensionBundle_LegacyBundleConfig_ReturnsExpectedResult(string bundleId, string bundleVersion, bool isLegacyExtensionBundle)
+        {
+            var options = GetTestExtensionBundleOptions(bundleId, bundleVersion);
+            var manager = GetExtensionBundleManager(options, GetTestAppServiceEnvironment());
+            Assert.Equal(manager.IsLegacyExtensionBundle(), isLegacyExtensionBundle);
+        }
+
+        [Theory]
         [InlineData("[2.*, 3.0.0)")]
         [InlineData("[2.0.0, 3.0.0)")]
         public async Task GetExtensionBundleDetails_BundlePresentAtProbingLocation_ExpectedValue(string versionRange)

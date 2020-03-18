@@ -272,6 +272,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public bool IsExtensionBundleConfigured() => false;
 
+            public bool IsLegacyExtensionBundle() => false;
+
         }
 
         private class TestEntity : TableEntity
