@@ -134,11 +134,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
         {
             private readonly string _bundlePath;
             private readonly bool _isExtensionBundleConfigured;
+            private readonly bool _isLegacyExtensionBundle;
 
-            public TestExtensionBundleManager(string bundlePath = null, bool isExtensionBundleConfigured = false)
+            public TestExtensionBundleManager(string bundlePath = null, bool isExtensionBundleConfigured = false, bool isLegacyExtensionBundle = true)
             {
                 _bundlePath = bundlePath;
                 _isExtensionBundleConfigured = isExtensionBundleConfigured;
+                _isLegacyExtensionBundle = isLegacyExtensionBundle;
             }
 
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
@@ -148,6 +150,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             public Task<string> GetExtensionBundlePath() => Task.FromResult(_bundlePath);
 
             public bool IsExtensionBundleConfigured() => _isExtensionBundleConfigured;
+
+            public bool IsLegacyExtensionBundle() => _isLegacyExtensionBundle;
         }
     }
 }
