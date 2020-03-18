@@ -400,13 +400,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             Dispose(true);
         }
 
-        public async Task RestartAsync()
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
         {
-            // Dispose and restart all errored channels
+            // Dispose and restart errored channel with the particular invocation id
             State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Errored);
+            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized);
             foreach (var channel in channels)
             {
+                if (channel.IsExecutingInvocation(invocationId))
+                {
+                    _logger.LogInformation($"Restarting channel '{channel.Id}' that is executing invocation '{invocationId}' and timed out.");
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public async Task RestartAllWorkersAsync()
+        {
+            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
+            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized | RpcWorkerChannelState.Default | RpcWorkerChannelState.Initializing);
+            foreach (var channel in channels)
+            {
+                _logger.LogInformation($"Restarting channel '{channel.Id}' that is as part of restart all channels.");
                 await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
             }
         }

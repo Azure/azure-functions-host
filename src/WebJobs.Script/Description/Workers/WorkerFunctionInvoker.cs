@@ -24,14 +24,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Collection<FunctionBinding> _inputBindings;
         private readonly Collection<FunctionBinding> _outputBindings;
         private readonly BindingMetadata _bindingMetadata;
-        private readonly TimeSpan? _functionTimeout;
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
         private readonly IApplicationLifetime _applicationLifetime;
 
         internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime, TimeSpan? functionTimeout)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
@@ -40,7 +39,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _functionDispatcher = functionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerFunctionInvoker>();
             _applicationLifetime = applicationLifetime;
-            _functionTimeout = functionTimeout;
 
             InitializeFileWatcherIfEnabled();
 
@@ -65,10 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
             var inputs = new[] { triggerInput }.Concat(await BindInputsAsync(context.Binder));
 
-            // Set cancellation token for function timeout
-            var functionTimeoutCancellation = new CancellationTokenSource();
-            functionTimeoutCancellation.CancelAfter(_functionTimeout ?? TimeSpan.MaxValue);
-
             ScriptInvocationContext invocationContext = new ScriptInvocationContext()
             {
                 FunctionMetadata = Metadata,
@@ -82,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Attributes = Activity.Current?.Tags,
 
                 // TODO: link up cancellation token to parameter descriptors
-                CancellationToken = functionTimeoutCancellation.Token,
+                CancellationToken = CancellationToken.None,
                 Logger = context.Logger
             };
 

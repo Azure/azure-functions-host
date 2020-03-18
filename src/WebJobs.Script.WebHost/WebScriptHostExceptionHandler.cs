@@ -16,12 +16,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
-        private readonly IFunctionInvocationDispatcher _functionInvocationDispatcher;
+        private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
 
-        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IEnvironment environment, IFunctionInvocationDispatcher functionInvocationDispatcher)
+        public WebScriptHostExceptionHandler(IApplicationLifetime applicationLifetime, ILogger<WebScriptHostExceptionHandler> logger, IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory)
         {
             _applicationLifetime = applicationLifetime ?? throw new ArgumentNullException(nameof(applicationLifetime));
-            _functionInvocationDispatcher = functionInvocationDispatcher;
+            _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -49,11 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Task ignoreTask = _hostManager.StopAsync();
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
-            if (_functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Initialized))
+            IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
+            if (functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Initialized))
             {
-                _logger.LogWarning("Restarting language worker processes due to function timing out.", exceptionInfo.SourceException);
-                await _functionInvocationDispatcher.RestartAsync();
-                _logger.LogWarning("Restart of language worker process completed.", exceptionInfo.SourceException);
+                _logger.LogWarning($"Restarting language worker processe due to function timing out. InvocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
+                bool result = await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());
+                if (!result)
+                {
+                    _logger.LogWarning($"Restarting all language worker processes since invocation Id '{timeoutException.InstanceId}' was not found.", exceptionInfo.SourceException);
+                    await functionInvocationDispatcher.RestartAllWorkersAsync();
+                }
+                _logger.LogWarning("Restart of language worker process(es) completed.", exceptionInfo.SourceException);
             }
             else
             {

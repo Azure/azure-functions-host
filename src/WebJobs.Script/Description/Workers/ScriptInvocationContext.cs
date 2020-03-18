@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public CancellationToken CancellationToken { get; set; }
 
-        public CancellationTokenRegistration CancellationTokenRegistration { get; set; }
-
         public TaskCompletionSource<ScriptInvocationResult> ResultSource { get; set; }
 
         public ILogger Logger { get; set; }

@@ -195,8 +195,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
-
-                services.AddSingleton(s => s.GetRequiredService<IFunctionInvocationDispatcherFactory>().GetFunctionDispatcher());
             });
 
             RegisterFileProvisioningService(builder);

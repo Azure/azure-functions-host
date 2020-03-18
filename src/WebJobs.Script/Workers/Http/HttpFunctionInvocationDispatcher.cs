@@ -186,9 +186,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return Task.CompletedTask;
         }
 
-        public async Task RestartAsync()
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
         {
-            await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);
+            await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);    // Since there's only one channel for httpworker
+            return true;
+        }
+
+        public async Task RestartAllWorkersAsync()
+        {
+            await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);    // Since there's only one channel for httpworker
         }
     }
 }

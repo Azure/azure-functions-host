@@ -321,12 +321,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
-                    // Set channel to errored state if cancellation requested. Guaranteed to run even if cancellation has been requested before entering here.
-                    context.CancellationTokenRegistration = context.CancellationToken.Register(() =>
-                    {
-                        _state = RpcWorkerChannelState.Errored;
-                    });
-
                     if (context.CancellationToken.IsCancellationRequested)
                     {
                         context.ResultSource.SetCanceled();
@@ -334,6 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
+
                     SendStreamingMessage(new StreamingMessage
                     {
                         InvocationRequest = invocationRequest
@@ -349,25 +344,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
-            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context))
+            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
+                && invokeResponse.Result.IsSuccess(context.ResultSource))
             {
                 try
                 {
-                    // Dispose off the registration
-                    context.CancellationTokenRegistration.Dispose();
-
-                    if (invokeResponse.Result.IsSuccess(context.ResultSource))
-                    {
-                        IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
+                    IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
                         .ToDictionary(binding => binding.Name, binding => binding.Data.ToObject());
 
-                        var result = new ScriptInvocationResult()
-                        {
-                            Outputs = bindingsDictionary,
-                            Return = invokeResponse?.ReturnValue?.ToObject()
-                        };
-                        context.ResultSource.SetResult(result);
-                    }
+                    var result = new ScriptInvocationResult()
+                    {
+                        Outputs = bindingsDictionary,
+                        Return = invokeResponse?.ReturnValue?.ToObject()
+                    };
+                    context.ResultSource.SetResult(result);
                 }
                 catch (Exception responseEx)
                 {
@@ -509,6 +499,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 await currContext.ResultSource.Task;
             }
+        }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.ContainsKey(invocationId);
         }
     }
 }

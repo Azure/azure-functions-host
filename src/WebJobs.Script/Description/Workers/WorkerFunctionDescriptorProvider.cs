@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     internal abstract class WorkerFunctionDescriptorProvider : FunctionDescriptorProvider
     {
         private readonly ILoggerFactory _loggerFactory;
-        private readonly ScriptJobHostOptions _config;
         private IFunctionInvocationDispatcher _dispatcher;
         private IApplicationLifetime _applicationLifetime;
 
@@ -31,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _dispatcher = dispatcher;
             _loggerFactory = loggerFactory;
             _applicationLifetime = applicationLifetime;
-            _config = config;
         }
 
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
@@ -45,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings)
         {
-            return new WorkerFunctionInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher, _applicationLifetime, _config.FunctionTimeout);
+            return new WorkerFunctionInvoker(Host, triggerMetadata, functionMetadata, _loggerFactory, inputBindings, outputBindings, _dispatcher, _applicationLifetime);
         }
 
         protected override async Task<Collection<ParameterDescriptor>> GetFunctionParametersAsync(IFunctionInvoker functionInvoker, FunctionMetadata functionMetadata,

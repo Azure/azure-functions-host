@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public TestWorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
         Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
-        : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime, TimeSpan.MaxValue)
+        : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime)
         {
         }
 
