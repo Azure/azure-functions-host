@@ -31,8 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         private static readonly Action<ILogger, string, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
             LoggerMessage.Define<string, bool, bool, bool>(
             LogLevel.Information,
-            new EventId(303, nameof(ScriptStartNotLoadingExtensionBundle)),
-            "Loading extensions from {path}. BundleConfigured:{bundleConfigured}, PrecompiledFunctionApp:{isPrecompiledFunctionApp}, LegacyBundle:{isLegacyExtensionBundle}");
+            new EventId(328, nameof(ScriptStartNotLoadingExtensionBundle)),
+            "Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
            LoggerMessage.Define<string>(
