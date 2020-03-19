@@ -465,7 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 currentChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
                 if (currentChannelCount == expectedCount)
                 {
-                    return functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().All(ch => ch.State == RpcWorkerChannelState.Initialized);
+                    return functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().All(ch => ch.IsChannelReadyForInvocations());
                 }
                 return false;
             }, pollingInterval: expectedCount * 5 * 1000, timeout: 60 * 1000);
