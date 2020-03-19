@@ -11,21 +11,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// <summary>
         /// The Default state of LanguageWorkerChannel.
         /// </summary>
-        Default = 0,
+        Default = 1 << 0,
 
         /// <summary>
         /// LanguageWorkerChannel is created. InvocationBuffers per function are setup
         /// </summary>
-        InvocationBuffersInitialized = 1,
+        InvocationBuffersInitialized = 1 << 1,
 
         /// <summary>
         /// The LanguageWorkerChannel is created. Worker process is starting
         /// </summary>
-        Initializing = 2,
+        Initializing = 1 << 2,
 
         /// <summary>
         /// LanguageWorkerChannel is created. Worker process is Initialized. Rpc Channel is established.
         /// </summary>
-        Initialized = 4,
+        Initialized = 1 << 3,
     }
 }
