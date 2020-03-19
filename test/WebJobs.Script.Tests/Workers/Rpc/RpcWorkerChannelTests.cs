@@ -71,13 +71,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task StartWorkerProcessAsync_Invoked()
+        public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync();
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
             _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
+        public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
+        {
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
         }
 
         [Fact]
