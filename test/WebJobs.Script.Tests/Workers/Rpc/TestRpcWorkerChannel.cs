@@ -41,14 +41,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public List<Task> ExecutionContexts => _executionContexts;
 
-        public RpcWorkerChannelState State => _state;
-
         public void Dispose()
         {
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
+            _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
         }
 
@@ -82,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { "test", "testSupported" }
             };
-            _state = RpcWorkerChannelState.Initialized;
+            _state = _state | RpcWorkerChannelState.Initialized;
         }
 
         public void RaiseWorkerError()
@@ -106,6 +105,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await Task.WhenAll(ExecutionContexts);
             ExecutionContexts.Clear();
+        }
+
+        public bool IsChannelReadyForInvocations()
+        {
+            return _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
     }
 }
