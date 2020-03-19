@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
-            _state = RpcWorkerChannelState.Initializing;
+            _state = _state | RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
         }
 
