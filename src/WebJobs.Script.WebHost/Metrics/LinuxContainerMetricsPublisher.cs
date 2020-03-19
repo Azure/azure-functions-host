@@ -156,8 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 _logger.LogWarning($"Buffer for function activities is full with {_functionActivities.Count} elements. Dropping current batch of function activities");
                 DrainActivities(_currentFunctionActivities, _functionActivities);
             }
-
-            _logger.LogDebug($"Added function activity : {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}");
         }
 
         public void AddMemoryActivity(DateTime timeStampUtc, long data)
