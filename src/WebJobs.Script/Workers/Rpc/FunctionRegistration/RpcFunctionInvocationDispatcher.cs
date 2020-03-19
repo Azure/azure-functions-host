@@ -117,18 +117,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                         rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
-                         State = FunctionInvocationDispatcherState.Initialized;
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                     }
-                 });
+            {
+                if (workerInitTask.IsCompleted)
+                {
+                    _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
+                    rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
+                    State = FunctionInvocationDispatcherState.Initialized;
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
+                }
+            });
             return Task.CompletedTask;
         }
 
@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             IEnumerable<IRpcWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == RpcWorkerChannelState.Initialized);
+            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
