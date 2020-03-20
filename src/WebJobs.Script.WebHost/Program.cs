@@ -47,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     services.Configure<IISServerOptions>(o =>
                     {
-                        Console.WriteLine(o.MaxRequestBodySize);
                         o.MaxRequestBodySize = 104857600;
                     });
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
