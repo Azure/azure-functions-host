@@ -1,7 +1,7 @@
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 $bypassPackaging = $true
-$includeSuffix = $true
+$includeSuffix = $false
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
 if($sourceBranch.endsWith('master') -and ($buildReason -ne "PullRequest"))
