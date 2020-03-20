@@ -18,6 +18,8 @@ elseif($buildReason -eq "PullRequest")
   }
 }
 
+Write-Host "BypassPackaging: $bypassPackaging, IncludeSuffix: $includeSuffix"
+
 # Write to output
 "##vso[task.setvariable variable=IncludeSuffix;isOutput=true]$includeSuffix"
 "##vso[task.setvariable variable=BypassPackaging;isOutput=true]$bypassPackaging"
