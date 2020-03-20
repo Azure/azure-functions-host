@@ -49,9 +49,8 @@ jobs:
 - job: BuildArtifacts_Windows
   dependsOn: InitializePipeline
   variables:
-    bypassPackaging: $[ dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'] ]
     includeSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.IncludeSuffix'] ] 
-  condition: and(succeeded(), eq(dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'], 'false'))
+  condition: and(succeeded(), eq(dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'], false))
   pool:
     vmImage: 'vs2017-win2016' 
   steps:
