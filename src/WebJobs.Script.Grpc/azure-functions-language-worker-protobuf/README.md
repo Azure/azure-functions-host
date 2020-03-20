@@ -16,7 +16,7 @@ From within the Azure Functions language worker repo:
     -	`git read-tree  --prefix=<path in language worker repo> -u proto-file/<version branch>`
 3.	Add new path in language worker repo to .gitignore file
     -   In .gitignore, add path in language worker repo
-4.	Finalize with commit
+4.	Finalize with commit. Random change
     -	`git commit -m "Added subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Branch: <version branch>. Commit: <latest protobuf commit hash>"`
     -	`git push`
 
