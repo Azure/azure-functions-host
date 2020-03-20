@@ -51,7 +51,7 @@ jobs:
   variables:
     bypassPackaging: $[ dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'] ]
     includeSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.IncludeSuffix'] ] 
-  condition: and(succeeded(), eq(variables['bypassPackaging'], False))
+  condition: and(succeeded(), eq(variables['bypassPackaging'], 'False'))
   pool:
     vmImage: 'vs2017-win2016' 
   steps:
