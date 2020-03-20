@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -44,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
                 .ConfigureServices(services =>
                 {
+                    services.Configure<IISServerOptions>(o =>
+                    {
+                        Console.WriteLine(o.MaxRequestBodySize);
+                        o.MaxRequestBodySize = 104857600;
+                    });
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
