@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public bool IsChannelReadyForInvocations()
         {
-            return _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+            return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
 
         public async Task StartWorkerProcessAsync()
@@ -512,6 +512,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 await currContext.ResultSource.Task;
             }
+        }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.ContainsKey(invocationId);
         }
     }
 }
