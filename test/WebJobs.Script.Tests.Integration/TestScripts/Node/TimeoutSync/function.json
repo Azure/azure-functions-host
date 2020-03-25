@@ -2,7 +2,7 @@
     "bindings": [
         {
             "type": "manualTrigger",
-            "name": "inputData",
+            "name": "input",
             "direction": "in"
         }
     ]

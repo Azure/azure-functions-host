@@ -84,6 +84,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task DisposingChannel_NotReadyForInvocation()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await initTask;
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.Dispose();
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
+        public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
+        {
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_TimesOut()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync();
@@ -181,6 +203,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendInvocationRequest(scriptInvocationContext);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Fact]
+        public void SendInvocationRequest_IsInExecutingInvocation()
+        {
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
         }
 
         [Fact]

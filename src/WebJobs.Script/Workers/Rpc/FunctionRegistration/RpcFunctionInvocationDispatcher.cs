@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync()
         {
             Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             List<IRpcWorkerChannel> webhostChannels = null;
@@ -270,11 +270,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             IEnumerable<IRpcWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == RpcWorkerChannelState.Initialized);
+            return workerChannels;
+        }
+
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        {
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
+            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
             }
+
             return initializedWorkers;
         }
 
@@ -404,6 +411,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _disposing = true;
             State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
+        }
+
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        {
+            // Dispose and restart errored channel with the particular invocation id
+            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
+            var channels = await GetInitializedWorkerChannelsAsync();
+            foreach (var channel in channels)
+            {
+                if (channel.IsExecutingInvocation(invocationId))
+                {
+                    _logger.LogInformation($"Restarting channel '{channel.Id}' that is executing invocation '{invocationId}' and timed out.");
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public async Task RestartAllWorkersAsync()
+        {
+            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
+            var channels = await GetAllWorkerChannelsAsync();
+            foreach (var channel in channels)
+            {
+                _logger.LogInformation($"Restarting channel '{channel.Id}' that is as part of restarting all channels.");
+                await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+            }
         }
     }
 }
