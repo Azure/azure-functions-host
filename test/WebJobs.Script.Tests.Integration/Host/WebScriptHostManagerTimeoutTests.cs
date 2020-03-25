@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
                 timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
 
                 var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
-                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting language worker process due to function timing out. InvocationId"));
+                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("A function timeout has occurred. Restarting worker process executing invocationId "));
                 Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting channel"));
                 Assert.Contains(messages, t => t.FormattedMessage == "Restart of language worker process(es) completed.");
             }
