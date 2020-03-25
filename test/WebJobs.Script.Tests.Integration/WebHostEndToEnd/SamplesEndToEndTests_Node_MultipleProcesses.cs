@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -50,6 +53,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var result = nodeProcessesAfter.Where(pId1 => !nodeProcessesBeforeHostRestart.Any(pId2 => pId2 == pId1) && !_fixture.NodeProcessesBeforeTestStarted.Any(pId3 => pId3 == pId1));
             Assert.Equal(3, result.Count());
         }
+        
+        private async Task<IEnumerable<int>> WaitAndGetAllNodeProcesses(int expectedProcessCount)
+        {
+            IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
+            while(nodeProcessesBeforeHostRestart.Count() < expectedProcessCount)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
+            }
+
+            return nodeProcessesBeforeHostRestart;
+        }
+
+        [Fact]
+        public async Task NodeProcess_Different_AfterFunctionTimeout()
+        {
+            // Wait for all the 3 process to start
+            Task timeoutTask = Task.Delay(TimeSpan.FromMinutes(1));
+            Task<IEnumerable<int>> getNodeTask = WaitAndGetAllNodeProcesses(3);
+            Task result = await Task.WhenAny(getNodeTask, timeoutTask);
+            if(result.Equals(timeoutTask))
+            {
+                throw new Exception("Failed to start all 3 node processes");
+            }
+            var oldHostInstanceId = _fixture.HostInstanceId;
+            IEnumerable<int> nodeProcessesBeforeHostRestart = await getNodeTask;
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-timeout");
+            string uri = $"api/httptrigger-timeout?code={functionKey}&name=Yogi";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);  // Confirm response code after timeout (10 seconds)
+            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+
+            // Confirm count remains the same
+            Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
+
+            // Confirm exactly one process differs
+            Assert.Equal(1, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
+
+            // Confirm host instance ids are the same
+            Assert.Equal(oldHostInstanceId, _fixture.HostInstanceId);
+        }
 
         public class MultiplepleProcessesTestFixture : EndToEndTestFixture
         {
@@ -71,12 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
                 base.ConfigureScriptHost(webJobsBuilder);
-
                 webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
                 {
                     o.Functions = new[]
                     {
-                        "HttpTrigger"
+                        "HttpTrigger",
+                        "HttpTrigger-Timeout",
                     };
                 });
             }

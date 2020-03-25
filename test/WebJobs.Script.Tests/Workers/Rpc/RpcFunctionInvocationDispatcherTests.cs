@@ -7,8 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -47,6 +49,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
             Assert.Equal(0, finalJobhostChannelCount);
+        }
+
+        [Fact]
+        public async void Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
+        {
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Guid invocationId = Guid.NewGuid();
+            List<TestRpcWorkerChannel> workerChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Cast<TestRpcWorkerChannel>().ToList();
+            workerChannels[0].SendInvocationRequest(new ScriptInvocationContext
+            {
+                ExecutionContext = new ExecutionContext
+                {
+                    InvocationId = invocationId
+                }
+            });
+
+            await functionDispatcher.RestartWorkerWithInvocationIdAsync(invocationId.ToString());
+            Assert.True(workerChannels[0].IsDisposed);
+            for (int i = 1; i < workerChannels.Count; ++i)
+            {
+                Assert.False(workerChannels[i].IsDisposed); // Ensure no other channel is disposed
+            }
+
+            Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count goes back to initial count
+        }
+
+        [Fact]
+        public async void Restart_AllChannels_Succeeds()
+        {
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Guid invocationId = Guid.NewGuid();
+            List<TestRpcWorkerChannel> workerChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Cast<TestRpcWorkerChannel>().ToList();
+            await functionDispatcher.RestartAllWorkersAsync();
+            foreach (TestRpcWorkerChannel channel in workerChannels)
+            {
+                Assert.True(channel.IsDisposed);
+            }
+
+            Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count goes back to initial count
         }
 
         [Fact]

@@ -70,6 +70,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
 
+        public string HostInstanceId => Host.JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value.InstanceId;
+
         public string MasterKey { get; private set; }
 
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()

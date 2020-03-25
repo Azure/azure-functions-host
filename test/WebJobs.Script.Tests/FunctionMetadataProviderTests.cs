@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
 
-            Assert.Equal(17, metadataProvider.GetFunctionMetadata(false).Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadata(false).Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
         }
 
