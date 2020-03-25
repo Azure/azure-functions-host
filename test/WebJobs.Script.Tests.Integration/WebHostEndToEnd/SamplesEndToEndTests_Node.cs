@@ -249,6 +249,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("Mathew Charles", result);
         }
 
+
+
+        [Fact]
+        public async Task NodeProcess_Different_AfterFunctionTimeout()
+        {
+            IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-timeout");
+            string uri = $"api/httptrigger-timeout?code={functionKey}&name=Yogi";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);  // Confirm response code after timeout (10 seconds)
+            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
+
+            // Confirm count remains the same
+            Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
+
+            // Confirm exactly one process differs
+            Assert.Equal(1, nodeProcessesAfter.Except(nodeProcessesBefore).Count());
+        }
+
         [Fact]
         public async Task HttpTrigger_Get_Succeeds()
         {
@@ -480,7 +501,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                         "HttpTrigger-CustomRoute-Get",
                         "HttpTrigger-Disabled",
                         "HttpTrigger-Identities",
-                        "ManualTrigger"
+                        "ManualTrigger",
+                        "HttpTrigger-Timeout",
                     };
                 });
             }

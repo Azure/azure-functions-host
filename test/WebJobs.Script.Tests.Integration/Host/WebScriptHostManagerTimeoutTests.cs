@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
         [Fact]
         public async Task OnTimeoutException_OOP_HasExpectedLogs()
         {
-            using (var host = await RunTimeoutExceptionTest(handleCancellation: false, argKey: "inputData", timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
+            using (var host = await RunTimeoutExceptionTest(handleCancellation: false, timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
             {
                 var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             }
         }
 
-        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation, string argKey = "input", string timeoutFunctionName = "TimeoutToken", string path = @"TestScripts\CSharp")
+        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation, string timeoutFunctionName = "TimeoutToken", string path = @"TestScripts\CSharp")
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
             var host = CreateAndStartWebScriptHost(timeoutFunctionName, path);
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
 
             var args = new Dictionary<string, object>
             {
-                { argKey, scenarioName }
+                { "input", scenarioName }
             };
 
             var jobHost = host.JobHostServices.GetService<IJobHost>();

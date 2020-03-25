@@ -84,6 +84,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task DisposingChannel_NotReadyForInvocation()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await initTask;
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.Dispose();
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
         public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
         {
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
