@@ -171,6 +171,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void SendInvocationRequest_IsInExecutingInvocation()
+        {
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
+        }
+
+        [Fact]
         public async Task Drain_Verify()
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();

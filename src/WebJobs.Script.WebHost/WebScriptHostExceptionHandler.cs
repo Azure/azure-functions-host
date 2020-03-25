@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
             if (functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Initialized))
             {
-                _logger.LogWarning($"Restarting language worker processe due to function timing out. InvocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
+                _logger.LogWarning($"Restarting language worker process due to function timing out. InvocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
                 bool result = await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());
                 if (!result)
                 {

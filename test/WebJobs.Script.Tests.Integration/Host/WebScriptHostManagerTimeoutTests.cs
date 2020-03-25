@@ -56,31 +56,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             }
         }
 
-        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation)
+        [Fact]
+        public async Task OnTimeoutException_OOP_HasExpectedLogs()
+        {
+            using (var host = await RunTimeoutExceptionTest(handleCancellation: false, argKey: "inputData", timeoutFunctionName: "TimeoutSync", path: @"TestScripts\Node"))
+            {
+                var jobHostManager = host.WebHostServices.GetService<IScriptHostManager>();
+
+                // wait a few seconds to make sure the manager doesn't die
+                await Assert.ThrowsAsync<ApplicationException>(() => TestHelpers.Await(() => !(jobHostManager.State == ScriptHostState.Running),
+                timeout: 3000, throwWhenDebugging: true, userMessageCallback: () => "Expected host manager not to die"));
+
+                var messages = host.GetScriptHostLogMessages().Where(t => t?.FormattedMessage != null);
+                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting language worker process due to function timing out. InvocationId"));
+                Assert.Contains(messages, t => t.FormattedMessage.StartsWith("Restarting channel"));
+                Assert.Contains(messages, t => t.FormattedMessage == "Restart of language worker process(es) completed.");
+            }
+        }
+
+        private async Task<TestFunctionHost> RunTimeoutExceptionTest(bool handleCancellation, string argKey = "input", string timeoutFunctionName = "TimeoutToken", string path = @"TestScripts\CSharp")
         {
             TimeSpan gracePeriod = TimeSpan.FromMilliseconds(5000);
-            var host = CreateAndStartWebScriptHost();
+            var host = CreateAndStartWebScriptHost(timeoutFunctionName, path);
 
             string scenarioName = handleCancellation ? "useToken" : "ignoreToken";
 
             var args = new Dictionary<string, object>
             {
-                { "input", scenarioName }
+                { argKey, scenarioName }
             };
 
             var jobHost = host.JobHostServices.GetService<IJobHost>();
 
-            await Assert.ThrowsAsync<FunctionTimeoutException>(() => jobHost.CallAsync("TimeoutToken", args));
+            await Assert.ThrowsAsync<FunctionTimeoutException>(() => jobHost.CallAsync(timeoutFunctionName, args));
 
             return host;
         }
 
-        private TestFunctionHost CreateAndStartWebScriptHost()
+        private TestFunctionHost CreateAndStartWebScriptHost(string timeoutFunctionName, string path)
         {
-            var functions = new Collection<string> { "TimeoutToken" };
+            var functions = new Collection<string> { timeoutFunctionName };
 
             return new TestFunctionHost(
-                 @"TestScripts\CSharp",
+                 path,
                  Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions"),
                  configureWebHostServices: b =>
                  {
