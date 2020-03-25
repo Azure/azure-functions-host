@@ -125,5 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.Contains(invocationId);
+        }
     }
 }

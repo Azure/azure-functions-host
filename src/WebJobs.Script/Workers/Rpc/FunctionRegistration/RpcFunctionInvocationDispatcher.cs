@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger.LogDebug($"Waiting for {nameof(RpcFunctionInvocationDispatcher)} to shutdown");
             Task timeoutTask = Task.Delay(_shutdownTimeout);
-            IList<Task> workerChannelTasks = (await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized)).Select(a => a.DrainInvocationsAsync()).ToList();
+            IList<Task> workerChannelTasks = (await GetInitializedWorkerChannelsAsync()).Select(a => a.DrainInvocationsAsync()).ToList();
             Task completedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(workerChannelTasks));
 
             if (completedTask.Equals(timeoutTask))
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal async Task<IEnumerable<IRpcWorkerChannel>> GetWorkerChannelsInStateAsync(RpcWorkerChannelState state)
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync()
         {
             Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             List<IRpcWorkerChannel> webhostChannels = null;
@@ -264,12 +264,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             IEnumerable<IRpcWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
+            return workerChannels;
+        }
+
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        {
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
-                throw new InvalidOperationException($"Number of initialized language workers exceeded:{listOfWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
+                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
             }
-            return listOfWorkers;
+
+            return initializedWorkers;
         }
 
         public async void WorkerError(WorkerErrorEvent workerError)
@@ -327,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
             {
                 // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
-                if ((await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized)).Count() == 0)
+                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
                 {
                     State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
                     _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
@@ -404,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             // Dispose and restart errored channel with the particular invocation id
             State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized);
+            var channels = await GetInitializedWorkerChannelsAsync();
             foreach (var channel in channels)
             {
                 if (channel.IsExecutingInvocation(invocationId))
@@ -420,10 +427,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task RestartAllWorkersAsync()
         {
             State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-            var channels = await GetWorkerChannelsInStateAsync(RpcWorkerChannelState.Initialized | RpcWorkerChannelState.Default | RpcWorkerChannelState.Initializing);
+            var channels = await GetAllWorkerChannelsAsync();
             foreach (var channel in channels)
             {
-                _logger.LogInformation($"Restarting channel '{channel.Id}' that is as part of restart all channels.");
+                _logger.LogInformation($"Restarting channel '{channel.Id}' that is as part of restarting all channels.");
                 await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
             }
         }
