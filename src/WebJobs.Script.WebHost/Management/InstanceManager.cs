@@ -509,7 +509,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _logger.LogInformation($"Extracting files to '{scriptPath}'");
                 ZipFile.ExtractToDirectory(filePath, scriptPath, overwriteFiles: true);
                 _logger.LogInformation($"Zip extraction complete");
-                RunBashCommand($"chmod -R 755 '{scriptPath}'", MetricEventNames.LinuxContainerSpecializationChModCommand);
             }
         }
 

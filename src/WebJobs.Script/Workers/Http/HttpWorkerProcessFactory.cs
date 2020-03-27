@@ -15,24 +15,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IWorkerConsoleLogSource _consoleLogSource;
+        private readonly IEnvironment _environment;
 
         public HttpWorkerProcessFactory(IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
                                        IWorkerProcessFactory defaultWorkerProcessFactory,
                                        IProcessRegistry processRegistry,
-                                       IWorkerConsoleLogSource consoleLogSource)
+                                       IWorkerConsoleLogSource consoleLogSource,
+                                       IEnvironment environment)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
             _consoleLogSource = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
             _workerProcessFactory = defaultWorkerProcessFactory ?? throw new ArgumentNullException(nameof(defaultWorkerProcessFactory));
             _processRegistry = processRegistry ?? throw new ArgumentNullException(nameof(processRegistry));
+            _environment = environment;
         }
 
         public IWorkerProcess Create(string workerId, string scriptRootPath, HttpWorkerOptions httpWorkerOptions)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpWorkerProcess.{workerId}");
-            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource);
+            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _environment);
         }
     }
 }
