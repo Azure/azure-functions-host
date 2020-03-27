@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 { EnvironmentSettingNames.EasyAuthEnabled, "true" },
                 { EnvironmentSettingNames.ContainerName, "linuxconsumption" },
                 { EnvironmentSettingNames.EasyAuthSigningKey, "2892B532EB2C17AC3DD2009CBBF9C9CA7A3F9189FA4241789A4E26DE859077C0" },
-                { EnvironmentSettingNames.EasyAuthEncryptionKey, "723249EF012A5FCE5946F65FBE7D6CB209331612E651B638C2F46BF9DB39F530" }
+                { EnvironmentSettingNames.WebSiteAuthEncryptionKey, "723249EF012A5FCE5946F65FBE7D6CB209331612E651B638C2F46BF9DB39F530" }
             };
             var testEnv = new TestEnvironment(envVars);
             var easyAuthSettings = new HostEasyAuthOptions

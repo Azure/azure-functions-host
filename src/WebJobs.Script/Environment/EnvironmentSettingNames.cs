@@ -93,6 +93,5 @@ namespace Microsoft.Azure.WebJobs.Script
        // EasyAuth settings
         public const string EasyAuthClientId = "WEBSITE_AUTH_CLIENT_ID";
         public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
-        public const string EasyAuthEncryptionKey = "WEBSITE_AUTH_ENCRYPTION_KEY";
     }
 }
