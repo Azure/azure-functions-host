@@ -53,20 +53,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
-            Process httpWorkerProcess = _processFactory.CreateWorkerProcess(workerContext);
+            Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
             if (_environment.IsLinuxConsumption())
             {
-                AssignUserExecutePermissionsIfNotExists(httpWorkerProcess.StartInfo.FileName);
+                AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
             }
-            return httpWorkerProcess;
+            return workerProcess;
         }
 
         private void AssignUserExecutePermissionsIfNotExists(string filePath)
         {
-            UnixFileInfo fileInfo = new UnixFileInfo(filePath);
-
             try
             {
+                UnixFileInfo fileInfo = new UnixFileInfo(filePath);
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
                     _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);

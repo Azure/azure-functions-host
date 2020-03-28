@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
         private readonly IProcessRegistry _processRegistry = new EmptyProcessRegistry();
         private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-        private readonly ILogger _testLogger = new TestLogger("test");
+        private readonly TestLogger _testLogger = new TestLogger("test");
         private readonly HttpWorkerOptions _httpWorkerOptions;
 
         public HttpWorkerProcessTests()
@@ -55,6 +55,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.WorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();
             }
+        }
+
+        [Fact]
+        public void CreateWorkerProcess_LinuxConsumption_AssingnsExecutePermissions_invoked()
+        {
+            TestEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
+            var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment);
+            mockHttpWorkerProcess.CreateWorkerProcess();
+            // Verify method invocation
+            var testLogs = _testLogger.GetLogMessages();
+            Assert.Contains("Error while assigning execute permission", testLogs[0].FormattedMessage);
         }
     }
 }
