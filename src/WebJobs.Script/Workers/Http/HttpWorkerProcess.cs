@@ -69,10 +69,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
                 {
                     _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
-                    fileInfo.FileAccessPermissions = fileInfo.FileAccessPermissions |
-                        FileAccessPermissions.UserExecute |
-                        FileAccessPermissions.GroupExecute |
-                        FileAccessPermissions.OtherExecute;
+                    fileInfo.FileAccessPermissions |= FileAccessPermissions.UserExecute |
+                                                      FileAccessPermissions.GroupExecute |
+                                                      FileAccessPermissions.OtherExecute;
                 }
             }
             catch (Exception ex)
