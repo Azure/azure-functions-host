@@ -107,9 +107,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
-        public RpcWorkerChannelState State => _state;
-
         internal IWorkerProcess WorkerProcess => _rpcWorkerProcess;
+
+        public bool IsChannelReadyForInvocations()
+        {
+            return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+        }
 
         public async Task StartWorkerProcessAsync()
         {
@@ -120,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
-            _state = RpcWorkerChannelState.Initializing;
+            _state = _state | RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
         }
 
@@ -167,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _workerInitTask.SetResult(false);
                 return;
             }
-            _state = RpcWorkerChannelState.Initialized;
+            _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _workerInitTask.SetResult(true);
         }
@@ -180,6 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
                 _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
             }
+            _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
         }
 
         public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
@@ -495,6 +499,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 await currContext.ResultSource.Task;
             }
+        }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.ContainsKey(invocationId);
         }
     }
 }

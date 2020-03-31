@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
-        RpcWorkerChannelState State { get; }
+        bool IsChannelReadyForInvocations();
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
@@ -27,5 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         Task StartWorkerProcessAsync();
 
         Task DrainInvocationsAsync();
+
+        bool IsExecutingInvocation(string invocationId);
     }
 }

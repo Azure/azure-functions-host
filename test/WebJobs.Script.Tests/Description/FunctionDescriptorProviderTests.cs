@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var (created, descriptor) = await _provider.TryCreate(functionMetadata);
             });
 
-            Assert.Contains("unknownbinding", ex.Message);
+            Assert.Contains("The binding type(s) 'unknownbinding' are not registered", ex.Message);
         }
 
         [Fact]

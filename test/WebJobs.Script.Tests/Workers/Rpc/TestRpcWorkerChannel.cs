@@ -7,13 +7,14 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class TestRpcWorkerChannel : IRpcWorkerChannel
+    public class TestRpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private string _workerId;
         private bool _isWebhostChannel;
@@ -23,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private ILogger _testLogger;
         private RpcWorkerChannelState _state;
         private List<Task> _executionContexts;
+        private HashSet<string> _executingInvocations;
+        private bool _isDisposed;
 
         public TestRpcWorkerChannel(string workerId, string runtime = null, IScriptEventManager eventManager = null, ILogger testLogger = null, bool isWebhostChannel = false, bool throwOnProcessStartUp = false)
         {
@@ -33,22 +36,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testLogger = testLogger;
             _throwOnProcessStartUp = throwOnProcessStartUp;
             _executionContexts = new List<Task>();
+            _executingInvocations = new HashSet<string>();
+            _isDisposed = false;
         }
 
         public string Id => _workerId;
+
+        public bool IsDisposed => _isDisposed;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => throw new NotImplementedException();
 
         public List<Task> ExecutionContexts => _executionContexts;
 
-        public RpcWorkerChannelState State => _state;
-
         public void Dispose()
         {
+            _isDisposed = true;
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
         {
+            _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
         }
 
@@ -65,7 +72,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void SendInvocationRequest(ScriptInvocationContext context)
         {
+            _executingInvocations.Add(context.ExecutionContext.InvocationId.ToString());
             _testLogger.LogInformation("SendInvocationRequest called");
+        }
+
+        public void InvokeResponse(InvocationResponse invokeResponse)
+        {
+            _executingInvocations.Remove(invokeResponse.InvocationId);
         }
 
         public async Task StartWorkerProcessAsync()
@@ -82,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 { "test", "testSupported" }
             };
-            _state = RpcWorkerChannelState.Initialized;
+            _state = _state | RpcWorkerChannelState.Initialized;
         }
 
         public void RaiseWorkerError()
@@ -106,6 +119,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             await Task.WhenAll(ExecutionContexts);
             ExecutionContexts.Clear();
+        }
+
+        public bool IsChannelReadyForInvocations()
+        {
+            return _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+        }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.Contains(invocationId);
         }
     }
 }
