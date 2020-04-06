@@ -12,14 +12,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
     internal class FileLogger : ILogger
     {
-        private readonly FileWriter _fileWriter;
+        private readonly IFileWriter _fileWriter;
         private readonly Func<bool> _isFileLoggingEnabled;
         private readonly Func<bool> _isPrimary;
         private readonly string _categoryName;
         private readonly LogType _logType;
         private readonly IExternalScopeProvider _scopeProvider;
 
-        public FileLogger(string categoryName, FileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, LogType logType, IExternalScopeProvider scopeProvider)
+        public FileLogger(string categoryName, IFileWriter fileWriter, Func<bool> isFileLoggingEnabled, Func<bool> isPrimary, LogType logType, IExternalScopeProvider scopeProvider)
         {
             _fileWriter = fileWriter;
             _isFileLoggingEnabled = isFileLoggingEnabled;
@@ -88,12 +88,20 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             }
 
             formattedMessage = FormatLine(stateValues, logLevel, formattedMessage);
-            _fileWriter.AppendLine(formattedMessage);
 
-            // flush errors immediately
-            if (logLevel == LogLevel.Error || exception != null)
+            try
             {
-                _fileWriter.Flush();
+                _fileWriter.AppendLine(formattedMessage);
+
+                // flush errors immediately
+                if (logLevel == LogLevel.Error || exception != null)
+                {
+                    _fileWriter.Flush();
+                }
+            }
+            catch (Exception)
+            {
+                // Make sure the Logger doesn't throw if there are Exceptions (disk full, etc).
             }
         }
 
