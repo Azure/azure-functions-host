@@ -13,7 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    internal class FileWriter : IDisposable
+    internal class FileWriter : IFileWriter, IDisposable
     {
         internal const int LastModifiedCutoffDays = 1;
         internal const long MaxLogFileSizeBytes = 5 * 1024 * 1024;
