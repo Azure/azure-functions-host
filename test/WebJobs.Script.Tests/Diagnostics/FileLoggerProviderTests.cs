@@ -32,8 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             };
             var fileStatus = new Mock<IFileLoggingStatusManager>();
             var primaryStatus = new Mock<IPrimaryHostStateProvider>();
+            var fileWriterFactory = new DefaultFileWriterFactory();
 
-            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options), fileStatus.Object, primaryStatus.Object))
+            using (var provider = new FunctionFileLoggerProvider(new OptionsWrapper<ScriptJobHostOptions>(options), fileStatus.Object, primaryStatus.Object, fileWriterFactory))
             {
                 provider.SetScopeProvider(new LoggerExternalScopeProvider());
 
