@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 string loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
                 loggingBuilder.AddConfiguration(context.Configuration.GetSection(loggingPath));
 
+                loggingBuilder.Services.AddSingleton<IFileWriterFactory, DefaultFileWriterFactory>();
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, HostFileLoggerProvider>();
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
 
