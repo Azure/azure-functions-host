@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // request for triggering specialization.
                     s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
 
-                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
+                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>(); 
                 })
                 .ConfigureScriptHostServices(s =>
                 {

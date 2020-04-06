@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)DelegatedConfigureBuilder.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FunctionExecutionEvent.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpTestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FunctionTraceEvent.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
