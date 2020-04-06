@@ -13,15 +13,20 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
     /// </summary>
     internal class HostFileLoggerProvider : ILoggerProvider, ISupportExternalScope
     {
-        private readonly FileWriter _writer;
+        private readonly IFileWriter _writer;
         private readonly Func<bool> _isFileLoggingEnabled;
 
         private bool _disposed = false;
         private IExternalScopeProvider _scopeProvider;
 
-        public HostFileLoggerProvider(IOptions<ScriptJobHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager)
+        public HostFileLoggerProvider(IOptions<ScriptJobHostOptions> options, IFileLoggingStatusManager fileLoggingStatusManager, IFileWriterFactory fileWriterFactory)
         {
-            _writer = new FileWriter(Path.Combine(options.Value.RootLogPath, "Host"));
+            if (fileWriterFactory == null)
+            {
+                throw new ArgumentNullException(nameof(fileWriterFactory));
+            }
+
+            _writer = fileWriterFactory.Create(Path.Combine(options.Value.RootLogPath, "Host"));
             _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;
         }
 
@@ -39,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         {
             if (!_disposed)
             {
-                _writer.Dispose();
+                (_writer as IDisposable)?.Dispose();
                 _disposed = true;
             }
         }
