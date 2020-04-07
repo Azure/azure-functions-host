@@ -204,6 +204,8 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension ""
 
+        deleteDuplicateWorkers
+
         # Make the zip
         ZipContent $publishTarget "$buildOutput\Functions.Private.$extensionVersion$runtimeSuffix.zip"
 
@@ -211,6 +213,8 @@ function CreateZips([string] $runtimeSuffix) {
         # Project cleanup (trim some project files - this should be revisited)
         cleanExtension "32bit"
         cleanExtension "64bit"
+
+        deleteDuplicateWorkers
 
         # Create private extension for internal usage. To minimize size remove 64bit folder.
         $tempPath = "$buildOutput\win-x32.inproc.temp\SiteExtensions"
@@ -244,11 +248,18 @@ function CreateZips([string] $runtimeSuffix) {
 }
 
 function deleteDuplicateWorkers() {
-    Write-Host "Moving workers directory:$privateSiteExtensionPath\32bit\workers to" $privateSiteExtensionPath 
-    Move-Item -Path "$privateSiteExtensionPath\32bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
-
     if(Test-Path "$privateSiteExtensionPath\64bit\workers") {
-        Write-Host "Deleting workers directory: $privateSiteExtensionPath\64bit\workers" 
+        Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
+        Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+
+        Write-Host "Silently removing $privateSiteExtensionPath\32bit\workers if exists"
+        Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    }
+    elseif(Test-Path "$privateSiteExtensionPath\32bit\workers") {
+        Write-Host "Moving workers directory:$privateSiteExtensionPath\32bit\workers to" $privateSiteExtensionPath 
+        Move-Item -Path "$privateSiteExtensionPath\32bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+
+        Write-Host "Silently removing $privateSiteExtensionPath\64bit\workers if exists"
         Remove-Item -Recurse -Force "$privateSiteExtensionPath\64bit\workers" -ErrorAction SilentlyContinue
     }
 }
@@ -269,7 +280,6 @@ function cleanExtension([string] $bitness) {
     $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    deleteDuplicateWorkers
 }
   
 dotnet --version
