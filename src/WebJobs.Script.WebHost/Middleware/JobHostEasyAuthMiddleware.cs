@@ -9,6 +9,7 @@ using Microsoft.Azure.AppService.Middleware.AspNetCoreMiddleware;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -18,11 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class JobHostEasyAuthMiddleware : IJobHostHttpMiddleware
     {
         private readonly ILogger<JobHostEasyAuthMiddleware> _logger;
+        private readonly IConfiguration _configuration;
         private RequestDelegate _invoke;
 
-        public JobHostEasyAuthMiddleware(IOptions<HostEasyAuthOptions> hostEasyAuthOptions, ILogger<JobHostEasyAuthMiddleware> logger)
+        public JobHostEasyAuthMiddleware(IOptions<HostEasyAuthOptions> hostEasyAuthOptions, ILogger<JobHostEasyAuthMiddleware> logger, IConfiguration configuration)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(logger));
 
             RequestDelegate contextNext = async context =>
             {
@@ -33,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             };
             if (hostEasyAuthOptions.Value.SiteAuthEnabled)
             {
-                var easyAuthMiddleware = new EasyAuthMiddleware(contextNext, hostEasyAuthOptions.Value.Configuration);
+                var easyAuthMiddleware = new EasyAuthMiddleware(contextNext, _configuration);
                 _invoke = easyAuthMiddleware.InvokeAsync;
                 _logger.LogDebug($"{nameof(JobHostEasyAuthMiddleware)} Creating {nameof(EasyAuthMiddleware)}");
             }
