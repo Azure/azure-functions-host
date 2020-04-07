@@ -248,8 +248,20 @@ function CreateZips([string] $runtimeSuffix) {
 }
 
 function deleteDuplicateWorkers() {
-    Write-Host "Deleting workers directory: $privateSiteExtensionPath\32bit\workers" 
-    Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    if(Test-Path "$privateSiteExtensionPath\64bit\workers") {
+        Write-Host "Moving workers directory:$privateSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
+        Move-Item -Path "$privateSiteExtensionPath\64bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+
+        Write-Host "Silently removing $privateSiteExtensionPath\32bit\workers if exists"
+        Remove-Item -Recurse -Force "$privateSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
+    }
+    elseif(Test-Path "$privateSiteExtensionPath\32bit\workers") {
+        Write-Host "Moving workers directory:$privateSiteExtensionPath\32bit\workers to" $privateSiteExtensionPath 
+        Move-Item -Path "$privateSiteExtensionPath\32bit\workers"  -Destination "$privateSiteExtensionPath\workers" 
+
+        Write-Host "Silently removing $privateSiteExtensionPath\64bit\workers if exists"
+        Remove-Item -Recurse -Force "$privateSiteExtensionPath\64bit\workers" -ErrorAction SilentlyContinue
+    }
 }
 
 function cleanExtension([string] $bitness) {
