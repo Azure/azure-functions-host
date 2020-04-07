@@ -161,6 +161,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
+        [InlineData(new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" }, new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" })]
+        [InlineData(new string[] { "hello", "empty", "x-mx-key" }, new string[] { "world", "", "value" }, new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" })]// Removes empty value query params
+        public void HttpObjects_Headers(string[] headerKeys, string[] headerValues, string[] expectedKeys, string[] expectedValues)
+        {
+            var logger = MockNullLoggerFactory.CreateLogger();
+            var capabilities = new Capabilities(logger);
+
+            var headerDictionary = new HeaderDictionary();
+            for (int i = 0; i < headerValues.Length; i++)
+            {
+                headerDictionary.Add(headerKeys[i], headerValues[i]);
+            }
+
+            HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/api/httptrigger-scenarios", headerDictionary);
+
+            var rpcRequestObject = request.ToRpc(logger, capabilities);
+            // Same number of expected key value pairs
+            Assert.Equal(rpcRequestObject.Http.Headers.Count, expectedKeys.Length);
+            Assert.Equal(rpcRequestObject.Http.Headers.Count, expectedValues.Length);
+            // Same key and value strings for each pair
+            for (int i = 0; i < expectedKeys.Length; i++)
+            {
+                Assert.True(rpcRequestObject.Http.Headers.ContainsKey(expectedKeys[i]));
+                Assert.Equal(rpcRequestObject.Http.Headers.GetValueOrDefault(expectedKeys[i]), expectedValues[i]);
+            }
+        }
+
+        [Theory]
         [InlineData(BindingDirection.In, "blob", DataType.String)]
         [InlineData(BindingDirection.Out, "blob", DataType.Binary)]
         [InlineData(BindingDirection.InOut, "blob", DataType.Stream)]
