@@ -4,9 +4,11 @@ $bypassPackaging = $true
 $includeSuffix = $true
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
-if($sourceBranch.endsWith('master') -and ($buildReason -ne "PullRequest"))
+if(($sourceBranch.endsWith('v2.x') -or $sourceBranch.endsWith('release/2.0')) -and ($buildReason -ne "PullRequest"))
 {
-  $includeSuffix = $false
+  if($sourceBranch.endsWith('release/2.0')) {
+    $includeSuffix = $false
+  }
   $bypassPackaging = $false
 }
 elseif($buildReason -eq "PullRequest")

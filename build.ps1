@@ -8,7 +8,7 @@
 
 if ($includeSuffix)
 {
-    $extensionVersion += "-prerelease"
+    $extensionVersion += "-ci"
 }
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 Write-Host "Bypass packaging: $bypassPackaging"

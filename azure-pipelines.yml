@@ -6,14 +6,14 @@ name: 2.0.$(buildNumber)
 pr:
   branches:
     include:
-    - master
-    - dev
+    - release/2.0
+    - v2.x
 
 trigger:
   branches:
     include:
-    - master
-    - dev
+    - release/2.0
+    - v2.x
 
 jobs:
 - job: InitializePipeline
@@ -155,8 +155,32 @@ jobs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - publish: $(Build.ArtifactStagingDirectory)
-    artifact: artifacts
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber).no-runtime.zip
+    artifact: Functions.2.0.$(buildNumber).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Binaries.2.0.$(buildNumber).no-runtime.zip
+    artifact: Functions.Binaries.2.0.$(buildNumber).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber).no-runtime.zip
+    artifact: Functions.Private.2.0.$(buildNumber).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber).win-x32.inproc.zip
+    artifact: Functions.Private.2.0.$(buildNumber).win-x32.inproc
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber).zip
+    artifact: Functions.2.0.$(buildNumber)
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Binaries.2.0.$(buildNumber).zip
+    artifact: Functions.Binaries.2.0.$(buildNumber)
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.2.0.$(buildNumber).win-x64.zip
+    artifact: Functions.Symbols.2.0.$(buildNumber).win-x64
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.2.0.$(buildNumber).win-x86.zip
+    artifact: Functions.Symbols.2.0.$(buildNumber).win-x86
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber)
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.1.1.7.nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.1.1.7
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber)
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber)
+  - publish: $(Build.ArtifactStagingDirectory)\WebJobs.Script.Performance.App.1.0.0.nupkg
+    artifact: WebJobs.Script.Performance.App.1.0.0
 
 - job: RunUnitTests
   pool:
