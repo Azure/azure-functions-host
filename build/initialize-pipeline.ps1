@@ -1,14 +1,11 @@
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 $bypassPackaging = $true
-$includeSuffix = $true
+$includeSuffix = $false
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
-if(($sourceBranch.endsWith('v2.x') -or $sourceBranch.endsWith('release/2.0')) -and ($buildReason -ne "PullRequest"))
+if($sourceBranch.endsWith('release/2.0') -and ($buildReason -ne "PullRequest"))
 {
-  if($sourceBranch.endsWith('release/2.0')) {
-    $includeSuffix = $false
-  }
   $bypassPackaging = $false
 }
 elseif($buildReason -eq "PullRequest")

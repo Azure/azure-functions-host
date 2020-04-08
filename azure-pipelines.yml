@@ -143,8 +143,13 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '..\..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      Contents: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)\ExtensionsMetadataGenerator'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '..\..\..\buildoutput'
+      Contents: 'WebJobs.Script.Performance.App*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)\Performance'
   - task: CopyFiles@2
     inputs:
       SourceFolder: '..\..\buildoutput'
@@ -173,14 +178,14 @@ jobs:
     artifact: Functions.Symbols.2.0.$(buildNumber).win-x86
   - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber).nupkg
     artifact: Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber)
-  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.1.1.7.nupkg
-    artifact: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.1.1.7
+  - publish: $(Build.ArtifactStagingDirectory)\ExtensionsMetadataGenerator
+    artifact: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator
   - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber).nupkg
     artifact: Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber)
   - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber).nupkg
     artifact: Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber)
-  - publish: $(Build.ArtifactStagingDirectory)\WebJobs.Script.Performance.App.1.0.0.nupkg
-    artifact: WebJobs.Script.Performance.App.1.0.0
+  - publish: $(Build.ArtifactStagingDirectory)\Performance
+    artifact: WebJobs.Script.Performance.App
 
 - job: RunUnitTests
   pool:
