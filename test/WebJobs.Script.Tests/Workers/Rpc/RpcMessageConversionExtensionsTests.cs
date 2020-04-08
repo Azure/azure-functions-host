@@ -150,19 +150,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var rpcRequestObject = request.ToRpc(logger, capabilities);
             // Same number of expected key value pairs
-            Assert.Equal(rpcRequestObject.Http.Query.Count, expectedKeys.Length);
-            Assert.Equal(rpcRequestObject.Http.Query.Count, expectedValues.Length);
+            Assert.Equal(expectedKeys.Length, rpcRequestObject.Http.Query.Count);
+            Assert.Equal(expectedValues.Length, rpcRequestObject.Http.Query.Count);
             // Same key and value strings for each pair
             for (int i = 0; i < expectedKeys.Length; i++)
             {
                 Assert.True(rpcRequestObject.Http.Query.ContainsKey(expectedKeys[i]));
-                Assert.Equal(rpcRequestObject.Http.Query.GetValueOrDefault(expectedKeys[i]), expectedValues[i]);
+                Assert.Equal(expectedValues[i], rpcRequestObject.Http.Query.GetValueOrDefault(expectedKeys[i]));
             }
         }
 
         [Theory]
-        [InlineData(new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" }, new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" })]
-        [InlineData(new string[] { "hello", "empty", "x-mx-key" }, new string[] { "world", "", "value" }, new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" })]// Removes empty value query params
+        [InlineData(new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" }, new string[] { "hello", "x-mx-key", "Host" }, new string[] { "world", "value", "localhost" })]
+        [InlineData(new string[] { "hello", "empty", "x-mx-key" }, new string[] { "world", "", "value" }, new string[] { "hello", "x-mx-key", "Host" }, new string[] { "world", "value", "localhost" })] // Removes empty value query params
         public void HttpObjects_Headers(string[] headerKeys, string[] headerValues, string[] expectedKeys, string[] expectedValues)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
@@ -178,13 +178,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var rpcRequestObject = request.ToRpc(logger, capabilities);
             // Same number of expected key value pairs
-            Assert.Equal(rpcRequestObject.Http.Headers.Count, expectedKeys.Length);
-            Assert.Equal(rpcRequestObject.Http.Headers.Count, expectedValues.Length);
+            Assert.Equal(expectedKeys.Length, rpcRequestObject.Http.Headers.Count);
+            Assert.Equal(expectedValues.Length, rpcRequestObject.Http.Headers.Count);
             // Same key and value strings for each pair
             for (int i = 0; i < expectedKeys.Length; i++)
             {
                 Assert.True(rpcRequestObject.Http.Headers.ContainsKey(expectedKeys[i]));
-                Assert.Equal(rpcRequestObject.Http.Headers.GetValueOrDefault(expectedKeys[i]), expectedValues[i]);
+                Assert.Equal(expectedValues[i], rpcRequestObject.Http.Headers.GetValueOrDefault(expectedKeys[i]));
             }
         }
 
