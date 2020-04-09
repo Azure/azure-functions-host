@@ -1,14 +1,15 @@
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 $bypassPackaging = $true
-$includeSuffix = $true
+$suffix = "-ci"
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
-if(($sourceBranch.endsWith('master') -or $sourceBranch.endsWith('dev')) -and ($buildReason -ne "PullRequest"))
+if($sourceBranch.endsWith('release/2.0')) {
+  $suffix = ""
+}
+
+if(($sourceBranch.endsWith('v2.x') -or $sourceBranch.endsWith('release/2.0')) -and ($buildReason -ne "PullRequest"))
 {
-  if($sourceBranch.endsWith('master')) {
-    $includeSuffix = $false
-  }
   $bypassPackaging = $false
 }
 elseif($buildReason -eq "PullRequest")
@@ -20,8 +21,8 @@ elseif($buildReason -eq "PullRequest")
   }
 }
 
-Write-Host "BypassPackaging: $bypassPackaging, IncludeSuffix: $includeSuffix"
+Write-Host "BypassPackaging: $bypassPackaging, Suffix: $suffix"
 
 # Write to output
-"##vso[task.setvariable variable=IncludeSuffix;isOutput=true]$includeSuffix"
+"##vso[task.setvariable variable=Suffix;isOutput=true]$suffix"
 "##vso[task.setvariable variable=BypassPackaging;isOutput=true]$bypassPackaging"

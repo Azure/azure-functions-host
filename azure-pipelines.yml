@@ -6,14 +6,14 @@ name: 2.0.$(buildNumber)
 pr:
   branches:
     include:
-    - master
-    - dev
+    - release/2.0
+    - v2.x
 
 trigger:
   branches:
     include:
-    - master
-    - dev
+    - release/2.0
+    - v2.x
 
 jobs:
 - job: InitializePipeline
@@ -49,7 +49,7 @@ jobs:
 - job: BuildArtifacts_Windows
   dependsOn: InitializePipeline
   variables:
-    includeSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.IncludeSuffix'] ] 
+    suffix: $[ dependencies.InitializePipeline.outputs['Initialize.Suffix'] ]
   condition: and(succeeded(), eq(dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'], false))
   pool:
     vmImage: 'vs2017-win2016' 
@@ -63,7 +63,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -includeSuffix ([System.Convert]::ToBoolean("$(includeSuffix)")) -bypassPackaging $false -signOutput $false'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -bypassPackaging $false -signOutput $false'
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
@@ -143,8 +143,13 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '..\..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      Contents: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)\ExtensionsMetadataGenerator'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '..\..\..\buildoutput'
+      Contents: 'WebJobs.Script.Performance.App*.nupkg'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)\Performance'
   - task: CopyFiles@2
     inputs:
       SourceFolder: '..\..\buildoutput'
@@ -155,8 +160,34 @@ jobs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - publish: $(Build.ArtifactStagingDirectory)
-    artifact: artifacts
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber)$(suffix).no-runtime.zip
+    artifact: Functions.2.0.$(buildNumber)$(suffix).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Binaries.2.0.$(buildNumber)$(suffix).no-runtime.zip
+    artifact: Functions.Binaries.2.0.$(buildNumber)$(suffix).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber)$(suffix).no-runtime.zip
+    artifact: Functions.Private.2.0.$(buildNumber)$(suffix).no-runtime
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber)$(suffix).win-x32.inproc.zip
+    artifact: Functions.Private.2.0.$(buildNumber)$(suffix).win-x32.inproc
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber)$(suffix).zip
+    artifact: Functions.2.0.$(buildNumber)$(suffix)
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Binaries.2.0.$(buildNumber)$(suffix).zip
+    artifact: Functions.Binaries.2.0.$(buildNumber)$(suffix)
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.2.0.$(buildNumber)$(suffix).win-x64.zip
+    artifact: Functions.Symbols.2.0.$(buildNumber)$(suffix).win-x64
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.2.0.$(buildNumber)$(suffix).win-x86.zip
+    artifact: Functions.Symbols.2.0.$(buildNumber)$(suffix).win-x86
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber)$(suffix).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.2.0.$(buildNumber)$(suffix)
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber)$(suffix).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.Grpc.2.0.$(buildNumber)$(suffix)
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber)$(suffix).nupkg
+    artifact: Microsoft.Azure.WebJobs.Script.WebHost.2.0.$(buildNumber)$(suffix)
+  - publish: $(Build.ArtifactStagingDirectory)\ExtensionsMetadataGenerator
+    artifact: Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator$(suffix)
+    condition: succeeded()
+  - publish: $(Build.ArtifactStagingDirectory)\Performance
+    artifact: WebJobs.Script.Performance.App$(suffix)
+    condition: succeeded()
 
 - job: RunUnitTests
   pool:

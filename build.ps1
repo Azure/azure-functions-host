@@ -1,19 +1,16 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [bool]$includeSuffix = $true,
+  [string]$suffix,
   [bool]$bypassPackaging = $true,
   [bool]$signOutput = $true
 )
 
-if ($includeSuffix)
-{
-    $extensionVersion += "-prerelease"
-}
+$extensionVersion += $suffix
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 Write-Host "Bypass packaging: $bypassPackaging"
-Write-Host "IncludeSuffix: $includeSuffix"
 Write-Host "SourceBranch: $sourceBranch"
+Write-Host "ExtensionVersion: $extensionVersion"
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $buildOutput = Join-Path $currentDir "buildoutput"
