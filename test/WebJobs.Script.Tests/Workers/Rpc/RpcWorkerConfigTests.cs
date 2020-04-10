@@ -357,12 +357,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7/LINUX/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7/LINUX")]
-        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7", null, "3.7/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7", null, "3.7/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7", null, "3.7/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%", "~3.7", "[\\d\\.]+", "3.7")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%", " 3.7 ", "[\\d\\.]+", "3.7")]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionSet(
+            string defaultWorkerPath,
+            string environmentRuntimeVersion,
+            string sanitizeRuntimeVersionRegex,
+            string expectedPath)
         {
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, environmentRuntimeVersion);
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -370,6 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultExecutablePath = "python",
                 DefaultWorkerPath = defaultWorkerPath,
                 DefaultRuntimeVersion = "3.6",
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
                 SupportedOperatingSystems = new List<string>()
@@ -400,15 +407,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
 
             Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
-            Assert.Collection(testLogger.GetLogMessages(),
-                p => Assert.Equal("EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: 3.7", p.FormattedMessage));
+
+            var expectedLogMessage = string.Format($"EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: {environmentRuntimeVersion}");
+            Assert.Collection(testLogger.GetLogMessages(), p => Assert.Equal(expectedLogMessage, p.FormattedMessage));
         }
 
         [Theory]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.6/LINUX/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.6/X64")]
-        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.6/LINUX")]
-        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(string defaultWorkerPath, string expectedPath)
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", null, "3.6/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", null, "3.6/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", null, "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "", "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "[\\d\\.]+", "3.6/LINUX")]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(
+            string defaultWorkerPath,
+            string sanitizeRuntimeVersionRegex,
+            string expectedPath)
         {
             // We fall back to the default version when this is not set
             // Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
@@ -429,7 +442,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
                 Language = "python",
-                DefaultRuntimeVersion = "3.6"
+                DefaultRuntimeVersion = "3.6",
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
@@ -547,8 +561,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
         }
 
-        [Fact]
-        public void LanguageWorker_FormatWorkerPath_UnsupportedEnvironmentRuntimeVersion()
+        [Theory]
+        [InlineData(null, "Version 3.4 is not supported for language python")]
+        [InlineData("[\\d\\.]+", "Version 3.4 is not supported for language python")]
+        [InlineData("[\\d]+", "Version 3 is not supported for language python")]
+        [InlineData("[A-Z]+", "Version 3.4 for language python does not match the regular expression '[A-Z]+'")]
+        public void LanguageWorker_FormatWorkerPath_UnsupportedEnvironmentRuntimeVersion(
+            string sanitizeRuntimeVersionRegex,
+            string expectedExceptionMessage)
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
 
@@ -557,6 +577,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Arguments = new List<string>(),
                 DefaultExecutablePath = "python",
                 SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
                 DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
                 WorkerDirectory = string.Empty,
                 Extensions = new List<string>() { ".py" },
@@ -573,7 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testLogger = new TestLogger("test");
 
             var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
-            Assert.Equal(ex.Message, $"Version 3.4 is not supported for language {workerDescription.Language}");
+            Assert.Equal(ex.Message, expectedExceptionMessage);
         }
 
         private IEnumerable<RpcWorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestRpcWorkerConfig> configs, ILogger testLogger, TestMetricsLogger testMetricsLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)

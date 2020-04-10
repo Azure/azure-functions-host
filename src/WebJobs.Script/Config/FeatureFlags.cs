@@ -12,9 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
     /// </summary>
     public static class FeatureFlags
     {
-        public static bool IsEnabled(string name)
+        public static bool IsEnabled(string name) => IsEnabled(name, SystemEnvironment.Instance);
+
+        public static bool IsEnabled(string name, IEnvironment environment)
         {
-            string featureFlags = Environment.GetEnvironmentVariable("AzureWebJobsFeatureFlags");
+            string featureFlags = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags);
             if (!string.IsNullOrEmpty(featureFlags))
             {
                 string[] flags = featureFlags.Split(',');

@@ -259,6 +259,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task SpecializeAsync_Node_V2CompatibilityWithV3Extension_KillsProcess()
+        {
+            var testMetricsLogger = new TestMetricsLogger();
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "~3");
+
+            _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger);
+
+            IRpcWorkerChannel nodeWorkerChannel = CreateTestChannel(RpcWorkerConstants.NodeLanguageWorkerName);
+
+            await _rpcWorkerChannelManager.SpecializeAsync();
+
+            // Verify logs
+            var traces = _testLogger.GetLogMessages();
+            Assert.True(traces.Count() == 0);
+
+            // Verify channel
+            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName);
+            Assert.Null(initializedChannel);
+        }
+
+        [Fact]
         public async Task ShutdownStandbyChannels_WorkerRuntime_Not_Set()
         {
             IRpcWorkerChannel javaWorkerChannel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);

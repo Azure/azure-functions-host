@@ -1,24 +1,24 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
 
-name: 2.0.$(buildNumber)
+name: 3.0.$(buildNumber)
   
 pr:
   branches:
     include:
-    - master
     - dev
+    - release/3.0
 
 trigger:
   branches:
     include:
-    - master
     - dev
+    - release/3.0
 
 jobs:
 - job: InitializePipeline
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -31,39 +31,62 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 
-- job: BuildArtifacts_Ubuntu
-  pool:
-    vmImage: 'ubuntu-18.04'
-  steps:
-  - task: Bash@3
-    inputs:
-      targetType: 'inline'
-      script: |
-        mkdir .dotnet &&
-        chmod +x dotnet-install.sh &&
-        ./dotnet-install.sh --version 2.2.202 --install-dir .dotnet &&
-        PATH=".dotnet:"$PATH && dotnet --info
-        dotnet build WebJobs.Script.sln
-
-- job: BuildArtifacts_Windows
+- job: BuildArtifacts
   dependsOn: InitializePipeline
+  condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    includeSuffix: $[ dependencies.InitializePipeline.outputs['Initialize.IncludeSuffix'] ] 
-  condition: and(succeeded(), eq(dependencies.InitializePipeline.outputs['Initialize.BypassPackaging'], false))
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), not( endswith( variables['Build.SourceBranch'], 'release/3.0' ) ) ) }}:
+      suffixTemp: ci
+      packSuffixSwitchTemp: --version-suffix ci
+      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    packSuffixSwitch: $[variables.packSuffixSwitchTemp]
+    emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
   pool:
-    vmImage: 'vs2017-win2016' 
+    vmImage: 'windows-2019' 
   steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
-      filePath: '$(Build.Repository.LocalPath)\build.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -includeSuffix ([System.Convert]::ToBoolean("$(includeSuffix)")) -bypassPackaging $false -signOutput $false'
+      filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+  - task: CopyFiles@2
+    inputs:
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
+      Contents: '*.zip'
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+  - task: DotNetCoreCLI@2
+    displayName: 'Build host packages'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      projects: |
+        **\WebJobs.Script.csproj
+        **\WebJobs.Script.WebHost.csproj
+        **\WebJobs.Script.Grpc.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build performance package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '-o packages'
+      projects: |
+        **\WebJobs.Script.Performance.App.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Build ExtensionsMetadataGenerator'
+    inputs:
+      command: 'build'      
+      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
@@ -108,15 +131,25 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))  
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
+  - task: DotNetCoreCLI@2
+    displayName: 'Pack ExtensionsMetadataGenerator package'
+    inputs:
+      command: 'custom'
+      custom: 'pack'
+      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
+      projects: |
+        **\ExtensionsMetadataGenerator.csproj
+        steps:
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: '..\..\..\buildoutput'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -136,36 +169,24 @@ jobs:
              "ToolVersion": "1.0"
            }
        ]
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '..\..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '..\..\buildoutput'
-      Contents: '*.nupkg'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - task: CopyFiles@2
-    inputs:
-      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '*.zip'
-      TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: artifacts
+  - publish: $(Build.Repository.LocalPath)\packages
+    artifact: packages
 
 - job: RunUnitTests
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
@@ -180,12 +201,12 @@ jobs:
 
 - job: RunNonE2EIntegrationTests
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:      
@@ -236,12 +257,12 @@ jobs:
 
 - job: RunIntegrationTests
   pool:
-    vmImage: 'vs2017-win2016'
+    vmImage: 'windows-2019'
   steps: 
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '2.2.x'
+      version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:

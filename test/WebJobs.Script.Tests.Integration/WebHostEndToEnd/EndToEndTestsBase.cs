@@ -270,7 +270,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
         {
             var container = Fixture.BlobClient.GetContainerReference(containerName);
-            await TestHelpers.ClearContainerAsync(container);
+            if (!await container.CreateIfNotExistsAsync())
+            {
+                await TestHelpers.ClearContainerAsync(container);
+            }
             return container;
         }
 

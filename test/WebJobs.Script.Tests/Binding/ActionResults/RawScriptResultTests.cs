@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Extensions.Primitives;
-using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
@@ -69,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                         Path = "/",
                         HttpOnly = true,
                         MaxAge = TimeSpan.FromSeconds(20),
-                        SameSite = (SameSiteMode)(-1)
+                        SameSite = SameSiteMode.Unspecified
                     }),
                     new Tuple<string, string, CookieOptions>("thirdCookie", "cookieValue3", new CookieOptions()
                     {
