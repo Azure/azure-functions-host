@@ -161,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData(new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" }, new string[] { "hello", "x-mx-key", "Host" }, new string[] { "world", "value", "localhost" })]
-        [InlineData(new string[] { "hello", "empty", "x-mx-key" }, new string[] { "world", "", "value" }, new string[] { "hello", "x-mx-key", "Host" }, new string[] { "world", "value", "localhost" })] // Removes empty value query params
+        [InlineData(new string[] { "hello", "x-mx-key" }, new string[] { "world", "value" }, new string[] { "hello", "x-mx-key", "host" }, new string[] { "world", "value", "localhost" })]
+        [InlineData(new string[] { "hello", "empty", "x-mx-key" }, new string[] { "world", "", "value" }, new string[] { "hello", "x-mx-key", "host" }, new string[] { "world", "value", "localhost" })] // Removes empty value query params
         public void HttpObjects_Headers(string[] headerKeys, string[] headerValues, string[] expectedKeys, string[] expectedValues)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
