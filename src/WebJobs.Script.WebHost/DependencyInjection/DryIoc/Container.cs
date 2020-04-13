@@ -220,7 +220,13 @@ namespace DryIoc
                     cacheRef.Swap(_ => _.AddOrUpdate(serviceType, factoryDelegate));
             }
 
-            return factoryDelegate(this);
+            try
+            {
+                return factoryDelegate(this);
+            } catch
+            {
+                return null;
+            }
         }
 
         object IResolver.Resolve(Type serviceType, object serviceKey,
@@ -6591,9 +6597,19 @@ namespace DryIoc
                 else if (Setup.PreventDisposal)
                     factoryDelegate = r => new HiddenDisposable(factory(r));
 
-                var singleton = request.SingletonScope
-                    .GetOrAdd(FactoryID, () => factoryDelegate(request.Container), Setup.DisposalOrder);
-                serviceExpr = Constant(singleton);
+                try
+                {
+                    var singleton = request.SingletonScope
+                        .GetOrAdd(FactoryID, () => factoryDelegate(request?.Container), Setup.DisposalOrder);
+
+                    serviceExpr = Constant(singleton);
+                }
+                catch
+                {
+                    serviceExpr = Constant(null);
+                }
+                
+
             }
             else
             {
@@ -7836,7 +7852,14 @@ namespace DryIoc
                 if (_items != items && _items.TryFind(id, out item)) 
                     return item;
 
-                item = createValue();
+                try
+                {
+                    item = createValue();
+                }
+                catch
+                {
+                    item = null;
+                }
 
                 // Swap is required because if _items changed inside createValue, then we need to retry
                 items = _items;
