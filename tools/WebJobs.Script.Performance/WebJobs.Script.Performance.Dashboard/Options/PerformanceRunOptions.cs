@@ -12,8 +12,8 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
             SubscriptionId = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteSubscriptionId", EnvironmentVariableTarget.Process);
             SiteResourceGroup = Environment.GetEnvironmentVariable("AzureWebJobsTargetSiteResourceGroup", EnvironmentVariableTarget.Process);
             VM = Environment.GetEnvironmentVariable("AzureWebJobsVM", EnvironmentVariableTarget.Process);
-            FunctionsHostSlug = Environment.GetEnvironmentVariable("FunctionHostProjectSlug", EnvironmentVariableTarget.Process);
-            PerformanceMeterSlug = Environment.GetEnvironmentVariable("PerformanceProjectSlug", EnvironmentVariableTarget.Process);
+            DevOpsAccessToken = Environment.GetEnvironmentVariable("DevOpsAccessToken", EnvironmentVariableTarget.Process);
+
         }
 
         public string ClientId { get; set; }
@@ -28,12 +28,10 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
 
         public string VM { get; set; }
 
-        public string FunctionsHostSlug { get; set; }
-
-        public string PerformanceMeterSlug { get; set; }
-
         public string ExtensionUrl { get; set; }
 
         public string AppUrl { get; set; }
+
+        public string DevOpsAccessToken { get; set; }
     }
 }
