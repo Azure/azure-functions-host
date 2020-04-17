@@ -14,19 +14,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
     public class HostEasyAuthOptionsSetup : IConfigureOptions<HostEasyAuthOptions>
     {
         private readonly IEnvironment _env;
-        private readonly IConfiguration _configuration;
 
-        public HostEasyAuthOptionsSetup(IEnvironment env, IConfiguration configuration)
+        public HostEasyAuthOptionsSetup(IEnvironment env)
         {
             _env = env;
-            _configuration = configuration;
         }
 
         public void Configure(HostEasyAuthOptions options)
         {
             options.SiteAuthEnabled = Convert.ToBoolean(_env.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled));
             options.SiteAuthClientId = _env.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthClientId);
-            options.Configuration = _configuration;
         }
     }
 }

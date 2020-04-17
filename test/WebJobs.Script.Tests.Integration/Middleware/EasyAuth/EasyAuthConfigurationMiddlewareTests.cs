@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Security.Claims;
@@ -48,52 +49,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 return Task.CompletedTask;
             };
 
-           // var middleware = new JobHostEasyAuthMiddleware(easyAuthOptions, new NullLogger<JobHostEasyAuthMiddleware>(), TestEnvironment.GetEnvironmentVariable());
+            // var middleware = new JobHostEasyAuthMiddleware(easyAuthOptions, new NullLogger<JobHostEasyAuthMiddleware>(), TestEnvironment.GetEnvironmentVariable());
             var httpContext = new DefaultHttpContext();
-          //  await middleware.Invoke(httpContext, next);
+            //  await middleware.Invoke(httpContext, next);
 
             Assert.True(nextInvoked);
             return Task.CompletedTask;
         }
 
         [Fact]
-        public Task Invoke_EasyAuthEnabled()
+        public void Invoke_EasyAuthEnabled_NoToken()
         {
             // enable easyauth
             // should return 401 unauthorized
+            Assert.Equal(_fixture.HttpResponse.StatusCode.ToString(),"Unauthorized");
 
-
-
-            bool nextInvoked = false;
-
-            RequestDelegate next = (ctxt) =>
-            {
-                nextInvoked = true;
-                ctxt.Response.StatusCode = (int)HttpStatusCode.Accepted;
-                return Task.CompletedTask;
-            };
-
-            // todo - need?
-            var claims = new List<Claim>
-                {
-                    new Claim(SecurityConstants.AuthLevelClaimType, AuthorizationLevel.Function.ToString())
-                };
-            var user = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
-
-           // var middleware = new JobHostEasyAuthMiddleware(easyAuthOptions, new NullLogger<JobHostEasyAuthMiddleware>());
-            var httpContext = new DefaultHttpContext();
-            //await middleware.Invoke(httpContext, next);
-
-            Assert.False(nextInvoked);
-            return Task.CompletedTask;
-            // var response = await client.GetAsync(string.Empty);
-            //  Assert.Equal(response.StatusCode.ToString(), "401");
             // Assert.Equal("test easy auth", await response.Content.ReadAsStringAsync());
         }
 
         public class Fixture : EasyAuthScenarioTestFixture
         {
-            private string _requestUri = "https://localhost/"; // cam point to a sample function endpoint
+            private readonly string _requestUri = $"api/httpTrigger"; 
 
             public HttpResponseMessage HttpResponse { get; private set; }
 
@@ -104,22 +80,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 await base.InitializeAsync();
                 // add auth tokens to default request headers
                 HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", "token");
-                var envVars = new Dictionary<string, string>()
-                {
-                { EnvironmentSettingNames.EasyAuthClientId, "23jekfs" },
-                { EnvironmentSettingNames.EasyAuthEnabled, "true" },
-                { EnvironmentSettingNames.ContainerName, "linuxconsumption" },
-                { EnvironmentSettingNames.EasyAuthSigningKey, "2892B532EB2C17AC3DD2009CBBF9C9CA7A3F9189FA4241789A4E26DE859077C0" },
-                { EnvironmentSettingNames.WebSiteAuthEncryptionKey, "723249EF012A5FCE5946F65FBE7D6CB209331612E651B638C2F46BF9DB39F530" }
-                };
-                var testEnv = new TestEnvironment(envVars);
+                // TODO - generate token
+                HostOptions.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp\httpTrigger");
+
+
+                // TODO - use httpclient to send request w/token. EA will unpack and create ClaimsPrincipal, etc. 
                 var easyAuthSettings = new HostEasyAuthOptions
                 {
                     SiteAuthClientId = "id",
                     SiteAuthEnabled = true,
-                    // TODO - JHEAMiddleware construction needs config value from options. Should this be the case?
                 };
                 var easyAuthOptions = new OptionsWrapper<HostEasyAuthOptions>(easyAuthSettings);
+                HttpResponse = HttpClient.GetAsync(_requestUri).Result;
 
             }
         }

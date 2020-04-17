@@ -118,10 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             foreach (var pair in Environment)
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
-                if (pair.Key.StartsWith("WEBSITE_AUTH"))
-                {
-                    logger.LogWarning($"ApplyAppSettings {pair.Key} = {pair.Value}");
-                }
             }
             if (CorsSettings != null)
             {
