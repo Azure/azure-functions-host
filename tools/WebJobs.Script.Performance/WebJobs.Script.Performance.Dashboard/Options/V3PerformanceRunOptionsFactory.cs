@@ -5,7 +5,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard.Options
 {
     public class V3PerformanceRunOptionsFactory : IPerformanceRunOptionsFactory
     {
-        private const string Branch = "dev";
+        private const string Branch = "refs/heads/dev";
         private ILogger _log;
 
         public V3PerformanceRunOptionsFactory(ILogger log)
