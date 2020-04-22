@@ -6,13 +6,13 @@ name: 3.0.$(buildNumber)
 pr:
   branches:
     include:
-    - v3.x
+    - dev
     - release/3.0
 
 trigger:
   branches:
     include:
-    - v3.x
+    - dev
     - release/3.0
 
 jobs:
