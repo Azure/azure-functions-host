@@ -118,17 +118,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 SystemEnvironment.Instance.GetSlotName() ?? string.Empty);
         }
-
-        public static void LogUnhandledException(Exception e)
-        {
-            var linuxContainerEventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance);
-            linuxContainerEventGenerator.LogFunctionTraceEvent(LogLevel.Error,
-                SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
-                SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
-                nameof(LogUnhandledException), e?.ToString(), string.Empty, e?.GetType().ToString() ?? string.Empty,
-                e?.ToString(), string.Empty, string.Empty, string.Empty,
-                SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
-                SystemEnvironment.Instance.GetSlotName() ?? string.Empty);
-        }
     }
 }
