@@ -24,7 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string PrivateDependencyResolutionPolicy = "private";
 
-        private static readonly Lazy<Dictionary<string, ScriptRuntimeAssembly>> _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(DependencyHelper.GetRuntimeAssemblies);
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
         private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
         private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
