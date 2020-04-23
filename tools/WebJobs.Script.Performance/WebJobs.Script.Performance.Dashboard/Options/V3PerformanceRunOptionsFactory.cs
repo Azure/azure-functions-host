@@ -5,7 +5,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard.Options
 {
     public class V3PerformanceRunOptionsFactory : IPerformanceRunOptionsFactory
     {
-        private const string Branch = "v3.x";
+        private const string Branch = "refs/heads/dev";
         private ILogger _log;
 
         public V3PerformanceRunOptionsFactory(ILogger log)
@@ -17,13 +17,10 @@ namespace WebJobs.Script.Tests.Perf.Dashboard.Options
         {
             var options = new PerformanceRunOptions();
 
-            using (var appVeyorClient = new AppVeyorClient(_log))
-            {
-                // Get latest private extension url from appvayor build
-                string lastSuccessfulVersion = await appVeyorClient.GetLastSuccessfulBuildVersionAsync(Branch, options.FunctionsHostSlug);
-                options.ExtensionUrl = await appVeyorClient.GetArtifactUrlAsync(lastSuccessfulVersion, options.FunctionsHostSlug, string.Empty, "inproc");
-                options.AppUrl = await appVeyorClient.GetArtifactUrlAsync(lastSuccessfulVersion, options.FunctionsHostSlug, string.Empty, "WebJobs.Script.Performance.App");
-            }
+            var devOpsClient = new DevOpsClient(_log);
+            var artifactResult = await devOpsClient.GetArtifacts(Branch, options.DevOpsAccessToken);
+            options.ExtensionUrl = artifactResult.ExtensionUrl;
+            options.AppUrl = artifactResult.AppUrl;
 
             return options;
         }

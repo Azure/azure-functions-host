@@ -3,14 +3,15 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
-    <RuntimeReleaseSuffix></RuntimeReleaseSuffix>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
-    <MajorMinorProductVersion>2.0</MajorMinorProductVersion>
-    <Version>$(MajorMinorProductVersion).0$(RuntimeReleaseSuffix)$(VersionSuffix)</Version>
+    <MajorMinorProductVersion>3.0</MajorMinorProductVersion>
+    <VersionPrefix>$(MajorMinorProductVersion).$(BuildNumber)</VersionPrefix>
+    <Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix)-$(VersionSuffix)</Version>
+    <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
-    <FileVersion>$(MajorMinorProductVersion).$(BuildNumber).0</FileVersion>
-    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>
-    <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion>  
+    <FileVersion>$(VersionPrefix).0</FileVersion>
+    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
+    <InformationalVersion>$(Version) Commit hash: $(CommitHash)</InformationalVersion>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
@@ -43,8 +44,8 @@
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="2.8.2" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="2.8.2" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="2.8.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.3.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.3.1" />
   </ItemGroup>
 </Project>

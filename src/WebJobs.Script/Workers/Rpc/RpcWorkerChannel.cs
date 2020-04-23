@@ -30,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
@@ -63,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
+           IEnvironment environment,
            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _workerId = workerId;
@@ -72,6 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
+            _environment = environment;
             _applicationHostOptions = applicationHostOptions;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
@@ -136,12 +139,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
+            var initRequest = new WorkerInitRequest()
+            {
+                HostVersion = ScriptHost.Version,
+            };
+
+            // Run as Functions Host V2 compatible
+            if (_environment.IsV2CompatibilityMode())
+            {
+                _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
+                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
+            }
+
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerInitRequest = new WorkerInitRequest()
-                {
-                    HostVersion = ScriptHost.Version
-                }
+                WorkerInitRequest = initRequest
             });
         }
 
@@ -164,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);

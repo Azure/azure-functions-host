@@ -53,7 +53,8 @@ if ([string]::IsNullOrEmpty($runtimeUrl)) {
 $scenariosDir = "C:\git\azure-functions-performance-scenarios"
 Write-Output "Getting latest 'azure-functions-performance-scenarios'"
 Push-Location $scenariosDir
-& git reset --hard master
+& git pull
+
 Pop-Location
 
 # Updating the tool
@@ -61,7 +62,7 @@ $tempFolderName = [System.IO.Path]::GetFileNameWithoutExtension([System.IO.Path]
 $tempFolder = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath() ,$tempFolderName)
 [System.IO.Directory]::CreateDirectory($tempFolder)
 $binPath = "$tempFolder\.store\webjobs.script.performance.app\1.0.0\webjobs.script.performance.app\1.0.0\tools\netcoreapp2.1\any\"
-$filename = $toolNupkgUrl.Substring($toolNupkgUrl.LastIndexOf("/") + 1)
+$filename = $toolNupkgUrl.Substring($toolNupkgUrl.LastIndexOf("%2F") + 3)
 $nupkgPath = "$tempFolder\$filename"
 Write-Host "Downloading '$toolNupkgUrl' to '$nupkgPath'"
 Invoke-WebRequest -Uri $toolNupkgUrl -OutFile $nupkgPath
@@ -139,5 +140,8 @@ Foreach-Object {
     }
 }
 
+Write-Output "Cleaning $tempFolder"
 Remove-Item -Recurse -Force $tempFolder -ErrorAction SilentlyContinue
+Write-Output "Cleaning C:\Windows\Temp"
+Remove-Item -Recurse -Force C:\Windows\Temp -ErrorAction SilentlyContinue
 Stop-Transcript

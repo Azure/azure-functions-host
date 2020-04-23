@@ -55,10 +55,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder.AddScriptHost(options, loggerFactory, null);
         }
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, Action<IWebJobsBuilder> configureWebJobs = null, IMetricsLogger metricsLogger = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder,
+                                                 ScriptApplicationHostOptions applicationOptions,
+                                                 Action<IWebJobsBuilder> configureWebJobs = null,
+                                                 IMetricsLogger metricsLogger = null)
             => builder.AddScriptHost(applicationOptions, null, metricsLogger, configureWebJobs);
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder,
+                                                 ScriptApplicationHostOptions applicationOptions,
+                                                 ILoggerFactory loggerFactory,
+                                                 IMetricsLogger metricsLogger,
+                                                 Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -101,10 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.AppDirectory = applicationHostOptions.ScriptPath;
                 })
-                .AddHttp(o =>
-                {
-                    o.SetResponse = HttpBinding.SetResponse;
-                })
+                .AddHttp()
                 .AddTimers()
                 .AddManualTrigger()
                 .AddWarmup();

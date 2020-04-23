@@ -18,7 +18,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
 
     string name = req.Query["name"];
 
-    string requestBody = new StreamReader(req.Body).ReadToEnd();
+    string requestBody = await (new StreamReader(req.Body)).ReadToEndAsync();
     dynamic data = JsonConvert.DeserializeObject(requestBody);
     name = name ?? data?.name ?? "";
 

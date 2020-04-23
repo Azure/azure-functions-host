@@ -70,10 +70,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("App is offline. RpcInitializationService will not be started");
                 return;
             }
-            _logger.LogDebug("Starting Rpc Initialization Service.");
-            await InitializeRpcServerAsync();
-            await InitializeChannelsAsync();
-            _logger.LogDebug("Rpc Initialization Service started.");
+
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4891
+            try
+            {
+                _logger.LogDebug("Starting Rpc Initialization Service.");
+                await InitializeRpcServerAsync();
+                await InitializeChannelsAsync();
+                _logger.LogDebug("Rpc Initialization Service started.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Rpc Initialization Service. Handling error and continuing.");
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

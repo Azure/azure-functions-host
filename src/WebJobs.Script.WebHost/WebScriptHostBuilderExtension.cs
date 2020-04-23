@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
 
-            builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
+            _ = builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
                 {
                     // register default configuration
@@ -75,6 +76,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
                     {
                         services.AddSingleton<IHostedService, FunctionsSyncService>();
+                    }
+
+                    if (!environment.IsV2CompatibilityMode())
+                    {
+                        new FunctionsMvcBuilder(services).AddNewtonsoftJson();
                     }
 
                     services.AddSingleton<HttpRequestQueue>();
@@ -129,6 +135,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 configureBuilder.Configure(builder);
             }
+        }
+
+        /// <summary>
+        /// Used internally to register Newtonsoft formatters with our ScriptHost.
+        /// </summary>
+        private class FunctionsMvcBuilder : IMvcBuilder
+        {
+            private readonly IServiceCollection _serviceCollection;
+
+            public FunctionsMvcBuilder(IServiceCollection serviceCollection)
+            {
+                _serviceCollection = serviceCollection;
+            }
+
+            public ApplicationPartManager PartManager { get; } = new ApplicationPartManager();
+
+            public IServiceCollection Services => _serviceCollection;
         }
     }
 }

@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal(19, match.Groups.Count);
 
             DateTime dt;
-            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
                 p => Assert.Equal(subscriptionId, p),
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.Equal(15, match.Groups.Count);
 
             DateTime dt;
-            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal(subscriptionId, p),
                 p => Assert.Equal(appName, p),
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.True(match.Success);
             Assert.Equal(7, match.Groups.Count);
 
-            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal(siteName, p),
                 p => Assert.Equal(functionName, p),
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.True(match.Success);
             Assert.Equal(10, match.Groups.Count);
 
-            var groupMatches = match.Groups.Select(p => p.Value).Skip(1).ToArray();
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
                 p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
                 p => Assert.Equal(resourceId, p),

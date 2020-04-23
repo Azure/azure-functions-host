@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ConsoleLoggingDisabled = "CONSOLE_LOGGING_DISABLED";
         public const string SkipSslValidation = "SCM_SKIP_SSL_VALIDATION";
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
+        public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
         public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
@@ -47,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
         public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
+        public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
