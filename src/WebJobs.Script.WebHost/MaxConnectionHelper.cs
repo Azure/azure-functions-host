@@ -4,8 +4,8 @@
 using System;
 using System.Net.Http;
 using System.Reflection;
-using Microsoft.Azure.Storage;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
