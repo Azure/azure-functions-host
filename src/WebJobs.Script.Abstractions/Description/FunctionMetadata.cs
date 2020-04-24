@@ -16,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
         public FunctionMetadata()
         {
             Bindings = new Collection<BindingMetadata>();
+            Properties = new Dictionary<string, object>();
         }
 
         public string Name { get; set; }
@@ -39,26 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
         public string Language { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the function is disabled.
-        /// <remarks>
-        /// A disabled function is still compiled and loaded into the host, but it will not
-        /// be triggered automatically, and is not publicly addressable (except via admin invoke requests).
-        /// </remarks>
+        /// Gets all the properties tagged to this instance.
         /// </summary>
-        public bool IsDisabled { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether that this function is a direct invoke.
-        /// </summary>
-        public bool IsDirect { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this function should be treated as a codeless function.
-        /// <remarks>
-        /// Codeless function by default will be excluded when quering functions from List API calls
-        /// </remarks>
-        /// </summary>
-        public bool IsCodeless { get; set; }
+        public IDictionary<string, object> Properties { get; }
 
         public string FunctionId { get; set; } = Guid.NewGuid().ToString();
 

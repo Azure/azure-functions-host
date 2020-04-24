@@ -968,13 +968,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "funcPython1",
                 Language = language,
             };
+
             // Codeless qualifies as any language
             FunctionMetadata funcCodeless = new FunctionMetadata()
             {
                 Name = "funcCSharp1",
                 Language = "DotNetAssembly",
-                IsCodeless = true
             };
+            funcCodeless.SetIsCodeless(true);
+
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
                 funcLanguage, funcCodeless
@@ -994,8 +996,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Name = "funcCSharp1",
                 Language = "DotNetAssembly",
-                IsCodeless = true
             };
+            funcCodeless.SetIsCodeless(true);
+
             IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
             {
                 funcCodeless

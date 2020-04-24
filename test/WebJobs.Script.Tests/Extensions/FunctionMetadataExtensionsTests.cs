@@ -60,20 +60,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Raw = new JObject()
             };
             functionMetadata.Bindings.Add(httpTriggerBinding);
-            var uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            var uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/testfunction", uri.ToString());
 
             // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/testfunction", uri.ToString());
 
             // with a custom route
             httpTriggerBinding.Raw.Add("route", "catalog/products/{category:alpha?}/{id:int?}");
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
 
             // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
         }
     }

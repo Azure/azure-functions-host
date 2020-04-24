@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // as all shared assembly should already be resolved.
             if (DependencyHelper.IsAssemblyReferenceFormat(functionMetadata.ScriptFile))
             {
-                return NoOpFunctionMetadataResolver.GetInstance();
+                return NullFunctionMetadataResolver.Instance;
             }
 
             return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, bindingProviders, logger);

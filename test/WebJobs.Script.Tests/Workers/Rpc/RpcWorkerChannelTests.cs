@@ -388,15 +388,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime, string funcName)
         {
+            var metadata = new FunctionMetadata()
+            {
+                Language = runtime,
+                Name = funcName,
+                FunctionId = "DisabledFunctionId1"
+            };
+
+            metadata.SetIsDisabled(true);
+
             var disabledList = new List<FunctionMetadata>()
             {
-                new FunctionMetadata()
-                {
-                    Language = runtime,
-                    Name = funcName,
-                    FunctionId = "DisabledFunctionId1",
-                    IsDisabled = true
-                }
+                metadata
             };
 
             return disabledList.Union(GetTestFunctionsList(runtime));

@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 Config = await GetFunctionConfig(functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
-                IsDirect = functionMetadata.IsDirect,
-                IsDisabled = functionMetadata.IsDisabled,
-                IsProxy = functionMetadata is ProxyFunctionMetadata,
+                IsDirect = functionMetadata.IsDirect(),
+                IsDisabled = functionMetadata.IsDisabled(),
+                IsProxy = functionMetadata.IsProxy(),
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };

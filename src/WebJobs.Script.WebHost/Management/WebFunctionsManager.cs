@@ -67,15 +67,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (!includeProxies)
             {
                 // Remove all codeless metadata (includes proxies)
-                filterPredicate = m => !m.IsCodeless;
+                filterPredicate = m => !m.IsCodeless();
             }
             else
             {
                 // Allow either proxies or non codeless functions
-                filterPredicate = m => (m is ProxyFunctionMetadata) || !m.IsCodeless;
+                filterPredicate = m => m.IsProxy() || !m.IsCodeless();
             }
 
-            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, includeBlocked: true).Where(filterPredicate);
+            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, applyWhitelist: false).Where(filterPredicate);
         }
 
         /// <summary>

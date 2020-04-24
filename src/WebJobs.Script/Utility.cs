@@ -569,24 +569,24 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 throw new ArgumentNullException(nameof(functions));
             }
-            var functionsListWithoutProxiesCodeless = functions.Where(f => !f.IsCodeless).ToArray();
-            if (functionsListWithoutProxiesCodeless.Length == 0)
+            var filteredFunctions = functions.Where(f => !f.IsCodeless()).ToArray();
+            if (filteredFunctions.Length == 0)
             {
                 return true;
             }
             if (string.IsNullOrEmpty(workerRuntime))
             {
-                return functionsListWithoutProxiesCodeless.Select(f => f.Language).Distinct().Count() <= 1;
+                return filteredFunctions.Select(f => f.Language).Distinct().Count() <= 1;
             }
-            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxiesCodeless, workerRuntime);
+            return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
         {
             if (IsSingleLanguage(functions, null))
             {
-                var functionsListWithoutProxies = functions?.Where(f => !(f is ProxyFunctionMetadata));
-                string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+                var filteredFunctions = functions?.Where(f => !f.IsCodeless());
+                string functionLanguage = filteredFunctions.FirstOrDefault()?.Language;
                 if (string.IsNullOrEmpty(functionLanguage))
                 {
                     return null;

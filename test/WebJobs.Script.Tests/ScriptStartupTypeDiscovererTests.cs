@@ -468,7 +468,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadataCollection = metadataColection ?? new List<FunctionMetadata>() { functionMetdata };
 
             var functionMetadataManager = new Mock<IFunctionMetadataManager>();
-            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, false)).Returns(functionMetadataCollection.ToImmutableArray());
+            functionMetadataManager.Setup(e => e.GetFunctionMetadata(true, true)).Returns(functionMetadataCollection.ToImmutableArray());
             return functionMetadataManager.Object;
         }
 

@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             foreach (var metadata in functionMetadataArray)
             {
-                if (!(metadata is ProxyFunctionMetadata))
+                if (!metadata.IsProxy())
                 {
                     continue;
                 }
@@ -114,8 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 proxydata.EntryPoint = metadata.EntryPoint;
                 proxydata.FunctionDirectory = metadata.FunctionDirectory;
                 proxydata.FunctionId = metadata.FunctionId;
-                proxydata.IsDirect = metadata.IsDirect;
-                proxydata.IsDisabled = metadata.IsDisabled;
+                proxydata.SetIsDirect(metadata.IsDirect());
+                proxydata.SetIsDisabled(metadata.IsDisabled());
                 proxydata.Language = metadata.Language;
                 proxydata.Name = metadata.Name;
                 proxydata.ScriptFile = metadata.ScriptFile;
@@ -192,8 +192,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var jobHostOptionsWrapped = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
             var nullLogger = new NullLoggerFactory();
             var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, new Mock<IEnvironment>().Object, new Mock<IScriptEventManager>().Object, nullLogger);
-            var functionMetadataManager = new FunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
-                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new Mock<IScriptHostManager>().Object, nullLogger);
+            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
+                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger);
 
             services.AddSingleton<IFunctionMetadataManager>(functionMetadataManager);
         }

@@ -10,6 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         ImmutableDictionary<string, ImmutableArray<string>> Errors { get; }
 
-        ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool includeBlocked = false);
+        ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyWhitelist = true);
     }
 }

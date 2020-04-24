@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     string route = httpTrigger.Route;
-                    bool isProxy = function.Metadata is ProxyFunctionMetadata;
+                    bool isProxy = function.Metadata.IsProxy();
 
                     if (string.IsNullOrEmpty(route) && !isProxy)
                     {

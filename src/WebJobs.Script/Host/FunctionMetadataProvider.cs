@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var isDirectValue = isDirect.ToString();
                 if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
                 {
-                    functionMetadata.IsDirect = true;
+                    functionMetadata.SetIsDirect(true);
                 }
                 else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
                 {

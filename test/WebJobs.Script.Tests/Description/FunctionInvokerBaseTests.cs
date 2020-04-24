@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableDictionary<string, ImmutableArray<string>> Errors =>
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
-            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool includeBlocked = false)
+            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyWhitelist = true)
             {
                 return _functions.ToImmutableArray();
             }

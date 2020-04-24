@@ -97,7 +97,7 @@ namespace Microsoft.WebJobs.Script.Tests
                 WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
             };
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, metricsLogger);
-            var metadataManager = new FunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new Mock<IScriptHostManager>().Object, new NullLoggerFactory());
+            var metadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new NullLoggerFactory());
             services.AddSingleton<IFunctionMetadataManager>(metadataManager);
             services.AddSingleton<IFunctionMetadataProvider>(metadataProvider);
 

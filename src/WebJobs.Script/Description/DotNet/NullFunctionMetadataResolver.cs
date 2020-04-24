@@ -12,24 +12,16 @@ using Microsoft.CodeAnalysis.Scripting;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
-    public sealed class NoOpFunctionMetadataResolver : IFunctionMetadataResolver
+    public sealed class NullFunctionMetadataResolver : IFunctionMetadataResolver
     {
         private readonly Lazy<Task<PackageRestoreResult>> _emptyPackageResult = new Lazy<Task<PackageRestoreResult>>(GetEmptyPackageResult);
-        private static NoOpFunctionMetadataResolver _functionMetadataResolverSingleton;
+        private static readonly Lazy<NullFunctionMetadataResolver> _instance = new Lazy<NullFunctionMetadataResolver>(() => new NullFunctionMetadataResolver());
 
-        private NoOpFunctionMetadataResolver()
+        private NullFunctionMetadataResolver()
         {
         }
 
-        public static NoOpFunctionMetadataResolver GetInstance()
-        {
-            if (_functionMetadataResolverSingleton == null)
-            {
-                _functionMetadataResolverSingleton = new NoOpFunctionMetadataResolver();
-            }
-
-            return _functionMetadataResolverSingleton;
-        }
+        public static NullFunctionMetadataResolver Instance => _instance.Value;
 
         public ScriptOptions CreateScriptOptions()
         {
