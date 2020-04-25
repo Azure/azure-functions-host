@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _assignmentContext = context;
                 }
 
-                _logger.LogInformation("Starting Assignment");
+                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
 
                 // set a flag which will cause any incoming http requests to buffer
                 // until specialization is complete
@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             try
             {
                 var storageConnectionString =
-                    Utility.BuildStorageConnectionString(storageInfoValue.AccountName, storageInfoValue.AccessKey);
+                    Utility.BuildStorageConnectionString(storageInfoValue.AccountName, storageInfoValue.AccessKey, _environment.GetStorageSuffix());
 
                 await Utility.InvokeWithRetriesAsync(async () =>
                 {

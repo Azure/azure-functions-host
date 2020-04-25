@@ -461,7 +461,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/5261")]
+        [Fact]
         public async Task Mounts_Valid_BYOS_Accounts()
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
@@ -497,28 +497,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshInitServiceClient.Setup(client =>
-                    client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1, targetPath1))
+                    client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1))
                 .Throws(new Exception("Mount failure"));
             meshInitServiceClient.Setup(client =>
-                client.MountCifs(Utility.BuildStorageConnectionString(account2, accessKey2), share2, targetPath2)).Returns(Task.FromResult(true));
+                client.MountCifs(Utility.BuildStorageConnectionString(account2, accessKey2, CloudConstants.AzureStorageSuffix), share2, targetPath2)).Returns(Task.FromResult(true));
             meshInitServiceClient.Setup(client =>
-                client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3), share3, targetPath3)).Returns(Task.FromResult(true));
+                client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
 
             instanceManager.StartAssignment(hostAssignmentContext, false);
 
-            await Task.Delay(TimeSpan.FromSeconds(0.5));
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
             meshInitServiceClient.Verify(
-                client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1,
+                client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1,
                     targetPath1), Times.Exactly(2));
             meshInitServiceClient.Verify(
-                client => client.MountCifs(Utility.BuildStorageConnectionString(account2, accessKey2), share2,
+                client => client.MountCifs(Utility.BuildStorageConnectionString(account2, accessKey2, CloudConstants.AzureStorageSuffix), share2,
                     targetPath2), Times.Once);
             meshInitServiceClient.Verify(
-                client => client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3), share3,
+                client => client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3,
                     targetPath3), Times.Once);
         }
 
@@ -553,7 +553,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
             meshInitServiceClient.Setup(client =>
-                client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1, targetPath1)).Returns(Task.FromResult(true));
+                client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
@@ -563,7 +563,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             await Task.Delay(TimeSpan.FromSeconds(0.5));
 
             meshInitServiceClient.Verify(
-                client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1), share1,
+                client => client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1,
                     targetPath1), Times.Once);
 
             meshInitServiceClient.Verify(
