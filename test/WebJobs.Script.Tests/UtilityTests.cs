@@ -552,12 +552,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("", "", "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
-        [InlineData(null, null, "DefaultEndpointsProtocol=https;AccountName=;AccountKey=")]
-        [InlineData("accountname", "password", "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password")]
-        public void BuildStorageConnectionString(string accountName, string accessKey, string expectedConnectionString)
+        [InlineData("", "", "", "DefaultEndpointsProtocol=https;AccountName=;AccountKey=;EndpointSuffix=")]
+        [InlineData(null, null, null, "DefaultEndpointsProtocol=https;AccountName=;AccountKey=;EndpointSuffix=")]
+        [InlineData("accountname", "password", CloudConstants.AzureStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.windows.net")]
+        [InlineData("accountname", "password", CloudConstants.BlackforestStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.cloudapi.de")]
+        [InlineData("accountname", "password", CloudConstants.FairfaxStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.usgovcloudapi.net")]
+        [InlineData("accountname", "password", CloudConstants.MooncakeStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.chinacloudapi.cn")]
+        [InlineData("accountname", "password", CloudConstants.USSecStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.microsoft.scloud")]
+        [InlineData("accountname", "password", CloudConstants.USNatStorageSuffix, "DefaultEndpointsProtocol=https;AccountName=accountname;AccountKey=password;EndpointSuffix=core.eaglex.ic.gov")]
+        public void BuildStorageConnectionString(string accountName, string accessKey, string suffix, string expectedConnectionString)
         {
-            Assert.Equal(expectedConnectionString, Utility.BuildStorageConnectionString(accountName, accessKey));
+            Assert.Equal(expectedConnectionString, Utility.BuildStorageConnectionString(accountName, accessKey, suffix));
         }
 
         [Fact]
