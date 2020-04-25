@@ -184,5 +184,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(allSettingsEnvironment.IsZipDeployment(), expectedOutcome);
         }
+
+        [Theory]
+        [InlineData("Azure", CloudName.Azure)]
+        [InlineData("azuRe", CloudName.Azure)]
+        [InlineData("", CloudName.Azure)]
+        [InlineData(null, CloudName.Azure)]
+        [InlineData("Blackforest", CloudName.Blackforest)]
+        [InlineData("Fairfax", CloudName.Fairfax)]
+        [InlineData("Mooncake", CloudName.Mooncake)]
+        [InlineData("USNat", CloudName.USNat)]
+        [InlineData("USSec", CloudName.USSec)]
+        public void GetCloudName_Returns_RightCloud(string cloudNameSetting, CloudName cloudName)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
+            Assert.Equal(cloudName, testEnvironment.GetCloudName());
+        }
+
+        [Theory]
+        [InlineData("Azure", CloudConstants.AzureStorageSuffix)]
+        [InlineData("azuRe", CloudConstants.AzureStorageSuffix)]
+        [InlineData("", CloudConstants.AzureStorageSuffix)]
+        [InlineData(null, CloudConstants.AzureStorageSuffix)]
+        [InlineData("Blackforest", CloudConstants.BlackforestStorageSuffix)]
+        [InlineData("Fairfax", CloudConstants.FairfaxStorageSuffix)]
+        [InlineData("Mooncake", CloudConstants.MooncakeStorageSuffix)]
+        [InlineData("USNat", CloudConstants.USNatStorageSuffix)]
+        [InlineData("USSec", CloudConstants.USSecStorageSuffix)]
+        public void GetStorageSuffix_Returns_Suffix_Based_On_CloudType(string cloudNameSetting, string suffix)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
+            Assert.Equal(suffix, testEnvironment.GetStorageSuffix());
+        }
     }
 }
