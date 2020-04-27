@@ -25,6 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [Fact]
         public async Task FileLogger_IOExceptionDuringInvocation_Recovers()
         {
+            Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", null);
+
             var fileWriterFactory = new TestFileWriterFactory(onAppendLine: null,
                 onFlush: () =>
                 {
@@ -53,7 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 // Issue an invalid request that fails.
                 var content = new StringContent(JsonConvert.SerializeObject(new { scenario = "invalid" }));
                 var response = await host.HttpClient.PostAsync("/api/HttpTrigger-Scenarios", content);
-                Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+
+                Assert.True(HttpStatusCode.InternalServerError == response.StatusCode, host.GetLog());
 
                 await TestHelpers.Await(() =>
                 {
