@@ -308,20 +308,3 @@ $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\
 
 $cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
 & dotnet $cmd
-
-if ($bypassPackaging){
-    Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
-} else {
-    AddDiaSymReaderToPath
-
-    # build no-runntime extension
-    BuildPackages 1
-
-    #build win-x86 and win-x64 extension
-    BuildPackages 0
-
-    if($signOutput) {
-        & ".\tools\RunSigningJob.ps1" 
-	}
-    if (-not $?) { exit 1 }
-}
