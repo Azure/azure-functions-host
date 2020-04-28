@@ -92,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     });
                 });
 
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
             using (var testServer = new TestServer(builder))
             {
                 var client = testServer.CreateClient();
@@ -148,6 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
 
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
             using (var testServer = new TestServer(builder))
             {
                 var client = testServer.CreateClient();

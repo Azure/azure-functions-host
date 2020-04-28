@@ -24,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             context.Items.Add(ScriptConstants.CorsMiddlewareRequestDelegate, next);
 
-            await _corsMiddleware.Invoke(context);
+            // policy is supplied in the factory
+            await _corsMiddleware.Invoke(context, null);
         }
 
         private async Task InvokeNext(HttpContext context)

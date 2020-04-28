@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("1234");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();
@@ -33,6 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns((string)null);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns(ScriptConstants.DynamicSku);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();
@@ -49,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("1234");
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku)).Returns("Dedicated");
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey)).Returns<string>(null);
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion)).Returns<string>(null);
 
             var setup = new HttpOptionsSetup(mockEnvironment.Object);
             var options = new HttpOptions();

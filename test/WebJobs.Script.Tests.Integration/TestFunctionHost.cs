@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -71,17 +70,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     b.AddProvider(_webHostLoggerProvider);
                 })
                 .ConfigureServices(services =>
-                  {
-                      services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                      services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-                      services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
+                {
+                    services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                    services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
+                    services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
+                    services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                    services.Replace(new ServiceDescriptor(typeof(IDependencyValidator), new NullDependencyValidator()));
+                    services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
 
-
-                      // Allows us to configure services as the last step, thereby overriding anything
-                      services.AddSingleton(new PostConfigureServices(configureWebHostServices));
-                  })
+                    // Allows us to configure services as the last step, thereby overriding anything
+                    services.AddSingleton(new PostConfigureServices(configureWebHostServices));
+                })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
                     scriptHostWebJobsBuilder.AddAzureStorage();
@@ -104,12 +103,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .UseStartup<TestStartup>();
 
-            _testServer = new TestServer(builder);
+            _testServer = new TestServer(builder) { BaseAddress = new Uri("https://localhost/") };
 
-            HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()))
-            {
-                BaseAddress = new Uri("https://localhost/")
-            };
+            HttpClient = _testServer.CreateClient();
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
@@ -260,25 +256,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             HostStatus status = await GetHostStatusAsync();
             return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
-        }
-
-        private class UpdateContentLengthHandler : DelegatingHandler
-        {
-            public UpdateContentLengthHandler(HttpMessageHandler innerHandler)
-                : base(innerHandler)
-            {
-            }
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                // Force reading the content-length to ensure the header is populated.
-                if (request.Content != null)
-                {
-                    Trace.Write(request.Content.Headers.ContentLength);
-                }
-
-                return base.SendAsync(request, cancellationToken);
-            }
         }
 
         private class TestStartup

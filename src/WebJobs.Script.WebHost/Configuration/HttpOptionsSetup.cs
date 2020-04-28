@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
@@ -32,6 +33,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 }
                 options.MaxConcurrentRequests = DefaultMaxConcurrentRequests;
                 options.MaxOutstandingRequests = DefaultMaxOutstandingRequests;
+            }
+
+            if (_environment.IsV2CompatibilityMode())
+            {
+                options.SetResponse = HttpBinding.LegacySetResponse;
+            }
+            else
+            {
+                options.SetResponse = HttpBinding.SetResponse;
             }
         }
     }
