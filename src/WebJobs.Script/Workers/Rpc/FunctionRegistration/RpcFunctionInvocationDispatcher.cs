@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             catch (Exception ex)
                             {
                                 _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId);
+                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
                                 InitializeWebhostLanguageWorkerChannel();
                             }
                         }
@@ -287,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
                     AddOrUpdateErrorBucket(workerError);
-                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
                 }
                 else
                 {
@@ -306,9 +306,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
+        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException = null)
         {
-            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
+            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
             bool isJobHostChannel = false;
 
             // Dispose old worker
@@ -323,7 +323,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Disposing JobHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
                     isJobHostChannel = true;
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
+                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel, workerException);
                 }
                 else
                 {

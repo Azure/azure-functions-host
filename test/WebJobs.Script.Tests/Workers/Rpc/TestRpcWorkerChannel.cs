@@ -130,5 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return _executingInvocations.Contains(invocationId);
         }
+
+        public bool TryFailExecutions(Exception exception)
+        {
+            // Executions are no longer executing
+            _executingInvocations = new HashSet<string>();
+            return true;
+        }
     }
 }

@@ -225,6 +225,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void InFlight_Functions_FailedWithException()
+        {
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Exception workerException = new Exception("worker failed");
+            _workerChannel.TryFailExecutions(workerException);
+            Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+            Assert.Equal(workerException, resultSource.Task.Exception.InnerException);
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents()
         {
             _metricsLogger.ClearCollections();
