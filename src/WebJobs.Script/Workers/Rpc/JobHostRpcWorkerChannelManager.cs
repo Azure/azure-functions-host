@@ -24,11 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _channels.TryAdd(channel.Id, channel);
         }
 
-        public Task<bool> ShutdownChannelIfExistsAsync(string channelId)
+        public Task<bool> ShutdownChannelIfExistsAsync(string channelId, Exception workerException)
         {
             if (_channels.TryRemove(channelId, out IRpcWorkerChannel removedChannel))
             {
                 _logger.LogDebug("Disposing JobHost language worker channel with id:{workerId}", removedChannel.Id);
+                removedChannel.TryFailExecutions(workerException);
                 (removedChannel as IDisposable)?.Dispose();
                 return Task.FromResult(true);
             }

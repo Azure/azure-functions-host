@@ -507,5 +507,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             return _executingInvocations.ContainsKey(invocationId);
         }
+
+        public bool TryFailExecutions(Exception workerException)
+        {
+            if (workerException == null)
+            {
+                return false;
+            }
+
+            foreach (ScriptInvocationContext currContext in _executingInvocations?.Values)
+            {
+                string invocationId = currContext?.ExecutionContext?.InvocationId.ToString();
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: {Id}", _workerId, invocationId);
+                currContext?.ResultSource?.TrySetException(workerException);
+                _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
+            }
+            return true;
+        }
     }
 }
