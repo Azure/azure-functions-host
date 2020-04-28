@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -168,9 +169,22 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         TryWriteHostJson(hostJsonPath, hostConfigObject);
                     }
 
-                    if (hostConfigObject["version"]?.Value<string>() != "2.0")
+                    string hostJsonVersion = hostConfigObject["version"]?.Value<string>();
+                    if (string.IsNullOrEmpty(hostJsonVersion))
                     {
                         throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
+                    }
+
+                    if (!hostJsonVersion.Equals("2.0"))
+                    {
+                        StringBuilder errorMsg = new StringBuilder($"'{hostJsonVersion}' is an invalid value for {ScriptConstants.HostMetadataFileName} 'version' property. We recommend you set the 'version' property to '2.0'. ");
+                        if (hostJsonVersion.StartsWith("3", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // In case the customer has confused host.json version with the fact that they're running Functions v3
+                            errorMsg.Append($"This does not correspond to the function runtime version, only to the schema version of the {ScriptConstants.HostMetadataFileName} file. ");
+                        }
+                        errorMsg.Append($"See https://aka.ms/functions-hostjson for more information on this configuration file.");
+                        throw new HostConfigurationException(errorMsg.ToString());
                     }
                 }
                 return hostConfigObject;
