@@ -3,7 +3,7 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Rpc;
+using Microsoft.Azure.WebJobs.Script.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {

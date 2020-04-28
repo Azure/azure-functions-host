@@ -1,12 +1,4 @@
-﻿using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -15,6 +7,13 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Management.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
 

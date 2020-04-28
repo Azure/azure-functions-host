@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Scripting;
 

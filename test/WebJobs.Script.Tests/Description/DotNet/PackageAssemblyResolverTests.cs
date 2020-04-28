@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Tests.Properties;

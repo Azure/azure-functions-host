@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Reflection;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description

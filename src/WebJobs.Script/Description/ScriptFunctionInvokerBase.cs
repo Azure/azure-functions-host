@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Bindings.Runtime;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Extensions.Logging;
 

@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     /// <summary>
     /// Represents the metadata for a function parameter binding.

@@ -10,7 +10,6 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
