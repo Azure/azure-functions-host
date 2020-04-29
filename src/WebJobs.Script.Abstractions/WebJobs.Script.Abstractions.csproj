@@ -11,6 +11,8 @@
     <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Abstractions</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Abstractions</RootNamespace>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)key.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
