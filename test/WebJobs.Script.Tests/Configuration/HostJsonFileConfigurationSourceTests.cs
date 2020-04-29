@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -81,20 +82,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(LogLevel.Information, log.Level);
         }
 
-        [Fact]
-        public void MissingVersion_ThrowsException()
+        [Theory]
+        [InlineData("", "The host.json file is missing the required 'version' property.", "")]
+        [InlineData("'version': '4.0',", "'4.0' is an invalid value for host.json 'version' property.", "")]
+        [InlineData("'version': '3.0',", "'3.0' is an invalid value for host.json 'version' property.", "This does not correspond to the function runtime version")]
+        public void InvalidVersionThrowsException(string versionLine, string errorStartsWith, string errorContains)
         {
-            string hostJsonContent = @"
-            {
-              'functions': [ 'FunctionA', 'FunctionB' ]
-            }";
+            StringBuilder hostJsonContentBuilder = new StringBuilder(@"{");
+            hostJsonContentBuilder.Append(versionLine);
+            hostJsonContentBuilder.Append(@"'functions': [ 'FunctionA', 'FunctionB' ]}");
+            string hostJsonContent = hostJsonContentBuilder.ToString();
+
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             Assert.True(File.Exists(_hostJsonFile));
 
             var ex = Assert.Throws<HostConfigurationException>(() => BuildHostJsonConfiguration(testMetricsLogger));
-            Assert.StartsWith("The host.json file is missing the required 'version' property.", ex.Message);
+            Assert.StartsWith(errorStartsWith, ex.Message);
+            Assert.Contains(errorContains, ex.Message);
         }
 
         [Fact]
