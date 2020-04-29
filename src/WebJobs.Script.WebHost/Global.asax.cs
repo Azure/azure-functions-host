@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -74,7 +75,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected void Application_Error(object sender, EventArgs e)
         {
-            // TODO: Log any unhandled exceptions
+            EventGenerator eventGenerator = new EventGenerator();
+
+            // Get the exception object.
+            Exception exc = Server.GetLastError();
+            string subscriptionId = Utility.GetSubscriptionId() ?? string.Empty;
+            string appName = Utility.GetWebsiteUniqueSlotName() ?? string.Empty;
+            eventGenerator.LogFunctionTraceEvent(TraceLevel.Error,
+                                                subscriptionId,
+                                                appName,
+                                                string.Empty,
+                                                string.Empty,
+                                                "Host.Startup",
+                                                exc.StackTrace,
+                                                "Application start up failed.",
+                                                exc.GetType().ToString(),
+                                                exc.Message,
+                                                string.Empty,
+                                                string.Empty,
+                                                string.Empty);
         }
 
         protected void Application_End(object sender, EventArgs e)
