@@ -11,7 +11,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <IsPackable>true</IsPackable>
-    <BeforePack>Build;PackReferenceAssemblies</BeforePack>
+    <BeforePack>PackReferenceAssemblies</BeforePack>
   </PropertyGroup>
 
   <ItemGroup>

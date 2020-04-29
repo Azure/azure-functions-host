@@ -1,9 +1,7 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [string]$suffix,
-  [bool]$bypassPackaging = $true,
-  [bool]$signOutput = $true
+  [string]$suffix
 )
 
 $extensionVersion += $suffix
@@ -303,22 +301,12 @@ foreach ($project in $projects)
 $cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "..\..\..\buildoutput"
 & dotnet $cmd
 
-$cmd = "pack", "tools\ExtensionsMetadataGenerator\src\ExtensionsMetadataGenerator\ExtensionsMetadataGenerator.csproj", "-o", "..\..\..\..\buildoutput", "-c", "Release"
-& dotnet $cmd
+AddDiaSymReaderToPath
 
-if ($bypassPackaging){
-    Write-Host "Bypassing artifact packaging and CrossGen for pull request." -ForegroundColor Yellow
-} else {
-    AddDiaSymReaderToPath
+# build no-runntime extension
+BuildPackages 1
 
-    # build no-runntime extension
-    BuildPackages 1
+#build win-x86 and win-x64 extension
+BuildPackages 0
 
-    #build win-x86 and win-x64 extension
-    BuildPackages 0
-
-    if($signOutput) {
-        & ".\tools\RunSigningJob.ps1" 
-	}
-    if (-not $?) { exit 1 }
-}
+if (-not $?) { exit 1 }
