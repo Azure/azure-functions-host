@@ -14,12 +14,14 @@ using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,10 +63,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HasParentScope = true
             };
 
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
-            var serviceProvider = new TestServiceProvider(_hostOptions, optionsMonitor);
-            _hostOptions.RootServiceProvider = serviceProvider;
-
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
@@ -74,10 +72,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                   {
                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                       services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                      {
+                          _hostOptions.RootServiceProvider = sp;
+                          return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
+                      }, ServiceLifetime.Singleton));
+                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
+                      {
+                          _hostOptions.RootServiceProvider = sp;
+                          return TestHelpers.CreateOptionsMonitor(_hostOptions);
+                      }, ServiceLifetime.Singleton));
                       services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
+                      services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                      {
+                          var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                          var scriptManager = sp.GetService<IScriptHostManager>();
+                          var loggerFactory = sp.GetService<ILoggerFactory>();
 
+                          return GetMetadataManager(montior, scriptManager, loggerFactory);
+                      }, ServiceLifetime.Singleton));
 
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
@@ -308,26 +321,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private class TestServiceProvider : IServiceProvider
+        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory)
         {
-            private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
-            private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
-
-            public TestServiceProvider(ScriptApplicationHostOptions scriptApplicationHostOptions, IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor)
+            var workerOptions = new LanguageWorkerOptions
             {
-                _scriptApplicationHostOptions = scriptApplicationHostOptions;
-                _optionsMonitor = optionsMonitor;
-            }
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
 
-            public object GetService(Type serviceType)
-            {
-                var workerOptions = new LanguageWorkerOptions
-                {
-                    WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-                };
+            var managerServiceProvider = manager as IServiceProvider;
 
-                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            }
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(),
+                metadataProvider, managerServiceProvider.GetService<IEnumerable<IFunctionProvider>>(),
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory);
+
+            return metadataManager;
         }
 
         private class TestExtensionBundleManager : IExtensionBundleManager

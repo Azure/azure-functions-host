@@ -13,17 +13,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class FunctionInstanceLogCollectorProvider : IEventCollectorProvider
     {
         private readonly IFunctionMetadataManager _metadataManager;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IMetricsLogger _metrics;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IConfiguration _configuration;
         private readonly ILoggerFactory _loggerFactory;
 
-        public FunctionInstanceLogCollectorProvider(IFunctionMetadataManager metadataManager, IProxyMetadataManager proxyMetadataManager,
+        public FunctionInstanceLogCollectorProvider(IFunctionMetadataManager metadataManager,
             IMetricsLogger metrics, IHostIdProvider hostIdProvider, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
-            _proxyMetadataManager = proxyMetadataManager ?? throw new ArgumentNullException(nameof(proxyMetadataManager));
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -32,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public IAsyncCollector<FunctionInstanceLogEntry> Create()
         {
-            return new FunctionInstanceLogger(_metadataManager, _proxyMetadataManager, _metrics, _hostIdProvider, _configuration, _loggerFactory);
+            return new FunctionInstanceLogger(_metadataManager, _metrics, _hostIdProvider, _configuration, _loggerFactory);
         }
     }
 }

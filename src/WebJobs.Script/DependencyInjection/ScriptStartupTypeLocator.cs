@@ -27,17 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
-        private readonly IFunctionMetadataProvider _functionMetadataProvider;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager, IFunctionMetadataProvider functionMetadataProvider, IMetricsLogger metricsLogger)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager, IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
-            _functionMetadataProvider = functionMetadataProvider;
+            _functionMetadataManager = functionMetadataManager;
             _metricsLogger = metricsLogger;
         }
 
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;
-            var functionMetadataCollection = _functionMetadataProvider.GetFunctionMetadata(forceRefresh: true);
+            var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             bool isPrecompiledFunctionApp = false;

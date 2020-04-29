@@ -14,6 +14,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
     public class FunctionMetadataExtensionsTests
     {
+        private static readonly string _sampleBindingsJson = $@"{{
+          ""bindings"": [
+            {{
+              ""authLevel"": ""function"",
+              ""type"": ""httpTrigger"",
+              ""direction"": ""in"",
+              ""name"": ""req"",
+              ""methods"" : [
+                ""get"",
+                ""post""
+              ]
+            }},
+            {{
+              ""type"": ""http"",
+              ""direction"": ""out"",
+              ""name"": ""res""
+            }}
+          ]
+        }}
+        ";
+
         private readonly string _testRootScriptPath;
 
         public FunctionMetadataExtensionsTests()
@@ -45,6 +66,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Fact]
+        public async Task ToFunctionTrigger_Codeless_ReturnsExpected()
+        {
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "TestFunction1"
+            };
+            var options = new ScriptJobHostOptions
+            {
+                RootScriptPath = _testRootScriptPath
+            };
+
+            functionMetadata.SetIsCodeless(true);
+
+            JObject functionConfig = JObject.Parse(_sampleBindingsJson);
+            JArray bindingArray = (JArray)functionConfig["bindings"];
+            foreach (JObject binding in bindingArray)
+            {
+                BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
+                functionMetadata.Bindings.Add(bindingMetadata);
+            }
+
+            var result = await functionMetadata.ToFunctionTrigger(options);
+            Assert.Equal("TestFunction1", result["functionName"].Value<string>());
+            Assert.Equal("httpTrigger", result["type"].Value<string>());
+
+            // make sure original binding did not change
+            Assert.Null(functionMetadata.Bindings[0].Raw["functionName"]?.Value<string>());
+            Assert.Equal("httpTrigger", functionMetadata.Bindings[0].Raw["type"].Value<string>());
+        }
+
+        [Fact]
         public void GetFunctionInvokeUrlTemplate_ReturnsExpectedResult()
         {
             string baseUrl = "https://localhost";
@@ -60,20 +112,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 Raw = new JObject()
             };
             functionMetadata.Bindings.Add(httpTriggerBinding);
-            var uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            var uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/testfunction", uri.ToString());
 
             // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/testfunction", uri.ToString());
 
             // with a custom route
             httpTriggerBinding.Raw.Add("route", "catalog/products/{category:alpha?}/{id:int?}");
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
             Assert.Equal("https://localhost/api/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
 
             // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
+            uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
         }
     }
