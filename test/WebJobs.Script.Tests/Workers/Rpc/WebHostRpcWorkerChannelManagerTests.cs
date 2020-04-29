@@ -305,13 +305,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             (javaWorkerChannel as TestRpcWorkerChannel).SendInvocationRequest(scriptInvocationContext);
             Assert.True(javaWorkerChannel.IsExecutingInvocation(invocationId.ToString()));
             Exception workerException = new Exception("Worker exception");
+            // Channel is removed immediately but is not failed immediately
             await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel.Id, workerException);
 
             Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
-            // This should be canceled
+            // Execution will be terminated in the background - giving it 10 seconds
+            await TestHelpers.Await(() =>
+            {
+                return !javaWorkerChannel.IsExecutingInvocation(invocationId.ToString());
+            }, 10000);
             Assert.False(javaWorkerChannel.IsExecutingInvocation(invocationId.ToString()));
         }
 
