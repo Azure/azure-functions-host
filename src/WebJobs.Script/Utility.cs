@@ -180,6 +180,30 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
+        public static string GetWebsiteUniqueSlotName()
+        {
+            string name = GetSetting(EnvironmentSettingNames.AzureWebsiteName);
+            string slotName = GetSetting(EnvironmentSettingNames.AzureWebsiteSlotName);
+
+            if (!string.IsNullOrEmpty(slotName) &&
+                !string.Equals(slotName, ScriptConstants.DefaultProductionSlotName, StringComparison.OrdinalIgnoreCase))
+            {
+                name += $"-{slotName}";
+            }
+
+            return name?.ToLowerInvariant();
+        }
+
+        public static string GetSetting(string settingKey)
+        {
+            if (string.IsNullOrEmpty(settingKey))
+            {
+                throw new ArgumentNullException(nameof(settingKey));
+            }
+
+            return Environment.GetEnvironmentVariable(settingKey);
+        }
+
         public static bool IsValidUserType(Type type)
         {
             return !type.IsInterface && !type.IsPrimitive && !(type.Namespace == "System");

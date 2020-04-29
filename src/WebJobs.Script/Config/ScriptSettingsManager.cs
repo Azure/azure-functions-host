@@ -45,16 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                string name = GetSetting(EnvironmentSettingNames.AzureWebsiteName);
-                string slotName = GetSetting(EnvironmentSettingNames.AzureWebsiteSlotName);
-
-                if (!string.IsNullOrEmpty(slotName) &&
-                    !string.Equals(slotName, ScriptConstants.DefaultProductionSlotName, StringComparison.OrdinalIgnoreCase))
-                {
-                    name += $"-{slotName}";
-                }
-
-                return name?.ToLowerInvariant();
+                return Utility.GetWebsiteUniqueSlotName();
             }
         }
 
@@ -77,12 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public virtual string GetSetting(string settingKey)
         {
-            if (string.IsNullOrEmpty(settingKey))
-            {
-                throw new ArgumentNullException(nameof(settingKey));
-            }
-
-            return Environment.GetEnvironmentVariable(settingKey);
+            return Utility.GetSetting(settingKey);
         }
 
         public string GetSettingOrDefault(string settingKey, string defaultValue)
