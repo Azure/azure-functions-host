@@ -286,7 +286,6 @@ if($LASTEXITCODE -ne 0) {
 
 $projects = 
   "WebJobs.Script",
-  "WebJobs.Script.Abstractions",
   "WebJobs.Script.WebHost",
   "WebJobs.Script.Grpc"
   
