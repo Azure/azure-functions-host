@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Web.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -24,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 ServicePointManager.DefaultConnectionLimit = ScriptConstants.DynamicSkuConnectionLimit;
             }
-
             ConfigureMinimumThreads(settingsManager.IsDynamicSku);
             VerifyAndEnableShadowCopy(webHostSettings);
 
@@ -78,19 +78,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             EventGenerator eventGenerator = new EventGenerator();
 
             // Get the exception object.
-            Exception exc = Server.GetLastError();
+            Exception unhandledEx = Server.GetLastError();
             string subscriptionId = Utility.GetSubscriptionId() ?? string.Empty;
             string appName = Utility.GetWebsiteUniqueSlotName() ?? string.Empty;
+            string exStackTrace = string.Empty;
+            string exType = string.Empty;
+            string exMessage =  string.Empty;
+            if (unhandledEx != null)
+            {
+                exStackTrace = unhandledEx.StackTrace == null ? string.Empty : Sanitizer.Sanitize(unhandledEx.ToFormattedString());
+                exType = unhandledEx.GetType().ToString();
+                exMessage = string.IsNullOrEmpty(unhandledEx.Message) ? string.Empty : unhandledEx.Message;
+            }
             eventGenerator.LogFunctionTraceEvent(TraceLevel.Error,
                                                 subscriptionId,
                                                 appName,
                                                 string.Empty,
                                                 string.Empty,
                                                 "Host.Startup",
-                                                exc.StackTrace,
+                                                exStackTrace,
                                                 "Application start up failed.",
-                                                exc.GetType().ToString(),
-                                                exc.Message,
+                                                exType,
+                                                exMessage,
                                                 string.Empty,
                                                 string.Empty,
                                                 string.Empty);
