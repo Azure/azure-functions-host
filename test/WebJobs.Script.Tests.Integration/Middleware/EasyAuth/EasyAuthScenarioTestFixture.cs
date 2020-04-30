@@ -19,14 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware.EasyAuth
         {
             base.ConfigureWebHostBuilder(webHostBuilder);
 
-            webHostBuilder.Configure(app =>
-            {
-                app.UseMiddleware<JobHostPipelineMiddleware>();
-                app.Run(async context =>
-                {
-                    await context.Response.WriteAsync("test easy auth");
-                });
-            }).ConfigureServices(services =>
+            webHostBuilder.ConfigureServices(services =>
             {
                 services.ConfigureOptions<HostEasyAuthOptionsSetup>();
                 services.Configure<HostEasyAuthOptions>(options =>

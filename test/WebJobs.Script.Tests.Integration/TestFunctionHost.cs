@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private class TestServiceProvider : IServiceProvider
+        public class TestServiceProvider : IServiceProvider
         {
             private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
             private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;

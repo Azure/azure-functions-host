@@ -57,6 +57,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             };
 
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(HostOptions);
+            var serviceProvider = new TestFunctionHost.TestServiceProvider(HostOptions, optionsMonitor);
+            HostOptions.RootServiceProvider = serviceProvider;
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
