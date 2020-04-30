@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static bool IsOrUsesAssemblyType(ITypeSymbol typeSymbol, IAssemblySymbol assemblySymbol)
         {
-            if (typeSymbol.ContainingAssembly == assemblySymbol)
+            if (SymbolEqualityComparer.Default.Equals(typeSymbol.ContainingAssembly, assemblySymbol))
             {
                 return true;
             }

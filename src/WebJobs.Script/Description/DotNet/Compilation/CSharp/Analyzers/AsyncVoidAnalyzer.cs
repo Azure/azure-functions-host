@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
 
         public override void Initialize(AnalysisContext context)
         {
+            context.EnableConcurrentExecution();
+            context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
             context.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.Method);
         }
 
