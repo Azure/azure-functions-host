@@ -455,14 +455,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.Data.Edm",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.Data.OData",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.DiaSymReader",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -1316,10 +1308,6 @@
     },
     {
       "name": "System.ServiceProcess",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "System.Spatial",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
