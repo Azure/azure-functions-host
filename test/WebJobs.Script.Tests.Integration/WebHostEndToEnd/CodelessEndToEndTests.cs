@@ -26,44 +26,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null)]
         public async Task CodelessFunction_Invokes_HttpTrigger(string path, string workerRuntime, string allowedList)
         {
-            var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
-            var settings = new Dictionary<string, string>()
+            try
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
-            };
-            var testEnvironment = new TestEnvironment(settings);
+                var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
 
-            using (var baseTestDir = new TempDirectory())
-            {
-                string baseTestPath = baseTestDir.Path;
-
-                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn") };
-                var provider = new TestCodelessFunctionProvider(metadata, null);
-
-                var functions = allowedList != null ? new[] { allowedList, "testFn" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment);
-
-                // Make sure unauthorized does not work
-                var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn?name=Ankit");
-                Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
-
-                var testFnKey = await host.GetFunctionSecretAsync("testFn");
-                var responseName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}&name=Ankit");
-                var responseNoName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}");
-
-                Assert.Equal(HttpStatusCode.OK, responseName.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, responseNoName.StatusCode);
-
-                Assert.Equal("Codeless Provider ran a function successfully with no name parameter.", await responseNoName.Content.ReadAsStringAsync());
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await responseName.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                using (var baseTestDir = new TempDirectory())
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    string baseTestPath = baseTestDir.Path;
+
+                    var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn") };
+                    var provider = new TestCodelessFunctionProvider(metadata, null);
+
+                    var functions = allowedList != null ? new[] { allowedList, "testFn" } : null;
+                    var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider });
+
+                    // Make sure unauthorized does not work
+                    var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn?name=Ankit");
+                    Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
+
+                    var testFnKey = await host.GetFunctionSecretAsync("testFn");
+                    var responseName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}&name=Ankit");
+                    var responseNoName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}");
+
+                    Assert.Equal(HttpStatusCode.OK, responseName.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, responseNoName.StatusCode);
+
+                    Assert.Equal("Codeless Provider ran a function successfully with no name parameter.", await responseNoName.Content.ReadAsStringAsync());
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await responseName.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "");
             }
         }
 
@@ -72,44 +75,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null)]
         public async Task CodelessFunction_Honors_allowedList(string path, string workerRuntime, string allowedList)
         {
-            var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
-            var settings = new Dictionary<string, string>()
+            try
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
-            };
-            var testEnvironment = new TestEnvironment(settings);
-
-            using (var baseTestDir = new TempDirectory())
-            {
-                string baseTestPath = baseTestDir.Path;
-
-                var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1"), CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
-                var provider = new TestCodelessFunctionProvider(metadata, null);
-
-                var functions = allowedList != null ? new[] { "testFn2", allowedList } : new[] { "testFn2" };
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment);
-
-                // Make sure unauthorized does not work
-                var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn2?name=Ankit");
-                Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
-
-                var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
-                var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
-                var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
-                var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
-
-                Assert.Equal(HttpStatusCode.NotFound, test1.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
-
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                using (var baseTestDir = new TempDirectory())
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    string baseTestPath = baseTestDir.Path;
+
+                    var metadata = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1"), CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+                    var provider = new TestCodelessFunctionProvider(metadata, null);
+
+                    var functions = allowedList != null ? new[] { "testFn2", allowedList } : new[] { "testFn2" };
+                    var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider });
+
+                    // Make sure unauthorized does not work
+                    var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn2?name=Ankit");
+                    Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
+
+                    var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
+                    var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
+                    var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
+                    var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
+
+                    Assert.Equal(HttpStatusCode.NotFound, test1.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
+
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "");
             }
         }
 
@@ -118,44 +123,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null)]
         public async Task CodelessFunction_CanUse_MultipleProviders(string path, string workerRuntime, string allowedList)
         {
-            var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
-            var settings = new Dictionary<string, string>()
+            try
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
-            };
-            var testEnvironment = new TestEnvironment(settings);
-
-            using (var baseTestDir = new TempDirectory())
-            {
-                string baseTestPath = baseTestDir.Path;
-
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
-
-                var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
-                var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
-
-                var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
-
-                var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
-                var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
-                var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
-                var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
-
-                Assert.Equal(HttpStatusCode.OK, test1.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
-
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test1.Content.ReadAsStringAsync());
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                using (var baseTestDir = new TempDirectory())
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    string baseTestPath = baseTestDir.Path;
+
+                    var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
+                    var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+
+                    var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
+                    var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
+
+                    var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
+                    var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo });
+
+                    var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
+                    var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
+                    var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
+                    var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
+
+                    Assert.Equal(HttpStatusCode.OK, test1.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
+
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test1.Content.ReadAsStringAsync());
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "");
             }
         }
 
@@ -164,38 +171,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null, 0)]
         public async Task CodelessFunction_DoesNot_ListFunctions(string path, string workerRuntime, string allowedList, int listCount)
         {
-            // Note: admin/functions call includes all functions, regardless of the allowed list (whitelist)
-            var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
-            var settings = new Dictionary<string, string>()
+            try
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
-            };
-            var testEnvironment = new TestEnvironment(settings);
+                // Note: admin/functions call includes all functions, regardless of the allowed list (whitelist)
+                var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
 
-            using (var baseTestDir = new TempDirectory())
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+                using (var baseTestDir = new TempDirectory())
+                {
+                    string baseTestPath = baseTestDir.Path;
+
+                    var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
+                    var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+
+                    var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
+                    var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
+
+                    var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
+                    var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo });
+
+                    var masterKey = await host.GetMasterKeyAsync();
+                    var listFunctionsResponse = await host.HttpClient.GetAsync($"http://localhost/admin/functions?code={masterKey}");
+
+                    // List Functions test
+                    string uri = "admin/functions";
+                    var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                    request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
+                    var response = await host.HttpClient.SendAsync(request);
+                    var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
+
+                    Assert.Equal(listCount, metadata.Length);
+                }
+            }
+            finally
             {
-                string baseTestPath = baseTestDir.Path;
-
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
-
-                var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
-                var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
-
-                var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
-
-                var masterKey = await host.GetMasterKeyAsync();
-                var listFunctionsResponse = await host.HttpClient.GetAsync($"http://localhost/admin/functions?code={masterKey}");
-
-                // List Functions test
-                string uri = "admin/functions";
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
-                var response = await host.HttpClient.SendAsync(request);
-                var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
-
-                Assert.Equal(listCount, metadata.Length);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "");
             }
         }
 
@@ -204,36 +214,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null)]
         public async Task CodelessFunction_SyncTrigger_Succeeds(string path, string workerRuntime, string allowedList)
         {
-            var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
-            var settings = new Dictionary<string, string>()
+            try
             {
-                [RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = workerRuntime
-            };
-            var testEnvironment = new TestEnvironment(settings);
+                var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
 
-            using (var baseTestDir = new TempDirectory())
+                using (var baseTestDir = new TempDirectory())
+                {
+                    string baseTestPath = baseTestDir.Path;
+
+                    var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
+                    var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
+
+                    var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
+                    var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
+
+                    var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
+                    var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo });
+
+                    // Sanity check for sync triggers
+                    string uri = "admin/host/synctriggers";
+                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                    request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await host.GetMasterKeyAsync());
+                    HttpResponseMessage response = await host.HttpClient.SendAsync(request);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                }
+            }
+            finally
             {
-                string baseTestPath = baseTestDir.Path;
-
-                var metadataList1 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn1") };
-                var metadataList2 = new List<FunctionMetadata>() { CodelessEndToEndTests_Data.GetSampleMetadata("testFn2") };
-
-                var providerOne = new TestCodelessFunctionProvider(metadataList1, null);
-                var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
-
-                var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
-
-                // Sanity check for sync triggers
-                string uri = "admin/host/synctriggers";
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await host.GetMasterKeyAsync());
-                HttpResponseMessage response = await host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "");
             }
         }
 
-        private TestFunctionHost StartLocalHost(string baseTestPath, string sourceFunctionApp, string[] allowedList, IList<IFunctionProvider> providers, IEnvironment testEnvironment)
+        private TestFunctionHost StartLocalHost(string baseTestPath, string sourceFunctionApp, string[] allowedList, IList<IFunctionProvider> providers)
         {
             string appContent = Path.Combine(baseTestPath, "FunctionApp");
             string testLogPath = Path.Combine(baseTestPath, "Logs");
@@ -261,8 +274,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                             o.Functions = allowedList;
                         });
                     }
-
-                    builder.Services.AddSingleton(testEnvironment);
                 },
                 configureScriptHostServices: s =>
                 {
@@ -270,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 });
             });
 
-            if (task.Wait(TimeSpan.FromMinutes(1)))
+            if (task.Wait(TimeSpan.FromMinutes(2)))
             {
                 return host;
             }
