@@ -242,7 +242,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             syncTriggerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
 
             FileUtility.CopyDirectory(sourceFunctionApp, appContent);
-            var host = new TestFunctionHost(sourceFunctionApp, testLogPath,
+            TestFunctionHost host = null;
+
+            var task = Task.Run(() =>
+            {
+                host = new TestFunctionHost(appContent, testLogPath,
                 configureScriptHostWebJobsBuilder: builder =>
                 {
                     foreach (var provider in providers)
@@ -264,8 +268,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 {
                     s.AddSingleton(syncTriggerMock.Object);
                 });
+            });
 
-            return host;
+            if (task.Wait(TimeSpan.FromMinutes(1)))
+            {
+                return host;
+            }
+            else
+            {
+                throw new Exception($"TImeout out waiting for local host.");
+            }
         }
     }
 
