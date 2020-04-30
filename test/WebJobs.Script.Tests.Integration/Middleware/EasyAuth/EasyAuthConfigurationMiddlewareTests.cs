@@ -79,18 +79,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             {
                 await base.InitializeAsync();
                 // add auth tokens to default request headers
-                HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", "token");
+                //HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", "token");
                 // TODO - generate token
-                HostOptions.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp\httpTrigger");
 
 
                 // TODO - use httpclient to send request w/token. EA will unpack and create ClaimsPrincipal, etc. 
-                var easyAuthSettings = new HostEasyAuthOptions
-                {
-                    SiteAuthClientId = "id",
-                    SiteAuthEnabled = true,
-                };
-                var easyAuthOptions = new OptionsWrapper<HostEasyAuthOptions>(easyAuthSettings);
+                //var easyAuthSettings = new HostEasyAuthOptions
+                //{
+                //    SiteAuthClientId = "id",
+                //    SiteAuthEnabled = true,
+                //};
+                //var easyAuthOptions = new OptionsWrapper<HostEasyAuthOptions>(easyAuthSettings);
                 HttpResponse = HttpClient.GetAsync(_requestUri).Result;
 
             }
