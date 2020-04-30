@@ -86,9 +86,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string exMessage =  string.Empty;
             if (unhandledEx != null)
             {
-                exStackTrace = Sanitizer.Sanitize(unhandledEx.ToFormattedString());
+                exStackTrace = unhandledEx.StackTrace == null ? string.Empty : Sanitizer.Sanitize(unhandledEx.ToFormattedString());
                 exType = unhandledEx.GetType().ToString();
-                exMessage = unhandledEx.Message;
+                exMessage = string.IsNullOrEmpty(unhandledEx.Message) ? string.Empty : unhandledEx.Message;
             }
             eventGenerator.LogFunctionTraceEvent(TraceLevel.Error,
                                                 subscriptionId,
