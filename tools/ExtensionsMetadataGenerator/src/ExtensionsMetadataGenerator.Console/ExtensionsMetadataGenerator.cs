@@ -52,11 +52,12 @@ namespace ExtensionsMetadataGenerator
                                 logger.LogMessage($"Found extension: {foundRef.TypeName}");
                             }
                         }
-                        catch (FileNotFoundException ex)
+                        catch (Exception ex) when (ex is FileNotFoundException || ex is BadImageFormatException)
                         {
-                            // Don't log this as an error. This will almost always happen due to some publishing artifacts (i.e. Razor) existing
-                            // in the functions bin folder without all of their dependencies present. These will almost never have Functions extensions,
-                            // so we don't want to write out errors every time there is a build. This message can be seen with detailed logging enabled.
+                            // Don't log this as an error. This will almost always happen due to some publishing artifacts (i.e. Razor) existing in the
+                            // functions bin folder without all of their dependencies present, or native package artifacts being copied to the bin folder
+                            // These will almost never have Functions extensions, so we don't want to write out errors every time there is a build.
+                            // This message can be seen with detailed logging enabled.
                             logger.LogMessage($"Could not evaluate '{Path.GetFileName(path)}' for extension metadata. If this assembly contains a Functions extension, ensure that all dependent assemblies exist in '{sourcePath}'. If this assembly does not contain any Functions extensions, this message can be ignored. Exception message: {ex.Message}");
                         }
                         catch (Exception ex)
