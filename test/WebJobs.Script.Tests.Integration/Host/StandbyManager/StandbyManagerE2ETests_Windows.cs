@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -153,6 +154,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Verify_StandbyModeE2E_Node();
         }
 
+        [Fact]
+        public async Task StandbyModeE2E_Powershell()
+        {
+            _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
+            await Verify_StandbyModeE2E_Powershell_LanguageWorkerOptions();
+        }
+
         private async Task Verify_StandbyModeE2E_Java()
         {
             var environment = new TestEnvironment(_settings);
@@ -234,6 +242,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Verify Java same java process is used after host restart
             var result = nodeProcessesBefore.Where(pId1 => !nodeProcessesAfter.Any(pId2 => pId2 == pId1));
             Assert.Equal(0, result.Count());
+        }
+
+        private async Task Verify_StandbyModeE2E_Powershell_LanguageWorkerOptions()
+        {
+            var environment = new TestEnvironment(_settings);
+            await InitializeTestHostAsync("Windows_Powershell", environment);
+
+            await VerifyWarmupSucceeds();
+            await VerifyWarmupSucceeds(restart: true);
+
+            var channelFactory = HttpTestServer.Services.GetService<IRpcWorkerChannelFactory>();
+            var scriptHostService = HttpTestServer.Services.GetService<WebJobsScriptHostService>();
+            var workerOptionsPlaceholderMode = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
+            var rpcChannelInPlaceholderMode = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
+            Assert.Equal("6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+
+            // now specialize the host
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "powershell");
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "7");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsScriptRoot, "/");
+
+            Assert.False(environment.IsPlaceholderModeEnabled());
+            Assert.True(environment.IsContainerReady());
+
+
+            // give time for the specialization to happen
+            string[] logLines = null;
+            await TestHelpers.Await(() =>
+            {
+                // wait for the trace indicating that the host has been specialized
+                logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+                return logLines.Contains("Generating 0 job function(s)") && logLines.Contains("Stopping JobHost");
+            }, timeout: 60 * 1000, userMessageCallback: () => string.Join(Environment.NewLine, _loggerProvider.GetAllLogMessages().Select(p => $"[{p.Timestamp.ToString("HH:mm:ss.fff")}] {p.FormattedMessage}")));
+
+            var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
+            var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
+            Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
     }
 }

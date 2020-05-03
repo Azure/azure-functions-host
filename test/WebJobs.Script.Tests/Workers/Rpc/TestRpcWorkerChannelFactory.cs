@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _throwOnProcessStartUp = throwOnProcessStartUp;
     }
 
-        public IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount)
+        public IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IList<RpcWorkerConfig> workerConfigs)
         {
             return new TestRpcWorkerChannel(Guid.NewGuid().ToString(), language, _eventManager, _testLogger, throwOnProcessStartUp: _throwOnProcessStartUp);
         }

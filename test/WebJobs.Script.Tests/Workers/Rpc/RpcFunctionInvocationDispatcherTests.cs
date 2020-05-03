@@ -489,7 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
 
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
-
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
@@ -497,7 +497,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 eventManager,
                 loggerFactory,
                 testLanguageWorkerChannelFactory,
-                new OptionsWrapper<LanguageWorkerOptions>(workerConfigOptions),
+                optionsMonitor,
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
