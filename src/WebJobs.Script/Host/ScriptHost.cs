@@ -52,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
-        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -83,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<HttpWorkerOptions> httpWorkerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
@@ -123,7 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostManager = scriptHostManager;
