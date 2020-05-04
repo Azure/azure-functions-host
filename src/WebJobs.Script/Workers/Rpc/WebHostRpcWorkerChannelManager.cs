@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger = null;
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _lanuageworkerOptions = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
+            _lanuageworkerOptions = languageWorkerOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
-                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0);
+                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, _lanuageworkerOptions.CurrentValue.WorkerConfigs);
                 AddOrUpdateWorkerChannels(runtime, rpcWorkerChannel);
                 await rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
                 {
