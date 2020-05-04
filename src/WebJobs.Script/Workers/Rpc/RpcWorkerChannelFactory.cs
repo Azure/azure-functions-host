@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
         }
 
-        public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IList<RpcWorkerConfig> workerConfigs)
+        public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             var languageWorkerConfig = workerConfigs.Where(c => c.Description.Language.Equals(runtime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (languageWorkerConfig == null)

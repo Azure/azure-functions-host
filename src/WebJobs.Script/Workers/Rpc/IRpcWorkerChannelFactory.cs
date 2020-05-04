@@ -8,6 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IRpcWorkerChannelFactory
     {
-        IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IList<RpcWorkerConfig> workerConfigs);
+        IRpcWorkerChannel Create(string scriptRootPath, string language, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs);
     }
 }

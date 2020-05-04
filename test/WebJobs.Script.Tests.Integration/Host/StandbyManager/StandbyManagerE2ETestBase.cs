@@ -43,8 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             StandbyManager.ResetChangeToken();
         }
 
-        internal TestServer HttpTestServer => _httpServer;
-
         protected async Task<IWebHostBuilder> CreateWebHostBuilderAsync(string testDirName, IEnvironment environment)
         {
             var httpConfig = new HttpConfiguration();
