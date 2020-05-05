@@ -110,7 +110,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages\WebJobs.Script.Abstractions -p:PackageVersion=2.0.$(buildNumber)$(suffix)'
+      arguments: '--no-build -c Release -o packages\WebJobs.Script.Abstractions'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
