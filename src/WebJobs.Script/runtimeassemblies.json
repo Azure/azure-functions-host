@@ -423,6 +423,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Azure.WebJobs.Script.Abstractions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "Microsoft.Azure.WebJobs.Script.Grpc",
       "resolutionPolicy": "minorMatchOrLower"
     },
