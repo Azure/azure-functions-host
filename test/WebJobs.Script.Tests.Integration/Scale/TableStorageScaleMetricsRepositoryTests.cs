@@ -6,14 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Cosmos.Table;
 using Moq;
 using Xunit;
 
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             loggerFactory.AddProvider(_loggerProvider);
 
             // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
-            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60);
+            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60, new DefaultDelegatingHandlerProvider(new TestEnvironment()));
 
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
@@ -56,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var options = new ScaleOptions();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            var localRepository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory);
+            var localRepository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory, new TestEnvironment());
 
             var monitor1 = new TestScaleMonitor1();
             var monitor2 = new TestScaleMonitor2();
