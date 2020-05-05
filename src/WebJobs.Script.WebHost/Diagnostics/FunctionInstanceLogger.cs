@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             IMetricsLogger metrics,
             IHostIdProvider hostIdProvider,
             IConfiguration configuration,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            IDelegatingHandlerProvider delegatingHandlerProvider)
             : this(metadataManager, metrics)
         {
             if (hostIdProvider == null)
@@ -49,11 +51,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
+            if (delegatingHandlerProvider == null)
+            {
+                throw new ArgumentNullException(nameof(delegatingHandlerProvider));
+            }
+
             string accountConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Dashboard);
             if (accountConnectionString != null)
             {
                 CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
-                var client = account.CreateCloudTableClient();
+                var restConfig = new RestExecutorConfiguration { DelegatingHandler = delegatingHandlerProvider.Create() };
+                var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
+
+                var client = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
                 var tableProvider = LogFactory.NewLogTableProvider(client);
 
                 ILogger logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
