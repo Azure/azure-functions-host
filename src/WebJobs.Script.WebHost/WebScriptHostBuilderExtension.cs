@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -108,6 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         services.AddSingleton<IHostIdProvider>(provider);
                     }
+
+                    services.AddSingleton<IDelegatingHandlerProvider, DefaultDelegatingHandlerProvider>();
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger>(a => new NonDisposableMetricsLogger(metricsLogger));
