@@ -233,8 +233,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
-            var rpcChannelInPlaceholderMode = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
-            Assert.Equal("6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+            var rpcChannelInPlaceholderMode = (RpcWorkerChannel)channelFactory.Create("/", "python", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
+            Assert.Equal("3.6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
 
 
             // TestServer will block in the constructor so pull out the StandbyManager and use it
@@ -249,8 +249,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0"); 
-            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "powershell");
-            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "7");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
 
             var specializeTask = Task.Run(async () => await standbyManager.SpecializeHostAsync());
 
@@ -261,8 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
-            var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
-            Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
+            var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "python", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
+            Assert.Equal("3.7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
