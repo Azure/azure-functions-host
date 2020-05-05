@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -31,20 +32,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly ScaleOptions _scaleOptions;
         private readonly ILogger _logger;
         private readonly int _tableCreationRetries;
+        private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
         private CloudTableClient _tableClient;
 
-        public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory)
-            : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries)
+        public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IEnvironment environment)
+            : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries, new DefaultDelegatingHandlerProvider(environment))
         {
         }
 
-        internal TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, int tableCreationRetries)
+        internal TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory,
+            int tableCreationRetries, IDelegatingHandlerProvider delegatingHandlerProvider)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _scaleOptions = scaleOptions.Value;
             _logger = loggerFactory.CreateLogger<TableStorageScaleMetricsRepository>();
             _tableCreationRetries = tableCreationRetries;
+            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
         internal CloudTableClient TableClient
@@ -54,11 +58,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (_tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    CloudStorageAccount account = null;
                     if (!string.IsNullOrEmpty(storageConnectionString) &&
-                        CloudStorageAccount.TryParse(storageConnectionString, out account))
+                        CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
                     {
-                        _tableClient = account.CreateCloudTableClient();
+                        var restConfig = new RestExecutorConfiguration { DelegatingHandler = _delegatingHandlerProvider.Create() };
+                        var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
+
+                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
                     }
                     else
                     {
