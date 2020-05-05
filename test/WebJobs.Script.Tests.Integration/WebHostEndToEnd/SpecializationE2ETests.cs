@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task StartAsync_SetsCorrectActiveHost()
+        public async Task StartAsync_SetsCorrectActiveHost_RefreshesLanguageWorkerOptions()
         {
             var builder = CreateStandbyHostBuilder();
 
@@ -229,27 +229,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Task ignore = Task.Delay(3000).ContinueWith(_ => _pauseAfterStandbyHostBuild.Release());
 
             IWebHost host = builder.Build();
-            var manager = host.Services.GetService<WebJobsScriptHostService>();
+            var scriptHostService = host.Services.GetService<WebJobsScriptHostService>();
+            var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
+            var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
+            Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
+            var rpcChannelInPlaceholderMode = (RpcWorkerChannel)channelFactory.Create("/", "python", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
+            Assert.Equal("3.6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+
 
             // TestServer will block in the constructor so pull out the StandbyManager and use it
             // directly for this test.
             var standbyManager = host.Services.GetService<IStandbyManager>();
 
-            var standbyStart = Task.Run(async () => await manager.StartAsync(CancellationToken.None));
+            var standbyStart = Task.Run(async () => await scriptHostService.StartAsync(CancellationToken.None));
 
             // Wait until we've completed the build once. The standby host is built and now waiting for
             // _pauseAfterHostBuild to release it.
             await TestHelpers.Await(() => _buildCount.CurrentCount == 1);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0"); 
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
 
             var specializeTask = Task.Run(async () => await standbyManager.SpecializeHostAsync());
 
             await Task.WhenAll(standbyStart, specializeTask);
 
-            var options = manager.Services.GetService<IOptions<ScriptJobHostOptions>>();
+            var options = scriptHostService.Services.GetService<IOptions<ScriptJobHostOptions>>();
             Assert.Equal(_specializedScriptRoot, options.Value.RootScriptPath);
+
+            var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
+            Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
+            var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "python", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
+            Assert.Equal("3.7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
