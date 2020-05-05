@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             IDictionary<string, IEnumerable<string>> invalidValues = new Dictionary<string, IEnumerable<string>>();
 
-            var functions = _metadataManager.Functions;
+            var functions = _metadataManager.GetFunctionMetadata();
 
             foreach (var function in functions)
             {

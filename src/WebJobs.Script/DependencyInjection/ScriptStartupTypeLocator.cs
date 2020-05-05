@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataProvider functionMetadataProvider, IMetricsLogger metricsLogger)
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
