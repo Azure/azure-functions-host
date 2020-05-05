@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor);
 
-            IRpcWorkerChannel nodeWorkerChannel = CreateTestChannel(RpcWorkerConstants.NodeLanguageWorkerName);
+            IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
@@ -261,15 +261,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(traces.Count() == 0);
 
             // Verify channel
-            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName);
+            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(languageWorkerName);
             Assert.Null(initializedChannel);
         }
 
-        [Fact]
-        public async Task SpecializeAsync_Node_V2CompatibilityWithV3Extension_KillsProcess()
+        [Theory]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        public async Task SpecializeAsync_Node_V2CompatibilityWithV3Extension_KillsProcess(string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, languageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsExtensionVersion, "~3");
 
