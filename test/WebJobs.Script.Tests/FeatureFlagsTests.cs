@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public FeatureFlagsTests()
         {
-            Environment.SetEnvironmentVariable("AzureWebJobsFeatureFlags", "AwesomeFeature,RadFeature");
+            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "AwesomeFeature,RadFeature");
         }
 
         [Theory]

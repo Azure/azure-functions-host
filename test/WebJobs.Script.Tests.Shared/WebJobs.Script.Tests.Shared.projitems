@@ -18,6 +18,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestConfigurationBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestEnvironment.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestEventGenerator.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestFunctionMetadataManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />
@@ -25,6 +26,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsMonitor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScaleMonitor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestServiceProviderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestTraits.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHelpers.cs" />

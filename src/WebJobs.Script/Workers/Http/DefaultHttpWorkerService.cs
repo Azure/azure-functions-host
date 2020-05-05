@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
-            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction)
+            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
                 return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
             }

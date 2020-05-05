@@ -66,10 +66,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc(options =>
+
+            services.AddMvc(o =>
             {
-                options.Filters.Add(new ArmExtensionResourceFilter());
+                o.EnableEndpointRouting = false;
+                o.Filters.Add(new ArmExtensionResourceFilter());
             })
+            .AddNewtonsoftJson()
             .AddXmlDataContractSerializerFormatters();
 
             // Standby services
@@ -106,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
@@ -140,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);

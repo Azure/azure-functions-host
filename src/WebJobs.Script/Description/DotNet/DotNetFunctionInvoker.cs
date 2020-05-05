@@ -78,6 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static IFunctionMetadataResolver CreateMetadataResolver(ScriptHost host, ICollection<IScriptBindingProvider> bindingProviders,
             FunctionMetadata functionMetadata, ILogger logger)
         {
+            // If the function references a shared assembly for invocation, it doesn't need a
+            // metadata resolver. There's no additional dependencies that will need to be loaded,
+            // as all shared assembly should already be resolved.
+            if (DependencyHelper.IsAssemblyReferenceFormat(functionMetadata.ScriptFile))
+            {
+                return NullFunctionMetadataResolver.Instance;
+            }
+
             return new ScriptFunctionMetadataResolver(functionMetadata.ScriptFile, bindingProviders, logger);
         }
 

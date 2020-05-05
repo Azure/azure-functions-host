@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IHttpWorkerChannelFactory httpWorkerChannelFactory,
             IRpcWorkerChannelFactory rpcWorkerChannelFactory,
             IOptions<HttpWorkerOptions> httpWorkerOptions,
-            IOptions<LanguageWorkerOptions> rpcWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> rpcWorkerOptions,
             IEnvironment environment,
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,

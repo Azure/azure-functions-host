@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
 
             IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
-            if (functionExecution != null && !context.Response.HasStarted())
+            if (functionExecution != null && !context.Response.HasStarted)
             {
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
                 IActionResult result = await GetResultAsync(context, functionExecution);
@@ -72,13 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private static int GetNestedProxiesCount(HttpContext context, IFunctionExecutionFeature functionExecution)
         {
             context.Items.TryGetValue(ScriptConstants.AzureFunctionsNestedProxyCount, out object nestedProxiesCount);
-
-            if (functionExecution != null && !functionExecution.Descriptor.Metadata.IsProxy && nestedProxiesCount == null)
-            {
-                // HttpBufferingService is disabled for non-proxy functions.
-                var bufferingFeature = context.Features.Get<IScriptHttpBufferedStream>();
-                bufferingFeature?.DisableBufferingAsync(CancellationToken.None);
-            }
 
             if (nestedProxiesCount != null)
             {
@@ -115,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
 
             // If the function is disabled, return 'NotFound', unless the request is being made with Admin credentials
-            if (functionExecution.Descriptor.Metadata.IsDisabled &&
+            if (functionExecution.Descriptor.Metadata.IsDisabled() &&
                 !AuthUtility.PrincipalHasAuthLevelClaim(context.User, AuthorizationLevel.Admin))
             {
                 return new NotFoundResult();
@@ -177,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
         {
-            if (!descriptor.Metadata.IsProxy)
+            if (!descriptor.Metadata.IsProxy())
             {
                 var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
                 AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();

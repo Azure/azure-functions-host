@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -51,8 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
-        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -83,7 +82,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
 
         public ScriptHost(IOptions<JobHostOptions> options,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
             IOptions<HttpWorkerOptions> httpWorkerOptions,
             IEnvironment environment,
             IJobHostContextFactory jobHostContextFactory,
@@ -94,7 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script
             IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
             IFileLoggingStatusManager fileLoggingStatusManager,
-            IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
             ITypeLocator typeLocator,
@@ -124,8 +121,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
-            _proxyMetadataManager = proxyMetadataManager;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostManager = scriptHostManager;
@@ -303,7 +298,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(functionMetadataList, Functions), cancellationToken);
+                // Dispatcher not needed for non-proxy codeless function.
+                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !m.IsCodeless());
+                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
 
@@ -340,22 +337,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A metadata collection of functions and proxies configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.Functions;
+            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
             foreach (var error in _functionMetadataManager.Errors)
-            {
-                FunctionErrors.Add(error.Key, error.Value.ToArray());
-            }
-
-            // Get proxies metadata
-            var proxyMetadata = _proxyMetadataManager.ProxyMetadata;
-            if (!proxyMetadata.Functions.IsDefaultOrEmpty)
-            {
-                // Add the proxy descriptor provider
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, proxyMetadata.ProxyClient, _loggerFactory));
-                functionMetadata = proxyMetadata.Functions.Concat(functionMetadata);
-            }
-
-            foreach (var error in proxyMetadata.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
             }
@@ -495,7 +478,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            AddFunctionDescriptors();
+            AddFunctionDescriptors(functionMetadata);
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
@@ -507,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Functions = functions;
         }
 
-        private void AddFunctionDescriptors()
+        private void AddFunctionDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
             if (_environment.IsPlaceholderModeEnabled())
             {
@@ -529,6 +512,30 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
+            }
+
+            // Codeless functions run side by side with regular functions.
+            // In addition to descriptors already added here, we need to ensure all codeless functions
+            // also have associated descriptors.
+            AddCodelessDescriptors(functionMetadata);
+        }
+
+        /// <summary>
+        /// Adds a DotNetFunctionDescriptorProvider to the list of descriptors if any function metadata has language set to "codeless" in it.
+        /// </summary>
+        private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
+        {
+            if (functionMetadata.Any(m => m.IsProxy()))
+            {
+                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
+            }
+
+            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
+            // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
+            if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
+                && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
+            {
+                _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
         }
 
@@ -611,7 +618,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var scriptFile = metadata.ScriptFile;
                 if (scriptFile != null && scriptFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
-                    bool isDirect = metadata.IsDirect;
+                    bool isDirect = metadata.IsDirect();
                     if (mapAssemblySettings.TryGetValue(scriptFile, out bool prevIsDirect))
                     {
                         if (prevIsDirect != isDirect)
@@ -654,7 +661,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             foreach (var metadata in functionMetadataList)
             {
-                if (!metadata.IsDirect)
+                if (!metadata.IsDirect())
                 {
                     continue;
                 }
@@ -722,7 +729,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
             if (httpTrigger != null)
             {
-                bool isProxy = function.Metadata != null && function.Metadata.IsProxy;
+                bool isProxy = function.Metadata != null && function.Metadata.IsProxy();
 
                 ValidateHttpFunction(function.Name, httpTrigger, isProxy);
 
@@ -872,7 +879,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var metadata = _metadataProvider.GetFunctionMetadata(function.Metadata.Name);
                 if (metadata != null)
                 {
-                    function.Metadata.IsDisabled = metadata.IsDisabled;
+                    function.Metadata.SetIsDisabled(metadata.IsDisabled);
                 }
             }
         }

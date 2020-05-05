@@ -127,6 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
+                    ConfigureWebHost(s);
                 });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
@@ -144,6 +145,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+        {
+        }
+
+        public virtual void ConfigureWebHost(IServiceCollection services)
         {
         }
 

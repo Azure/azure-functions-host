@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -55,10 +56,17 @@ namespace Microsoft.Azure.WebJobs.Script
             return builder.AddScriptHost(options, loggerFactory, null);
         }
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, Action<IWebJobsBuilder> configureWebJobs = null, IMetricsLogger metricsLogger = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder,
+                                                 ScriptApplicationHostOptions applicationOptions,
+                                                 Action<IWebJobsBuilder> configureWebJobs = null,
+                                                 IMetricsLogger metricsLogger = null)
             => builder.AddScriptHost(applicationOptions, null, metricsLogger, configureWebJobs);
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, ScriptApplicationHostOptions applicationOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, Action<IWebJobsBuilder> configureWebJobs = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder,
+                                                 ScriptApplicationHostOptions applicationOptions,
+                                                 ILoggerFactory loggerFactory,
+                                                 IMetricsLogger metricsLogger,
+                                                 Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -101,10 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.AppDirectory = applicationHostOptions.ScriptPath;
                 })
-                .AddHttp(o =>
-                {
-                    o.SetResponse = HttpBinding.SetResponse;
-                })
+                .AddHttp()
                 .AddTimers()
                 .AddManualTrigger()
                 .AddWarmup();
@@ -141,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
-                services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-                services.AddSingleton<IProxyMetadataManager, ProxyMetadataManager>();
+                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
+
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
                 services.AddTransient<IExtensionsManager, ExtensionsManager>();
@@ -160,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
                 services.ConfigureOptions<ScriptHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
-                // TODO: pgopa only add this to WebHostServiceCollection
+                // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
@@ -233,8 +238,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IWebJobsBuilder UseScriptExternalStartup(this IWebJobsBuilder builder, ScriptApplicationHostOptions applicationHostOptions, ILoggerFactory loggerFactory, IExtensionBundleManager extensionBundleManager, IMetricsLogger metricsLogger)
         {
             var logger = loggerFactory?.CreateLogger<ScriptStartupTypeLocator>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            var metadataServiceProvider = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataProvider>();
-            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, metadataServiceProvider, metricsLogger), loggerFactory);
+            var functionMetadataManager = applicationHostOptions.RootServiceProvider.GetService<IFunctionMetadataManager>();
+            return builder.UseExternalStartup(new ScriptStartupTypeLocator(applicationHostOptions.ScriptPath, logger, extensionBundleManager, functionMetadataManager, metricsLogger), loggerFactory);
         }
 
         public static IHostBuilder SetAzureFunctionsEnvironment(this IHostBuilder builder)

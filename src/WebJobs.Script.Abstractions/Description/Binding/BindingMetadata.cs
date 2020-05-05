@@ -14,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     /// </summary>
     public class BindingMetadata
     {
+        private const string _systemReturnParameterBindingName = "$return";
+
         /// <summary>
         /// Gets or sets the name of the binding.
         /// </summary>
@@ -59,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             get
             {
-                return string.Compare(Name, ScriptConstants.SystemReturnParameterBindingName, StringComparison.OrdinalIgnoreCase) == 0;
+                return string.Compare(Name, _systemReturnParameterBindingName, StringComparison.OrdinalIgnoreCase) == 0;
             }
         }
 

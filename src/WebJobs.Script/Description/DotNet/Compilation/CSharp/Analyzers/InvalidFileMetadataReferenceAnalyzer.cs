@@ -33,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description.DotNet.CSharp.Analyzers
 
         public override void Initialize(AnalysisContext context)
         {
+            context.EnableConcurrentExecution();
+            context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.RegisterCompilationAction(AnalyzeCompilation);
         }
 

@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IRpcWorkerChannelFactory rpcWorkerChannelFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
+            _workerConfigs = languageWorkerOptions.CurrentValue.WorkerConfigs;
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount);
+            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _workerConfigs);
             rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
@@ -237,10 +237,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // This could throw if no initialized workers are found. Shut down instance and retry.
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
-            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
+            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> bufferBlock))
             {
                 _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
-                rpcWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
+                rpcWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.GetFunctionId()].Post(invocationContext);
             }
             else
             {
