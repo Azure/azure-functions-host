@@ -5,6 +5,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IRpcWorkerProcessFactory
     {
-        IWorkerProcess Create(string workerId, string runtime, string scriptRootPath);
+        IWorkerProcess Create(string workerId, string runtime, string scriptRootPath, RpcWorkerConfig rpcWorkerConfig);
     }
 }
