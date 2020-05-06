@@ -40,6 +40,10 @@ function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateS
     #https://dotnet.myget.org/feed/dotnet-core/package/nuget/runtime.win-x86.Microsoft.NETCore.Runtime.CoreCLR
     DownloadNupkg "https://dotnet.myget.org/F/dotnet-core/api/v2/package/runtime.$runtime.Microsoft.NETCore.Runtime.CoreCLR/2.2.0-servicing-26820-03"  @("tools\crossgen.exe")  @("$publishTarget\download\crossgen")
 
+    # we need SQLitePCLRaw dlls to crossgen Microsoft.CodeAnalysis.Workspaces
+    DownloadNupkg "https://www.nuget.org/api/v2/package/SQLitePCLRaw.bundle_green/1.1.0" @("lib\netstandard1.1\SQLitePCLRaw.batteries_v2.dll") @("$selfContained")
+    DownloadNupkg "https://www.nuget.org/api/v2/package/SQLitePCLRaw.core/1.1.0" @("lib\netstandard1.1\SQLitePCLRaw.core.dll") @("$selfContained")
+
     # Publish self-contained app with all required dlls for crossgen
     dotnet publish .\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj -r $runtime -o "$selfContained" -v q /p:BuildNumber=$buildNumber    
 
