@@ -58,24 +58,5 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             return Task.CompletedTask;
         }
-
-        private class KnownTrigger
-        {
-            public KnownTrigger(string connectionSettingName, string defaultConnectionSetting)
-            {
-                ConnectionSettingName = connectionSettingName;
-                DefaultConnectionSetting = defaultConnectionSetting;
-            }
-
-            /// <summary>
-            /// Gets the default connection key ("AzureWebJobsStorage", "AzureWebJobsCosmosDb") for the binding.
-            /// </summary>
-            public string DefaultConnectionSetting { get; }
-
-            /// <summary>
-            /// Gets the connection key ("connection", "connectionStringSetting", etc) for the binding.
-            /// </summary>
-            public string ConnectionSettingName { get; }
-        }
     }
 }
