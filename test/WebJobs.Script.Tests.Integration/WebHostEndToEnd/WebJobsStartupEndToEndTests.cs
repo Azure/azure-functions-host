@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
-    [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, nameof(WebJobsStartupEndToEndTests))]
     public class WebJobsStartupEndToEndTests : EndToEndTestsBase<WebJobsStartupEndToEndTests.TestFixture>
     {
         public WebJobsStartupEndToEndTests(TestFixture fixture) : base(fixture)
@@ -39,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 _dispose = new TestScopedEnvironmentVariable(new Dictionary<string, string>
                 {
                     { "MyOptions__MyKey", "WillBeOverwrittenInAppStartup" },
-                    { "MyOptions__MyOtherKey", "FromEnvironment" }                   
+                    { "MyOptions__MyOtherKey", "FromEnvironment" }
                 });
             }
 
