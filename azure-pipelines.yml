@@ -405,7 +405,7 @@ jobs:
     inputs:
       command: 'test'
       testRunTitle: "C# end to end tests"
-      arguments: '--filter "Group=CSharpEndToEndTests" -v d'
+      arguments: '--filter "Group=CSharpEndToEndTests" -v n'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2

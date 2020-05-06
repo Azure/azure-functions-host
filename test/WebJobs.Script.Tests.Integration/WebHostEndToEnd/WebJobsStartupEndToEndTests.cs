@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public class TestFixture : EndToEndTestFixture
         {
-            private const string TestPath = "..\\..\\..\\..\\WebJobsStartupTests\\bin\\netcoreapp2.2";
+            private const string TestPath = "..\\..\\..\\..\\WebJobsStartupTests\\bin\\netcoreapp3.1";
             private readonly IDisposable _dispose;
 
             public TestFixture() : base(TestPath, "webjobsstartup", "dotnet")
