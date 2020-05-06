@@ -39,35 +39,11 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.AspNetCore.Authentication.Facebook",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Authentication.Google",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.AspNetCore.Authentication.JwtBearer",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.AspNetCore.Authentication.MicrosoftAccount",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.AspNetCore.Authentication.OAuth",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Authentication.OpenIdConnect",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Authentication.Twitter",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Authentication.WsFederation",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -120,10 +96,6 @@
     },
     {
       "name": "Microsoft.AspNetCore.Diagnostics.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -183,14 +155,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.AspNetCore.Identity.UI",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Identity.UI.Views",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.AspNetCore.JsonPatch",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -200,10 +164,6 @@
     },
     {
       "name": "Microsoft.AspNetCore.Localization.Routing",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.MiddlewareAnalysis",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -267,14 +227,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.AspNetCore.NodeServices",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Owin",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.AspNetCore.Razor",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -327,14 +279,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.AspNetCore.Server.Kestrel.Https",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.Server.Kestrel.Transport.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -356,14 +300,6 @@
     },
     {
       "name": "Microsoft.AspNetCore.SignalR.Protocols.Json",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.SpaServices",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.AspNetCore.SpaServices.Extensions",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -476,10 +412,6 @@
     },
     {
       "name": "Microsoft.Extensions.Caching.Memory",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.Extensions.Caching.SqlServer",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -655,19 +587,7 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.IdentityModel.Protocols.WsFederation",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.IdentityModel.Tokens",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.IdentityModel.Tokens.Saml",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.IdentityModel.Xml",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -1084,10 +1004,6 @@
     },
     {
       "name": "System.Net.WebSockets.Client",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "System.Net.WebSockets.WebSocketProtocol",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
