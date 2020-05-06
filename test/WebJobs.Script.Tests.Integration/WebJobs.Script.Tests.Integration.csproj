@@ -107,7 +107,7 @@
 
   <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->  
   <Target Name="BuildTestProjects" AfterTargets="Build">
-    <MSBuild Projects="..\WebJobsStartupTests\WebJobsStartupTests.csproj" Properties="Configuration=Debug" />
+    <MSBuild Projects="..\WebJobsStartupTests\WebJobsStartupTests.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
   </Target>
   
 </Project>
