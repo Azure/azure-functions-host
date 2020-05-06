@@ -158,9 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Theory]
-        [InlineData("nOde")]
-        [InlineData("Node")]
-        public async Task SpecializeAsync_Node_ReadOnly_KeepsProcessAlive(string runtime)
+        [InlineData("nOde", RpcWorkerConstants.NodeLanguageWorkerName)]
+        [InlineData("Node", RpcWorkerConstants.NodeLanguageWorkerName)]
+        [InlineData("PowerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        [InlineData("pOwerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        public async Task SpecializeAsync_ReadOnly_KeepsProcessAlive(string runtime, string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, runtime);
@@ -168,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor);
 
-            IRpcWorkerChannel nodeWorkerChannel = CreateTestChannel(RpcWorkerConstants.NodeLanguageWorkerName);
+            IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
             Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
@@ -180,8 +182,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functionLoadLogs.Count() == 1);
 
             // Verify channel
-            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName);
-            Assert.Equal(nodeWorkerChannel, initializedChannel);
+            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(languageWorkerName);
+            Assert.Equal(workerChannel, initializedChannel);
         }
 
         [Fact]
@@ -236,17 +238,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(javaWorkerChannel, initializedChannel);
         }
 
-        [Fact]
-        public async Task SpecializeAsync_Node_NotReadOnly_KillsProcess()
+        [Theory]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        public async Task SpecializeAsync_NotReadOnly_KillsProcess(string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.NodeLanguageWorkerName);
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, languageWorkerName);
             // This is an invalid setting configuration, but just to show that run from zip is NOT set
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
 
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor);
 
-            IRpcWorkerChannel nodeWorkerChannel = CreateTestChannel(RpcWorkerConstants.NodeLanguageWorkerName);
+            IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
@@ -255,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(traces.Count() == 0);
 
             // Verify channel
-            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName);
+            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(languageWorkerName);
             Assert.Null(initializedChannel);
         }
 

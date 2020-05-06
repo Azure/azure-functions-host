@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
         }
@@ -92,6 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
         }
@@ -116,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
 
@@ -140,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.DoesNotContain("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
 
@@ -166,6 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
 
@@ -187,6 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
         }
@@ -206,6 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PythonLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Never);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName), Times.Never);
+            _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.PowerShellLanguageWorkerName), Times.Never);
             Assert.Contains("testserver", testRpcServer.Uri.ToString());
             await testRpcServer.ShutdownAsync();
         }
@@ -351,6 +358,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("0", "node", "1234", false)]
         [InlineData("1", "node", "", true)]
         [InlineData("1", "Node", "", true)]
+        [InlineData("1", "powershell", "1234", true)]
+        [InlineData("0", "powershell", "1234", false)]
+        [InlineData("1", "powershell", "", true)]
+        [InlineData("1", "Powershell", "", true)]
         [InlineData("1", "java", "1234", true)]
         [InlineData("0", "java", "1234", false)]
         [InlineData("0", "JAVA", "1234", false)]
