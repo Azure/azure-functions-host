@@ -150,11 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void SetResponse_ActionResultConverted_Succeeded()
         {
-            FieldInfo fieldInfo = typeof(HttpBinding).GetField("isActionResultHandlingEnabled", BindingFlags.NonPublic | BindingFlags.Static);
-            bool oldValue = (bool)fieldInfo.GetValue(null);
-            fieldInfo.SetValue(null, true);
-
-            try
+            using (new TestScopedEnvironmentVariable("AzureWebJobsFeatureFlags", ScriptConstants.FeatureFlagEnableActionResultHandling))
             {
                 var httpContext1 = new DefaultHttpContext();
                 ActionResult<string> result1 = new ActionResult<string>("test");
@@ -167,10 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var resultObject = ((ObjectResult)httpContext2.Request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey]).Value;
                 Assert.IsType<DummyClass>(resultObject);
                 Assert.Equal("test", ((DummyClass)resultObject).Value);
-            }
-            finally
-            {
-                fieldInfo.SetValue(null, oldValue);
             }
         }
 

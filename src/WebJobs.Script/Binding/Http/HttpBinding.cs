@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding
     {
-        private static bool isActionResultHandlingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling);
+        private static readonly Lazy<bool> IsActionResultHandlingEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling));
 
         public HttpBinding(ScriptJobHostOptions config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
@@ -40,8 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         public override Task BindAsync(BindingContext context)
         {
             HttpRequest request = (HttpRequest)context.TriggerValue;
-            HttpResponseMessage invocationResponseMessage = context.Value as HttpResponseMessage;
-            if (invocationResponseMessage != null)
+            if (context.Value is HttpResponseMessage invocationResponseMessage)
             {
                 request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = invocationResponseMessage;
             }
@@ -55,16 +54,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     ConvertStreamToValue((Stream)content, DataType.String, ref content);
                 }
 
-                IActionResult response = CreateResult(request, content);
+                IActionResult response = CreateResult(content);
                 request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = response;
             }
             return Task.CompletedTask;
         }
 
-        internal static IActionResult CreateResult(HttpRequest request, object content)
+        internal static IActionResult CreateResult(object content)
         {
-            string stringContent = content as string;
-            if (stringContent != null)
+            if (content is string stringContent)
             {
                 try
                 {
@@ -78,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             // see if the content is a response object, defining http response properties
-            IDictionary<string, object> responseObject = null;
+            IDictionary<string, object> responseObject;
             if (content is JObject)
             {
                 // TODO: FACAVAL - The call bellow is pretty fragile. This would cause issues
@@ -101,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out cookies, out enableContentNegotiation);
             }
 
-            return CreateResult(request, statusCode, content, responseHeaders, cookies, enableContentNegotiation);
+            return CreateResult(statusCode, content, responseHeaders, cookies, enableContentNegotiation);
         }
 
         internal static void ParseResponseObject(IDictionary<string, object> responseObject, ref object content, out IDictionary<string, object> headers, out int statusCode, out List<Tuple<string, string, CookieOptions>> cookies, out bool enableContentNegotiation)
@@ -114,8 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // TODO: Improve this logic
             // Sniff the object to see if it looks like a response object
             // by convention
-            object bodyValue = null;
-            if (responseObject.TryGetValue(WorkerConstants.HttpBody, out bodyValue, ignoreCase: true))
+            if (responseObject.TryGetValue(WorkerConstants.HttpBody, out object bodyValue, ignoreCase: true))
             {
                 // the response content becomes the specified body value
                 content = bodyValue;
@@ -169,9 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return true;
             }
 
-            var stringValue = statusValue as string;
-            int parsedStatusCode;
-            if (stringValue != null && int.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedStatusCode))
+            if (statusValue is string stringValue && int.TryParse(stringValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsedStatusCode))
             {
                 statusCode = parsedStatusCode;
                 return true;
@@ -180,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return false;
         }
 
-        private static IActionResult CreateResult(HttpRequest request, int statusCode, object content, IDictionary<string, object> headers, List<Tuple<string, string, CookieOptions>> cookies, bool enableContentNegotiation)
+        private static IActionResult CreateResult(int statusCode, object content, IDictionary<string, object> headers, List<Tuple<string, string, CookieOptions>> cookies, bool enableContentNegotiation)
         {
             if (enableContentNegotiation)
             {
@@ -214,16 +209,16 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     // for script language functions (e.g. PowerShell, BAT, etc.) the value
                     // will be a Stream which we need to convert to string
                     FunctionBinding.ConvertStreamToValue((Stream)result, DataType.String, ref result);
-                    actionResult = CreateResult(request, result);
+                    actionResult = CreateResult(result);
                 }
                 else if (result is JObject)
                 {
-                    actionResult = CreateResult(request, result);
+                    actionResult = CreateResult(result);
                 }
-                else if (isActionResultHandlingEnabled && result is IConvertToActionResult convertable)
+                else if (IsActionResultHandlingEnabled.Value && result is IConvertToActionResult actionResultConvertible)
                 {
                     // Convert ActionResult<T> to ActionResult
-                    actionResult = convertable.Convert();
+                    actionResult = actionResultConvertible.Convert();
                 }
                 else
                 {
