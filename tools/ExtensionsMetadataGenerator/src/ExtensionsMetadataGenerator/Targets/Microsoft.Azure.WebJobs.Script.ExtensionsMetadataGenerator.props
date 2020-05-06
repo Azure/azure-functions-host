@@ -1,8 +1,0 @@
-﻿<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
-  <PropertyGroup>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <_ExtensionsMetadataGeneratorPropsImported>true</_ExtensionsMetadataGeneratorPropsImported>
-  </PropertyGroup>
-  
-</Project>
