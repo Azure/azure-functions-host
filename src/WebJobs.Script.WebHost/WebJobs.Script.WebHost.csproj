@@ -63,6 +63,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.0" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
+    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="1.1.0" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
