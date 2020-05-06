@@ -119,10 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 context.Properties[BundleManagerKey] = bundleManager;
                 context.Properties[StartupTypeLocatorKey] = locator;
 
-                if (context.Properties[DelayedConfigurationActionKey] is Action<IWebJobsStartupTypeLocator> delayedConfigAction)
+                // If we're skipping host initialization, this key will not exist and this will also be skipped.
+                if (context.Properties.TryGetValue(DelayedConfigurationActionKey, out object actionObject) &&
+                    actionObject is Action<IWebJobsStartupTypeLocator> delayedConfigAction)
                 {
-                    context.Properties.Remove(DelayedConfigurationActionKey);
-
                     // store the snapshot for validation later
                     context.Properties[ConfigurationSnapshotKey] = config;
 
@@ -145,7 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     var environment = s.GetService<IEnvironment>();
                     var originalConfig = context.Properties.GetAndRemove<IConfigurationRoot>(ConfigurationSnapshotKey);
 
-                    if (environment.IsWindowsConsumption() || environment.IsLinuxConsumption() || environment.IsCoreTools())
+                    // Validate the config for anything that needs the Scale Controller.
+                    // Including Core Tools as a warning during development time.
+                    if (environment.IsWindowsConsumption() ||
+                        environment.IsLinuxConsumption() ||
+                        environment.IsWindowsElasticPremium() ||
+                        environment.IsCoreTools())
                     {
                         var validator = s.GetService<ExternalConfigurationStartupValidator>();
                         var logger = s.GetService<ILoggerFactory>().CreateLogger<ExternalConfigurationStartupValidator>();

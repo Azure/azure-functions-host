@@ -56,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public Type[] GetStartupTypes()
         {
             return _startupTypes.Value
-                .Where(t => typeof(IWebJobsStartup).IsAssignableFrom(t) || typeof(IWebJobsConfigurationStartup).IsAssignableFrom(t))
                 .Distinct(new TypeNameEqualityComparer())
                 .ToArray();
         }
