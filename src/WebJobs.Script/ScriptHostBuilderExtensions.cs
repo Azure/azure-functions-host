@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -184,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         Configuration = context.Configuration,
                         EnvironmentName = context.HostingEnvironment.EnvironmentName,
-                        ApplicationRootPath = GetApplicationRootPath()
+                        ApplicationRootPath = applicationHostOptions.ScriptPath
                     };
 
                     // Only set our external startup if we're not suppressing host initialization
@@ -203,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         Configuration = context.Configuration,
                         EnvironmentName = context.HostingEnvironment.EnvironmentName,
-                        ApplicationRootPath = GetApplicationRootPath()
+                        ApplicationRootPath = applicationHostOptions.ScriptPath
                     };
 
                     // Delay this call so we can call the customer's setup last.
@@ -450,20 +449,6 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 throw new InvalidOperationException($"The key '{key}' does not exist in the dictionary.");
-            }
-        }
-
-        private static string GetApplicationRootPath()
-        {
-            string home = Environment.GetEnvironmentVariable("HOME");
-
-            if (home != null)
-            {
-                return Path.Combine(home, "site", "wwwroot");
-            }
-            else
-            {
-                return Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
             }
         }
     }
