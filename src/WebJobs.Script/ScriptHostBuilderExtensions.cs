@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -179,10 +180,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!skipHostInitialization)
                 {
+                    var webJobsBuilderContext = new WebJobsBuilderContext
+                    {
+                        Configuration = context.Configuration,
+                        EnvironmentName = context.HostingEnvironment.EnvironmentName,
+                        ApplicationRootPath = GetApplicationRootPath()
+                    };
+
                     // Only set our external startup if we're not suppressing host initialization
                     // as we don't want to load user assemblies otherwise.
                     var locator = context.Properties.GetAndRemove<ScriptStartupTypeLocator>(StartupTypeLocatorKey);
-                    webJobsBuilder.UseExternalStartup(locator);
+                    webJobsBuilder.UseExternalStartup(locator, webJobsBuilderContext, loggerFactory);
                 }
 
                 configureWebJobs?.Invoke(webJobsBuilder);
@@ -191,8 +199,15 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (!skipHostInitialization)
                 {
+                    var webJobsBuilderContext = new WebJobsBuilderContext
+                    {
+                        Configuration = context.Configuration,
+                        EnvironmentName = context.HostingEnvironment.EnvironmentName,
+                        ApplicationRootPath = GetApplicationRootPath()
+                    };
+
                     // Delay this call so we can call the customer's setup last.
-                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsStartupTypeLocator>(locator => webJobsConfigBuilder.UseExternalConfigurationStartup(locator, loggerFactory));
+                    context.Properties[DelayedConfigurationActionKey] = new Action<IWebJobsStartupTypeLocator>(locator => webJobsConfigBuilder.UseExternalConfigurationStartup(locator, webJobsBuilderContext, loggerFactory));
                 }
             });
 
@@ -435,6 +450,20 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 throw new InvalidOperationException($"The key '{key}' does not exist in the dictionary.");
+            }
+        }
+
+        private static string GetApplicationRootPath()
+        {
+            string home = Environment.GetEnvironmentVariable("HOME");
+
+            if (home != null)
+            {
+                return Path.Combine(home, "site", "wwwroot");
+            }
+            else
+            {
+                return Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
             }
         }
     }

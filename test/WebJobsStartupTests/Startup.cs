@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -9,10 +10,17 @@ using WebJobsStartupTests;
 
 namespace WebJobsStartupTests
 {
-    public class Startup : IWebJobsStartup, IWebJobsConfigurationStartup
+    public class Startup : IWebJobsStartup2, IWebJobsConfigurationStartup
     {
         public void Configure(IWebJobsBuilder builder)
         {
+            Configure(null, builder);
+        }
+
+        public void Configure(WebJobsBuilderContext context, IWebJobsBuilder builder)
+        {
+            ValidateContext(context);
+
             builder.Services.AddSingleton<IMyService, MyService>();
             builder.Services.AddOptions<MyOptions>()
                 .Configure<IConfiguration>((options, config) =>
@@ -21,13 +29,25 @@ namespace WebJobsStartupTests
                 });
         }
 
-        public void Configure(IWebJobsConfigurationBuilder builder)
+        public void Configure(WebJobsBuilderContext context, IWebJobsConfigurationBuilder builder)
         {
+            ValidateContext(context);
+
             builder.ConfigurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
             {
                 { "MyOptions:MyKey", "MyValue" },
                 { "SomeOtherKey", "SomeOtherValue" }
             });
+        }
+
+        private static void ValidateContext(WebJobsBuilderContext context)
+        {
+            if (context?.ApplicationRootPath == null ||
+                context?.Configuration == null ||
+                context?.EnvironmentName == null)
+            {
+                throw new InvalidOperationException($"The {nameof(WebJobsBuilderContext)} is not in the correct state.");
+            }
         }
     }
 
