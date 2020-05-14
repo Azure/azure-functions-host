@@ -101,36 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Confirm count remains the same
             Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
 
-            // Confirm host instance ids are the same
-            Assert.Equal(oldHostInstanceId, _fixture.HostInstanceId);
-        }
-
-        [Fact]
-        public async Task NodeProcess_Different_AfterFunctionTimeout()
-        {
-            // Wait for all the 3 process to start
-            Task timeoutTask = Task.Delay(TimeSpan.FromMinutes(1));
-            Task<IEnumerable<int>> getNodeTask = WaitAndGetAllNodeProcesses(3);
-            Task result = await Task.WhenAny(getNodeTask, timeoutTask);
-            if(result.Equals(timeoutTask))
-            {
-                throw new Exception("Failed to start all 3 node processes");
-            }
-            var oldHostInstanceId = _fixture.HostInstanceId;
-            IEnumerable<int> nodeProcessesBeforeHostRestart = await getNodeTask;
-            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-timeout");
-            string uri = $"api/httptrigger-timeout?code={functionKey}&name=Yogi";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);  // Confirm response code after timeout (10 seconds)
-            IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
-
-            // Confirm count remains the same
-            Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
-
-            // Confirm exactly one process differs
-            Assert.Equal(1, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
+            // Confirm all processes are different
+            Assert.Equal(3, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
 
             // Confirm host instance ids are the same
             Assert.Equal(oldHostInstanceId, _fixture.HostInstanceId);
