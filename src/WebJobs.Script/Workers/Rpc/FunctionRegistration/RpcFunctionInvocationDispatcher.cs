@@ -308,30 +308,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
         {
-            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
-            bool isJobHostChannel = false;
+            _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: {channelId}, runtime:{language}", workerId, runtime);
 
-            // Dispose old worker
-            if (isWebHostChannel)
+            bool isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
+            bool isJobHostChannelDisposed = await _jobHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(workerId);
+
+            if (!isWebHostChannelDisposed && !isJobHostChannelDisposed)
             {
-                _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
-            }
-            else
-            {
-                var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
-                if (channel != null)
-                {
-                    _logger.LogDebug("Disposing JobHost channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
-                    isJobHostChannel = true;
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
-                }
-                else
-                {
-                    _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: {channelId}, runtime:{language}", workerId, runtime);
-                }
+                _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: {channelId}, runtime:{language}", workerId, runtime);
             }
 
-            if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
+            if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
             {
                 // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
                 if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
@@ -347,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             else
             {
                 _logger.LogDebug("Skipping worker channel restart for errored worker runtime:{runtime}, current runtime:{currentRuntime}, isWebHostChannel:{isWebHostChannel}, isJobHostChannel:{isJobHostChannel}",
-                    runtime, _workerRuntime, isWebHostChannel, isJobHostChannel);
+                    runtime, _workerRuntime, isWebHostChannelDisposed, isJobHostChannelDisposed);
             }
         }
 
@@ -394,7 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _workerRestartSubscription.Dispose();
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
-                _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
+                _jobHostLanguageWorkerChannelManager.ShutdownChannels();
                 State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }

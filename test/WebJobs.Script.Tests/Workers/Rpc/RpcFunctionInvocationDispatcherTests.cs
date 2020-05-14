@@ -52,6 +52,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async void SuccessiveRestarts_WorkerCountsStayTheSame()
+        {
+            int expectedProcessCount = 3;
+            List<Task> restartTasks = new List<Task>();
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Guid[] invocationIds = new Guid[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+            List<TestRpcWorkerChannel> workerChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Cast<TestRpcWorkerChannel>().ToList();
+            for (int i = 0; i < invocationIds.Length; ++i)
+            {
+                workerChannels[i % 3].SendInvocationRequest(new ScriptInvocationContext
+                {
+                    ExecutionContext = new ExecutionContext
+                    {
+                        InvocationId = invocationIds[i]
+                    }
+                });
+            }
+
+            foreach (var invocationId in invocationIds)
+            {
+                restartTasks.Add(functionDispatcher.RestartWorkerWithInvocationIdAsync(invocationId.ToString()));
+                restartTasks.Add(functionDispatcher.RestartAllWorkersAsync());  // Purposely going crazy with bundling restarting all and restarting a specific worker.
+            }
+            await Task.WhenAll(restartTasks);
+            Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count always stays at the initial count
+        }
+
+        [Fact]
         public async void Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
         {
             int expectedProcessCount = 3;
