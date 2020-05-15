@@ -67,13 +67,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task NodeProcess_Different_AfterFunctionTimeout()
+        public async Task NodeProcessCount_RemainsSame_AfterMultipleTimeouts()
         {
             // Wait for all the 3 process to start
+            List<Task<HttpResponseMessage>> timeoutTasks = new List<Task<HttpResponseMessage>>();
             Task timeoutTask = Task.Delay(TimeSpan.FromMinutes(1));
             Task<IEnumerable<int>> getNodeTask = WaitAndGetAllNodeProcesses(3);
             Task result = await Task.WhenAny(getNodeTask, timeoutTask);
-            if(result.Equals(timeoutTask))
+            if (result.Equals(timeoutTask))
             {
                 throw new Exception("Failed to start all 3 node processes");
             }
@@ -81,17 +82,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesBeforeHostRestart = await getNodeTask;
             string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger-timeout");
             string uri = $"api/httptrigger-timeout?code={functionKey}&name=Yogi";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);  // Confirm response code after timeout (10 seconds)
+
+            // Send multiple requests that would timeout
+            for (int i=0; i<5; ++i)
+            {
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+                timeoutTasks.Add(_fixture.Host.HttpClient.SendAsync(request));
+            }
+            var results = await Task.WhenAll(timeoutTasks);
+            foreach(var timeoutResult in results)
+            {
+                Assert.Equal(HttpStatusCode.InternalServerError, timeoutResult.StatusCode);  // Confirm response code after timeout (10 seconds)
+            }
+
             IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
 
             // Confirm count remains the same
             Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
 
-            // Confirm exactly one process differs
-            Assert.Equal(1, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
+           
+            // Confirm all processes are different
+            Assert.Equal(3, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
 
             // Confirm host instance ids are the same
             Assert.Equal(oldHostInstanceId, _fixture.HostInstanceId);
