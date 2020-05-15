@@ -101,15 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Confirm count remains the same
             Assert.Equal(nodeProcessesBeforeHostRestart.Count(), nodeProcessesAfter.Count());
 
-            Task waitUntilAllProcessesAreRestarted = Task.Factory.StartNew(async () =>
-            {
-                while(nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count() < 3)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5));
-                }
-            });
+           
             // Confirm all processes are different
-            await Task.WhenAny(Task.Delay(TimeSpan.FromMinutes(1)), waitUntilAllProcessesAreRestarted);
             Assert.Equal(3, nodeProcessesAfter.Except(nodeProcessesBeforeHostRestart).Count());
 
             // Confirm host instance ids are the same
