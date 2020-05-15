@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Give the manager and all running tasks some time to shut down gracefully.
             //await Task.Delay(timeoutGracePeriod);
             IFunctionInvocationDispatcher functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
-            if (functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Initialized))
+            if (!functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Default))
             {
                 _logger.LogWarning($"A function timeout has occurred. Restarting worker process executing invocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
                 bool result = await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());

@@ -169,6 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             IRpcWorkerChannel workerChannel = channelTask.Result;
                             if (workerChannel != null)
                             {
+                                _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
                                 (channelTask.Result as IDisposable)?.Dispose();
                             }
                         }
