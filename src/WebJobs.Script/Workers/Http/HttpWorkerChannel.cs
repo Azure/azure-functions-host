@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerService.InvokeAsync(context);
         }
 
-        internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
+        internal async Task DelayUntilWorkerInitialized(CancellationToken cancellationToken)
         {
             _workerChannelLogger.LogDebug("Initializing HttpWorker.");
             try
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _workerProcess.StartProcessAsync();
-            await DelayUntilWokerInitialized(cancellationToken);
+            await DelayUntilWorkerInitialized(cancellationToken);
         }
 
         private void PublishWorkerErrorEvent(Exception exc)
