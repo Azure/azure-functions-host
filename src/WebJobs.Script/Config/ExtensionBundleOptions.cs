@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         /// <summary>
         /// Gets the Probing path of the Extension Bundle.
-        /// Probing path are configured by the host depending on the hosting enviroment the default location where the runtime would look for an extension bundle first.
+        /// Probing path are configured by the host depending on the hosting environment the default location where the runtime would look for an extension bundle first.
         /// To be configured by the host or consuming service
         /// </summary>
         public ICollection<string> ProbingPaths { get; private set; } = new Collection<string>();

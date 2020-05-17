@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         }
 
         // Parse the DataType field and return as a System.Type.
-        // Never return null. Use typeof(object) to refer to an unnkown.
+        // Never return null. Use typeof(object) to refer to an unkown.
         private static Type ParseDataType(ScriptBindingContext context)
         {
             DataType result;
