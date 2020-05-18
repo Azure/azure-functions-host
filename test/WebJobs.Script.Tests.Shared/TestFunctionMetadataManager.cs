@@ -24,6 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var managerMock = new Mock<IScriptHostManager>();
 
+            return GetFunctionMetadataManager(jobHostOptions, managerMock, functionMetadataProvider, functionProviders, httpOptions, loggerFactory);
+        }
+
+        public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions, Mock<IScriptHostManager> managerMock,
+            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions, ILoggerFactory loggerFactory)
+        {
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IEnumerable<IFunctionProvider>))).Returns(functionProviders);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<ScriptJobHostOptions>))).Returns(jobHostOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<HttpWorkerOptions>))).Returns(httpOptions);
