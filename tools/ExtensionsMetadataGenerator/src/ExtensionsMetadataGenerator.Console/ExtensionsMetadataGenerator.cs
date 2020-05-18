@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Mono.Cecil;
 #if !NET46
 #endif
 
@@ -43,22 +44,13 @@ namespace ExtensionsMetadataGenerator
                     {
                         try
                         {
-                            Assembly assembly = Assembly.LoadFrom(path);
-                            var currExtensionReferences = GenerateExtensionReferences(assembly);
+                            var currExtensionReferences = GenerateExtensionReferences(path, logger);
                             extensionReferences.AddRange(currExtensionReferences);
 
                             foreach (var foundRef in currExtensionReferences)
                             {
                                 logger.LogMessage($"Found extension: {foundRef.TypeName}");
                             }
-                        }
-                        catch (Exception ex) when (ex is FileNotFoundException || ex is BadImageFormatException)
-                        {
-                            // Don't log this as an error. This will almost always happen due to some publishing artifacts (i.e. Razor) existing in the
-                            // functions bin folder without all of their dependencies present, or native package artifacts being copied to the bin folder
-                            // These will almost never have Functions extensions, so we don't want to write out errors every time there is a build.
-                            // This message can be seen with detailed logging enabled.
-                            logger.LogMessage($"Could not evaluate '{Path.GetFileName(path)}' for extension metadata. If this assembly contains a Functions extension, ensure that all dependent assemblies exist in '{sourcePath}'. If this assembly does not contain any Functions extensions, this message can be ignored. Exception message: {ex.Message}");
                         }
                         catch (Exception ex)
                         {
@@ -82,44 +74,97 @@ namespace ExtensionsMetadataGenerator
             return json;
         }
 
-        public static bool IsWebJobsStartupAttributeType(Type attributeType)
+        public static bool IsWebJobsStartupAttributeType(TypeReference attributeType, ConsoleLogger logger)
         {
-            Type currentType = attributeType;
+            TypeReference currentAttributeType = attributeType;
 
-            while (currentType != null)
+            while (currentAttributeType != null)
             {
-                if (string.Equals(currentType.FullName, WebJobsStartupAttributeType, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(currentAttributeType.FullName, WebJobsStartupAttributeType, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
 
-                currentType = currentType.BaseType;
+                try
+                {
+                    currentAttributeType = currentAttributeType.Resolve()?.BaseType;
+                }
+                catch (FileNotFoundException ex)
+                {
+                    // Don't log this as an error. This will almost always happen due to some publishing artifacts (i.e. Razor) existing
+                    // in the functions bin folder without all of their dependencies present. These will almost never have Functions extensions,
+                    // so we don't want to write out errors every time there is a build. This message can be seen with detailed logging enabled.
+                    string attributeTypeName = GetReflectionFullName(attributeType);
+                    string fileName = Path.GetFileName(attributeType.Module.FileName);
+                    logger.LogMessage($"Could not determine whether the attribute type '{attributeTypeName}' used in the assembly '{fileName}' derives from '{WebJobsStartupAttributeType}' because the assembly defining its base type could not be found. Exception message: {ex.Message}");
+                    return false;
+                }
             }
 
             return false;
         }
 
-        public static IEnumerable<ExtensionReference> GenerateExtensionReferences(Assembly assembly)
+        public static IEnumerable<ExtensionReference> GenerateExtensionReferences(string fileName, ConsoleLogger logger)
         {
-            var startupAttributes = assembly.GetCustomAttributes()
-                .Where(a => IsWebJobsStartupAttributeType(a.GetType()));
+            BaseAssemblyResolver resolver = new DefaultAssemblyResolver();
+            resolver.AddSearchDirectory(Path.GetDirectoryName(fileName));
+
+            ReaderParameters readerParams = new ReaderParameters { AssemblyResolver = resolver };
+
+            AssemblyDefinition assembly = AssemblyDefinition.ReadAssembly(fileName, readerParams);
+
+            var startupAttributes = assembly.Modules.SelectMany(p => p.GetCustomAttributes())
+                .Where(a => IsWebJobsStartupAttributeType(a.AttributeType, logger));
 
             List<ExtensionReference> extensionReferences = new List<ExtensionReference>();
             foreach (var attribute in startupAttributes)
             {
-                var nameProperty = attribute.GetType().GetProperty("Name");
-                var typeProperty = attribute.GetType().GetProperty("WebJobsStartupType");
+                var typeProperty = attribute.ConstructorArguments.ElementAtOrDefault(0);
+                var nameProperty = attribute.ConstructorArguments.ElementAtOrDefault(1);
+
+                TypeDefinition typeDef = (TypeDefinition)typeProperty.Value;
+                string assemblyQualifiedName = Assembly.CreateQualifiedName(typeDef.Module.Assembly.FullName, GetReflectionFullName(typeDef));
+
+                string name = GetName((string)nameProperty.Value, typeDef);
 
                 var extensionReference = new ExtensionReference
                 {
-                    Name = (string)nameProperty.GetValue(attribute),
-                    TypeName = ((Type)typeProperty.GetValue(attribute)).AssemblyQualifiedName
+                    Name = name,
+                    TypeName = assemblyQualifiedName
                 };
 
                 extensionReferences.Add(extensionReference);
             }
 
             return extensionReferences;
+        }
+
+        // Because we're now using static analysis we can't rely on the constructor running. Copying the constructor logic from:
+        // https://github.com/Azure/azure-webjobs-sdk/blob/dev/src/Microsoft.Azure.WebJobs.Host/Hosting/WebJobsStartupAttribute.cs#L33-L47.
+        private static string GetName(string name, TypeDefinition startupTypeDef)
+        {
+            if (string.IsNullOrEmpty(name))
+            {
+                // for a startup class named 'CustomConfigWebJobsStartup' or 'CustomConfigStartup',
+                // default to a name 'CustomConfig'
+                name = startupTypeDef.Name;
+                int idx = name.IndexOf("WebJobsStartup");
+                if (idx < 0)
+                {
+                    idx = name.IndexOf("Startup");
+                }
+                if (idx > 0)
+                {
+                    name = name.Substring(0, idx);
+                }
+            }
+
+            return name;
+        }
+
+        public static string GetReflectionFullName(TypeReference typeRef)
+        {
+            return typeRef.FullName.Replace("/", "+");
         }
     }
 }
