@@ -7,9 +7,10 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
+namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     public class ScriptInvocationContextExtensionsTests
     {
@@ -39,6 +40,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 Assert.Equal(0, traceContext.Attributes.Count);
             }
+        }
+
+        [Fact]
+        public void GetHttpScriptInvocationContextValueTest_String()
+        {
+            string inputValue = "stringTest";
+            object result = ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
+            Assert.Equal($"\"{inputValue}\"", result);
+        }
+
+        [Fact]
+        public void GetHttpScriptInvocationContextValueTest_POCO()
+        {
+            TestPoco inputValue = new TestPoco()
+            {
+                Name = "TestName",
+                Id = 1234
+            };
+            object result = ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
+            var resultAsJObject = (JObject)result;
+            Assert.Equal("TestName", resultAsJObject["Name"]);
+            Assert.Equal(1234, resultAsJObject["Id"]);
+        }
+
+        private class TestPoco
+        {
+            public string Name { get; set; }
+
+            public int Id { get; set; }
         }
     }
 }
