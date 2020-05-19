@@ -15,6 +15,7 @@ namespace ExtensionsMetadataGenerator
     public class ExtensionsMetadataGenerator
     {
         private const string WebJobsStartupAttributeType = "Microsoft.Azure.WebJobs.Hosting.WebJobsStartupAttribute";
+        private const string FunctionsStartupAttributeType = "Microsoft.Azure.Functions.Extensions.DependencyInjection.FunctionsStartupAttribute";
 
         // These assemblies are always loaded by the functions runtime and should not be listed in extensions.json
         private static readonly string[] ExcludedAssemblies = new[] { "Microsoft.Azure.WebJobs.Extensions.dll", "Microsoft.Azure.WebJobs.Extensions.Http.dll" };
@@ -125,7 +126,19 @@ namespace ExtensionsMetadataGenerator
                 TypeDefinition typeDef = (TypeDefinition)typeProperty.Value;
                 string assemblyQualifiedName = Assembly.CreateQualifiedName(typeDef.Module.Assembly.FullName, GetReflectionFullName(typeDef));
 
-                string name = GetName((string)nameProperty.Value, typeDef);
+                string name;
+
+                // Because we're now using static analysis we can't rely on the constructor running so have to get the name ourselves.
+                if (string.Equals(attribute.AttributeType.FullName, FunctionsStartupAttributeType, StringComparison.OrdinalIgnoreCase))
+                {
+                    // FunctionsStartup always uses the type name as the name.
+                    name = typeDef.Name;
+                }
+                else
+                {
+                    // WebJobsStartup does some trimming.
+                    name = GetName((string)nameProperty.Value, typeDef);
+                }
 
                 var extensionReference = new ExtensionReference
                 {
@@ -139,7 +152,7 @@ namespace ExtensionsMetadataGenerator
             return extensionReferences;
         }
 
-        // Because we're now using static analysis we can't rely on the constructor running. Copying the constructor logic from:
+        // Copying the WebJobsStartup constructor logic from:
         // https://github.com/Azure/azure-webjobs-sdk/blob/dev/src/Microsoft.Azure.WebJobs.Host/Hosting/WebJobsStartupAttribute.cs#L33-L47.
         private static string GetName(string name, TypeDefinition startupTypeDef)
         {
