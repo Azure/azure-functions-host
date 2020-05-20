@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -123,6 +124,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     return byteArray;
                 }
                 return Convert.ToBase64String(byteArray);
+            }
+            try
+            {
+                return JObject.FromObject(inputValue);
+            }
+            catch
+            {
             }
             return JsonConvert.SerializeObject(inputValue);
         }
