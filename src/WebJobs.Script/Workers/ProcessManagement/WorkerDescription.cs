@@ -42,6 +42,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal void ThrowIfFileNotExists(string inputFile, string paramName)
         {
+            if (inputFile == null)
+            {
+                return;
+            }
             if (!FileExists(inputFile))
             {
                 throw new FileNotFoundException($"File {paramName}: {inputFile} does not exist.");
