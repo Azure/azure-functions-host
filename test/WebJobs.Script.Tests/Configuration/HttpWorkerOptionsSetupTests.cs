@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void InValid_HttpWorkerConfig_Throws_ValidationException()
+        public void HttpWorkerConfig_ExpandEnvVars()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
@@ -147,14 +147,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
             Assert.Equal(2, options.Description.Arguments.Count);
             Assert.Contains("TestVal", options.Description.Arguments);
-            Assert.Contains("'--xTest1", options.Description.Arguments);
+            Assert.Contains("--xTest1", options.Description.Arguments);
             Assert.Equal(2, options.Description.WorkerArguments.Count);
             Assert.Contains("TestVal", options.Description.WorkerArguments);
             Assert.Contains("--xTest2", options.Description.WorkerArguments);
         }
 
         [Fact]
-        public void HttpWorkerConfig_ExpandEnvVars()
+        public void InValid_HttpWorkerConfig_Throws_ValidationException()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
