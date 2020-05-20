@@ -113,11 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ReadWorkerProviderFromConfig_EmptyWorkerPath()
         {
             var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, string.Empty, true) };
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
-            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
-            {
-                [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{WorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
-            };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger);

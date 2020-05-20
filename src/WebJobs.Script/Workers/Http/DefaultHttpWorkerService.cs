@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
-            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
+            if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction() && _httpWorkerOptions.EnableHttpRequestForward)
             {
                 return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
             }
@@ -124,11 +124,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
                     {
-                        _logger.LogDebug("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                        _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                     }
                     if (httpScriptInvocationResult.ReturnValue == null)
                     {
-                        _logger.LogDebug("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                        _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                     }
 
                     ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);
@@ -168,7 +168,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+            string pathValue = functionName;
+            // _httpWorkerOptions.Type is populated only in customHandler section
+            if (httpRequestMessage.RequestUri != null && !string.IsNullOrEmpty(_httpWorkerOptions.Type))
+            {
+                pathValue = httpRequestMessage.RequestUri.AbsolutePath;
+            }
+            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");

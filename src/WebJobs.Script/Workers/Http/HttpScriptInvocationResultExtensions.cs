@@ -3,12 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -33,7 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (httpScriptInvocationResult.ReturnValue != null)
             {
                 BindingMetadata returnParameterBindingMetadata = GetBindingMetadata(ScriptConstants.SystemReturnParameterBindingName, scriptInvocationContext);
-                scriptInvocationResult.Return = GetBindingValue(returnParameterBindingMetadata.DataType, httpScriptInvocationResult.ReturnValue);
+                if (returnParameterBindingMetadata != null)
+                {
+                    scriptInvocationResult.Return = GetBindingValue(returnParameterBindingMetadata.DataType, httpScriptInvocationResult.ReturnValue);
+                }
             }
             return scriptInvocationResult;
         }

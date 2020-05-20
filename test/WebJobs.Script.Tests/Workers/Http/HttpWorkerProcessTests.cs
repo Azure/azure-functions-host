@@ -53,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.WorkerIdEnvVarName], _testWorkerId);
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.CustomHandlerPortEnvVarName], _workerPort.ToString());
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();
             }
         }

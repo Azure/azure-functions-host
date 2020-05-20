@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Mono.Unix;
@@ -48,11 +50,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
-                WorkingDirectory = _scriptRootPath,
+                WorkingDirectory = _httpWorkerOptions.Description.WorkingDirectory,
                 Port = _httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerPortEnvVarName, _httpWorkerOptions.Port.ToString());
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.FunctionAppRootVarName, _scriptRootPath);
             Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
             if (_environment.IsLinuxConsumption())
             {

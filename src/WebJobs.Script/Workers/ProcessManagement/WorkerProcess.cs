@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             catch (Exception ex)
             {
-                _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
+                _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {_process.StartInfo.FileName}");
                 return Task.FromException(ex);
             }
         }
