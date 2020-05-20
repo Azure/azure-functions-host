@@ -97,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             catch (Exception responseEx)
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
+                _logger.LogError($"Exception: {responseEx} InnerException: {responseEx.InnerException}");
             }
         }
 
@@ -140,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             catch (Exception responseEx)
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
+                _logger.LogError($"Exception: {responseEx} InnerException: {responseEx.InnerException}");
             }
         }
 
