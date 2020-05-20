@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Port = _httpWorkerOptions.Port
             };
             AddEnvironmentVariablesAndExpandExecutableArguments(ref workerContext, HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
+            AddEnvironmentVariablesAndExpandExecutableArguments(ref workerContext, HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
             Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
             if (_environment.IsLinuxConsumption())
             {
@@ -64,19 +65,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal void AddEnvironmentVariablesAndExpandExecutableArguments(ref HttpWorkerContext workerContext, string key, string value)
         {
             workerContext.EnvironmentVariables.Add(key, value);
-            var argsWithExpandedEnvVars = new List<string>();
+            var workerArgsWithExpandedEnvVars = new List<string>();
             foreach (string argument in workerContext.Arguments.WorkerArguments)
             {
-                argsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
+                workerArgsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
             }
-            workerContext.Arguments.WorkerArguments = argsWithExpandedEnvVars;
+            workerContext.Arguments.WorkerArguments = workerArgsWithExpandedEnvVars;
 
-            argsWithExpandedEnvVars = new List<string>();
+            var exeArgsWithExpandedEnvVars = new List<string>();
             foreach (string argument in workerContext.Arguments.ExecutableArguments)
             {
-                argsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
+                exeArgsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
             }
-            workerContext.Arguments.ExecutableArguments = argsWithExpandedEnvVars;
+            workerContext.Arguments.ExecutableArguments = exeArgsWithExpandedEnvVars;
         }
 
         private void AssignUserExecutePermissionsIfNotExists(string filePath)

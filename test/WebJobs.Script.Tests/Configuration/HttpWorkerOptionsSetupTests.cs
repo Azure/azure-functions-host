@@ -126,7 +126,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                             'description': {
                                 'langauge': 'testExe',
                                 'defaultExecutablePath': '%TestEnv%',
-                                'defaultWorkerPath': '%TestEnv%'
+                                'defaultWorkerPath': '%TestEnv%',
+                                'arguments': ['--xTest1',  '%TestEnv%'],
+                                'workerArguments': ['--xTest2', '%TestEnv%']
                             }
                         }
                     }";
@@ -143,6 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
             Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
             Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
+            Assert.Equal(2, options.Description.Arguments.Count);
+            Assert.Contains("TestVal", options.Description.Arguments);
+            Assert.Contains("'--xTest1", options.Description.Arguments);
+            Assert.Equal(2, options.Description.WorkerArguments.Count);
+            Assert.Contains("TestVal", options.Description.WorkerArguments);
+            Assert.Contains("--xTest2", options.Description.WorkerArguments);
         }
 
         [Fact]

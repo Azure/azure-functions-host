@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             _httpWorkerOptions = new HttpWorkerOptions()
             {
                 Port = _workerPort,
-                Arguments = new WorkerProcessArguments() { ExecutablePath = "test", WorkerArguments = new List<string>() { $"%{HttpWorkerConstants.PortEnvVarName}%" }, ExecutableArguments = new List<string>() { $"%{HttpWorkerConstants.PortEnvVarName}%" } }
+                Arguments = new WorkerProcessArguments() { ExecutablePath = "test", WorkerArguments = new List<string>() { $"%{HttpWorkerConstants.PortEnvVarName}%" }, ExecutableArguments = new List<string>() { $"%{HttpWorkerConstants.WorkerIdEnvVarName}%" } }
             };
             _settingsManager = ScriptSettingsManager.Instance;
         }
@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 Process childProcess = httpWorkerProcess.CreateWorkerProcess();
                 Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
                 Assert.True(childProcess.StartInfo.Arguments.Contains(_workerPort.ToString()));
+                Assert.True(childProcess.StartInfo.Arguments.Contains(_testWorkerId.ToString()));
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.WorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();
