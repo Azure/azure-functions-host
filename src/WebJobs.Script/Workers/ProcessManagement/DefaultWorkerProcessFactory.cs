@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -34,19 +35,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 WorkingDirectory = context.WorkingDirectory,
                 Arguments = GetArguments(context),
             };
-
             var processEnvVariables = context.EnvironmentVariables;
             if (processEnvVariables != null && processEnvVariables.Any())
             {
-                foreach (var evnVar in processEnvVariables)
+                foreach (var envVar in processEnvVariables)
                 {
-                    startInfo.EnvironmentVariables[evnVar.Key] = evnVar.Value;
+                    startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
+                    startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
             }
             return new Process { StartInfo = startInfo };
         }
 
-        private StringBuilder MergeArguments(StringBuilder builder, string arg) => builder.AppendFormat(" {0}", arg);
+        private StringBuilder MergeArguments(StringBuilder builder, string arg)
+        {
+            string expandedArg = Environment.ExpandEnvironmentVariables(arg);
+            return builder.AppendFormat(" {0}", expandedArg);
+        }
 
         public string GetArguments(WorkerContext context)
         {

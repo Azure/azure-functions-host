@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task HttpTrigger_PowerShell_Get_Succeeds()
+        public async Task HttpTrigger_HttpWorker_Get_Succeeds()
         {
             await InvokeHttpTrigger("HttpTrigger");
         }
