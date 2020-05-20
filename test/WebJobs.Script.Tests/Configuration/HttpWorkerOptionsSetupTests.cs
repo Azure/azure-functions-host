@@ -4,6 +4,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -281,6 +282,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
+        public void HttpWorkerConfig_OverrideConfigViaEnvVars_Test()
+        {
+            string hostJsonContent = @"{
+                    'version': '2.0',
+                    'httpWorker': {
+                            'description': {
+                                'langauge': 'testExe',
+                                'defaultExecutablePath': 'dotnet',
+                                'defaultWorkerPath':'ManualTrigger/run.csx',
+                                'arguments': ['--xTest1 --xTest2'],
+                                'workerArguments': ['--xTest3 --xTest4']
+                            }
+                        }
+                    }";
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", "OneSecondTimer/run.csx");
+            Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", "[\"--xTest5\", \"--xTest6\", \"--xTest7\"]");
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
+            setup.Configure(options);
+            Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
+            // Verify options are overridden
+            Assert.Contains("OneSecondTimer/run.csx", options.Description.DefaultWorkerPath);
+            Assert.Equal(3, options.Description.Arguments.Count);
+            Assert.Contains("--xTest5", options.Description.Arguments);
+            Assert.Contains("--xTest6", options.Description.Arguments);
+            Assert.Contains("--xTest7", options.Description.Arguments);
+
+            // Verify options not overridden
+            Assert.Equal(1, options.Description.WorkerArguments.Count);
+            Assert.Equal("--xTest3 --xTest4", options.Description.WorkerArguments.ElementAt(0));
+        }
+
+        [Fact]
         public void GetUnusedTcpPort_Succeeds()
         {
             int unusedPort = HttpWorkerOptionsSetup.GetUnusedTcpPort();
@@ -306,7 +342,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, new TestMetricsLogger());
 
             var configurationBuilder = new ConfigurationBuilder()
-                .Add(configSource);
+                .Add(configSource)
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
 
             return configurationBuilder.Build();
         }
