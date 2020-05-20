@@ -154,6 +154,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
+        public void HttpWorkerConfig_DefaultExecutablePathFromSystemPath_DoesNotThrow()
+        {
+            string hostJsonContent = @"{
+                    'version': '2.0',
+                    'httpWorker': {
+                            'description': {
+                                'langauge': 'testExe',
+                                'defaultExecutablePath': 'dotnet',
+                                'defaultWorkerPath':'ManualTrigger/run.csx'
+                            }
+                        }
+                    }";
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
+            setup.Configure(options);
+            Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
+        }
+
+        [Fact]
         public void InValid_HttpWorkerConfig_Throws_ValidationException()
         {
             string hostJsonContent = @"{
