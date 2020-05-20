@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -31,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             _httpWorkerOptions = new HttpWorkerOptions()
             {
                 Port = _workerPort,
-                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" }
+                Arguments = new WorkerProcessArguments() { ExecutablePath = "test", WorkerArguments = new List<string>() { $"%{HttpWorkerConstants.PortEnvVarName}%" }, ExecutableArguments = new List<string>() { $"%{HttpWorkerConstants.PortEnvVarName}%" } }
             };
             _settingsManager = ScriptSettingsManager.Instance;
         }
@@ -42,7 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         [InlineData(null)]
         public void CreateWorkerProcess_VerifyEnvVars(string processEnvValue)
         {
-            using (new TestScopedSettings(_settingsManager, HttpWorkerConstants.PortEnvVarName, processEnvValue))
+            Dictionary<string, string> testEnvs = new Dictionary<string, string>()
+            {
+                { HttpWorkerConstants.PortEnvVarName, processEnvValue }
+            };
+
+            using (new TestScopedSettings(_settingsManager, testEnvs))
             {
                 if (!string.IsNullOrEmpty(processEnvValue))
                 {
@@ -51,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment());
                 Process childProcess = httpWorkerProcess.CreateWorkerProcess();
                 Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
+                Assert.True(childProcess.StartInfo.Arguments.Contains(_workerPort.ToString()));
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.WorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();

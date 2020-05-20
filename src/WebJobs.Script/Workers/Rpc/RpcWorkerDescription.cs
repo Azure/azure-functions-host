@@ -73,9 +73,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        // Can be replaced for testing purposes
-        internal Func<string, bool> FileExists { private get; set; } = File.Exists;
-
         public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
         {
             if (workerDirectory == null)
@@ -119,14 +116,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (DefaultWorkerPath.Contains(RpcWorkerConstants.RuntimeVersionPlaceholder) && !string.IsNullOrEmpty(DefaultRuntimeVersion))
             {
                 ValidateRuntimeVersion();
-            }
-        }
-
-        internal void ThrowIfDefaultWorkerPathNotExists()
-        {
-            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !FileExists(DefaultWorkerPath))
-            {
-                throw new FileNotFoundException($"Did not find {nameof(DefaultWorkerPath)} for language: {Language}");
             }
         }
 

@@ -18,8 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 throw new ArgumentNullException(nameof(workerDirectory));
             }
             Arguments = Arguments ?? new List<string>();
+            WorkerArguments = WorkerArguments ?? new List<string>();
 
             WorkerDirectory = WorkerDirectory ?? workerDirectory;
+
+            ExpandEnvironmentVariables();
 
             // If DefaultWorkerPath is not set then compute full path for DefaultExecutablePath from scriptRootDir
             if (string.IsNullOrEmpty(DefaultWorkerPath) && !string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath))
@@ -31,12 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
             {
                 DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
+                ThrowIfFileNotExists(DefaultWorkerPath, nameof(DefaultWorkerPath));
             }
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))
             {
                 throw new ValidationException($"WorkerDescription {nameof(DefaultExecutablePath)} cannot be empty");
             }
+            ThrowIfFileNotExists(DefaultExecutablePath, nameof(DefaultExecutablePath));
         }
     }
 }

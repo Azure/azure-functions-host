@@ -43,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             _rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
             Environment.SetEnvironmentVariable(AzureWebJobsScriptRoot, _rootPath);
+            Environment.SetEnvironmentVariable("TestEnv", "TestVal");
 
             if (!Directory.Exists(_rootPath))
             {
@@ -79,7 +80,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            var ex = Record.Exception(() => setup.Configure(options));
+            var ex = Record.Exception(() =>
+            {
+                try
+                {
+                    setup.Configure(options);
+                }
+                catch (FileNotFoundException)
+                {
+                }
+            });
             Assert.Null(ex);
             if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
             {
@@ -109,6 +119,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         [Fact]
         public void InValid_HttpWorkerConfig_Throws_ValidationException()
+        {
+            string hostJsonContent = @"{
+                    'version': '2.0',
+                    'httpWorker': {
+                            'description': {
+                                'langauge': 'testExe',
+                                'defaultExecutablePath': '%TestEnv%',
+                                'defaultWorkerPath': '%TestEnv%'
+                            }
+                        }
+                    }";
+            File.WriteAllText(_hostJsonFile, hostJsonContent);
+            var configuration = BuildHostJsonConfiguration();
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptions options = new HttpWorkerOptions();
+            try
+            {
+                setup.Configure(options);
+            }
+            catch (FileNotFoundException)
+            {
+            }
+            Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
+            Assert.Contains("TestVal", options.Description.DefaultWorkerPath);
+        }
+
+        [Fact]
+        public void HttpWorkerConfig_ExpandEnvVars()
         {
             string hostJsonContent = @"{
                     'version': '2.0',
@@ -171,7 +209,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            setup.Configure(options);
+
+            try
+            {
+                setup.Configure(options);
+            }
+            catch (FileNotFoundException)
+            {
+                //ignore
+            }
 
             //Verify worker exe path is expected
             if (appendCurrentDirectoryToExe)

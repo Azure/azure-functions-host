@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
@@ -51,14 +52,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 WorkingDirectory = _scriptRootPath,
                 Port = _httpWorkerOptions.Port
             };
-            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
-            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
+            AddEnvironmentVariablesAndExpandExecutableArguments(ref workerContext, HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
             Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
             if (_environment.IsLinuxConsumption())
             {
                 AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
             }
             return workerProcess;
+        }
+
+        internal void AddEnvironmentVariablesAndExpandExecutableArguments(ref HttpWorkerContext workerContext, string key, string value)
+        {
+            workerContext.EnvironmentVariables.Add(key, value);
+            var argsWithExpandedEnvVars = new List<string>();
+            foreach (string argument in workerContext.Arguments.WorkerArguments)
+            {
+                argsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
+            }
+            workerContext.Arguments.WorkerArguments = argsWithExpandedEnvVars;
+
+            argsWithExpandedEnvVars = new List<string>();
+            foreach (string argument in workerContext.Arguments.ExecutableArguments)
+            {
+                argsWithExpandedEnvVars.Add(argument.Replace($"%{key}%", value));
+            }
+            workerContext.Arguments.ExecutableArguments = argsWithExpandedEnvVars;
         }
 
         private void AssignUserExecutePermissionsIfNotExists(string filePath)
