@@ -153,7 +153,7 @@ namespace ExtensionsMetadataGenerator
         }
 
         // Copying the WebJobsStartup constructor logic from:
-        // https://github.com/Azure/azure-webjobs-sdk/blob/dev/src/Microsoft.Azure.WebJobs.Host/Hosting/WebJobsStartupAttribute.cs#L33-L47.
+        // https://github.com/Azure/azure-webjobs-sdk/blob/e5417775bcb8c8d3d53698932ca8e4e265eac66d/src/Microsoft.Azure.WebJobs.Host/Hosting/WebJobsStartupAttribute.cs#L33-L47.
         private static string GetName(string name, TypeDefinition startupTypeDef)
         {
             if (string.IsNullOrEmpty(name))
