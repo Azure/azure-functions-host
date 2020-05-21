@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
 
-        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
+        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IOptions<ScriptJobHostOptions> scriptHostOptions)
             : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>())
         {
         }
@@ -168,6 +168,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
+            if (httpRequestMessage.RequestUri != null)
+            {
+                httpRequestMessage.Headers.Add(HttpWorkerConstants.UrlPathHeaderName, httpRequestMessage.RequestUri.AbsolutePath);
+            }
             httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
