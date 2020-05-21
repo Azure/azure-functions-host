@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _httpClient = httpClient;
             _httpWorkerOptions = httpWorkerOptions.Value;
             _logger = logger;
+            ServicePointManager.DefaultConnectionLimit = int.MaxValue;
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -97,12 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             catch (Exception responseEx)
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
-                Exception exception = responseEx;
-                while (exception.InnerException != null)
-                {
-                    exception = exception.InnerException;
-                }
-                _logger.LogError($"Exception: {exception}", exception);
+                _logger.LogError($"Exception: {responseEx.GetBaseException()}", responseEx.GetBaseException());
             }
         }
 
@@ -146,12 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             catch (Exception responseEx)
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
-                Exception exception = responseEx;
-                while (exception.InnerException != null)
-                {
-                    exception = exception.InnerException;
-                }
-                _logger.LogError($"Exception: {exception}", exception);
+                _logger.LogError($"Exception: {responseEx.GetBaseException()}", responseEx.GetBaseException());
             }
         }
 
