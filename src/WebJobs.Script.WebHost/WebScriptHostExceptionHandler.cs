@@ -53,12 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!functionInvocationDispatcher.State.Equals(FunctionInvocationDispatcherState.Default))
             {
                 _logger.LogWarning($"A function timeout has occurred. Restarting worker process executing invocationId '{timeoutException.InstanceId}'.", exceptionInfo.SourceException);
-                bool result = await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());
-                if (!result)
-                {
-                    _logger.LogWarning($"Restarting all language worker processes since invocation Id '{timeoutException.InstanceId}' was not found.", exceptionInfo.SourceException);
-                    await functionInvocationDispatcher.RestartAllWorkersAsync();
-                }
+                // If invocation id is not found in any of the workers => worker is already disposed. No action needed.
+                await functionInvocationDispatcher.RestartWorkerWithInvocationIdAsync(timeoutException.InstanceId.ToString());
                 _logger.LogWarning("Restart of language worker process(es) completed.", exceptionInfo.SourceException);
             }
             else
