@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
 
-        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IOptions<ScriptJobHostOptions> scriptHostOptions)
+        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
             : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>())
         {
         }
