@@ -8,7 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         // Headers
         public const string InvocationIdHeaderName = "X-Azure-Functions-InvocationId";
         public const string HostVersionHeaderName = "X-Azure-Functions-HostVersion";
-        public const string UrlPathHeaderName = "X-Azure-Functions-HttpTrigger-UrlPath";
         public const string UserAgentHeaderValue = "Azure-Functions-Host";
 
         // Child Process Env vars
