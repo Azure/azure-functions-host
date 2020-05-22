@@ -31,8 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         /// <returns>A dictionary mapping function name to a list of the invalid values for that function.</returns>
         public IDictionary<string, IEnumerable<string>> Validate(IConfigurationRoot originalConfig)
         {
-            var originalNameResolver = new DefaultNameResolver(originalConfig);
+            if (originalConfig == null)
+            {
+                throw new ArgumentNullException(nameof(originalConfig));
+            }
 
+            INameResolver originalNameResolver = new DefaultNameResolver(originalConfig);
             IDictionary<string, IEnumerable<string>> invalidValues = new Dictionary<string, IEnumerable<string>>();
 
             var functions = _metadataManager.GetFunctionMetadata();
@@ -40,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             foreach (var function in functions)
             {
                 var trigger = function.Bindings.SingleOrDefault(b => b.IsTrigger);
+
+                if (trigger == null)
+                {
+                    continue;
+                }
 
                 IList<string> invalidValuesForFunction = new List<string>();
 

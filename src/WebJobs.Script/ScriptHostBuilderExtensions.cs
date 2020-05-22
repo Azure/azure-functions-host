@@ -146,16 +146,15 @@ namespace Microsoft.Azure.WebJobs.Script
             builder.ConfigureServices((context, services) =>
             {
                 services.AddSingleton<ExternalConfigurationStartupValidator>();
-
-                if (!skipHostInitialization)
+                services.AddSingleton<IHostedService>(s =>
                 {
-                    services.AddSingleton<IHostedService>(s =>
+                    if (!skipHostInitialization)
                     {
                         var environment = s.GetService<IEnvironment>();
 
                         // This key will not be here if we don't have any external configuration startups registered
                         if (context.Properties.TryGetValue(ConfigurationSnapshotKey, out object originalConfigObject) &&
-                             originalConfigObject is IConfigurationRoot originalConfig)
+                            originalConfigObject is IConfigurationRoot originalConfig)
                         {
                             context.Properties.Remove(ConfigurationSnapshotKey);
 
@@ -172,10 +171,10 @@ namespace Microsoft.Azure.WebJobs.Script
                                 return new ExternalConfigurationStartupValidatorService(validator, originalConfig, environment, logger);
                             }
                         }
+                    }
 
-                        return NullHostedService.Instance;
-                    });
-                }
+                    return NullHostedService.Instance;
+                });
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>

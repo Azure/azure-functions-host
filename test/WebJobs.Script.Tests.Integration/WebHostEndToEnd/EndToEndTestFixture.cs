@@ -5,27 +5,26 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.Queue;
-using Microsoft.Azure.Cosmos.Table;
 using Moq;
 using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -85,7 +84,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task InitializeAsync()
         {
             _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
-            FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
+
+            try
+            {
+                FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
+            }
+            catch (IOException)
+            {
+                // try again if a file is locked.
+                await Task.Delay(1000);
+                FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
+            }
 
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
