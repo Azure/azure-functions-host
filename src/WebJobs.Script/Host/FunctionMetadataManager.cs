@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
         private bool _servicesReset = false;
+        private bool _jobHostServicesInitialized = false;
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
@@ -42,7 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
-            scriptHostManager.HostInitializing += (s, e) => InitializeServices();
+            scriptHostManager.HostInitializing += (s, e) =>
+            {
+                InitializeServices();
+
+                // Once ScriptHost has initialized, functionMetadata has loaded the new services,
+                // it now works under the context of ScriptHost using the ScriptHost level config
+                _jobHostServicesInitialized = true;
+            };
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> Errors { get; private set; }
@@ -99,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             var immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(forceRefresh);
             var functionMetadataList = new List<FunctionMetadata>();
+            _functionErrors = new Dictionary<string, ICollection<string>>();
 
             if (!immutableFunctionMetadata.IsDefaultOrEmpty)
             {
@@ -137,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy())
+                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _jobHostServicesInitialized)
                 {
                     throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
                 }
