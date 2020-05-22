@@ -21,5 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string FunctionBindingTypeDirectionFormat = "function.binding.{0}.{1}";
         public const string FunctionCompileLatencyByLanguageFormat = "function.compile.{0}.latency";
         public const string FunctionInvokeThrottled = "function.invoke.throttled";
+        public const string FunctionInvokeSucceeded = "function.invoke.succeeded";
+        public const string FunctionInvokeFailed = "function.invoke.failed";
     }
 }
