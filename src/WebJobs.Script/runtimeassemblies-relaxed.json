@@ -640,10 +640,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "SOS.NETCore",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "System",
       "resolutionPolicy": "minorMatchOrLower"
     },
