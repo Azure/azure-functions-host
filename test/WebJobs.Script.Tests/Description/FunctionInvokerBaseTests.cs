@@ -115,6 +115,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var message = _traceWriter.GetTraces().Last().Message;
             Assert.True(Regex.IsMatch(message, $"Function completed \\(Success, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
 
+            // verify invoke failed event
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == MetricEventNames.FunctionInvokeSucceeded)));
+
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", startLatencyEvent);
@@ -184,6 +187,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(completedStartEvent.Success);
             var message = _traceWriter.GetTraces().Last().Message;
             Assert.True(Regex.IsMatch(message, $"Function completed \\(Failure, Id={executionContext.InvocationId}, Duration=[0-9]*ms\\)"));
+
+            // verify invoke failed event
+            Assert.False(string.IsNullOrEmpty(_metricsLogger.LoggedEvents.FirstOrDefault(e => e == MetricEventNames.FunctionInvokeFailed)));
 
             // verify latency event
             var startLatencyEvent = _metricsLogger.EventsBegan[0];
