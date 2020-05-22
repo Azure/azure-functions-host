@@ -36,7 +36,8 @@ namespace WebJobsStartupTests
             builder.ConfigurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
             {
                 { "MyOptions:MyKey", "MyValue" },
-                { "SomeOtherKey", "SomeOtherValue" }
+                { "SomeOtherKey", "SomeOtherValue" },
+                { "Cron", "0 0 0 1 1 0" }
             });
         }
 

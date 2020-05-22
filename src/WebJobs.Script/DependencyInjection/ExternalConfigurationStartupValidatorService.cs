@@ -17,38 +17,41 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     {
         private readonly ExternalConfigurationStartupValidator _validator;
         private readonly IConfigurationRoot _originalConfig;
+        private readonly IEnvironment _environment;
         private readonly ILogger<ExternalConfigurationStartupValidator> _logger;
 
-        public ExternalConfigurationStartupValidatorService(ExternalConfigurationStartupValidator validator, IConfigurationRoot originalConfig, ILogger<ExternalConfigurationStartupValidator> logger)
+        public ExternalConfigurationStartupValidatorService(ExternalConfigurationStartupValidator validator, IConfigurationRoot originalConfig, IEnvironment environment, ILogger<ExternalConfigurationStartupValidator> logger)
         {
-            _validator = validator;
-            _originalConfig = originalConfig;
-            _logger = logger;
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _originalConfig = originalConfig ?? throw new ArgumentNullException(nameof(originalConfig));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                IDictionary<string, IEnumerable<string>> invalidValues = _validator.Validate(_originalConfig);
+            IDictionary<string, IEnumerable<string>> invalidValues = _validator.Validate(_originalConfig);
 
-                if (invalidValues.Any())
+            if (invalidValues.Any())
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("The Functions scale controller may not scale the following functions correctly because some configuration values were modified in an external startup class.");
+
+                foreach (KeyValuePair<string, IEnumerable<string>> invalidValueMap in invalidValues)
                 {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("The Functions scale controller may not scale the following functions correctly because some configuration values were modified in an external startup class.");
-
-                    foreach (KeyValuePair<string, IEnumerable<string>> invalidValueMap in invalidValues)
-                    {
-                        sb.AppendLine($"  Function '{invalidValueMap.Key}' uses the modified key(s): {string.Join(", ", invalidValueMap.Value)}");
-                    }
-
-                    _logger.LogWarning(new EventId(700, "ConfigurationModifiedInExternalStartup"), sb.ToString());
+                    sb.AppendLine($"  Function '{invalidValueMap.Key}' uses the modified key(s): {string.Join(", ", invalidValueMap.Value)}");
                 }
-            }
-            catch (Exception ex)
-            {
-                // We don't want to fail on this, but log to make sure we can improve.
-                _logger.LogError(new EventId(701, "ExternalConfigurationStartupValidationError"), ex, "Error while validating external startup configuration.");
+
+                if (_environment.IsCoreTools())
+                {
+                    // We don't know where this will be deployed, so it may not matter,
+                    // but log this as a warning during development.
+                    _logger.LogWarning(sb.ToString());
+                }
+                else
+                {
+                    throw new HostInitializationException(sb.ToString());
+                }
             }
 
             return Task.CompletedTask;

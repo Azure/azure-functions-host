@@ -60,6 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 .ToArray();
         }
 
+        internal bool HasExternalConfigurationStartups() => _startupTypes.Value.Any(p => typeof(IWebJobsConfigurationStartup).IsAssignableFrom(p));
+
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;

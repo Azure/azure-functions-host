@@ -51,6 +51,12 @@ namespace WebJobsStartupTests
             return new OkObjectResult("ok");
         }
 
+        // Use this to test overwriting a trigger parameter.
+        [FunctionName("Timer")]
+        public void TimerRun([TimerTrigger("%Cron%", RunOnStartup = false)] TimerInfo timerInfo)
+        {
+        }
+
         private static bool ValidateConfig(IConfiguration _config)
         {
             if (_config is ConfigurationRoot root)

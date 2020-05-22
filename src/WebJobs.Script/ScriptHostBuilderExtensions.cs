@@ -123,10 +123,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (context.Properties.TryGetValue(DelayedConfigurationActionKey, out object actionObject) &&
                     actionObject is Action<IWebJobsStartupTypeLocator> delayedConfigAction)
                 {
-                    // store the snapshot for validation later
-                    context.Properties[ConfigurationSnapshotKey] = config;
+                    context.Properties.Remove(DelayedConfigurationActionKey);
 
                     delayedConfigAction(locator);
+
+                    // store the snapshot for validation later, but only if there
+                    // are any registered external configuration startups.
+                    if (locator.HasExternalConfigurationStartups())
+                    {
+                        context.Properties[ConfigurationSnapshotKey] = config;
+                    }
                 }
             });
 
@@ -140,39 +146,49 @@ namespace Microsoft.Azure.WebJobs.Script
             builder.ConfigureServices((context, services) =>
             {
                 services.AddSingleton<ExternalConfigurationStartupValidator>();
-                services.AddSingleton<IHostedService>(s =>
+
+                if (!skipHostInitialization)
                 {
-                    var environment = s.GetService<IEnvironment>();
-                    var originalConfig = context.Properties.GetAndRemove<IConfigurationRoot>(ConfigurationSnapshotKey);
-
-                    // Validate the config for anything that needs the Scale Controller.
-                    // Including Core Tools as a warning during development time.
-                    if (environment.IsWindowsConsumption() ||
-                        environment.IsLinuxConsumption() ||
-                        environment.IsWindowsElasticPremium() ||
-                        environment.IsCoreTools())
+                    services.AddSingleton<IHostedService>(s =>
                     {
-                        var validator = s.GetService<ExternalConfigurationStartupValidator>();
-                        var logger = s.GetService<ILoggerFactory>().CreateLogger<ExternalConfigurationStartupValidator>();
+                        var environment = s.GetService<IEnvironment>();
 
-                        return new ExternalConfigurationStartupValidatorService(validator, originalConfig, logger);
-                    }
+                        // This key will not be here if we don't have any external configuration startups registered
+                        if (context.Properties.TryGetValue(ConfigurationSnapshotKey, out object originalConfigObject) &&
+                             originalConfigObject is IConfigurationRoot originalConfig)
+                        {
+                            context.Properties.Remove(ConfigurationSnapshotKey);
 
-                    return NullHostedService.Instance;
-                });
+                            // Validate the config for anything that needs the Scale Controller.
+                            // Including Core Tools as a warning during development time.
+                            if (environment.IsWindowsConsumption() ||
+                                environment.IsLinuxConsumption() ||
+                                environment.IsWindowsElasticPremium() ||
+                                environment.IsCoreTools())
+                            {
+                                var validator = s.GetService<ExternalConfigurationStartupValidator>();
+                                var logger = s.GetService<ILoggerFactory>().CreateLogger<ExternalConfigurationStartupValidator>();
+
+                                return new ExternalConfigurationStartupValidatorService(validator, originalConfig, environment, logger);
+                            }
+                        }
+
+                        return NullHostedService.Instance;
+                    });
+                }
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
             {
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
-                {
-                    o.AppDirectory = applicationHostOptions.ScriptPath;
-                })
-                .AddHttp()
-                .AddTimers()
-                .AddManualTrigger()
-                .AddWarmup();
+            {
+                o.AppDirectory = applicationHostOptions.ScriptPath;
+            })
+            .AddHttp()
+            .AddTimers()
+            .AddManualTrigger()
+            .AddWarmup();
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);

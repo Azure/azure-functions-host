@@ -1,8 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
@@ -12,11 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     {
         private readonly IConfiguration _config;
         private readonly IFunctionMetadataManager _metadataManager;
+        private readonly DefaultNameResolver _nameResolver;
 
         public ExternalConfigurationStartupValidator(IConfiguration config, IFunctionMetadataManager metadataManager)
         {
-            _config = config;
-            _metadataManager = metadataManager;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
+            _nameResolver = new DefaultNameResolver(config);
         }
 
         /// <summary>
@@ -27,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         /// <returns>A dictionary mapping function name to a list of the invalid values for that function.</returns>
         public IDictionary<string, IEnumerable<string>> Validate(IConfigurationRoot originalConfig)
         {
+            var originalNameResolver = new DefaultNameResolver(originalConfig);
+
             IDictionary<string, IEnumerable<string>> invalidValues = new Dictionary<string, IEnumerable<string>>();
 
             var functions = _metadataManager.GetFunctionMetadata();
@@ -44,11 +50,22 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                     if (lookup != null)
                     {
-                        string originalKey = originalConfig[property.Value?.ToString()];
-                        string key = _config[property.Value?.ToString()];
-                        if (originalKey != key)
+                        string originalValue = originalConfig[lookup];
+                        string newValue = _config[lookup];
+                        if (originalValue != newValue)
                         {
                             invalidValuesForFunction.Add(lookup);
+                        }
+                        else
+                        {
+                            // It may be a binding expression like "%lookup%"
+                            originalNameResolver.TryResolveWholeString(lookup, out originalValue);
+                            _nameResolver.TryResolveWholeString(lookup, out newValue);
+
+                            if (originalValue != newValue)
+                            {
+                                invalidValuesForFunction.Add(lookup);
+                            }
                         }
                     }
                 }
