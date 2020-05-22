@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
         internal bool TryLocateExtensionBundle(out string bundlePath)
         {
             bundlePath = null;
-            string bundleMetatdataFile = null;
+            string bundleMetadataFile = null;
             var paths = new List<string>(_options.ProbingPaths)
                 {
                     _options.DownloadPath
@@ -131,8 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                     if (!string.IsNullOrEmpty(version))
                     {
                         bundlePath = Path.Combine(path, version);
-                        bundleMetatdataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
-                        if (!string.IsNullOrEmpty(bundleMetatdataFile) && FileUtility.FileExists(bundleMetatdataFile))
+                        bundleMetadataFile = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleMetadataFile);
+                        if (!string.IsNullOrEmpty(bundleMetadataFile) && FileUtility.FileExists(bundleMetadataFile))
                         {
                             _logger.ExtensionBundleFound(bundlePath);
                             break;
@@ -149,9 +149,9 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
 
         private async Task<string> DownloadExtensionBundleAsync(string version, HttpClient httpClient)
         {
-            string bundleMetatdataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
+            string bundleMetadataFile = Path.Combine(_options.DownloadPath, version, ScriptConstants.ExtensionBundleMetadataFile);
             string bundlePath = Path.Combine(_options.DownloadPath, version);
-            if (FileUtility.FileExists(bundleMetatdataFile))
+            if (FileUtility.FileExists(bundleMetadataFile))
             {
                 _logger.LogInformation($"Skipping bundle download since it already exists at path {bundlePath}");
                 return bundlePath;
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 ZipFile.ExtractToDirectory(zipFilePath, bundlePath);
                 _logger.ZipExtractionComplete();
             }
-            return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
+            return FileUtility.FileExists(bundleMetadataFile) ? bundlePath : null;
         }
 
         private async Task<bool> TryDownloadZipFileAsync(Uri zipUri, string filePath, HttpClient httpClient)
