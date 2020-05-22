@@ -23,20 +23,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     public class DefaultHttpWorkerService : IHttpWorkerService
     {
         private readonly HttpClient _httpClient;
+        private readonly HttpClient _anotherHttpClient;
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
+        private int _threadSafeBoolBackValue = 0;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
-            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>())
+            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), new HttpClient())
         {
         }
 
-        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger)
+        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, HttpClient anotherClient = null)
         {
             _httpClient = httpClient;
+            _anotherHttpClient = anotherClient;
             _httpWorkerOptions = httpWorkerOptions.Value;
             _logger = logger;
-            ServicePointManager.DefaultConnectionLimit = int.MaxValue;
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -80,8 +82,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                HttpResponseMessage invocationResponse = null;
 
-                HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
+                {
+                    invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                }
+                else
+                {
+                    invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
+                }
 
                 _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
@@ -114,7 +124,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
 
                 _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-                HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
+                HttpResponseMessage response = null;
+
+                if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
+                {
+                    response = await _httpClient.SendAsync(httpRequestMessage);
+                }
+                else
+                {
+                    response = await _anotherHttpClient.SendAsync(httpRequestMessage);
+                }
                 _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                 // Only process output bindings if response is succeess code
