@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             try
             {
                 await fixture.InitializeAsync();
-
                 var client = fixture.Host.HttpClient;
 
                 var response = await client.GetAsync($"api/Function1");
@@ -43,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
                 var response = await client.GetAsync($"api/Function1");
 
-                // The function does all the validation internally.
                 Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
 
                 var manager = fixture.Host.WebHostServices.GetService<IScriptHostManager>();
@@ -71,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             {
                 _dispose = new TestScopedEnvironmentVariable(new Dictionary<string, string>
                 {
+                    { "WEBSITE_SKU", "Dynamic" }, // only runs in Consumption
                     { "MyOptions__MyKey", "WillBeOverwrittenInAppStartup" },
                     { "MyOptions__MyOtherKey", "FromEnvironment" },
                     { "Cron", cronExpression }
