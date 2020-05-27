@@ -85,14 +85,13 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
             if (bundleConfigured && (!isPrecompiledFunctionApp || _extensionBundleManager.IsLegacyExtensionBundle()))
             {
-                string extensionBundlePath = await _extensionBundleManager.GetExtensionBundlePath();
-                if (string.IsNullOrEmpty(extensionBundlePath))
+                binPath = await _extensionBundleManager.GetExtensionBundleBinPath();
+                if (string.IsNullOrEmpty(binPath))
                 {
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
                     return new Type[0];
                 }
-                _logger.ScriptStartUpLoadingExtensionBundle(extensionBundlePath);
-                binPath = Path.Combine(extensionBundlePath, "bin");
+                _logger.ScriptStartUpLoadingExtensionBundle(binPath);
             }
             else
             {

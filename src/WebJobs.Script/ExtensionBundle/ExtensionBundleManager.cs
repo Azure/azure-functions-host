@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.IO.Pipes;
 using System.Linq;
 using System.Net.Http;
+using System.Resources;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -161,7 +163,10 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             FileUtility.EnsureDirectoryExists(zipDirectoryPath);
 
             string zipFilePath = Path.Combine(zipDirectoryPath, $"{_options.Id}.{version}.zip");
-            var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}.zip");
+
+            // construct a string based on os type
+            string bundleFlavor = GetBundleFlavorForCurrentEnvironment();
+            var zipUri = new Uri($"{_cdnUri}/{ScriptConstants.ExtensionBundleDirectory}/{_options.Id}/{version}/{_options.Id}.{version}_{bundleFlavor}.zip");
 
             if (await TryDownloadZipFileAsync(zipUri, zipFilePath, httpClient))
             {
@@ -172,6 +177,21 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
                 _logger.ZipExtractionComplete();
             }
             return FileUtility.FileExists(bundleMetatdataFile) ? bundlePath : null;
+        }
+
+        private string GetBundleFlavorForCurrentEnvironment()
+        {
+            if (_environment.IsWindowsAzureManagedHosting())
+            {
+                return ScriptConstants.ExtensionBundleForAppServiceWindows;
+            }
+
+            if (_environment.IsLinuxAzureManagedHosting())
+            {
+                return ScriptConstants.ExtensionBundleForAppServiceLinux;
+            }
+
+            return ScriptConstants.ExtensionBundleForNonAppServiceEnvironment;
         }
 
         private async Task<bool> TryDownloadZipFileAsync(Uri zipUri, string filePath, HttpClient httpClient)
@@ -240,6 +260,44 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             }).Where(v => v != null);
 
             return bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault()?.ToString();
+        }
+
+        public async Task<string> GetExtensionBundleBinPath()
+        {
+            string bundlePath = await GetExtensionBundlePath();
+
+            if (string.IsNullOrEmpty(bundlePath))
+            {
+                return null;
+            }
+
+            string binPath = string.Empty;
+
+            if (_environment.IsWindowsAzureManagedHosting())
+            {
+                if (Environment.Is64BitProcess)
+                {
+                    //bin_v3/win-x64
+                    binPath = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleV3BinDirectoryName, ScriptConstants.Windows64BitRID);
+                }
+                else
+                {
+                    //bin_v3/win-x86
+                    binPath = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleV3BinDirectoryName, ScriptConstants.Windows32BitRID);
+                }
+            }
+
+            if (_environment.IsLinuxAzureManagedHosting())
+            {
+                // linux only has 64 bit version of process - bin_v3/linux-x64
+                binPath = Path.Combine(bundlePath, ScriptConstants.ExtensionBundleV3BinDirectoryName, ScriptConstants.Linux64BitRID);
+            }
+
+            // Check if RR direcory exist if not fallback to non RR binaries
+            binPath = FileUtility.DirectoryExists(binPath) ? binPath : Path.Combine(bundlePath, "bin");
+
+            // if no bin directory is present something is wrong
+            return FileUtility.DirectoryExists(binPath) ? binPath : null;
         }
     }
 }
