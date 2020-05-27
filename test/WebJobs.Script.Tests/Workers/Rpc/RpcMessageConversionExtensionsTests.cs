@@ -176,9 +176,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 capabilities.UpdateCapabilities(new MapField<string, string>
                     {
                         { RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders, "true" }
-                    });
+                    }
+                );
             }
-            
+
             var headerDictionary = new HeaderDictionary();
             for (int i = 0; i < headerValues.Length; i++)
             {
