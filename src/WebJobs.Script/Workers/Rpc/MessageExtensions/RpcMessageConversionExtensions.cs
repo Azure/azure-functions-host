@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (ShouldIgnoreEmptyHeaderValues(capabilities) && !string.IsNullOrEmpty(pair.Value.ToString()))
                 {
                     continue;
-                } 
+                }
 
                 http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
             }
