@@ -84,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = null;
 
+                // Testing
+                httpRequestMessage.Version = HttpVersion.Version10;
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
                     invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
@@ -126,6 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage response = null;
 
+                // Testing
+                httpRequestMessage.Version = HttpVersion.Version10;
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
                     response = await _httpClient.SendAsync(httpRequestMessage);
