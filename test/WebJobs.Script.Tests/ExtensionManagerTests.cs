@@ -193,6 +193,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _isLegacyExtensionBundle = isLegacyExtensionBundle;
             }
 
+            public Task<string> GetExtensionBundleBinPath()
+            {
+                return Task.FromResult(Path.Combine(_bundlePath, "bin"));
+            }
+
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient) => Task.FromResult(_bundlePath);
