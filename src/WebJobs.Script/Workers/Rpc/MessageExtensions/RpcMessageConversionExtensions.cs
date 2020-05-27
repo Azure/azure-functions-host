@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             foreach (var pair in request.Headers)
             {
-                if (ShouldIgnoreEmptyHeaderValues(capabilities) && !string.IsNullOrEmpty(pair.Value.ToString()))
+                if (ShouldIgnoreEmptyHeaderValues(capabilities) && string.IsNullOrEmpty(pair.Value.ToString()))
                 {
                     continue;
                 }
