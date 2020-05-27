@@ -168,16 +168,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void HttpObjects_Headers(bool ignoreEmptyValues, string[] headerKeys, string[] headerValues, string[] expectedKeys, string[] expectedValues)
         {
-            var logger = MockNullLoggerFactory.CreateLogger();            
+            var logger = MockNullLoggerFactory.CreateLogger();
             // Capability must be enabled
             var capabilities = new Capabilities(logger);
 
-            if (ignoreEmptyValues) {
+            if (ignoreEmptyValues)
+            {
                 capabilities.UpdateCapabilities(new MapField<string, string>
                     {
                         { RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders, "true" }
-                    }
-                );
+                    });
             }
 
             var headerDictionary = new HeaderDictionary();
