@@ -132,6 +132,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             foreach (var pair in request.Headers)
             {
+                if (ShouldIgnoreEmptyHeaderValues(capabilities) && !string.IsNullOrEmpty(pair.Value.ToString()))
+                {
+                    continue;
+                } 
+
                 http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
             }
 
@@ -344,6 +349,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.TypedDataCollection));
+        }
+
+        private static bool ShouldIgnoreEmptyHeaderValues(Capabilities capabilities)
+        {
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders));
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)
