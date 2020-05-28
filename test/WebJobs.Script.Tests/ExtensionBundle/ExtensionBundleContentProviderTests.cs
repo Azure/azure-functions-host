@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 _isLegacyExtensionBundle = isLegacyExtensionBundle;
             }
 
-            public Task<string> GetExtensionBundleBinPath()
+            public Task<string> GetExtensionBundleBinPathAsync()
             {
                 return Task.FromResult(Path.Combine(_bundlePath, "bin"));
             }

@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, environment);
-            string binPath = await manager.GetExtensionBundleBinPath();
+            string binPath = await manager.GetExtensionBundleBinPathAsync();
             Assert.NotNull(binPath);
 
             Assert.Equal(expectDefaultBinPath ? defaultBinPath : rrBinPath, binPath);
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
 
             FileUtility.Instance = fileSystemTuple.Item1.Object;
             var manager = GetExtensionBundleManager(options, environment);
-            string binPath = await manager.GetExtensionBundleBinPath();
+            string binPath = await manager.GetExtensionBundleBinPathAsync();
             Assert.Null(binPath);
         }
 
