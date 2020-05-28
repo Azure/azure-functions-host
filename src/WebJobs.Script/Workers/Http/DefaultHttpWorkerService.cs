@@ -41,6 +41,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _logger = logger;
         }
 
+        private HttpRequestMessage CreateProxyHttpRequest(HttpContext context, Uri uri)
+        {
+            var request = context.Request;
+
+            var requestMessage = new HttpRequestMessage();
+            var requestMethod = request.Method;
+            if (!HttpMethods.IsGet(requestMethod) &&
+                !HttpMethods.IsHead(requestMethod) &&
+                !HttpMethods.IsDelete(requestMethod) &&
+                !HttpMethods.IsTrace(requestMethod))
+            {
+                var streamContent = new StreamContent(request.Body);
+                requestMessage.Content = streamContent;
+            }
+
+            // Copy the request headers
+            foreach (var header in request.Headers)
+            {
+                if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) && requestMessage.Content != null)
+                {
+                    requestMessage.Content?.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+                }
+            }
+
+            requestMessage.Headers.Host = uri.Authority;
+            requestMessage.RequestUri = uri;
+            requestMessage.Method = new HttpMethod(request.Method);
+
+            return requestMessage;
+        }
+
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
         {
             if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
@@ -72,14 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 // Build HttpRequestMessage from HttpTrigger binding
-                HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
-                httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
+                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
+                //HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
+                //httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
                 AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 // Populate query params from httpTrigger
-                string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
-                httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
+                //string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
+                //httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = null;
@@ -90,12 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                    {
                         try
                         {
-                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                             break;
                         }
                         catch (Exception responseEx)
                         {
-                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.GetBaseException().StackTrace}", responseEx.GetBaseException());
                             if (i == 4)
                             {
                                 throw responseEx;
@@ -113,12 +145,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     {
                         try
                         {
-                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
                             break;
                         }
                         catch (Exception responseEx)
                         {
-                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.GetBaseException().StackTrace}", responseEx.GetBaseException());
                             if (i == 4)
                             {
                                 throw responseEx;
@@ -266,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+           //  httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
