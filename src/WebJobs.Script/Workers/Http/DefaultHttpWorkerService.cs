@@ -96,9 +96,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                         catch (Exception responseEx)
                         {
                             _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            if (i == 4)
+                            {
+                                throw responseEx;
+                            }
                         }
-                        invocationResponse?.Dispose();
-                   }
+                        if (invocationResponse != null)
+                        {
+                            invocationResponse.Dispose();
+                        }
+                    }
                 }
                 else
                 {
@@ -112,8 +119,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                         catch (Exception responseEx)
                         {
                             _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            if (i == 4)
+                            {
+                                throw responseEx;
+                            }
                         }
-                        invocationResponse?.Dispose();
+                        if (invocationResponse != null)
+                        {
+                            invocationResponse.Dispose();
+                        }
                     }
                 }
 
@@ -162,8 +176,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                         catch (Exception responseEx)
                         {
                             _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            if (i == 4)
+                            {
+                                throw responseEx;
+                            }
                         }
-                        response?.Dispose();
+                        if (response != null)
+                        {
+                            response.Dispose();
+                        }
                     }
                 }
                 else
@@ -178,8 +199,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                         catch (Exception responseEx)
                         {
                             _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                            if (i == 4)
+                            {
+                                throw responseEx;
+                            }
                         }
-                        response?.Dispose();
+                        if (response != null)
+                        {
+                            response.Dispose();
+                        }
                     }
                 }
                 _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
