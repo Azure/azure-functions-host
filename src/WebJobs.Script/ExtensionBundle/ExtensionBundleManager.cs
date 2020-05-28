@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
             return bundleVersions.OrderByDescending(version => version.Version).FirstOrDefault()?.ToString();
         }
 
-        public async Task<string> GetExtensionBundleBinPath()
+        public async Task<string> GetExtensionBundleBinPathAsync()
         {
             string bundlePath = await GetExtensionBundlePath();
 

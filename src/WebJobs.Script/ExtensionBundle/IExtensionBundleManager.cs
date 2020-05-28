@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.ExtensionBundle
     {
         Task<string> GetExtensionBundlePath();
 
-        Task<string> GetExtensionBundleBinPath();
+        Task<string> GetExtensionBundleBinPathAsync();
 
         Task<string> GetExtensionBundlePath(HttpClient httpClient = null);
 
