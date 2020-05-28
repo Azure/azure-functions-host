@@ -181,13 +181,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Built in binding registrations
                 webJobsBuilder.AddExecutionContextBinding(o =>
-            {
-                o.AppDirectory = applicationHostOptions.ScriptPath;
-            })
-            .AddHttp()
-            .AddTimers()
-            .AddManualTrigger()
-            .AddWarmup();
+                {
+                    o.AppDirectory = applicationHostOptions.ScriptPath;
+                })
+                .AddHttp()
+                .AddTimers()
+                .AddManualTrigger()
+                .AddWarmup();
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
