@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
-            httpRequestMessage.Headers.Host = WorkerConstants.HostName + _httpWorkerOptions.Port
+            httpRequestMessage.Headers.Host = WorkerConstants.HostName + _httpWorkerOptions.Port;
         }
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
