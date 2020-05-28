@@ -84,15 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = null;
 
-                // Testing
-                httpRequestMessage.Version = HttpVersion.Version10;
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
-                    invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                    invocationResponse = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
                 }
                 else
                 {
-                    invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
+                    invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
                 }
 
                 _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
@@ -128,15 +126,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage response = null;
 
-                // Testing
-                httpRequestMessage.Version = HttpVersion.Version10;
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
-                    response = await _httpClient.SendAsync(httpRequestMessage);
+                    response = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
                 }
                 else
                 {
-                    response = await _anotherHttpClient.SendAsync(httpRequestMessage);
+                    response = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
                 }
                 _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
@@ -198,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            httpRequestMessage.Headers.Host = WorkerConstants.HostName + _httpWorkerOptions.Port
         }
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
