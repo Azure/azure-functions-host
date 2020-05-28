@@ -160,7 +160,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         private bool IsRuntimeAssembly(AssemblyName assemblyName)
-            => _runtimeAssembliesInfo.Assemblies.ContainsKey(assemblyName.Name);
+        {
+            return _runtimeAssembliesInfo.Assemblies.TryGetValue(assemblyName.Name, out ScriptRuntimeAssembly assembly)
+                && !string.Equals(assembly.ResolutionPolicy, PrivateDependencyResolutionPolicy, StringComparison.OrdinalIgnoreCase);
+        }
 
         private bool TryGetRuntimeAssembly(AssemblyName assemblyName, out ScriptRuntimeAssembly assembly)
             => _runtimeAssembliesInfo.Assemblies.TryGetValue(assemblyName.Name, out assembly);
