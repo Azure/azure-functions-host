@@ -86,11 +86,35 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
-                    invocationResponse = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                   for (int i = 0; i < 5; ++i)
+                   {
+                        try
+                        {
+                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            break;
+                        }
+                        catch (Exception responseEx)
+                        {
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                        }
+                        invocationResponse?.Dispose();
+                   }
                 }
                 else
                 {
-                    invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        try
+                        {
+                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            break;
+                        }
+                        catch (Exception responseEx)
+                        {
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                        }
+                        invocationResponse?.Dispose();
+                    }
                 }
 
                 _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
@@ -128,11 +152,35 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
-                    response = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        try
+                        {
+                            response = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            break;
+                        }
+                        catch (Exception responseEx)
+                        {
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                        }
+                        response?.Dispose();
+                    }
                 }
                 else
                 {
-                    response = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        try
+                        {
+                            response = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            break;
+                        }
+                        catch (Exception responseEx)
+                        {
+                            _logger.LogError($"Exception and therefore retrying: {responseEx.StackTrace}", responseEx);
+                        }
+                        response?.Dispose();
+                    }
                 }
                 _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
@@ -194,7 +242,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
-            httpRequestMessage.Headers.Host = WorkerConstants.HostName + _httpWorkerOptions.Port;
         }
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
