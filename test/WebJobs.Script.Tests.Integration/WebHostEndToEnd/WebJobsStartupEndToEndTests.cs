@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     public class WebJobsStartupEndToEndTests
     {
-        [Fact(Skip = "see if this is what's broken")]
+        [Fact]
         public async Task ExternalStartup_Succeeds()
         {
             // We need different fixture setup for each test.
