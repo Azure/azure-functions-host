@@ -29,16 +29,19 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly Lazy<IEnumerable<Type>> _startupTypes;
 
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager, IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger)
+        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
+            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
             _functionMetadataManager = functionMetadataManager;
             _metricsLogger = metricsLogger;
+            _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
         }
 
         private static string[] GetBuiltinExtensionAssemblies()
@@ -52,12 +55,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public Type[] GetStartupTypes()
         {
-            IEnumerable<Type> startupTypes = GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-
-            return startupTypes
+            return _startupTypes.Value
                 .Distinct(new TypeNameEqualityComparer())
                 .ToArray();
         }
+
+        internal bool HasExternalConfigurationStartups() => _startupTypes.Value.Any(p => typeof(IWebJobsConfigurationStartup).IsAssignableFrom(p));
 
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
@@ -150,16 +153,19 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                             _logger.ScriptStartUpLoadedExtension(startupExtensionName, assembly.GetName().Version.ToString());
                             return assembly?.GetType(typeName, false, ignoreCase);
                         }, false, true);
+
                     if (extensionType == null)
                     {
                         _logger.ScriptStartUpUnableToLoadExtension(startupExtensionName, extensionItem.TypeName);
                         continue;
                     }
-                    if (!typeof(IWebJobsStartup).IsAssignableFrom(extensionType))
+
+                    if (!typeof(IWebJobsStartup).IsAssignableFrom(extensionType) && !typeof(IWebJobsConfigurationStartup).IsAssignableFrom(extensionType))
                     {
-                        _logger.ScriptStartUpTypeIsNotValid(extensionItem.TypeName, nameof(IWebJobsStartup));
+                        _logger.ScriptStartUpTypeIsNotValid(extensionItem.TypeName, nameof(IWebJobsStartup), nameof(IWebJobsConfigurationStartup));
                         continue;
                     }
+
                     startupTypes.Add(extensionType);
                 }
             }
