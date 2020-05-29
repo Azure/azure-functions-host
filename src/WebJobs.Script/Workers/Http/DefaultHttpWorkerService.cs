@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                    {
                         try
                         {
-                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                             break;
                         }
                         catch (Exception responseEx)
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     {
                         try
                         {
-                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead);
+                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
                             break;
                         }
                         catch (Exception responseEx)
