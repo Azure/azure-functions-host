@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Populate query params from httpTrigger
                 string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
                 httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
-                // httpRequestMessage.Method = new HttpMethod(httpRequest.Method);
+                httpRequestMessage.Method = new HttpMethod(httpRequest.Method);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
