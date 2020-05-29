@@ -83,18 +83,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
-            _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
+            string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
+            string GetDestPath(int counter)
+            {
+                return Path.Combine(Path.GetTempPath(), "FunctionsE2E", $"{nowString}_{counter}");
+            }
 
-            try
+            // Prevent collisions.
+            int i = 0;
+            _copiedRootPath = GetDestPath(i++);
+            while (Directory.Exists(_copiedRootPath))
             {
-                FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
+                _copiedRootPath = GetDestPath(i);
             }
-            catch (IOException)
-            {
-                // try again if a file is locked.
-                await Task.Delay(1000);
-                FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
-            }
+
+            FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
             var extensionsToInstall = GetExtensionsToInstall();
             if (extensionsToInstall != null && extensionsToInstall.Length > 0)
