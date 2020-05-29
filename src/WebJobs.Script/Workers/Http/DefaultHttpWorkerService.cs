@@ -103,15 +103,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 // Build HttpRequestMessage from HttpTrigger binding
-                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
-                //HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
-                //httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
+                //httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
+                HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
+                httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
                 AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 // Populate query params from httpTrigger
-                //string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
-                //httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
+                string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
+                httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
+                // httpRequestMessage.Method = new HttpMethod(httpRequest.Method);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
@@ -260,10 +261,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
-           //  httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
+            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, functionName).ToString());
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            httpRequestMessage.Headers.Host = httpRequestMessage.RequestUri.Authority;
         }
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
