@@ -118,49 +118,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                 if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
-                   for (int i = 0; i < 5; ++i)
-                   {
-                        try
-                        {
-                            invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-                            break;
-                        }
-                        catch (Exception responseEx)
-                        {
-                            _logger.LogError($"Exception and therefore retrying: {responseEx.GetBaseException().StackTrace}", responseEx.GetBaseException());
-                            if (i == 4)
-                            {
-                                throw responseEx;
-                            }
-                        }
-                        if (invocationResponse != null)
-                        {
-                            invocationResponse.Dispose();
-                        }
-                    }
+                    invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                 }
                 else
                 {
-                    for (int i = 0; i < 5; ++i)
-                    {
-                        try
-                        {
-                            invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
-                            break;
-                        }
-                        catch (Exception responseEx)
-                        {
-                            _logger.LogError($"Exception and therefore retrying: {responseEx.GetBaseException().StackTrace}", responseEx.GetBaseException());
-                            if (i == 4)
-                            {
-                                throw responseEx;
-                            }
-                        }
-                        if (invocationResponse != null)
-                        {
-                            invocationResponse.Dispose();
-                        }
-                    }
+                    invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
                 }
 
                 _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
