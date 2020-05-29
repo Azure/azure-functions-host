@@ -114,16 +114,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 //httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-                HttpResponseMessage invocationResponse = null;
+                HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
 
-                if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
+                /*if (Interlocked.Increment(ref _threadSafeBoolBackValue) % 2 == 0)
                 {
                     invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                 }
                 else
                 {
                     invocationResponse = await _anotherHttpClient.SendAsync(httpRequestMessage);
-                }
+                }*/
 
                 _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
