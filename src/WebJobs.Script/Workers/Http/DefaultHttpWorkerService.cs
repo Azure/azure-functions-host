@@ -57,13 +57,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }*/
 
             // Copy the request headers
-            foreach (var header in request.Headers)
+            /*foreach (var header in request.Headers)
             {
                 if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) && requestMessage.Content != null)
                 {
                     requestMessage.Content?.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
                 }
-            }
+            }*/
 
             requestMessage.Headers.Host = uri.Authority;
             requestMessage.RequestUri = uri;
