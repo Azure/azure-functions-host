@@ -41,33 +41,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _logger = logger;
         }
 
-        private HttpRequestMessage CreateProxyHttpRequest(HttpContext context, Uri uri)
+        private HttpRequestMessage CreateProxyHttpRequest(HttpContext context, Uri uri, string invocationId, HttpMethod requestMethod = null)
         {
             var request = context.Request;
-
             var requestMessage = new HttpRequestMessage();
-            var requestMethod = request.Method;
-            /*if (!HttpMethods.IsGet(requestMethod) &&
-                !HttpMethods.IsHead(requestMethod) &&
-                !HttpMethods.IsDelete(requestMethod) &&
-                !HttpMethods.IsTrace(requestMethod))
-            {
-                var streamContent = new StreamContent(request.Body);
-                requestMessage.Content = streamContent;
-            }*/
 
-            // Copy the request headers
-            /*foreach (var header in request.Headers)
-            {
-                if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()) && requestMessage.Content != null)
-                {
-                    requestMessage.Content?.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-                }
-            }*/
-
-            requestMessage.Headers.Host = uri.Authority;
             requestMessage.RequestUri = uri;
-            // requestMessage.Method = new HttpMethod(request.Method);
+            requestMessage.Headers.Host = uri.Authority;
+            requestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            requestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+            requestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+            requestMessage.Method = requestMethod ?? new HttpMethod(request.Method);
 
             return requestMessage;
         }
@@ -103,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 // Build HttpRequestMessage from HttpTrigger binding
-                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
+                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()), scriptInvocationContext.ExecutionContext.InvocationId.ToString());
                 //HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
                 //httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
