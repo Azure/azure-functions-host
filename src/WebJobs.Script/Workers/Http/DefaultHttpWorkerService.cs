@@ -41,10 +41,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _logger = logger;
         }
 
-        private HttpRequestMessage CreateProxyHttpRequest(HttpContext context, Uri uri, string invocationId, HttpMethod requestMethod = null)
+        private HttpRequestMessage CreateProxyHttpRequest(HttpContext context, Uri uri, string invocationId, HttpMethod requestMethod = null, IDictionary<string, string> queryCollectionAsDictionary = null)
         {
             var request = context.Request;
             var requestMessage = new HttpRequestMessage();
+
+            if (queryCollectionAsDictionary != null)
+            {
+                string httpWorkerUri = QueryHelpers.AddQueryString(uri.ToString(), queryCollectionAsDictionary);
+                uri = new Uri(httpWorkerUri);
+            }
 
             requestMessage.RequestUri = uri;
             requestMessage.Headers.Host = uri.Authority;
@@ -87,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 // Build HttpRequestMessage from HttpTrigger binding
-                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()), scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()), scriptInvocationContext.ExecutionContext.InvocationId.ToString(), queryCollectionAsDictionary: httpRequest.GetQueryCollectionAsDictionary());
                 //HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
                 //httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
