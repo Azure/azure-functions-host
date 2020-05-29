@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             requestMessage.Headers.Host = uri.Authority;
             requestMessage.RequestUri = uri;
-            requestMessage.Method = new HttpMethod(request.Method);
+            // requestMessage.Method = new HttpMethod(request.Method);
 
             return requestMessage;
         }
