@@ -33,16 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [Fact]
         public async Task ExternalStartup_InvalidOverwrite_StopsHost()
         {
-            await Task.Delay(10000);
-            Console.WriteLine("=== Delayed");
-
             // We need different fixture setup for each test.
             var fixture = new TestFixture("* * * * * *"); // Startup.cs will change this.
             try
             {
-                Console.WriteLine("=== Initializing");
                 await fixture.InitializeAsync();
-                Console.WriteLine("=== Initialized");
                 var client = fixture.Host.HttpClient;
 
                 var response = await client.GetAsync($"api/Function1");
