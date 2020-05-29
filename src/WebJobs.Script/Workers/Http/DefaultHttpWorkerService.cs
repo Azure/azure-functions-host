@@ -47,14 +47,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             var requestMessage = new HttpRequestMessage();
             var requestMethod = request.Method;
-            if (!HttpMethods.IsGet(requestMethod) &&
+            /*if (!HttpMethods.IsGet(requestMethod) &&
                 !HttpMethods.IsHead(requestMethod) &&
                 !HttpMethods.IsDelete(requestMethod) &&
                 !HttpMethods.IsTrace(requestMethod))
             {
                 var streamContent = new StreamContent(request.Body);
                 requestMessage.Content = streamContent;
-            }
+            }*/
 
             // Copy the request headers
             foreach (var header in request.Headers)
@@ -103,16 +103,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 // Build HttpRequestMessage from HttpTrigger binding
-                //httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
-                HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
-                httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
+                httpRequestMessage = CreateProxyHttpRequest(httpRequest.HttpContext, new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, scriptInvocationContext.FunctionMetadata.Name).ToString()));
+                //HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
+                //httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
 
-                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+                //AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                 // Populate query params from httpTrigger
-                string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
-                httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
-                httpRequestMessage.Method = new HttpMethod(httpRequest.Method);
+                //string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
+                //httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
+                // httpRequestMessage.Method = new HttpMethod(httpRequest.Method);
 
                 _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                 HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
