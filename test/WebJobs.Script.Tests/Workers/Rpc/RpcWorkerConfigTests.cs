@@ -287,10 +287,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.Equal(expectedExecutablePath, path);
-                                    return true;
-                                }
+                {
+                    Assert.Equal(expectedExecutablePath, path);
+                    return true;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -318,10 +318,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.Equal(expectedExecutablePath, path);
-                                    return false;
-                                }
+                {
+                    Assert.Equal(expectedExecutablePath, path);
+                    return false;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -346,10 +346,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Extensions = new List<string>(),
                 DefaultExecutablePath = defaultExecutablePath,
                 FileExists = path =>
-                                {
-                                    Assert.True(false, "FileExists should not be called");
-                                    return false;
-                                }
+                {
+                    Assert.True(false, "FileExists should not be called");
+                    return false;
+                }
             };
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
@@ -362,7 +362,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7/LINUX")]
         public void LanguageWorker_FormatWorkerPath_EnvironmentVersionSet(string defaultWorkerPath, string expectedPath)
         {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
                 Arguments = new List<string>(),
