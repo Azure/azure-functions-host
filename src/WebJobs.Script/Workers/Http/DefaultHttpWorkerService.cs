@@ -4,14 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -56,8 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 Outputs = new Dictionary<string, object>()
             };
 
-            HttpRequestMessage httpRequestMessage = null;
-
             (string name, DataType type, object request) input = scriptInvocationContext.Inputs.First();
 
             HttpRequest httpRequest = input.request as HttpRequest;
@@ -68,31 +64,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                // Build HttpRequestMessage from HttpTrigger binding
-                HttpRequestMessageFeature httpRequestMessageFeature = new HttpRequestMessageFeature(httpRequest.HttpContext);
-                httpRequestMessage = httpRequestMessageFeature.HttpRequestMessage;
-
-                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-
-                // Populate query params from httpTrigger
-                string httpWorkerUri = QueryHelpers.AddQueryString(httpRequestMessage.RequestUri.ToString(), httpRequest.GetQueryCollectionAsDictionary());
-                httpRequestMessage.RequestUri = new Uri(httpWorkerUri);
-
-                _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-
-                HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-
-                _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-
-                BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
-                if (httpOutputBinding != null)
+                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), new HttpMethod(httpRequest.Method), httpRequest.GetQueryCollectionAsDictionary()))
                 {
-                    // handle http output binding
-                    scriptInvocationResult.Outputs.Add(httpOutputBinding.Name, invocationResponse);
-                    // handle $return
-                    scriptInvocationResult.Return = invocationResponse;
+                    _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                    _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
+                    if (httpOutputBinding != null)
+                    {
+                        // handle http output binding
+                        scriptInvocationResult.Outputs.Add(httpOutputBinding.Name, invocationResponse);
+                        // handle $return
+                        scriptInvocationResult.Return = invocationResponse;
+                    }
+                    scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
                 }
-                scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
             }
             catch (Exception responseEx)
             {
@@ -106,35 +92,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 HttpScriptInvocationContext httpScriptInvocationContext = await scriptInvocationContext.ToHttpScriptInvocationContext();
                 // Build httpRequestMessage from scriptInvocationContext
-                HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
-                AddRequestHeadersAndSetRequestUri(httpRequestMessage, scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
-                httpRequestMessage.Method = HttpMethod.Post;
-                httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
-
-                _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-                HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
-                _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-
-                // Only process output bindings if response is succeess code
-                response.EnsureSuccessStatusCode();
-
-                HttpScriptInvocationResult httpScriptInvocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
-
-                if (httpScriptInvocationResult != null)
+                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), HttpMethod.Post))
                 {
-                    if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
-                    {
-                        _logger.LogDebug("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
-                    }
-                    if (httpScriptInvocationResult.ReturnValue == null)
-                    {
-                        _logger.LogDebug("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
-                    }
+                    httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
+                    _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
+                    _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
-                    ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);
+                    // Only process output bindings if response is succeess code
+                    response.EnsureSuccessStatusCode();
 
-                    ScriptInvocationResult scriptInvocationResult = httpScriptInvocationResult.ToScriptInvocationResult(scriptInvocationContext);
-                    scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
+                    HttpScriptInvocationResult httpScriptInvocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
+
+                    if (httpScriptInvocationResult != null)
+                    {
+                        if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
+                        {
+                            _logger.LogDebug("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                        }
+                        if (httpScriptInvocationResult.ReturnValue == null)
+                        {
+                            _logger.LogDebug("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                        }
+
+                        ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);
+
+                        ScriptInvocationResult scriptInvocationResult = httpScriptInvocationResult.ToScriptInvocationResult(scriptInvocationContext);
+                        scriptInvocationContext.ResultSource.SetResult(scriptInvocationResult);
+                    }
                 }
             }
             catch (Exception responseEx)
@@ -164,6 +149,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     }
                 }, null);
             }
+        }
+
+        private HttpRequestMessage CreateAndGetHttpRequestMessage(string functionName, string invocationId, HttpMethod requestMethod, IDictionary<string, string> queryCollectionAsDictionary = null)
+        {
+            var requestMessage = new HttpRequestMessage();
+            AddRequestHeadersAndSetRequestUri(requestMessage, functionName, invocationId);
+            if (queryCollectionAsDictionary != null)
+            {
+                requestMessage.RequestUri = new Uri(QueryHelpers.AddQueryString(requestMessage.RequestUri.ToString(), queryCollectionAsDictionary));
+            }
+            requestMessage.Method = requestMethod;
+            return requestMessage;
         }
 
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
