@@ -40,7 +40,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _testInvocationId = Guid.NewGuid();
             _httpWorkerOptions = new HttpWorkerOptions()
             {
-                Port = _defaultPort
+                Port = _defaultPort,
+                Type = string.Empty
             };
         }
 
