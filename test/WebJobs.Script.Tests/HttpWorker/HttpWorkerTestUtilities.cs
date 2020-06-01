@@ -35,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             httpRequest.Query = GetTestQueryParams();
             httpRequest.Headers[HeaderNames.AcceptCharset] = UTF8AcceptCharset;
             httpRequest.Headers[HeaderNames.Accept] = AcceptHeaderValue;
-
             var json = JsonConvert.SerializeObject(HttpContentStringValue);
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             httpRequest.Body = stream;
