@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (httpWorkerDescription == null)
             {
-                throw new HostConfigurationException($"Missing Description section in {ConfigurationSectionNames.CustomHandler} section.");
+                throw new HostConfigurationException($"Missing worker Description.");
             }
 
             var argumentsList = GetArgumentList(workerSection, argumentsSectionName);

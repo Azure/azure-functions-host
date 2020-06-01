@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 FunctionTimeout = TimeSpan.FromSeconds(3)
             };
 
-            _rootPath = Path.Combine(Environment.CurrentDirectory, "ScriptHostTests");
+            _rootPath = Path.Combine(Environment.CurrentDirectory, "HttpWorkerOptionsSetupTests");
             Environment.SetEnvironmentVariable(AzureWebJobsScriptRoot, _rootPath);
             Environment.SetEnvironmentVariable("TestEnv", "TestVal");
 
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             if (options.Description == null)
             {
                 Assert.IsType<HostConfigurationException>(ex);
-                Assert.Equal($"Missing Description section in {ConfigurationSectionNames.CustomHandler} section.", ex.Message);
+                Assert.Equal($"Missing worker Description.", ex.Message);
             }
             else
             {

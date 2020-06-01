@@ -33,7 +33,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 };
                 yield return new object[]
                 {
-                    new RpcWorkerContext("testId", 500, "testWorkerId", new WorkerProcessArguments() { ExecutablePath = "test" }, "c:\testDir", new Uri("http://localhost"))
+                    new RpcWorkerContext(
+                    "testId",
+                    500,
+                    "testWorkerId",
+                    new WorkerProcessArguments()
+                    {
+                        ExecutablePath = "test",
+                        ExecutableArguments = new List<string>() { "%httpkey1%", "%TestEnv%" },
+                        WorkerArguments = new List<string>() { "%httpkey2%" }
+                    },
+                    "c:\testDir",
+                    new Uri("http://localhost"),
+                    new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } })
                 };
             }
         }
@@ -62,7 +74,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 Assert.Equal(expectedEnvVars[envVar.Key], actualEnvVars[envVar.Key]);
             }
-            Assert.Equal(" httpvalue1 TestVal httpvalue2", childProcess.StartInfo.Arguments);
+            if (workerContext is RpcWorkerContext)
+            {
+                Assert.Equal(" httpvalue1 TestVal httpvalue2 --host localhost --port 80 --workerId testWorkerId --requestId testId --grpcMaxMessageLength 2147483647", childProcess.StartInfo.Arguments);
+            }
+            else
+            {
+                Assert.Equal(" httpvalue1 TestVal httpvalue2", childProcess.StartInfo.Arguments);
+            }
             childProcess.Dispose();
             Environment.SetEnvironmentVariable("TestEnv", string.Empty);
         }
