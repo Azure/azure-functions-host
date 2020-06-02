@@ -45,6 +45,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string GetConfigs = "workerconfigfactory.getconfigs";
         public const string AddProvider = "workerconfigfactory.getconfigs.buildworkerproviderdictionary.addprovider.{0}";
 
+        // Http worker events
+        public const string HttpWorker = "function.worker.HttpWorkerPresent";
+
         // function level events
         public const string FunctionInvokeLatency = "function.invoke.latency";
         public const string FunctionBindingTypeFormat = "function.binding.{0}";
