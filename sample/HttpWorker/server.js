@@ -1,12 +1,20 @@
-var http = require('http');
-const url = require('url');
-const port = process.env.FUNCTIONS_HTTPWORKER_PORT;
-console.log("port" + port);
-//create a server object:
-http.createServer(function (req, res) {
-  const reqUrl = url.parse(req.url, true);
-  console.log("Request handler random was called.");
-  res.writeHead(200, {"Content-Type": "application/json"});
-  var json = JSON.stringify({ functionName : req.url.replace("/","")});
-  res.end(json);
-}).listen(port); 
+const express = require("express");
+const app = express();
+
+app.use(express.json());
+
+const PORT = process.env.FUNCTIONS_HTTPWORKER_PORT;
+
+const server = app.listen(PORT, "localhost", () => {
+    console.log(`Your port is ${PORT}`);
+    const { address: host, port } = server.address();
+    console.log(`Example app listening at http://${host}:${port}`);
+});
+
+app.get("/hello", (req, res) => {
+    res.json("Hello World!");
+});
+
+app.post("/hello", (req, res) => {
+    res.json({ value: req.body });
+});
