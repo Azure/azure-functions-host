@@ -81,6 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     while (await messageAvailable());
                 }
             }
+            catch (Exception rpcException)
+            {
+                _logger.LogError(rpcException, "Exception encountered while listening to EventStream");
+            }
             finally
             {
                 foreach (var sub in outboundEventSubscriptions)
