@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 
@@ -28,8 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
+                                       IWorkerConsoleLogSource consoleLogSource,
+                                       IMetricsLogger metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger)
         {
             _runtime = runtime;
             _processFactory = processFactory;

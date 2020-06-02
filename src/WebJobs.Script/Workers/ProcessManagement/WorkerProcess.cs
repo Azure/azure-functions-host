@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
@@ -19,18 +20,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _workerProcessLogger;
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
+        private readonly IMetricsLogger _metricsLogger;
 
         private Process _process;
         private ProcessMonitor _processMonitor;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
+            _metricsLogger = metricsLogger;
         }
 
         public int Id => _process.Id;
@@ -41,33 +44,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartProcessAsync()
         {
-            _process = CreateWorkerProcess();
-            try
+            using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
-                _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-                _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-                _process.Exited += (sender, e) => OnProcessExited(sender, e);
-                _process.EnableRaisingEvents = true;
+                _process = CreateWorkerProcess();
+                try
+                {
+                    _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
+                    _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
+                    _process.Exited += (sender, e) => OnProcessExited(sender, e);
+                    _process.EnableRaisingEvents = true;
 
-                _workerProcessLogger?.LogInformation($"Starting worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
-                _process.Start();
-                _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                    _workerProcessLogger?.LogInformation($"Starting worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
+                    _process.Start();
+                    _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
-                _process.BeginErrorReadLine();
-                _process.BeginOutputReadLine();
+                    _process.BeginErrorReadLine();
+                    _process.BeginOutputReadLine();
 
-                // Register process only after it starts
-                _processRegistry?.Register(_process);
+                    // Register process only after it starts
+                    _processRegistry?.Register(_process);
 
-                _processMonitor = new ProcessMonitor(_process, SystemEnvironment.Instance);
-                _processMonitor.Start();
+                    _processMonitor = new ProcessMonitor(_process, SystemEnvironment.Instance);
+                    _processMonitor.Start();
 
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
-                return Task.FromException(ex);
+                    return Task.CompletedTask;
+                }
+                catch (Exception ex)
+                {
+                    _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
+                    return Task.FromException(ex);
+                }
             }
         }
 

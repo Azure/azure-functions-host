@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Mono.Unix;
@@ -28,8 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
                                        IWorkerConsoleLogSource consoleLogSource,
-                                       IEnvironment environment)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
+                                       IEnvironment environment,
+                                       IMetricsLogger metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;
