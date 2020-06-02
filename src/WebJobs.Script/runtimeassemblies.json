@@ -3,6 +3,26 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Microsoft.Azure.DocumentDB.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Table",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Blob",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.File",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Queue",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "DotNetTI.BreakingChangeAnalysis",
       "resolutionPolicy": "private"
     },
@@ -669,10 +689,6 @@
     {
       "name": "protobuf-net",
       "resolutionPolicy": "private"
-    },
-    {
-      "name": "SOS.NETCore",
-      "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System",

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -164,7 +165,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private async Task StartAsync()
         {
             bool running = false;
-            while (!running)
+            Stopwatch sw = Stopwatch.StartNew();
+            TimeSpan attemptLength = TimeSpan.FromMinutes(1);
+            while (!running && sw.Elapsed < attemptLength)
             {
                 running = await IsHostStarted(HttpClient);
 
@@ -172,6 +175,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     await Task.Delay(50);
                 }
+            }
+
+            if (!running)
+            {
+                throw new InvalidOperationException($"Unable to start host after trying for {attemptLength}");
             }
         }
 
@@ -317,6 +325,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
+            
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient = null) => Task.FromResult<string>(null);

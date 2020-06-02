@@ -58,11 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(306, nameof(ScriptStartUpUnableToLoadExtension)),
             "Unable to load startup extension '{startupExtensionName}' (Type: '{typeName}'). The type does not exist. Please validate the type and assembly names.");
 
-        private static readonly Action<ILogger, string, string, Exception> _scriptStartUpTypeIsNotValid =
-            LoggerMessage.Define<string, string>(
+        private static readonly Action<ILogger, string, string, string, Exception> _scriptStartUpTypeIsNotValid =
+            LoggerMessage.Define<string, string, string>(
             LogLevel.Warning,
             new EventId(307, nameof(ScriptStartUpTypeIsNotValid)),
-            "Type '{typeName}' is not a valid startup extension. The type does not implement {className}.");
+            "Type '{typeName}' is not a valid startup extension. The type does not implement {startupClassName} or {startupConfigurationClassName}.");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpUnableParseMetadataMissingProperty =
             LoggerMessage.Define<string>(
@@ -229,9 +229,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _scriptStartUpUnableToLoadExtension(logger, startupExtensionName, typeName, null);
         }
 
-        public static void ScriptStartUpTypeIsNotValid(this ILogger logger, string typeName, string className)
+        public static void ScriptStartUpTypeIsNotValid(this ILogger logger, string typeName, string startupClassName, string startupConfigurationClassName)
         {
-            _scriptStartUpTypeIsNotValid(logger, typeName, className, null);
+            _scriptStartUpTypeIsNotValid(logger, typeName, startupClassName, startupConfigurationClassName, null);
         }
 
         public static void ScriptStartUpUnableParseMetadataMissingProperty(this ILogger logger, string metadataFilePath)

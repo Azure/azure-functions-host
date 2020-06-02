@@ -4,6 +4,26 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Microsoft.Azure.DocumentDB.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Cosmos.Table",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Blob",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.File",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Queue",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -637,10 +657,6 @@
     },
     {
       "name": "NuGet.Versioning",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "SOS.NETCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

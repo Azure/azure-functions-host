@@ -38,7 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _cts.Cancel();
-            await _processingTask;
+
+            if (_processingTask != null)
+            {
+                await _processingTask;
+            }
         }
 
         private async Task ProcessLogs()

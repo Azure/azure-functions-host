@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script
 {
     internal sealed class NullHostedService : IHostedService
     {
-        private static readonly Lazy<NullHostedService> _instance = new Lazy<NullHostedService>(new NullHostedService());
+        private static readonly Lazy<NullHostedService> _instance = new Lazy<NullHostedService>(() => new NullHostedService());
 
         public static NullHostedService Instance => _instance.Value;
 

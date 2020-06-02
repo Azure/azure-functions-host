@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             using (var directory = new TempDirectory())
             {
                 var binPath = Path.Combine(directory.Path, "bin");
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(directory.Path);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 Directory.CreateDirectory(binPath);
 
                 void CopyToBin(string path)
@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
 
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
@@ -332,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
 
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
@@ -353,12 +353,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             using (var directory = GetTempDirectory())
             {
+                var binPath = Path.Combine(directory.Path, "bin");
                 TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
                 var testLogger = GetTestLogger();
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(directory.Path));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
@@ -385,10 +386,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = GetTestLogger();
 
                 string bundlePath = hasPrecompiledFunctions ? "FakePath" : directory.Path;
+                var binPath = Path.Combine(directory.Path, "bin");
 
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
-                mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).Returns(Task.FromResult(bundlePath));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);

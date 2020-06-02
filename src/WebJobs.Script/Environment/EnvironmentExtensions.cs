@@ -334,5 +334,37 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0")
                 || string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
         }
+
+        public static CloudName GetCloudName(this IEnvironment environment)
+        {
+            var cloudName = environment.GetEnvironmentVariable(EnvironmentSettingNames.CloudName);
+            if (Enum.TryParse(cloudName, true, out CloudName cloud))
+            {
+                return cloud;
+            }
+
+            return CloudName.Azure;
+        }
+
+        public static string GetStorageSuffix(this IEnvironment environment)
+        {
+            switch (GetCloudName(environment))
+            {
+                case CloudName.Azure:
+                    return CloudConstants.AzureStorageSuffix;
+                case CloudName.Blackforest:
+                    return CloudConstants.BlackforestStorageSuffix;
+                case CloudName.Fairfax:
+                    return CloudConstants.FairfaxStorageSuffix;
+                case CloudName.Mooncake:
+                    return CloudConstants.MooncakeStorageSuffix;
+                case CloudName.USNat:
+                    return CloudConstants.USNatStorageSuffix;
+                case CloudName.USSec:
+                    return CloudConstants.USSecStorageSuffix;
+                default:
+                    return CloudConstants.AzureStorageSuffix;
+            }
+        }
     }
 }

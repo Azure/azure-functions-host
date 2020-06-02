@@ -168,6 +168,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
             Assert.Equal(defaultPath, path);
         }
 
+        [Theory]
+        [InlineData(true, true, false)]
+        [InlineData(false, true, true)]
+        public async Task GetExtensionBundleBinPath_ReturnsCorrectLocation(bool readyToRunPathExists, bool defaultPathExists, bool expectDefaultBinPath)
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
+
+            var fileSystemTuple = GetDefaultBundleFileSystem(firstDefaultProbingPath, defaultPath);
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            var environment = GetTestAppServiceEnvironment();
+
+            string os = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
+            string bitness = Environment.Is64BitProcess ? "x64" : "x86";
+
+            string rrBinPath = Path.Combine(defaultPath, "bin_v3", $"{os}-{bitness}");
+            directoryBase.Setup(d => d.Exists(rrBinPath)).Returns(readyToRunPathExists);
+
+            string defaultBinPath = Path.Combine(defaultPath, "bin");
+            directoryBase.Setup(d => d.Exists(defaultBinPath)).Returns(defaultPathExists);
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, environment);
+            string binPath = await manager.GetExtensionBundleBinPathAsync();
+            Assert.NotNull(binPath);
+
+            Assert.Equal(expectDefaultBinPath ? defaultBinPath : rrBinPath, binPath);
+        }
+
+        [Fact]
+        public async Task GetExtensionBundleBinPath_NoBinaries_ReturnsNull()
+        {
+            var options = GetTestExtensionBundleOptions(BundleId, "[2.*, 3.0.0)");
+            string firstDefaultProbingPath = options.ProbingPaths.ElementAt(0);
+            string defaultPath = Path.Combine(firstDefaultProbingPath, "2.0.2");
+
+            var fileSystemTuple = GetDefaultBundleFileSystem(firstDefaultProbingPath, defaultPath);
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            var environment = GetTestAppServiceEnvironment();
+
+            string os = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "linux";
+            string bitness = Environment.Is64BitProcess ? "x64" : "x86";
+
+            string rrBinPath = Path.Combine(defaultPath, "bin_v3", $"{os}-{bitness}");
+            directoryBase.Setup(d => d.Exists(rrBinPath)).Returns(false);
+
+            string defaultBinPath = Path.Combine(defaultPath, "bin");
+            directoryBase.Setup(d => d.Exists(defaultBinPath)).Returns(false);
+
+            FileUtility.Instance = fileSystemTuple.Item1.Object;
+            var manager = GetExtensionBundleManager(options, environment);
+            string binPath = await manager.GetExtensionBundleBinPathAsync();
+            Assert.Null(binPath);
+        }
+
+        private Tuple<Mock<IFileSystem>, Mock<DirectoryBase>, Mock<FileBase>> GetDefaultBundleFileSystem(string firstDefaultProbingPath, string defaultPath)
+        {
+            var fileSystemTuple = CreateFileSystem();
+            var directoryBase = fileSystemTuple.Item2;
+            var fileBase = fileSystemTuple.Item3;
+
+            directoryBase.Setup(d => d.Exists(firstDefaultProbingPath)).Returns(true);
+            directoryBase.Setup(d => d.EnumerateDirectories(firstDefaultProbingPath))
+                .Returns(new[] { Path.Combine(firstDefaultProbingPath, "2.0.2") });
+
+            fileBase.Setup(f => f.Exists(Path.Combine(defaultPath, "bundle.json"))).Returns(true);
+            return fileSystemTuple;
+        }
+
         [Fact]
         public async Task GetExtensionBundleDetails_BundlePresentAtDownloadLocation_ReturnsCorrectPathAync()
         {
