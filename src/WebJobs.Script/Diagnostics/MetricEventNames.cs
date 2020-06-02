@@ -55,6 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string FunctionInvokeSucceeded = "function.invoke.succeeded";
         public const string FunctionInvokeFailed = "function.invoke.failed";
 
+        // Http worker events
+        public const string HttpWorker = "hostjsonfileconfigurationsource.httpworker";
+        public const string DelayUntilWorkerIsInitialized = "httpworkerchannel.delayuntilworkerisinitialized";
+
+        // Out of proc process events
+        public const string ProcessStart = "WorkerProcess.Start";
+
         // secret managment events
         public const string SecretManagerDeleteSecret = "secretmanager.deletesecret.{0}";
         public const string SecretManagerGetFunctionSecrets = "secretmanager.getfunctionsecrets.{0}";

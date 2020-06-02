@@ -33,7 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 workerProcessFactory.Object,
                 processRegistry.Object,
                 new TestLogger("test"),
-                languageWorkerConsoleLogSource.Object);
+                languageWorkerConsoleLogSource.Object,
+                new TestMetricsLogger());
         }
 
         [Fact]
