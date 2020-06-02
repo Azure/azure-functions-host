@@ -120,6 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // runtime/default context loaded assembly against a function assembly)
             if (!_sharedContextAssembliesInFallbackLoad.ContainsKey(assemblyName.Name))
             {
+                if (Shared.TryLoadDepsDependency(assemblyName, out Assembly assembly))
+                {
+                    return assembly;
+                }
+
                 return Shared.LoadCore(assemblyName);
             }
 
