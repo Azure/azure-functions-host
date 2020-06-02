@@ -4,6 +4,7 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,12 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     {
         private IConfiguration _configuration;
         private ILogger _logger;
+        private IMetricsLogger _metricsLogger;
         private ScriptJobHostOptions _scriptJobHostOptions;
 
-        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory)
+        public HttpWorkerOptionsSetup(IOptions<ScriptJobHostOptions> scriptJobHostOptions, IConfiguration configuration, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
         {
             _scriptJobHostOptions = scriptJobHostOptions.Value;
             _configuration = configuration;
+            _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger<HttpWorkerOptionsSetup>();
         }
 
@@ -29,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             var httpWorkerSection = jobHostSection.GetSection(ConfigurationSectionNames.HttpWorker);
             if (httpWorkerSection.Exists())
             {
+                _metricsLogger.LogEvent(MetricEventNames.HttpWorker);
                 httpWorkerSection.Bind(options);
                 HttpWorkerDescription httpWorkerDescription = options.Description;
 

@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private ILogger _workerChannelLogger;
         private IWorkerProcess _workerProcess;
         private IHttpWorkerService _httpWorkerService;
+        private IMetricsLogger _metricsLogger;
 
         internal HttpWorkerChannel(
            string workerId,
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _workerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _httpWorkerService = httpWorkerService;
+            _metricsLogger = metricsLogger;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
         }
 
@@ -46,23 +48,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
         {
-            _workerChannelLogger.LogDebug("Initializing HttpWorker.");
-            try
+            using (_metricsLogger.LatencyEvent(MetricEventNames.DelayUntilWorkerIsInitialized))
             {
-                bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
-                if (!isWorkerReady)
+                _workerChannelLogger.LogDebug("Initializing HttpWorker.");
+                try
                 {
-                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
+                    bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
+                    if (!isWorkerReady)
+                    {
+                        PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
+                    }
+                    else
+                    {
+                        _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                    // HttpFunctionInvocationDispatcher will handdle the worker error events
+                    PublishWorkerErrorEvent(ex);
                 }
-            }
-            catch (Exception ex)
-            {
-                // HttpFunctionInvocationDispatcher will handdle the worker error events
-                PublishWorkerErrorEvent(ex);
             }
         }
 
