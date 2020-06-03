@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -162,24 +161,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await _hostService.RestartHostAsync(cancellationToken);
         }
 
-        private async Task StartAsync()
+        private Task StartAsync()
         {
-            bool running = false;
-            Stopwatch sw = Stopwatch.StartNew();
-            TimeSpan attemptLength = TimeSpan.FromMinutes(1);
-            while (!running && sw.Elapsed < attemptLength)
+            var startTask = Task.Run(async () =>
             {
-                running = await IsHostStarted(HttpClient);
-
-                if (!running)
+                bool running = false;
+                while (!running)
                 {
-                    await Task.Delay(50);
-                }
-            }
+                    running = await IsHostStarted();
 
-            if (!running)
+                    if (!running)
+                    {
+                        await Task.Delay(50);
+                    }
+                }
+            });
+
+            if (startTask.Wait(TimeSpan.FromMinutes(1)))
             {
-                throw new InvalidOperationException($"Unable to start host after trying for {attemptLength}");
+                return Task.CompletedTask;
+            }
+            else
+            {
+                throw new Exception("Functions Host timed out trying to start.");
             }
         }
 
@@ -273,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testServer.Dispose();
         }
 
-        private async Task<bool> IsHostStarted(HttpClient client)
+        private async Task<bool> IsHostStarted()
         {
             HostStatus status = await GetHostStatusAsync();
             return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
@@ -326,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
             public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
-            
+
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient = null) => Task.FromResult<string>(null);
