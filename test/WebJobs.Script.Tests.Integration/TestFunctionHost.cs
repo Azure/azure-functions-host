@@ -163,10 +163,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private Task StartAsync()
         {
+            bool exit = false;
             var startTask = Task.Run(async () =>
             {
                 bool running = false;
-                while (!running)
+                while (!running && !exit)
                 {
                     running = await IsHostStarted();
 
@@ -183,6 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             else
             {
+                exit = true;
                 throw new Exception("Functions Host timed out trying to start.");
             }
         }
