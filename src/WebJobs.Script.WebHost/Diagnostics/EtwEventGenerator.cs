@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class EtwEventGenerator : IEventGenerator
     {
-        private const string EventTimestampFormat = "o";
+        private const string EventTimestampFormat = "O";
         private readonly AzureMonitorDiagnosticLogsEventSource _azureMonitorEventSource;
 
         public EtwEventGenerator()
