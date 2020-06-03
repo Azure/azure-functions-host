@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -191,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var nullLogger = new NullLoggerFactory();
             var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, new Mock<IEnvironment>().Object, new Mock<IScriptEventManager>().Object, nullLogger);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
-                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger);
+                new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             services.AddSingleton<IFunctionMetadataManager>(functionMetadataManager);
         }

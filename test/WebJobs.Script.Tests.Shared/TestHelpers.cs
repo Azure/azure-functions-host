@@ -268,6 +268,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
+        public static LanguageWorkerOptions GetTestLanguageWorkerOptions()
+        {
+            return new LanguageWorkerOptions
+            {
+                WorkerConfigs = GetTestWorkerConfigs()
+            };
+        }
+
         public static IList<RpcWorkerConfig> GetTestWorkerConfigsNoLanguage()
         {
             var workerDesc = new RpcWorkerDescription();
