@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public abstract class LinuxEventGenerator : IEventGenerator
     {
-        public static readonly string EventTimestampFormat = "MM/dd/yyyy hh:mm:ss.fff tt";
+        public static readonly string EventTimestampFormat = "O";
 
         // These names should match the source file names for fluentd
         public static readonly string FunctionsLogsCategory = "functionslogsv2";

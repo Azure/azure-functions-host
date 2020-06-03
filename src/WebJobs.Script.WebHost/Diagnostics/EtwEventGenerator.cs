@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class EtwEventGenerator : IEventGenerator
     {
-        private const string EventTimestamp = "MM/dd/yyyy hh:mm:ss.fff tt";
+        private const string EventTimestampFormat = "O";
         private readonly AzureMonitorDiagnosticLogsEventSource _azureMonitorEventSource;
 
         public EtwEventGenerator()
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName)
         {
-            string eventTimestamp = DateTime.UtcNow.ToString(EventTimestamp);
+            string eventTimestamp = DateTime.UtcNow.ToString(EventTimestampFormat);
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
             switch (level)
             {
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestamp), data, runtimeSiteName, slotName);
+            FunctionsSystemLogsEventSource.Instance.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, ScriptHost.Version, eventTimestamp.ToString(EventTimestampFormat), data, runtimeSiteName, slotName);
         }
 
         public void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
