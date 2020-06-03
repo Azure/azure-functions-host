@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 // We catch the exception, just to report it, then re-throw it
                 _logger.LogError(rpcException, "Exception encountered while listening to EventStream");
-                throw rpcException;
+                throw;
             }
             finally
             {
