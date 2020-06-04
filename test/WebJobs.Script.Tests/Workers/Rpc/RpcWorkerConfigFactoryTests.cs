@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -109,6 +110,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
                 Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
+            }
+        }
+
+        [Fact]
+        public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorkers:python:defaultRuntimeVersion"] = "3.8"
+                });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { "languageWorkers:python:defaultRuntimeVersion", "3.8" }
+            };
+            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
+            {
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+                var workerConfigs = configFactory.GetConfigs();
+                var pythonWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                Assert.Equal(4, workerConfigs.Count);
+                Assert.NotNull(pythonWorkerConfig);
+                Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
             }
         }
 
