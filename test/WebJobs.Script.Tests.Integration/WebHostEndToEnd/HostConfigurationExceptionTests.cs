@@ -92,15 +92,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 : base(scriptPath, logPath, configureWebHostServices, configureScriptHostWebJobsBuilder, configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices)
             {
             }
-
-            // Overriding this function as currently there's that causes HostState to be "Initialized" in case host.json has errors
-            // TODO: Once the issue is fixed, this class needs to be removed.
-            // https://github.com/Azure/azure-functions-host/issues/5959
-            internal override async Task<bool> IsHostStarted()
-            {
-                HostStatus status = await GetHostStatusAsync();
-                return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}" || status.State == $"{ScriptHostState.Initialized}";
-            }
         }
     }
 }
