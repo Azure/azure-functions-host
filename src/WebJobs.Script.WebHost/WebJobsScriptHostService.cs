@@ -227,6 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 bool isOffline = Utility.CheckAppOffline(_environment, _applicationHostOptions.CurrentValue.ScriptPath);
                 State = isOffline ? ScriptHostState.Offline : State;
                 bool hasNonTransientErrors = startupMode.HasFlag(JobHostStartupMode.HandlingNonTransientError);
+                bool handlingError = startupMode.HasFlag(JobHostStartupMode.HandlingError);
 
                 // If we're in a non-transient error state or offline, skip host initialization
                 bool skipJobHostStartup = isOffline || hasNonTransientErrors;
@@ -244,7 +245,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing += OnHostInitializing;
-                    scriptHost.HostInitialized += OnHostInitialized;
+
+                    if (!handlingError)
+                    {
+                        // Services may be initialized, but we don't want set the state to Initialized as we're
+                        // handling an error and want to retain the Error state.
+                        scriptHost.HostInitialized += OnHostInitialized;
+                    }
                 }
 
                 LogInitialization(localHost, isOffline, attemptCount, ++_hostStartCount, activeOperation.Id);
@@ -266,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     await localHost.StartAsync(currentCancellationToken);
                 }
 
-                if (!startupMode.HasFlag(JobHostStartupMode.HandlingError))
+                if (!handlingError)
                 {
                     LastError = null;
 
