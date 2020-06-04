@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _copiedRootPath = GetDestPath(i++);
             while (Directory.Exists(_copiedRootPath))
             {
-                _copiedRootPath = GetDestPath(i);
+                _copiedRootPath = GetDestPath(i++);
             }
 
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
