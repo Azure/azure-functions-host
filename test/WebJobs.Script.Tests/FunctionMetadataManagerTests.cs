@@ -10,7 +10,6 @@ using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -64,8 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ImmutableDictionary<string, ImmutableArray<string>> mockFunctionErrors = new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(functionMetadataCollection.ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false)).Returns(functionMetadataCollection.ToImmutableArray());
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors);
 
             var managerMock = new Mock<IScriptHostManager>();
