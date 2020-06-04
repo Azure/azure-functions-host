@@ -14,13 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 LoggerMessage.DefineScope<string>("Verifying host availability (Request = {RequestId})");
 
             private static readonly Action<ILogger, Exception> _initiatingHostAvailabilityCheck =
-               LoggerMessage.Define(LogLevel.Debug, new EventId(1, nameof(InitiatingHostAvailabilityCheck)), "Initiating host availability check.");
+               LoggerMessage.Define(LogLevel.Trace, new EventId(1, nameof(InitiatingHostAvailabilityCheck)), "Initiating host availability check.");
 
             private static readonly Action<ILogger, Exception> _hostUnavailableAfterCheck =
                LoggerMessage.Define(LogLevel.Warning, new EventId(2, nameof(HostUnavailableAfterCheck)), "Host unavailable after check. Returning error.");
 
             private static readonly Action<ILogger, Exception> _hostAvailabilityCheckSucceeded =
-               LoggerMessage.Define(LogLevel.Debug, new EventId(3, nameof(HostAvailabilityCheckSucceeded)), "Host availability check succeeded.");
+               LoggerMessage.Define(LogLevel.Trace, new EventId(3, nameof(HostAvailabilityCheckSucceeded)), "Host availability check succeeded.");
 
             public static IDisposable VerifyingHostAvailabilityScope(ILogger logger, string requestId) => _verifyingHostAvailabilityScope(logger, requestId);
 

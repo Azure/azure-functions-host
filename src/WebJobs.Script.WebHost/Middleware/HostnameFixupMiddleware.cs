@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _logger = logger;
         }
 
-        public async Task Invoke(HttpContext context)
+        public Task Invoke(HttpContext context)
         {
             _hostNameProvider.Synchronize(context.Request, _logger);
-            await _next.Invoke(context);
+            return _next.Invoke(context);
         }
     }
 }

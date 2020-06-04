@@ -24,11 +24,15 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
         private RequestDelegate BuildPipeline(IEnumerable<IJobHostHttpMiddleware> middleware)
         {
-            RequestDelegate pipeline = async context =>
+            RequestDelegate pipeline = context =>
             {
                 if (context.Items.Remove(ScriptConstants.JobHostMiddlewarePipelineRequestDelegate, out object requestDelegate) && requestDelegate is RequestDelegate next)
                 {
-                    await next(context);
+                    return next(context);
+                }
+                else
+                {
+                    return Task.CompletedTask;
                 }
             };
 
@@ -42,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
         private static Func<RequestDelegate, RequestDelegate> GetMiddlewareDelegate(IJobHostHttpMiddleware middleware)
         {
-            return c => async context => await middleware.Invoke(context, c);
+            return next => context => middleware.Invoke(context, next);
         }
     }
 }

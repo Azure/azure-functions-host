@@ -1,17 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
@@ -19,6 +16,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
-        private IApplicationLifetime _applicationLifetime;
 
         public FunctionInvocationMiddleware(RequestDelegate next)
         {
@@ -43,9 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 await _next(context);
             }
 
-            _applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-
-            IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+            var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
                 int nestedProxiesCount = GetNestedProxiesCount(context, functionExecution);
@@ -127,7 +122,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 using (logger.BeginScope(scopeState))
                 {
-                    CancellationToken cancellationToken = _applicationLifetime != null ? _applicationLifetime.ApplicationStopping : CancellationToken.None;
+                    var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
+                    CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
                 }
             }
@@ -170,12 +166,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorizeAsync(HttpContext context, FunctionDescriptor descriptor)
         {
-            if (!descriptor.Metadata.IsProxy())
+            if (RequiresAuthz(context.Request, descriptor))
             {
-                var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
-                AuthorizationPolicy policy = AuthUtility.CreateFunctionPolicy();
-
                 // Authenticate the request
+                var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
+                var policy = AuthUtility.DefaultFunctionPolicy;
                 var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
 
                 // Authorize using the function policy and resource
@@ -187,6 +182,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 return true;
             }
+        }
+
+        internal static bool RequiresAuthz(HttpRequest request, FunctionDescriptor descriptor)
+        {
+            if (descriptor.Metadata.IsProxy())
+            {
+                return false;
+            }
+
+            var httpTrigger = descriptor.HttpTriggerAttribute;
+            if (httpTrigger?.AuthLevel == AuthorizationLevel.Anonymous &&
+                !request.Headers.ContainsKey(ScriptConstants.EasyAuthIdentityHeader) &&
+                !request.Headers.ContainsKey(AuthenticationLevelHandler.FunctionsKeyHeaderName) &&
+                !request.Query.ContainsKey(AuthenticationLevelHandler.FunctionsKeyQueryParamName))
+            {
+                // Anonymous functions w/o any of our special request headers don't require authz.
+                // In cases where the function is anonymous but has one of these headers, we run
+                // authz so claims are populated.
+                return false;
+            }
+
+            return true;
         }
     }
 }

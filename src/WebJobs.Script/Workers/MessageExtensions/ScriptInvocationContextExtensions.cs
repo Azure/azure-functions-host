@@ -19,36 +19,89 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static InvocationRequest ToRpcInvocationRequest(this ScriptInvocationContext context, bool isTriggerMetadataPopulatedByWorker, ILogger logger, Capabilities capabilities)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, Capabilities capabilities)
         {
-            InvocationRequest invocationRequest = new InvocationRequest()
+            bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
+
+            var invocationRequest = new InvocationRequest
             {
                 FunctionId = context.FunctionMetadata.GetFunctionId(),
                 InvocationId = context.ExecutionContext.InvocationId.ToString(),
                 TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes, logger),
             };
 
-            foreach (var pair in context.BindingData)
-            {
-                if (pair.Value != null)
-                {
-                    if ((pair.Value is HttpRequest) && isTriggerMetadataPopulatedByWorker)
-                    {
-                        continue;
-                    }
-                    invocationRequest.TriggerMetadata.Add(pair.Key, pair.Value.ToRpc(logger, capabilities));
-                }
-            }
+            var rpcValueCache = new Dictionary<object, TypedData>();
+
             foreach (var input in context.Inputs)
             {
-                invocationRequest.InputData.Add(new ParameterBinding()
+                if (!rpcValueCache.TryGetValue(input.val, out TypedData rpcValue))
+                {
+                    rpcValue = await input.val.ToRpc(logger, capabilities);
+                }
+
+                var parameterBinding = new ParameterBinding
                 {
                     Name = input.name,
-                    Data = input.val.ToRpc(logger, capabilities)
-                });
+                    Data = rpcValue
+                };
+                invocationRequest.InputData.Add(parameterBinding);
+            }
+
+            foreach (var pair in context.BindingData)
+            {
+                if (ShouldSkipBindingData(pair, context, excludeHttpTriggerMetadata))
+                {
+                    continue;
+                }
+
+                if (!rpcValueCache.TryGetValue(pair.Value, out TypedData rpcValue))
+                {
+                    rpcValue = await pair.Value.ToRpc(logger, capabilities);
+                    rpcValueCache.Add(pair.Value, rpcValue);
+                }
+
+                invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
             }
 
             return invocationRequest;
+        }
+
+        /// <summary>
+        /// Determine whether we can omit the specified binding data for performance.
+        /// </summary>
+        private static bool ShouldSkipBindingData(KeyValuePair<string, object> bindingData, ScriptInvocationContext context, bool excludeHttpTriggerMetadata)
+        {
+            if (bindingData.Value == null)
+            {
+                return true;
+            }
+
+            // if this is an http request and the worker declares that it handles exclusion
+            // of http binding metadata, we'll skip those
+            if (context.FunctionMetadata.IsHttpInAndOutFunction() && excludeHttpTriggerMetadata)
+            {
+                if (bindingData.Value is HttpRequest)
+                {
+                    // will exclude req/$request binding data members
+                    return true;
+                }
+
+                if (bindingData.Key.Equals("headers", StringComparison.OrdinalIgnoreCase) || bindingData.Key.Equals("query", StringComparison.OrdinalIgnoreCase))
+                {
+                    // these values are already part of the the request
+                    return true;
+                }
+            }
+
+            if (bindingData.Key.Equals("sys", StringComparison.OrdinalIgnoreCase) &&
+                bindingData.Value.GetType().Name.Equals("SystemBindingData", StringComparison.OrdinalIgnoreCase))
+            {
+                // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
+                // pipeline (e.g. sys.RandGuid, etc.)
+                return true;
+            }
+
+            return false;
         }
 
         public static async Task<HttpScriptInvocationContext> ToHttpScriptInvocationContext(this ScriptInvocationContext scriptInvocationContext)

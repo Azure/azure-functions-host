@@ -3,19 +3,18 @@
 
 using System;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class NullMetricsPublisher : IMetricsPublisher
     {
-        private readonly ILogger _logger;
+        private static readonly Lazy<NullMetricsPublisher> _instance = new Lazy<NullMetricsPublisher>(new NullMetricsPublisher());
 
-        public NullMetricsPublisher(ILogger<NullMetricsPublisher> logger)
+        private NullMetricsPublisher()
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _logger.LogDebug("Initializing null metrics publisher");
         }
+
+        public static IMetricsPublisher Instance => _instance.Value;
 
         public void AddFunctionExecutionActivity(string functionName, string invocationId, int concurrency, string executionStage, bool success, long executionTimeSpan, string executionId, DateTime eventTimeStamp, DateTime functionStartTime)
         {

@@ -10,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         public DateTimeOffset Timestamp { get; set; }
 
+        public DateTime EventTimestamp { get; set; }
+
         public LogLevel Level { get; set; }
 
         public string SubscriptionId { get; set; }

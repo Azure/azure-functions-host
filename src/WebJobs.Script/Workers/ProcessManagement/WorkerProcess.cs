@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IScriptEventManager _eventManager;
 
         private Process _process;
+        private ProcessMonitor _processMonitor;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
@@ -56,6 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
                 // Register process only after it starts
                 _processRegistry?.Register(_process);
+
+                _processMonitor = new ProcessMonitor(_process, SystemEnvironment.Instance);
+                _processMonitor.Start();
+
                 return Task.CompletedTask;
             }
             catch (Exception ex)
@@ -63,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
                 return Task.FromException(ex);
             }
+        }
+
+        public ProcessStats GetStats()
+        {
+            return _processMonitor.GetStats();
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -183,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     _process.Dispose();
                 }
+                _processMonitor.Dispose();
             }
             catch (Exception exc)
             {

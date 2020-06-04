@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -75,6 +75,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
         internal static string ErrorTooManySecretBackups {
             get {
                 return ResourceManager.GetString("ErrorTooManySecretBackups", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Executed HTTP request: {{
+        ///  requestId: &quot;{mS_ActivityId}&quot;,
+        ///  identities: &quot;{identities}&quot;,
+        ///  status: &quot;{statusCode}&quot;,
+        ///  duration: &quot;{duration}&quot;
+        ///}}.
+        /// </summary>
+        internal static string ExecutedHttpRequest {
+            get {
+                return ResourceManager.GetString("ExecutedHttpRequest", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Executing HTTP request: {{
+        ///  requestId: &quot;{mS_ActivityId}&quot;,
+        ///  method: &quot;{httpMethod}&quot;,
+        ///  userAgent: &quot;{userAgent}&quot;,
+        ///  uri: &quot;{uri}&quot;
+        ///}}.
+        /// </summary>
+        internal static string ExecutingHttpRequest {
+            get {
+                return ResourceManager.GetString("ExecutingHttpRequest", resourceCulture);
             }
         }
         

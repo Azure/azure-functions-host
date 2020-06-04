@@ -726,7 +726,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void ValidateFunction(FunctionDescriptor function, Dictionary<string, HttpTriggerAttribute> httpFunctions)
         {
-            var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+            var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
             {
                 bool isProxy = function.Metadata != null && function.Metadata.IsProxy();

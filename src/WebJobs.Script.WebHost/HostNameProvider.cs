@@ -56,11 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!string.IsNullOrEmpty(hostNameHeaderValue) &&
                 string.Compare(Value, hostNameHeaderValue) != 0)
             {
-                if (string.Compare(Value, hostNameHeaderValue) != 0)
-                {
-                    logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
-                    _hostName = hostNameHeaderValue;
-                }
+                logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
+                _hostName = hostNameHeaderValue;
             }
         }
 

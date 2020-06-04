@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private int _applicationStopped;
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
-            IServiceScopeFactory rootScopeFactory, IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
+            IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime)
         {
             if (loggerFactory == null)
@@ -589,7 +589,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             var exceededCounters = new Collection<string>();
-            if (_performanceManager.IsUnderHighLoad(exceededCounters))
+            if (_performanceManager.PerformanceCountersExceeded(exceededCounters))
             {
                 string formattedCounters = string.Join(", ", exceededCounters);
                 if (throwWhenUnhealthy)

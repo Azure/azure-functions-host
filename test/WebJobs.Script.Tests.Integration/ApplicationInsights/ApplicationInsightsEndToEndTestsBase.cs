@@ -79,16 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     ValidateMetric(metric, invocationId, functionName);
                 }
             }
-
-            // App Insights logs first, so wait until this metric appears
-            string metricKey = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, functionName);
-            IEnumerable<string> GetMetrics() => _fixture.MetricsLogger.LoggedEvents.Where(p => p == metricKey);
-
-            // TODO: Remove this check when metrics are supported in Node:
-            // https://github.com/Azure/azure-functions-host/issues/2189
-            int expectedCount = this is ApplicationInsightsCSharpEndToEndTests ? 10 : 5;
-            await TestHelpers.Await(() => GetMetrics().Count() == expectedCount,
-                timeout: 15000, userMessageCallback: () => string.Join(Environment.NewLine, GetMetrics().Select(p => p.ToString())));
         }
 
         [Fact]

@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
-            channel.SendInvocationRequest(scriptInvocationContext);
+            await channel.SendInvocationRequest(scriptInvocationContext);
             Task result = channel.DrainInvocationsAsync();
             Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
             channel.InvokeResponse(new InvocationResponse

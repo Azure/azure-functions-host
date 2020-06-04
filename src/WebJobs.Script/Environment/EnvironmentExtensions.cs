@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
         }
 
-        public static bool IsV2CompatabileOnV3Extension(this IEnvironment environment)
+        public static bool IsV2CompatibileOnV3Extension(this IEnvironment environment)
         {
             string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
             bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
@@ -165,6 +165,26 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
             return string.Equals(value, ScriptConstants.DynamicSku, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
+        /// </summary>
+        public static bool IsVMSS(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(EnvironmentSettingNames.RoleInstanceId);
+            return value != null && value.IndexOf("HostRole", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Gets the number of effective cores taking into account SKU/environment restrictions.
+        /// </summary>
+        public static int GetEffectiveCoresCount(this IEnvironment environment)
+        {
+            // When not running on VMSS, the dynamic plan has some limits that mean that a given instance is using effectively a single core,
+            // so we should not use Environment.Processor count in this case.
+            var effectiveCores = (environment.IsWindowsConsumption() && !environment.IsVMSS()) ? 1 : Environment.ProcessorCount;
+            return effectiveCores;
         }
 
         /// <summary>

@@ -14,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Task InvokeFunction(ScriptInvocationContext context);
 
         Task StartWorkerProcessAsync(CancellationToken cancellationToken = default);
+
+        Task<WorkerStatus> GetWorkerStatusAsync();
     }
 }

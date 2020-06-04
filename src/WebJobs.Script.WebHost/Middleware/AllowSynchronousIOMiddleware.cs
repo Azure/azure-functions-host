@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext context)
+        public Task Invoke(HttpContext context)
         {
             var bodyControlFeature = context.Features.Get<IHttpBodyControlFeature>();
             if (bodyControlFeature != null)
@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 bodyControlFeature.AllowSynchronousIO = true;
             }
 
-            await _next.Invoke(context);
+            return _next.Invoke(context);
         }
     }
 }

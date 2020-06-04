@@ -36,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
         public const string IgnoreEmptyValuedRpcHttpHeaders = "IgnoreEmptyValuedRpcHttpHeaders";
+        public const string WorkerStatus = "WorkerStatus";
 
         // Host Capabilites
         public const string V2Compatable = "V2Compatable";

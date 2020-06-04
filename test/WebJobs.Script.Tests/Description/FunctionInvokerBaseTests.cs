@@ -53,11 +53,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             metadata.Bindings.Add(BindingMetadata.Create(binding));
 
+            var metadataManager = new MockMetadataManager(new[] { metadata });
             _host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost()
                 .ConfigureServices(s =>
                 {
-                    var metadataManager = new MockMetadataManager(new[] { metadata });
                     s.AddSingleton<IFunctionMetadataManager>(metadataManager);
                 })
                 .Build();
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _scriptHost = _host.GetScriptHost();
             _scriptHost.InitializeAsync().Wait();
 
-            _invoker = new MockInvoker(_scriptHost, _metricsLogger, metadata, loggerFactory);
+            _invoker = new MockInvoker(_scriptHost, _metricsLogger, metadataManager, metadata, loggerFactory);
         }
 
         [Fact]
@@ -217,27 +217,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class MockInvoker : FunctionInvokerBase
         {
-            private readonly FunctionInstanceLogger _fastLogger;
+            private readonly FunctionInstanceLogger _instanceLogger;
 
-            public MockInvoker(ScriptHost host, IMetricsLogger metrics, FunctionMetadata metadata, ILoggerFactory loggerFactory)
+            public MockInvoker(ScriptHost host, IMetricsLogger metrics, IFunctionMetadataManager functionMetadataManager, FunctionMetadata metadata, ILoggerFactory loggerFactory)
                 : base(host, metadata, loggerFactory)
             {
-                var metadataManagerMock = new Mock<IFunctionMetadataManager>();
-                metadataManagerMock.Setup(m => m.GetFunctionMetadata(It.IsAny<bool>(), It.IsAny<bool>()))
-                    .Returns(new[] { metadata }.ToImmutableArray());
-                _fastLogger = new FunctionInstanceLogger(metadataManagerMock.Object, metrics);
+                _instanceLogger = new FunctionInstanceLogger(functionMetadataManager, metrics);
             }
 
             protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
             {
-                FunctionInstanceLogEntry item = new FunctionInstanceLogEntry
+                var item = new FunctionInstanceLogEntry
                 {
                     FunctionInstanceId = context.ExecutionContext.InvocationId,
                     StartTime = DateTime.UtcNow,
                     FunctionName = Metadata.Name,
+                    LogName = Utility.GetFunctionShortName(Metadata.Name),
                     Properties = new Dictionary<string, object>()
                 };
-                await _fastLogger.AddAsync(item);
+                await _instanceLogger.AddAsync(item);
 
                 InvocationData invocation = parameters.OfType<InvocationData>().FirstOrDefault() ?? new InvocationData();
 
@@ -257,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     item.EndTime = DateTime.UtcNow;
                     item.ErrorDetails = error;
-                    await _fastLogger.AddAsync(item);
+                    await _instanceLogger.AddAsync(item);
                 }
             }
         }
@@ -284,6 +282,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyWhitelist = true)
             {
                 return _functions.ToImmutableArray();
+            }
+
+            public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)
+            {
+                functionMetadata = _functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));
+                return functionMetadata != null;
             }
         }
     }

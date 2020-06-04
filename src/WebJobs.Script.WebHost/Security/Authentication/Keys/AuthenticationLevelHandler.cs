@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     internal class AuthenticationLevelHandler : AuthenticationHandler<AuthenticationLevelOptions>
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
+        public const string FunctionsKeyQueryParamName = "code";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
 
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             {
                 keyValue = values.First();
             }
-            else if (request.Query.TryGetValue("code", out values))
+            else if (request.Query.TryGetValue(FunctionsKeyQueryParamName, out values))
             {
                 keyValue = values.First();
             }

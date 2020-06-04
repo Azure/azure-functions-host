@@ -2,6 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.ApplicationInsights.AspNetCore;
+using Microsoft.Azure.Documents;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
@@ -161,6 +163,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 LogLevel.Information,
                 new EventId(526, nameof(ScriptHostServiceInitCanceledByRuntime)),
                 "Restart cancellation requested by runtime.");
+
+        private static readonly Action<ILogger, string, string, string, string, Exception> _executingHttpRequest =
+            LoggerMessage.Define<string, string, string, string>(
+                LogLevel.Information,
+                new EventId(527, nameof(ExecutingHttpRequest)),
+                Properties.Resources.ExecutingHttpRequest);
+
+        private static readonly Action<ILogger, string, string, int, long, Exception> _executedHttpRequest =
+            LoggerMessage.Define<string, string, int, long>(
+                LogLevel.Information,
+                new EventId(528, nameof(ExecutedHttpRequest)),
+                Properties.Resources.ExecutedHttpRequest);
+
+        public static void ExecutingHttpRequest(this ILogger logger, string mS_ActivityId, string httpMethod, string userAgent, string uri)
+        {
+            _executingHttpRequest(logger, mS_ActivityId, httpMethod, userAgent, uri, null);
+        }
+
+        public static void ExecutedHttpRequest(this ILogger logger, string mS_ActivityId, string identities, int statusCode, long duration)
+        {
+            _executedHttpRequest(logger, mS_ActivityId, identities, statusCode, duration, null);
+        }
 
         public static void ScriptHostServiceInitCanceledByRuntime(this ILogger logger)
         {

@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security.Authorization
         private Mock<FunctionDescriptor> CreateDefaultDescriptor(AuthorizationLevel triggerLevel)
         {
             var descriptor = new Mock<FunctionDescriptor>();
-            descriptor.Setup(d => d.GetTriggerAttributeOrNull<HttpTriggerAttribute>())
+            descriptor.SetupGet(d => d.HttpTriggerAttribute)
                 .Returns(new HttpTriggerAttribute(triggerLevel));
 
             return descriptor;

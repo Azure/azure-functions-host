@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -237,6 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             _startedEvent = new FunctionStartedEvent(_invocationId, _metadata);
             _metrics.BeginEvent(_startedEvent);
+
             _invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, _metadata);
         }
 
@@ -244,26 +246,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public void End(bool success)
         {
             _startedEvent.Success = success;
+
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
+            string functionName = _metadata != null ? _metadata.Name : string.Empty;
+            string data = string.Format(Properties.Resources.FunctionInvocationMetricsData, _startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            _metrics.LogEvent(eventName, _startedEvent.FunctionName, data);
 
-            var data = new JObject
-            {
-                ["Language"] = _startedEvent.FunctionMetadata.Language,
-                ["FunctionName"] = _metadata != null ? _metadata.Name : string.Empty,
-                ["Success"] = success,
-                ["IsStopwatchHighResolution"] = Stopwatch.IsHighResolution
-            };
-
-            string jsonData = data.ToString();
-
-            _startedEvent.Data = jsonData;
-            _metrics.LogEvent(eventName, _startedEvent.FunctionName, jsonData);
-
+            _startedEvent.Data = data;
             _metrics.EndEvent(_startedEvent);
 
             if (_invokeLatencyEvent is MetricEvent metricEvent)
             {
-                metricEvent.Data = jsonData;
+                metricEvent.Data = data;
             }
 
             _metrics.EndEvent(_invokeLatencyEvent);

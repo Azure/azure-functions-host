@@ -100,5 +100,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             Dispose(true);
         }
+
+        public Task<WorkerStatus> GetWorkerStatusAsync()
+        {
+            // TODO: implement the status request to the worker to
+            // set Latency below
+            var workerStatus = new WorkerStatus
+            {
+                ProcessStats = _workerProcess.GetStats()
+            };
+            return Task.FromResult(workerStatus);
+        }
     }
 }

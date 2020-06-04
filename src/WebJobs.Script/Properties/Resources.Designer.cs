@@ -169,6 +169,20 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {{
+        ///  Language: &quot;{0}&quot;,
+        ///  FunctionName: &quot;{1}&quot;,
+        ///  Success: {2}
+        ///  IsStopwatchHighResolution: {3}
+        ///}}.
+        /// </summary>
+        internal static string FunctionInvocationMetricsData {
+            get {
+                return ResourceManager.GetString("FunctionInvocationMetricsData", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
         /// </summary>
         internal static string MatchingBundleNotFound {

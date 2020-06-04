@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
         }
 
-        public async Task Invoke(HttpContext httpContext, WebJobsScriptHostService manager)
+        public Task Invoke(HttpContext httpContext, WebJobsScriptHostService manager)
         {
             if (manager.Services is IServiceScopeFactory scopedServiceProvider)
             {
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 features.Set<IServiceProvidersFeature>(new RequestServicesFeature(httpContext, scopedServiceProvider));
             }
 
-            await _next(httpContext);
+            return _next(httpContext);
         }
     }
 }

@@ -29,17 +29,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             }
         }
 
+        public static bool IsHomepageRequest(HttpContext context)
+        {
+            return context.Request.Path.Value == "/";
+        }
+
         public async Task Invoke(HttpContext context)
         {
             await _next(context);
 
-            IFunctionExecutionFeature functionExecution = context.Features.Get<IFunctionExecutionFeature>();
-
-            if (functionExecution == null
-                && context.Request.Path.Value == "/")
+            var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
+            if (functionExecution == null && IsHomepageRequest(context))
             {
                 IActionResult result = null;
-
                 if (IsHomepageDisabled || context.Request.IsAppServiceInternalRequest())
                 {
                     result = new NoContentResult();

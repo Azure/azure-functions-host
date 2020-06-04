@@ -5,17 +5,18 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public class NullMeshServiceClient : IMeshServiceClient
     {
-        public NullMeshServiceClient(ILogger<NullMeshServiceClient> logger)
+        private static readonly Lazy<NullMeshServiceClient> _instance = new Lazy<NullMeshServiceClient>(new NullMeshServiceClient());
+
+        private NullMeshServiceClient()
         {
-            var nullLogger = logger ?? throw new ArgumentNullException(nameof(logger));
-            nullLogger.LogDebug($"Initializing {nameof(NullMeshServiceClient)}");
         }
+
+        public static NullMeshServiceClient Instance => _instance.Value;
 
         public Task MountCifs(string connectionString, string contentShare, string targetPath)
         {

@@ -24,8 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _httpOptions = httpOptions;
 
-            if (_httpOptions.Value.MaxOutstandingRequests != DataflowBlockOptions.Unbounded ||
-                _httpOptions.Value.MaxConcurrentRequests != DataflowBlockOptions.Unbounded)
+            if (IsEnabled(_httpOptions.Value))
             {
                 InitializeRequestQueue();
             }
@@ -35,6 +34,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// Gets a value indicating whether request queueing is enabled.
         /// </summary>
         public bool Enabled => _requestQueue != null;
+
+        public static bool IsEnabled(HttpOptions httpOptions)
+        {
+            return httpOptions.MaxOutstandingRequests != DataflowBlockOptions.Unbounded ||
+                httpOptions.MaxConcurrentRequests != DataflowBlockOptions.Unbounded;
+        }
 
         public async Task<bool> Post(HttpContext httpContext, RequestDelegate next)
         {

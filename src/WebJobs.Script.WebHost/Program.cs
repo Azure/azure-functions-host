@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
 
-            ConfigureMinimumThreads(SystemEnvironment.Instance.IsWindowsConsumption());
+            ConfigureMinimumThreads(SystemEnvironment.Instance);
         }
 
         private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             LinuxContainerEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
         }
 
-        private static void ConfigureMinimumThreads(bool isDynamicSku)
+        private static void ConfigureMinimumThreads(IEnvironment environment)
         {
             // For information on MinThreads, see:
             // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netcore-2.2
@@ -120,8 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             //
             // This behavior can be overridden by using the "ComPlus_ThreadPool_ForceMinWorkerThreads" environment variable (honored by the .NET threadpool).
 
-            // The dynamic plan has some limits that mean that a given instance is using effectively a single core, so we should not use Environment.Processor count in this case.
-            var effectiveCores = isDynamicSku ? 1 : Environment.ProcessorCount;
+            var effectiveCores = environment.GetEffectiveCoresCount();
 
             // This value was derived by looking at the thread count for several function apps running load on a multicore machine and dividing by the number of cores.
             const int minThreadsPerLogicalProcessor = 6;

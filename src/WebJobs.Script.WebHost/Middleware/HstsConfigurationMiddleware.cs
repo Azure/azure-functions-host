@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -17,11 +16,15 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
 
         public HstsConfigurationMiddleware(IOptions<HostHstsOptions> hostHstsOptions)
         {
-            RequestDelegate contextNext = async context =>
+            RequestDelegate contextNext = context =>
             {
                 if (context.Items.Remove(ScriptConstants.HstsMiddlewareRequestDelegate, out object requestDelegate) && requestDelegate is RequestDelegate next)
                 {
-                    await next(context);
+                    return next(context);
+                }
+                else
+                {
+                    return Task.CompletedTask;
                 }
             };
 
@@ -36,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Middleware
             }
         }
 
-        public async Task Invoke(HttpContext context, RequestDelegate next)
+        public Task Invoke(HttpContext context, RequestDelegate next)
         {
             context.Items.Add(ScriptConstants.HstsMiddlewareRequestDelegate, next);
-            await _invoke(context);
+            return _invoke(context);
         }
     }
 }

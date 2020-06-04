@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Use if readonly and not v2 compatible on ~3 extension
-                    return _environment.IsFileSystemReadOnly() && !_environment.IsV2CompatabileOnV3Extension();
+                    return _environment.IsFileSystemReadOnly() && !_environment.IsV2CompatibileOnV3Extension();
                 }
                 return true;
             }

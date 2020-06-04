@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -27,7 +26,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static TestLogger _testLogger = new TestLogger("FunctionDispatcherTests");
 
         [Fact]
-        public async void Starting_MultipleJobhostChannels_Succeeds()
+        public async Task GetWorkerStatusesAsync_ReturnsExpectedResult()
+        {
+            int expectedProcessCount = 3;
+            var functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+
+            var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            Assert.Equal(expectedProcessCount, finalChannelCount);
+
+            var result = await functionDispatcher.GetWorkerStatusesAsync();
+            Assert.Equal(expectedProcessCount, result.Count);
+            foreach (var status in result.Values)
+            {
+                Assert.Equal(TimeSpan.FromMilliseconds(10), status.Latency);
+                Assert.Equal(26, status.ProcessStats.CpuLoadHistory.Average());
+            }
+        }
+
+        [Fact]
+        public async Task Starting_MultipleJobhostChannels_Succeeds()
         {
             int expectedProcessCount = 3;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
@@ -38,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async void Starting_MultipleWebhostChannels_Succeeds()
+        public async Task Starting_MultipleWebhostChannels_Succeeds()
         {
             int expectedProcessCount = 2;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString(), true);
@@ -52,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async void SuccessiveRestarts_WorkerCountsStayTheSame()
+        public async Task SuccessiveRestarts_WorkerCountsStayTheSame()
         {
             int expectedProcessCount = 3;
             List<Task> restartTasks = new List<Task>();
@@ -81,8 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count always stays at the initial count
         }
 
-        [Fact]
-        public async void Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
+        public async Task Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
         {
             int expectedProcessCount = 3;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
@@ -109,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async void Restart_AllChannels_Succeeds()
+        public async Task Restart_AllChannels_Succeeds()
         {
             int expectedProcessCount = 3;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());

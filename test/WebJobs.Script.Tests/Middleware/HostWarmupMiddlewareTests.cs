@@ -19,39 +19,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             var hostEnvironment = new ScriptWebHostEnvironment(environment);
             var request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
 
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             // Reset environment
             environment.Clear();
             hostEnvironment = new ScriptWebHostEnvironment(environment);
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "12345");
-            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/csharphttpwarmup");
-            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz123");
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/foo");
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             // Reset environment
             environment.Clear();
             hostEnvironment = new ScriptWebHostEnvironment(environment);
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.False(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
 
             request = HttpTestHelpers.CreateHttpRequest("POST", "http://azure.com/api/warmup");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
             Assert.True(environment.IsLinuxConsumption());
-            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment, environment));
+            Assert.True(HostWarmupMiddleware.IsWarmUpRequest(request, hostEnvironment.InStandbyMode, environment));
         }
     }
 }

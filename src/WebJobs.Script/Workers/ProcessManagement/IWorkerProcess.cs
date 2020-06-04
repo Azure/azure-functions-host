@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Scale;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -10,5 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         int Id { get; }
 
         Task StartProcessAsync();
+
+        ProcessStats GetStats();
     }
 }

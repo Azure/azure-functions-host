@@ -19,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _regionName;
         private readonly string _category;
         private readonly string _hostInstanceId;
-
         private readonly HostNameProvider _hostNameProvider;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
@@ -52,29 +51,53 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            string formattedMessage = formatter?.Invoke(state, exception);
-
             // Make sure we have something to log
+            string formattedMessage = formatter?.Invoke(state, exception);
             if (string.IsNullOrEmpty(formattedMessage) && exception == null)
             {
                 return;
             }
 
             (string exceptionType, string exceptionMessage, string exceptionDetails) = exception.GetExceptionDetails();
+            if (exception != null)
+            {
+                formattedMessage = Sanitizer.Sanitize(formattedMessage);
+            }
+
+            // enumerate all the state values once, capturing the values we'll use below
+            // last one wins
+            string stateFunctionName = null;
+            if (state is IEnumerable<KeyValuePair<string, object>> stateProps)
+            {
+                foreach (var kvp in stateProps)
+                {
+                    if (Utility.IsFunctionName(kvp))
+                    {
+                        stateFunctionName = kvp.Value?.ToString();
+                    }
+                }
+            }
 
             var scopeProps = _scopeProvider.GetScopeDictionary();
-            var stateProps = state as IEnumerable<KeyValuePair<string, object>> ?? new Dictionary<string, object>();
+            string functionName = stateFunctionName;
+            if (string.IsNullOrEmpty(functionName))
+            {
+                if (Utility.TryGetFunctionName(scopeProps, out string scopeFunctionName))
+                {
+                    functionName = scopeFunctionName;
+                }
+            }
 
             // Build up a JSON string for the Azure Monitor 'properties' bag
             StringWriter sw = new StringWriter();
             using (JsonTextWriter writer = new JsonTextWriter(sw) { Formatting = Formatting.None })
             {
                 writer.WriteStartObject();
-                WritePropertyIfNotNull(writer, "message", Sanitizer.Sanitize(formattedMessage));
+                WritePropertyIfNotNull(writer, "message", formattedMessage);
                 WritePropertyIfNotNull(writer, "category", _category);
                 WritePropertyIfNotNull(writer, "hostVersion", _hostVersion);
                 WritePropertyIfNotNull(writer, "functionInvocationId", Utility.GetValueFromScope(scopeProps, ScopeKeys.FunctionInvocationId));
-                WritePropertyIfNotNull(writer, "functionName", Utility.ResolveFunctionName(stateProps, scopeProps));
+                WritePropertyIfNotNull(writer, "functionName", functionName);
                 WritePropertyIfNotNull(writer, "hostInstanceId", _hostInstanceId);
                 WritePropertyIfNotNull(writer, "activityId", Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyActivityIdKey));
                 WritePropertyIfNotNull(writer, "level", logLevel.ToString());

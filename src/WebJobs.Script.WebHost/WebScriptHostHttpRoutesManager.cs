@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             foreach (var function in host.Functions)
             {
-                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                var httpTrigger = function.HttpTriggerAttribute;
                 if (httpTrigger != null)
                 {
                     var constraints = new RouteValueDictionary();
