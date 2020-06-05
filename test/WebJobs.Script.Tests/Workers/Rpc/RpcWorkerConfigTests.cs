@@ -76,23 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void DeafultWorkerConfigs()
-        {
-            var expectedArguments = new string[] { "-v", "verbose" };
-            var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, expectedArguments) };
-            var testLogger = new TestLogger(testLanguage);
-            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
-
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
-            IEnumerable<RpcWorkerConfig> workerConfigs = TestReadWorkerProviderFromConfig(configs, testLogger, testMetricsLogger);
-            AreRequiredMetricsEmitted(testMetricsLogger);
-            Assert.Single(workerConfigs);
-
-            RpcWorkerConfig worker = workerConfigs.FirstOrDefault();
-            Assert.True(expectedArguments.SequenceEqual(worker.Description.Arguments.ToArray()));
-        }
-
-        [Fact]
         public void ReadWorkerProviderFromConfig_ReturnsProviderNoArguments()
         {
             var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0]) };
