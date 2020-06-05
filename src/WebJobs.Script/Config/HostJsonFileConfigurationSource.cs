@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 "version", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
                 "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle", "managedDependencies",
-                "customHandler"
+                "customHandler", "httpWorker"
             };
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
