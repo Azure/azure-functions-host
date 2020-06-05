@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             if (customHandlerSection.Exists())
             {
+                _metricsLogger.LogEvent(MetricEventNames.CustomHandlerConfiguration);
                 ConfigureWorkerDescription(options, customHandlerSection);
                 return;
             }
@@ -52,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (httpWorkerSection.Exists())
             {
                 // TODO: Add aka.ms/link to new docs
-                _metricsLogger.LogEvent(MetricEventNames.HttpWorker);
                 _logger.LogWarning($"Section {ConfigurationSectionNames.HttpWorker} will be deprecated. Please use {ConfigurationSectionNames.CustomHandler} section.");
                 ConfigureWorkerDescription(options, httpWorkerSection);
                 // Explicity set this empty to differentiate between customHandler and httpWorker options.

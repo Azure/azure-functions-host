@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Environment.SetEnvironmentVariable("TestEnv", "TestVal");
                 File.WriteAllText(_hostJsonFile, hostJsonContent);
                 var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
+                HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
                 HttpWorkerOptions options = new HttpWorkerOptions();
                 setup.Configure(options);
                 Assert.Equal("TestVal", options.Description.DefaultExecutablePath);
@@ -208,9 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
             HttpWorkerOptions options = new HttpWorkerOptions();
-            Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.HttpWorker));
-
             setup.Configure(options);
+
             //Verify worker exe path is expected
             if (appendCurrentDirectoryToExe)
             {
@@ -269,9 +268,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             var configuration = BuildHostJsonConfiguration();
-            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+            HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
             HttpWorkerOptions options = new HttpWorkerOptions();
             setup.Configure(options);
+
+            Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.CustomHandlerConfiguration));
+
             //Verify worker exe path is expected
             if (appendCurrentDirToDefaultExe)
             {
@@ -324,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:defaultWorkerPath", "OneSecondTimer/run.csx");
                 Environment.SetEnvironmentVariable("AzureFunctionsJobHost:httpWorker:description:arguments", "[\"--xTest5\", \"--xTest6\", \"--xTest7\"]");
                 var configuration = BuildHostJsonConfiguration();
-                HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory);
+                HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
                 HttpWorkerOptions options = new HttpWorkerOptions();
                 setup.Configure(options);
                 Assert.Equal("dotnet", options.Description.DefaultExecutablePath);
