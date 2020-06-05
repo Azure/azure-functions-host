@@ -189,10 +189,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             OSPlatform os = systemRuntimeInformation.GetOSPlatform();
             Architecture architecture = systemRuntimeInformation.GetOSArchitecture();
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             string version = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
             logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName}: {version}");
 
-            if (!string.IsNullOrEmpty(version))
+            // Only over-write DefaultRuntimeVersion if workerRuntime matches language for the worker config
+            if (!string.IsNullOrEmpty(workerRuntime) && workerRuntime.Equals(Language, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(version))
             {
                 DefaultRuntimeVersion = GetSanitizedRuntimeVersion(version);
             }
