@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Azure.Storage.Queue;
 using Xunit;
-using System.Text;
-using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
@@ -23,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Fact]
         public async Task QueueTriggerToBlobRich()
         {
-            _fixture.AssertNoScriptHostErrors();               
+            _fixture.AssertNoScriptHostErrors();
 
             string id = Guid.NewGuid().ToString();
             string messageContent = string.Format("{{ \"id\": \"{0}\" }}", id);
@@ -50,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.Storage",
-                        Version = "4.0.0-preview2-11736"
+                        Version = "4.0.2"
                     }
                 };
             }
@@ -144,5 +142,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 });
             }
         }
-    }  
+    }
 }
