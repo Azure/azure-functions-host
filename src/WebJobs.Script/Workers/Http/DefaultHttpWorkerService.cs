@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
-                // type is empty for httpWorker. Opt-in for custom handler section.
+                // type is empty for httpWorker section. EnableForwardingHttpRequest is opt-in for custom handler section.
                 if (string.IsNullOrEmpty(_httpWorkerOptions.Type) || _httpWorkerOptions.EnableForwardingHttpRequest)
                 {
                     return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
