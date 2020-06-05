@@ -13,6 +13,7 @@ trigger:
   branches:
     include:
     - release/2.0
+    - hotfix-73.1
     - v2.x
 
 jobs:
