@@ -37,9 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            Assert.Equal(18, metadataProvider.GetFunctionMetadata(false).Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadata(workerConfigs, false).Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
         }
 
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
 
             try
             {

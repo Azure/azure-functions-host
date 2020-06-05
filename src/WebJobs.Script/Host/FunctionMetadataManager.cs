@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,15 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool _jobHostServicesInitialized = false;
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
+        private IOptions<LanguageWorkerOptions> _languageWorkerOptions;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private IEnumerable<IFunctionProvider> _functionProviders;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IEnumerable<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
+            IEnumerable<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
         {
             _scriptOptions = scriptOptions;
+            _languageWorkerOptions = languageWorkerOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
 
@@ -110,6 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionProviders = _serviceProvider.GetService<IEnumerable<IFunctionProvider>>();
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
+            _languageWorkerOptions = _serviceProvider.GetService<IOptions<LanguageWorkerOptions>>();
 
             // Resetting the logger switches the logger scope to Script Host level,
             // also making the logs available to Application Insights
@@ -127,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ICollection<string> functionsWhiteList = _scriptOptions?.Value?.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
-            var immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(forceRefresh);
+            var immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(_languageWorkerOptions.Value.WorkerConfigs, forceRefresh);
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
 
