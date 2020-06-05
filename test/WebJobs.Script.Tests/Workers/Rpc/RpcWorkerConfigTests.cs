@@ -368,8 +368,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string sanitizeRuntimeVersionRegex,
             string expectedPath)
         {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, environmentRuntimeVersion);
-
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
                 Arguments = new List<string>(),
@@ -571,6 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             string expectedExceptionMessage)
         {
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
 
             RpcWorkerDescription workerDescription = new RpcWorkerDescription()
             {
@@ -595,6 +596,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
             Assert.Equal(ex.Message, expectedExceptionMessage);
+        }
+
+        [Fact]
+        public void LanguageWorker_FormatWorkerPath_DefualtRuntimeVersion_WorkerRuntimeMismatch()
+        {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "13");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
+            };
+            var testLogger = new TestLogger("test");
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
         private IEnumerable<RpcWorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestRpcWorkerConfig> configs, ILogger testLogger, TestMetricsLogger testMetricsLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
