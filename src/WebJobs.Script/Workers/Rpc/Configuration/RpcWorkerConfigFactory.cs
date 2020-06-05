@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     // Check if any appsettings are provided for that langauge
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
-                    GetDefaultExecutablePathFromAppSettings(workerDescription, languageSection);
+                    GetWorkerDescriptionFromAppSettings(workerDescription, languageSection);
                     AddArgumentsFromAppSettings(workerDescription, languageSection);
 
                     // Validate workerDescription
@@ -199,10 +199,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return defaultWorkerDescription;
         }
 
-        private static void GetDefaultExecutablePathFromAppSettings(WorkerDescription workerDescription, IConfigurationSection languageSection)
+        private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
-            var defaultExecutablePath = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
-            workerDescription.DefaultExecutablePath = defaultExecutablePath.Value != null ? defaultExecutablePath.Value : workerDescription.DefaultExecutablePath;
+            var defaultExecutablePathSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
+            workerDescription.DefaultExecutablePath = defaultExecutablePathSetting.Value != null ? defaultExecutablePathSetting.Value : workerDescription.DefaultExecutablePath;
+
+            var defaultRuntimeVersionAppSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultRuntimeVersion}");
+            workerDescription.DefaultRuntimeVersion = defaultRuntimeVersionAppSetting.Value != null ? defaultRuntimeVersionAppSetting.Value : workerDescription.DefaultRuntimeVersion;
         }
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
