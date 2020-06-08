@@ -24,11 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var rpcServer = new TestRpcServer();
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
             var testEnv = new TestEnvironment();
+            var testWorkerConfigs = TestHelpers.GetTestWorkerConfigs();
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
                 rpcServer.Uri,
-                null,
+                testWorkerConfigs.ElementAt(0),
                 _eventManager.Object,
                 workerProcessFactory.Object,
                 processRegistry.Object,
