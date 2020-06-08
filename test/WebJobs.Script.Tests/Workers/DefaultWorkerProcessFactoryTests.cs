@@ -17,8 +17,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         {
             get
             {
-                yield return new object[] { new HttpWorkerContext() { Arguments = new WorkerProcessArguments() { ExecutablePath = "test" },  Port = 456, EnvironmentVariables = new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } } } };
-                yield return new object[] { new RpcWorkerContext("testId", 500, "testWorkerId", new WorkerProcessArguments() { ExecutablePath = "test" }, "c:\testDir", new Uri("http://localhost")) };
+                yield return new object[]
+                {
+                    new HttpWorkerContext()
+                    {
+                        Arguments = new WorkerProcessArguments()
+                        {
+                            ExecutablePath = "test",
+                            ExecutableArguments = new List<string>() { "%httpkey1%", "%TestEnv%" },
+                            WorkerArguments = new List<string>() { "%httpkey2%" }
+                        },
+                        Port = 456,
+                        EnvironmentVariables = new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } }
+                    }
+                };
+                yield return new object[]
+                {
+                    new RpcWorkerContext(
+                    "testId",
+                    500,
+                    "testWorkerId",
+                    new WorkerProcessArguments()
+                    {
+                        ExecutablePath = "test",
+                        ExecutableArguments = new List<string>() { "%httpkey1%", "%TestEnv%" },
+                        WorkerArguments = new List<string>() { "%httpkey2%" }
+                    },
+                    "c:\testDir",
+                    new Uri("http://localhost"),
+                    new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } })
+                };
             }
         }
 
@@ -34,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         [MemberData(nameof(TestWorkerContexts))]
         public void DefaultWorkerProcessFactory_Returns_ExpectedProcess(WorkerContext workerContext)
         {
+            Environment.SetEnvironmentVariable("TestEnv", "TestVal");
             DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
             Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(workerContext);
 
@@ -45,7 +74,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 Assert.Equal(expectedEnvVars[envVar.Key], actualEnvVars[envVar.Key]);
             }
+            if (workerContext is RpcWorkerContext)
+            {
+                Assert.Equal(" httpvalue1 TestVal httpvalue2 --host localhost --port 80 --workerId testWorkerId --requestId testId --grpcMaxMessageLength 2147483647", childProcess.StartInfo.Arguments);
+            }
+            else
+            {
+                Assert.Equal(" httpvalue1 TestVal httpvalue2", childProcess.StartInfo.Arguments);
+            }
             childProcess.Dispose();
+            Environment.SetEnvironmentVariable("TestEnv", string.Empty);
         }
 
         [Theory]
