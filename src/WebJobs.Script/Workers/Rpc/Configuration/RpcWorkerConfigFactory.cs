@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     if (ShouldAddWorkerConfig(workerDescription.Language))
                     {
                         workerDescription.FormatWorkerPathIfNeeded(_systemRuntimeInformation, _environment, _logger);
-                        workerDescription.ThrowIfDefaultWorkerPathNotExists();
+                        workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         _workerDescripionDictionary[workerDescription.Language] = workerDescription;
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
@@ -183,22 +183,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return descriptionProfiles;
         }
 
-        private static WorkerDescription GetWorkerDescriptionFromProfiles(string key, Dictionary<string, RpcWorkerDescription> descriptionProfiles, RpcWorkerDescription defaultWorkerDescription)
-        {
-            RpcWorkerDescription profileDescription = null;
-            if (descriptionProfiles.TryGetValue(key, out profileDescription))
-            {
-                profileDescription.Arguments = profileDescription.Arguments?.Count > 0 ? profileDescription.Arguments : defaultWorkerDescription.Arguments;
-                profileDescription.DefaultExecutablePath = string.IsNullOrEmpty(profileDescription.DefaultExecutablePath) ? defaultWorkerDescription.DefaultExecutablePath : profileDescription.DefaultExecutablePath;
-                profileDescription.DefaultWorkerPath = string.IsNullOrEmpty(profileDescription.DefaultWorkerPath) ? defaultWorkerDescription.DefaultWorkerPath : profileDescription.DefaultWorkerPath;
-                profileDescription.Extensions = profileDescription.Extensions ?? defaultWorkerDescription.Extensions;
-                profileDescription.Language = string.IsNullOrEmpty(profileDescription.Language) ? defaultWorkerDescription.Language : profileDescription.Language;
-                profileDescription.WorkerDirectory = string.IsNullOrEmpty(profileDescription.WorkerDirectory) ? defaultWorkerDescription.WorkerDirectory : profileDescription.WorkerDirectory;
-                return profileDescription;
-            }
-            return defaultWorkerDescription;
-        }
-
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
             var defaultExecutablePathSetting = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionDefaultExecutablePath}");
@@ -223,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var argumentsSection = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
             if (argumentsSection.Value != null)
             {
-                workerDescription.Arguments.AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
+                ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
             }
         }
 
