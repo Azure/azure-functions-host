@@ -129,5 +129,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.NotNull(okResult);
             Assert.Equal(200, okResult.StatusCode);
         }
+
+        [Fact]
+        public void Http_Health_Status_Returns_Ok()
+        {
+            var loggerFactory = new LoggerFactory();
+            var loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var instanceController = new InstanceController(null, null, loggerFactory, null);
+        
+            var actionResult = instanceController.GetHttpHealthStatus();
+            var okResult = actionResult as OkResult;
+
+            Assert.NotNull(okResult);
+            Assert.Equal(200, okResult.StatusCode);
+        }
     }
 }

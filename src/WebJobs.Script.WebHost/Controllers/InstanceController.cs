@@ -91,5 +91,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             var tIgnore = Task.Run(() => hostManager.RestartHostAsync());
             return Ok();
         }
+
+        [HttpGet]
+        [Route("admin/instance/http-health")]
+        public IActionResult GetHttpHealthStatus()
+        {
+            // Reaching here implies that http health of the container is ok.
+            return Ok();
+        }
     }
 }
