@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private ILogger _workerChannelLogger;
         private IMetricsLogger _metricsLogger;
         private IWorkerProcess _rpcWorkerProcess;
-        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
 
         internal RpcWorkerChannel(
