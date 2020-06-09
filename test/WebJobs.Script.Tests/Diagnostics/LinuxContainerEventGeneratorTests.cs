@@ -54,14 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionTraceEvent(level, subscriptionId, appName, functionName, eventName, source, details, summary, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
 
-            string evt = _events.Single();
-            evt = JsonSerializeEvent(evt);
-
             Regex regex = new Regex(LinuxContainerEventGenerator.TraceEventRegex);
+            string evt = _events.Single();
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(19, match.Groups.Count);
+            Assert.Equal(21, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
@@ -72,18 +70,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(functionName, p),
                 p => Assert.Equal(eventName, p),
                 p => Assert.Equal(source, p),
-                p => Assert.Equal(details, UnNormalize(JsonUnescape(p))),
-                p => Assert.Equal(summary, UnNormalize(JsonUnescape(p))),
+                p => Assert.Equal(details, UnNormalize(p)),
+                p => Assert.Equal(summary, UnNormalize(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
                 p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, UnNormalize(JsonUnescape(p))),
+                p => Assert.Equal(exceptionMessage, UnNormalize(p)),
                 p => Assert.Equal(functionInvocationId, p),
                 p => Assert.Equal(hostInstanceId, p),
                 p => Assert.Equal(activityId, p),
                 p => Assert.Equal(_containerName.ToUpperInvariant(), p),
                 p => Assert.Equal(_stampName, p),
-                p => Assert.Equal(_tenantId, p));
+                p => Assert.Equal(_tenantId, p),
+                p => Assert.Equal(runtimeSiteName, p),
+                p => Assert.Equal(slotName, p));
         }
 
         private static string JsonUnescape(string value)
@@ -128,13 +128,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now, data, runtimeSiteName, slotName);
 
             string evt = _events.Single();
-            evt = JsonSerializeEvent(evt);
 
             Regex regex = new Regex(LinuxContainerEventGenerator.MetricEventRegex);
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(15, match.Groups.Count);
+            Assert.Equal(17, match.Groups.Count);
 
             DateTime dt;
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
@@ -149,10 +148,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(count, long.Parse(p)),
                 p => Assert.Equal(ScriptHost.Version, p),
                 p => Assert.True(DateTime.TryParse(p, out dt)),
-                p => Assert.Equal(data, JsonUnescape(p)),
+                p => Assert.Equal(data, UnNormalize(p)),
                 p => Assert.Equal(_containerName.ToUpperInvariant(), p),
                 p => Assert.Equal(_stampName, p),
-                p => Assert.Equal(_tenantId, p));
+                p => Assert.Equal(_tenantId, p),
+                p => Assert.Equal(runtimeSiteName, p),
+                p => Assert.Equal(slotName, p));
         }
 
         [Theory]
