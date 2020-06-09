@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _process.Exited += (sender, e) => OnProcessExited(sender, e);
                     _process.EnableRaisingEvents = true;
 
-                    _workerProcessLogger?.LogInformation($"Starting worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
+                    _workerProcessLogger?.LogInformation($"Starting worker process with FileName:{_process.StartInfo.FileName} WorkingDirectory:{_process.StartInfo.WorkingDirectory} Arguments:{_process.StartInfo.Arguments}");
                     _process.Start();
                     _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 catch (Exception ex)
                 {
-                    _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
+                    _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {_process.StartInfo.FileName}");
                     return Task.FromException(ex);
                 }
             }

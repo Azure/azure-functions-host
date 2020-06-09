@@ -36,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             httpRequest.Query = GetTestQueryParams();
             httpRequest.Headers[HeaderNames.AcceptCharset] = UTF8AcceptCharset;
             httpRequest.Headers[HeaderNames.Accept] = AcceptHeaderValue;
-
             var json = JsonConvert.SerializeObject(HttpContentStringValue);
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             httpRequest.Body = stream;
@@ -52,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public static List<(string name, DataType type, object val)> GetSimpleHttpTriggerScriptInvocationInputs()
         {
             List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
-            inputs.Add(("myqueueItem", DataType.String, GetTestHttpRequest()));
+            inputs.Add(("testInputReq", DataType.String, GetTestHttpRequest()));
             return inputs;
         }
 
@@ -128,6 +127,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ObjectContent<HttpScriptInvocationResult>(GetTestHttpScriptInvocationResult(), new JsonMediaTypeFormatter())
+            };
+        }
+
+        public static HttpResponseMessage GetValidHttpResponseMessageWithJsonRes()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ObjectContent<HttpScriptInvocationResult>(GetHttpScriptInvocationResultWithJsonRes(), new JsonMediaTypeFormatter())
             };
         }
 
@@ -241,6 +248,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             functionMetadata.Bindings.Add(queueOutputRetrun);
             scriptInvocationContext.FunctionMetadata = functionMetadata;
             return scriptInvocationContext;
+        }
+
+        public static HttpScriptInvocationResult GetHttpScriptInvocationResultWithJsonRes()
+        {
+            JObject httpRes = new JObject();
+            httpRes["statusCode"] = "201";
+            httpRes["body"] = "my world";
+            return new HttpScriptInvocationResult()
+            {
+                Logs = new List<string>() { "invocation log1", "invocation log2" },
+                Outputs = new Dictionary<string, object>()
+                {
+                    { "res", httpRes }
+                }
+            };
         }
 
         public static ScriptInvocationContext GetSimpleHttpTriggerScriptInvocationContext(string functionName, Guid invocationId, ILogger testLogger)

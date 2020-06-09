@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string FunctionInvokeFailed = "function.invoke.failed";
 
         // Http worker events
-        public const string HttpWorker = "hostjsonfileconfigurationsource.httpworker";
+        public const string CustomHandlerConfiguration = "hostjsonfileconfigurationsource.customhandler";
         public const string DelayUntilWorkerIsInitialized = "httpworkerchannel.delayuntilworkerisinitialized";
 
         // Out of proc process events
