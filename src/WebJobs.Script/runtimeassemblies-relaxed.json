@@ -4,6 +4,26 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Microsoft.Azure.KeyVault.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.OData.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.OData.Edm",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Spatial",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Common",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.DocumentDB.Core",
       "resolutionPolicy": "private"
     },
