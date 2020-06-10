@@ -67,6 +67,8 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.1" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
+    <!-- The System.Interactive.Async assembly is required to be deployed. -->
+    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
