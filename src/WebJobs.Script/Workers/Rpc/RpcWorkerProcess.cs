@@ -19,12 +19,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly Uri _serverUri;
         private readonly string _scriptRootPath;
         private readonly WorkerProcessArguments _workerProcessArguments;
+        private readonly string _workerDirectory;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
                                        string rootScriptPath,
                                        Uri serverUri,
-                                       WorkerProcessArguments workerProcessArguments,
+                                       RpcWorkerConfig rpcWorkerConfig,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
@@ -40,12 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerId = workerId;
             _serverUri = serverUri;
             _scriptRootPath = rootScriptPath;
-            _workerProcessArguments = workerProcessArguments;
+            _workerProcessArguments = rpcWorkerConfig.Arguments;
+            _workerDirectory = rpcWorkerConfig.Description.WorkerDirectory;
         }
 
         internal override Process CreateWorkerProcess()
         {
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
+            workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
