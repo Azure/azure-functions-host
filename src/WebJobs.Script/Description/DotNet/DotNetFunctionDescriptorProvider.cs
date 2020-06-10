@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             // We can only handle script types supported by the current compilation service factory
-            if (!_compilationServiceFactory.SupportedLanguages.Contains(functionMetadata.Language) || functionMetadata.IsProxy())
+            if (!_compilationServiceFactory.SupportedLanguages.Contains(functionMetadata.Language))
             {
                 return (false, null);
             }

@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
 
-            if (!Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(functionMetadata, _workerRuntime) || functionMetadata.IsProxy())
+            if (!Utility.IsFunctionMetadataLanguageSupportedByWorkerRuntime(functionMetadata, _workerRuntime))
             {
                 return (false, null);
             }
