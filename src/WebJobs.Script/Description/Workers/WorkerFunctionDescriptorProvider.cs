@@ -38,6 +38,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 throw new ArgumentNullException(nameof(functionMetadata));
             }
+
+            // If a function exists exists with a proxy, there is a chance this could get evaluated first before ProxyFunctionDescriptorProvider.
+            if (functionMetadata.IsProxy())
+            {
+                return (false, null);
+            }
+
             return await base.TryCreate(functionMetadata);
         }
 
