@@ -1,0 +1,17 @@
+{
+  "proxies": {
+    "proxyroute": {
+      "matchCondition": {
+        "methods": [
+          "GET"
+        ],
+        "route": "/something"
+      },
+      "responseOverrides": {
+        "response.statusCode": "200",
+        "response.headers.Content-Type": "text/plain",
+        "response.body": "something"
+      }
+    }
+  }
+}
