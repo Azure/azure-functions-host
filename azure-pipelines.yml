@@ -6,15 +6,15 @@ name: 2.0.$(buildNumber)
 pr:
   branches:
     include:
-    - release/2.0
+    - release/2.0-hotfix-73.1
     - v2.x
 
 trigger:
   branches:
     include:
-    - release/2.0
+    - release/2.0-hotfix-73.1
     - v2.x
-
+ 
 jobs:
 - job: InitializePipeline
   pool:
