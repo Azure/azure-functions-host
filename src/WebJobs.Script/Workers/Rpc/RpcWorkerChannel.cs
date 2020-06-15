@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IMetricsLogger _metricsLogger;
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         internal RpcWorkerChannel(
            string workerId,
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                _reloadTask.SetResult(false);
+                _reloadTask.SetException(reloadEnvironmentVariablesException);
             }
             _reloadTask.SetResult(true);
             latencyEvent.Dispose();

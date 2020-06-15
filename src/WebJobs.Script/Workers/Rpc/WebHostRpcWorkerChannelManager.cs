@@ -123,10 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     await ShutdownChannelIfExistsAsync(_workerRuntime, rpcWorkerChannel.Id);
                 }
             }
-            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
-            {
-                _shutdownStandbyWorkerChannels();
-            }
+            _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
@@ -183,36 +180,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void ScheduleShutdownStandbyChannels()
         {
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(_workerRuntime))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
             {
-                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var runtime in standbyWorkerChannels)
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+                if (!string.IsNullOrEmpty(_workerRuntime))
                 {
-                    using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
+                    var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
+                    foreach (var runtime in standbyWorkerChannels)
                     {
-                        _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
-                        if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
+                        using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
                         {
-                            foreach (string workerId in standbyChannels.Keys)
+                            _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
+                            if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
                             {
-                                IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannel, workerId));
-                                standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
+                                foreach (string workerId in standbyChannels.Keys)
                                 {
-                                    if (channelTask.Status == TaskStatus.Faulted)
+                                    IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannel, workerId));
+                                    standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
                                     {
-                                        _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
-                                    }
-                                    else
-                                    {
-                                        IRpcWorkerChannel workerChannel = channelTask.Result;
-                                        if (workerChannel != null)
+                                        if (channelTask.Status == TaskStatus.Faulted)
                                         {
-                                            (channelTask.Result as IDisposable)?.Dispose();
+                                            _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
                                         }
-                                    }
-                                    latencyEvent.Dispose();
-                                });
+                                        else
+                                        {
+                                            IRpcWorkerChannel workerChannel = channelTask.Result;
+                                            if (workerChannel != null)
+                                            {
+                                                (channelTask.Result as IDisposable)?.Dispose();
+                                            }
+                                        }
+                                        latencyEvent.Dispose();
+                                    });
+                                }
                             }
                         }
                     }
