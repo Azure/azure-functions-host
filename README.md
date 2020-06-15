@@ -2,8 +2,8 @@
 
 |Branch|Status|
 |---|---|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=master)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=dev)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=dev)|
+|dev|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-nodejs-worker?branchName=dev)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=10&branchName=dev)|
+|v2.x|[![Build Status](https://dev.azure.com/azfunc/Azure%20Functions/_apis/build/status/Azure.azure-functions-nodejs-worker?branchName=v2.x)](https://dev.azure.com/azfunc/Azure%20Functions/_build/latest?definitionId=10&branchName=v2.x)|
 |v1.x|[![Build status](https://ci.appveyor.com/api/projects/status/a6j46j1tawdfs3js?svg=true&branch=v1.x)](https://ci.appveyor.com/project/appsvc/azure-webjobs-sdk-script-y8o14?branch=v1.x)|
 
 WebJobs.Script
