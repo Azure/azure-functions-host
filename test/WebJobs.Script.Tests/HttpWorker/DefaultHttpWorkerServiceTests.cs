@@ -188,6 +188,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         }
 
         [Fact]
+        public async Task ProcessPing_Succeeds()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => ValidateSimpleHttpTriggerInvocationRequest(request))
+                .ReturnsAsync(HttpWorkerTestUtilities.GetSimpleNotFoundHttpResponseMessage());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger);
+            await _defaultHttpWorkerService.PingAsync();
+            handlerMock.VerifyAll();
+        }
+
+        [Fact]
         public async Task ProcessSimpleHttpTriggerInvocationRequest_Succeeds()
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);

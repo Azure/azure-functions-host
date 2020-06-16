@@ -214,5 +214,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 return false;
             }
         }
+
+        public async Task PingAsync()
+        {
+            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            try
+            {
+                await _httpClient.GetAsync(requestUri);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Pinging url {requestUri} resulted in exception", ex);
+            }
+        }
     }
 }
