@@ -202,6 +202,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
+            // Wait for debouce task to start
+            await Task.Delay(6000);
             Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
                 && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
@@ -228,6 +230,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
+            // Wait for debouce task to start
+            await Task.Delay(6000);
             Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
                 && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
 
