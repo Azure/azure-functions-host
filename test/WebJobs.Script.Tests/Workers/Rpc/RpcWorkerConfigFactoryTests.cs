@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData(@"D:\Program Files\Java\jdk1.7.0_51")]
         [InlineData(null)]
-        public void JavaPath_AppServiceEnv(string javaHomePath)
+        public void JavaPath_FromEnvVars(string javaHomePath)
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>

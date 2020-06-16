@@ -55,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
                     startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
+                startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);
             }
             return new Process { StartInfo = startInfo };
         }
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private StringBuilder MergeArguments(StringBuilder builder, string arg)
         {
             string expandedArg = Environment.ExpandEnvironmentVariables(arg);
-            return builder.AppendFormat(" {0}", SanitizeExpandedArgument(expandedArg));
+            return builder.AppendFormat(" {0}", expandedArg);
         }
 
         public string GetArguments(WorkerContext context)
