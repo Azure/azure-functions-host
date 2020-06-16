@@ -89,8 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
-        [Fact]
-        public void JavaPath_AppServiceEnv()
+        [Theory]
+        [InlineData(@"D:\Program Files\Java\jdk1.7.0_51")]
+        [InlineData(null)]
+        public void JavaPath_AppServiceEnv(string javaHomePath)
         {
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                   .AddInMemoryCollection(new Dictionary<string, string>
@@ -104,12 +106,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var testEnvVariables = new Dictionary<string, string>
             {
                 { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
-                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
+                { "JAVA_HOME",  javaHomePath }
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
-                var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
-                Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
+                var workerConfigs = configFactory.GetConfigs();
+                var javaPath = workerConfigs.Where(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).FirstOrDefault().Description.DefaultExecutablePath;
+                if (string.IsNullOrEmpty(javaHomePath))
+                {
+                    Assert.Equal(@"%JAVA_HOME%/bin/java", javaPath);
+                }
+                else
+                {
+                    Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64/bin/java", javaPath);
+                }
             }
         }
 
@@ -136,99 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(4, workerConfigs.Count);
                 Assert.NotNull(pythonWorkerConfig);
                 Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
-            }
-        }
-
-        [Fact]
-        public void JavaPath_AppServiceEnv_JavaHomeSet_AppServiceEnvOverrides()
-        {
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
-            var config = configBuilder.Build();
-            var scriptSettingsManager = new ScriptSettingsManager(config);
-            var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
-                { "JAVA_HOME", @"D:\Program Files\Java\zulu8.31.0.2-jre8.0.181-win_x64" }
-            };
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var javaPath = configFactory.GetExecutablePathForJava("../../zulu8.23.0.3-jdk8.0.144-win_x64/bin/java");
-                Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64\bin\java", javaPath);
-            }
-        }
-
-        [Fact]
-        public void JavaPath_JavaHome_Set()
-        {
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
-            var config = configBuilder.Build();
-            var scriptSettingsManager = new ScriptSettingsManager(config);
-            var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
-            };
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var javaPath = configFactory.GetExecutablePathForJava("java");
-                Assert.Equal(@"D:\Program Files\Java\jdk1.7.0_51\bin\java", javaPath);
-            }
-        }
-
-        [Fact]
-        public void JavaPath_JavaHome_Set_DefaultExePathSet()
-        {
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
-            var config = configBuilder.Build();
-            var scriptSettingsManager = new ScriptSettingsManager(config);
-            var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { "JAVA_HOME", @"D:\Program Files\Java\jdk1.7.0_51" }
-            };
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var javaPath = configFactory.GetExecutablePathForJava(@"D:\MyCustomPath\Java");
-                Assert.Equal(@"D:\MyCustomPath\Java", javaPath);
-            }
-        }
-
-        [Fact]
-        public void JavaPath_JavaHome_NotSet()
-        {
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
-            var config = configBuilder.Build();
-            var scriptSettingsManager = new ScriptSettingsManager(config);
-            var testLogger = new TestLogger("test");
-            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { "JAVA_HOME", string.Empty }
-            };
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var javaPath = configFactory.GetExecutablePathForJava("java");
-                Assert.Equal("java", javaPath);
             }
         }
 

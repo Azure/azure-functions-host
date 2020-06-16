@@ -2,15 +2,27 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
+        private ILogger _logger;
+
+        public DefaultWorkerProcessFactory(ILoggerFactory loggerFactory)
+        {
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+            _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
+        }
+
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
             if (context == null)
@@ -50,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private StringBuilder MergeArguments(StringBuilder builder, string arg)
         {
             string expandedArg = Environment.ExpandEnvironmentVariables(arg);
-            return builder.AppendFormat(" {0}", expandedArg);
+            return builder.AppendFormat(" {0}", SanitizeExpandedArgument(expandedArg));
         }
 
         public string GetArguments(WorkerContext context)
@@ -63,6 +75,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             context.Arguments.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.Append(context.GetFormattedArguments());
             return argumentsBuilder.ToString();
+        }
+
+        internal string SanitizeExpandedArgument(string envExpandedString)
+        {
+            var regex = new Regex(@"%(.+?)%");
+            var matches = regex.Matches(envExpandedString);
+            foreach (Match match in matches)
+            {
+                _logger.LogWarning($"Environment variable:{match.Value} is not set");
+                envExpandedString = envExpandedString.Replace(match.Value, string.Empty);
+            }
+            return envExpandedString;
         }
     }
 }
