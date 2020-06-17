@@ -71,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                      if (workerInitTask.IsCompleted)
                      {
                          _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
-                         State = FunctionInvocationDispatcherState.Initialized;
                          SetFunctionDispatcherStateToInitializedAndLog();
                      }
                      else
