@@ -89,38 +89,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
         }
 
-        [Theory]
-        [InlineData(@"D:\Program Files\Java\jdk1.7.0_51")]
-        [InlineData(null)]
-        public void JavaPath_FromEnvVars(string javaHomePath)
+        [Fact]
+        public void JavaPath_FromEnvVars()
         {
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" },
-                { "JAVA_HOME",  javaHomePath }
-            };
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var workerConfigs = configFactory.GetConfigs();
-                var javaPath = workerConfigs.Where(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).FirstOrDefault().Description.DefaultExecutablePath;
-                if (string.IsNullOrEmpty(javaHomePath))
-                {
-                    Assert.Equal(@"%JAVA_HOME%/bin/java", javaPath);
-                }
-                else
-                {
-                    Assert.Equal(@"D:\Program Files\Java\zulu8.23.0.3-jdk8.0.144-win_x64/bin/java", javaPath);
-                }
-            }
+            var workerConfigs = configFactory.GetConfigs();
+            var javaPath = workerConfigs.Where(c => c.Description.Language.Equals("java", StringComparison.OrdinalIgnoreCase)).FirstOrDefault().Description.DefaultExecutablePath;
+            Assert.DoesNotContain(@"%JAVA_HOME%", javaPath);
+            Assert.Contains(@"/bin/java", javaPath);
         }
 
         [Fact]
