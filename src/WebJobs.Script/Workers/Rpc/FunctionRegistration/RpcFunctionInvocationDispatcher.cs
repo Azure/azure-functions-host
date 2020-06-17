@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
                     rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
-                    State = FunctionInvocationDispatcherState.Initialized;
+                    SetFunctionDispatcherStateToInitializedAndLog();
                 }
                 else
                 {
@@ -130,6 +130,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             });
             return Task.CompletedTask;
+        }
+
+        private void SetFunctionDispatcherStateToInitializedAndLog()
+        {
+            State = FunctionInvocationDispatcherState.Initialized;
+            // Do not change this log message. Vs Code relies on this to figure out when to attach debuger to the worker process.
+            _logger.LogInformation("Worker process started and initialized.");
         }
 
         internal async void InitializeWebhostLanguageWorkerChannel()
@@ -207,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         }
                     }
                     StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                    State = FunctionInvocationDispatcherState.Initialized;
+                    SetFunctionDispatcherStateToInitializedAndLog();
                 }
                 else
                 {
