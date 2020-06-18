@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IEnvironment environment,
                                        IMetricsLogger metricsLogger)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;
