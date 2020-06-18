@@ -176,8 +176,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             IRpcWorkerChannel workerChannel = CreateTestChannel(languageWorkerName);
 
             await _rpcWorkerChannelManager.SpecializeAsync();
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
+            // Wait for debouce task to start
+            await TestHelpers.Await(() =>
+            {
+                return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -202,8 +206,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
+            // Wait for debouce task to start
+            await TestHelpers.Await(() =>
+            {
+                return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -228,8 +236,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             await _rpcWorkerChannelManager.SpecializeAsync();
 
-            Assert.True(testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
-                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels));
+            // Wait for debouce task to start
+            await TestHelpers.Await(() =>
+            {
+                return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
+                && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
