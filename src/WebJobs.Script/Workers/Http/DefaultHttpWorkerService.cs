@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 pathValue = httpRequestMessage.RequestUri.AbsolutePath;
             }
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
+            httpRequestMessage.RequestUri = new Uri(BuildAndGetUri(pathValue));
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private async Task<bool> IsWorkerReadyForRequest()
         {
-            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            string requestUri = BuildAndGetUri();
             try
             {
                 await SendRequest(requestUri);
@@ -213,6 +213,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
+        private string BuildAndGetUri(string pathValue = null)
+        {
+            if (!string.IsNullOrEmpty(pathValue))
+            {
+                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
+            }
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+        }
+
         private async Task<HttpResponseMessage> SendRequest(string requestUri, HttpMethod method = null)
         {
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
@@ -227,11 +236,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public async Task PingAsync()
         {
-            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            string requestUri = BuildAndGetUri();
             try
             {
                 HttpResponseMessage response = await SendRequest(requestUri, HttpMethod.Get);
-                _logger.LogInformation($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
+                _logger.LogDebug($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
             }
             catch (Exception ex)
             {
