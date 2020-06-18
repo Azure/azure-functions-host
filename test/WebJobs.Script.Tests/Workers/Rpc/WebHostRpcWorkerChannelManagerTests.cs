@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
                 && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
-            }, pollingInterval: 6000);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
                 && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
-            }, pollingInterval: 6000);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 return testMetricsLogger.EventsBegan.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels)
                 && testMetricsLogger.EventsEnded.Contains(MetricEventNames.SpecializationScheduleShutdownStandbyChannels);
-            }, pollingInterval: 6000);
+            }, pollingInterval: 500);
 
             // Verify logs
             var traces = _testLogger.GetLogMessages();
