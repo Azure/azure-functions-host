@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// If set to false, Logs from stderr are written with info level by default. If Message contains keywords: error, servere then logs are written with error level.
         /// If set to true, Logs from stdout stream will be written with info level and Logs from stderr steam will be written with error level
         /// </summary>
-        public bool UseStdErrorStreamForErrorsOnly { get; set; }
+        public abstract bool UseStdErrorStreamForErrorsOnly { get; set; }
 
         public abstract void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger);
 
