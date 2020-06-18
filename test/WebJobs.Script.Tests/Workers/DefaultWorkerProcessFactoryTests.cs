@@ -7,12 +7,15 @@ using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     public class DefaultWorkerProcessFactoryTests
     {
+        private ILoggerFactory _loggerFactory = new LoggerFactory();
+
         public static IEnumerable<object[]> TestWorkerContexts
         {
             get
@@ -63,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public void DefaultWorkerProcessFactory_Returns_ExpectedProcess(WorkerContext workerContext)
         {
             Environment.SetEnvironmentVariable("TestEnv", "TestVal");
-            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
             Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(workerContext);
 
             var expectedEnvVars = workerContext.EnvironmentVariables;
@@ -90,8 +93,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         [MemberData(nameof(InvalidWorkerContexts))]
         public void DefaultWorkerProcessFactory_InvalidWorkerContext_Throws(WorkerContext workerContext)
         {
-            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
             Assert.Throws<ArgumentNullException>(() => defaultWorkerProcessFactory.CreateWorkerProcess(workerContext));
+        }
+
+        [Theory]
+        [InlineData("%TestEnv%%duh%", "TestVal")]
+        [InlineData("%TestEnv%", "TestVal")]
+        [InlineData("%TestEnv2%%duh%", "")]
+        public void DefaultWorkerProcessFactory_SanitizeExpandedArgs(string inputString, string expectedResult)
+        {
+            Environment.SetEnvironmentVariable("TestEnv", "TestVal");
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
+            var expandedArgs = Environment.ExpandEnvironmentVariables(inputString);
+            var result = defaultWorkerProcessFactory.SanitizeExpandedArgument(expandedArgs);
+            Assert.Equal(expectedResult, result);
+            Environment.SetEnvironmentVariable("TestEnv", string.Empty);
         }
 
         public IDictionary<string, string> GetTestEnvVars()

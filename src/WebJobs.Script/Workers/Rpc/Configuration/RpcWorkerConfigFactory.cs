@@ -60,10 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         WorkerPath = description.DefaultWorkerPath
                     };
 
-                    if (description.Language.Equals(RpcWorkerConstants.JavaLanguageWorkerName))
-                    {
-                        arguments.ExecutablePath = GetExecutablePathForJava(description.DefaultExecutablePath);
-                    }
                     arguments.ExecutableArguments.AddRange(description.Arguments);
                     var config = new RpcWorkerConfig()
                     {
@@ -194,33 +190,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal static void AddArgumentsFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)
         {
-            if (workerDescription.Language.Equals(RpcWorkerConstants.JavaLanguageWorkerName))
-            {
-                // For Java either provide arguments via JAVA_OPTS or languageWorkers:java:arguments. Both cannot be supported
-                string javaOpts = ScriptSettingsManager.Instance.GetSetting("JAVA_OPTS");
-                if (!string.IsNullOrEmpty(javaOpts))
-                {
-                    workerDescription.Arguments.Add(javaOpts);
-                    return;
-                }
-            }
             var argumentsSection = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionArguments}");
             if (argumentsSection.Value != null)
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
-            }
-        }
-
-        internal string GetExecutablePathForJava(string defaultExecutablePath)
-        {
-            string javaHome = ScriptSettingsManager.Instance.GetSetting("JAVA_HOME");
-            if (string.IsNullOrEmpty(javaHome) || Path.IsPathRooted(defaultExecutablePath))
-            {
-                return defaultExecutablePath;
-            }
-            else
-            {
-                return Path.GetFullPath(Path.Combine(javaHome, "bin", defaultExecutablePath));
             }
         }
 
