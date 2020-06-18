@@ -194,11 +194,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private async Task<bool> IsWorkerReadyForRequest()
         {
             string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
-            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
-            httpRequestMessage.RequestUri = new Uri(requestUri);
             try
             {
-                await _httpClient.SendAsync(httpRequestMessage);
+                await SendRequest(requestUri);
                 // Any Http response indicates a valid server Url
                 return false;
             }
@@ -215,16 +213,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
+        private async Task<HttpResponseMessage> SendRequest(string requestUri, HttpMethod method = null)
+        {
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+            httpRequestMessage.RequestUri = new Uri(requestUri);
+            if (method != null)
+            {
+                httpRequestMessage.Method = method;
+            }
+
+            return await _httpClient.SendAsync(httpRequestMessage);
+        }
+
         public async Task PingAsync()
         {
             string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
             try
             {
-                await _httpClient.GetAsync(requestUri);
+                HttpResponseMessage response = await SendRequest(requestUri, HttpMethod.Get);
+                _logger.LogInformation($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
             }
             catch (Exception ex)
             {
-                _logger.LogDebug($"Pinging url {requestUri} resulted in exception", ex);
+                _logger.LogDebug($"Pinging uri '{requestUri}' resulted in exception", ex);
             }
         }
     }
