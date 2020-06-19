@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public const string AcceptHeaderValue = "text/plain";
         public const string HttpContentStringValue = "hello world";
         public const string HttpResponseContentStringValue = "hello world response";
+        public const string HttpResponseNotFoundValue = "Route not found";
 
         public static HttpRequest GetTestHttpRequest()
         {
@@ -158,6 +159,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(HttpResponseContentStringValue)
+            };
+        }
+
+        public static HttpResponseMessage GetSimpleNotFoundHttpResponseMessage()
+        {
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent(HttpResponseNotFoundValue)
             };
         }
 

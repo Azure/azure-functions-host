@@ -12,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Task InvokeAsync(ScriptInvocationContext scriptInvocationContext);
 
         Task<bool> IsWorkerReady(CancellationToken cancellationToken);
+
+        Task PingAsync();
     }
 }

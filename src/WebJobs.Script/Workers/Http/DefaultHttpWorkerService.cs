@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 pathValue = httpRequestMessage.RequestUri.AbsolutePath;
             }
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
+            httpRequestMessage.RequestUri = new Uri(BuildAndGetUri(pathValue));
             httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
             httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
             httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
@@ -193,12 +193,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         private async Task<bool> IsWorkerReadyForRequest()
         {
-            string requestUri = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
-            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
-            httpRequestMessage.RequestUri = new Uri(requestUri);
+            string requestUri = BuildAndGetUri();
             try
             {
-                await _httpClient.SendAsync(httpRequestMessage);
+                await SendRequest(requestUri);
                 // Any Http response indicates a valid server Url
                 return false;
             }
@@ -212,6 +210,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 }
                 // Any other inner exception, consider HttpWorker to be ready
                 return false;
+            }
+        }
+
+        private string BuildAndGetUri(string pathValue = null)
+        {
+            if (!string.IsNullOrEmpty(pathValue))
+            {
+                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
+            }
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+        }
+
+        private async Task<HttpResponseMessage> SendRequest(string requestUri, HttpMethod method = null)
+        {
+            HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
+            httpRequestMessage.RequestUri = new Uri(requestUri);
+            if (method != null)
+            {
+                httpRequestMessage.Method = method;
+            }
+
+            return await _httpClient.SendAsync(httpRequestMessage);
+        }
+
+        public async Task PingAsync()
+        {
+            string requestUri = BuildAndGetUri();
+            try
+            {
+                HttpResponseMessage response = await SendRequest(requestUri, HttpMethod.Get);
+                _logger.LogDebug($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug($"Pinging uri '{requestUri}' resulted in exception", ex);
             }
         }
     }
