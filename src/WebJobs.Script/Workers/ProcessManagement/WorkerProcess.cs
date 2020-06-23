@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IMetricsLogger _metricsLogger;
 
         private Process _process;
-        private bool _useStdErrStreamForErrorsOnly;
+        private bool _useStdErrorStreamForErrorsOnly;
         private ProcessMonitor _processMonitor;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
             _metricsLogger = metricsLogger;
-            _useStdErrStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
+            _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
         }
 
         public int Id => _process.Id;
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
-                    if (_useStdErrStreamForErrorsOnly)
+                    if (_useStdErrorStreamForErrorsOnly)
                     {
                         LogError(msg);
                     }
