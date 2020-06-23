@@ -89,30 +89,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             if (e.Data != null)
             {
                 string msg = e.Data;
-                if (_useStdErrStreamForErrorsOnly)
+                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
                 {
-                    BuildAndLogConsoleLog(e.Data, LogLevel.Error);
-                    _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
+                    BuildAndLogConsoleLog(e.Data, LogLevel.Warning);
                 }
                 else
                 {
-                    if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+                    if (_useStdErrStreamForErrorsOnly)
                     {
-                        BuildAndLogConsoleLog(e.Data, LogLevel.Warning);
-                    }
-                    else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
-                    {
-                        BuildAndLogConsoleLog(e.Data, LogLevel.Error);
-                        _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
+                        LogError(msg);
                     }
                     else
                     {
-                        BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+                        if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
+                                  (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                                  (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
+                        {
+                            LogError(msg);
+                        }
+                        else
+                        {
+                            BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+                        }
                     }
                 }
             }
+        }
+
+        private void LogError(string msg)
+        {
+            BuildAndLogConsoleLog(msg, LogLevel.Error);
+            _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
         }
 
         private void OnProcessExited(object sender, EventArgs e)
@@ -153,15 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
-                {
-                    BuildAndLogConsoleLog(e.Data, LogLevel.Warning);
-                }
-                else
-                {
-                    BuildAndLogConsoleLog(e.Data, LogLevel.Information);
-                }
+                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
             }
         }
 
