@@ -153,7 +153,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+                string msg = e.Data;
+                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+                {
+                    BuildAndLogConsoleLog(e.Data, LogLevel.Warning);
+                }
+                else
+                {
+                    BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+                }
             }
         }
 
