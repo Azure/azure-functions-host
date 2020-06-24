@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal void ParseConsoleLog(string msg, bool errorData = false)
         {
-            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1 && errorData)
             {
                 BuildAndLogConsoleLog(msg, LogLevel.Warning);
             }

@@ -32,15 +32,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testLogger, _workerConsoleLogSource, null, useStdErrForErroLogsOnly);
             workerProcess.ParseConsoleLog("Test Message");
             workerProcess.ParseConsoleLog("Error:Test Error Message");
-            workerProcess.ParseConsoleLog("Warning:Test Warning Message");
+            workerProcess.ParseConsoleLog("Warning:Test Warning Info stream Message");
+            workerProcess.ParseConsoleLog("Warning:Test Warning Message", true);
             workerProcess.ParseConsoleLog("Test Message No keyword", true);
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var allLogs = _testLogger.GetLogMessages();
-            Assert.True(allLogs.Count == 4);
+            Assert.True(allLogs.Count == 5);
             VerifyLogLevel(allLogs, "Test Message", LogLevel.Information);
             VerifyLogLevel(allLogs, "Error:Test Error Message", LogLevel.Error);
             VerifyLogLevel(allLogs, "Warning:Test Warning Message", LogLevel.Warning);
+            VerifyLogLevel(allLogs, "Warning:Test Warning Info stream Message", LogLevel.Information);
             if (useStdErrForErroLogsOnly)
             {
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Error);
