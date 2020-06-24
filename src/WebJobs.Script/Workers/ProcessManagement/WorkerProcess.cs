@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _processMonitor.GetStats();
         }
 
-        internal void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
@@ -160,11 +160,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        internal void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
-                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+                ParseConsoleLog(e.Data);
             }
         }
 
