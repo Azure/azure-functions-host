@@ -89,10 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (functions == null || !functions.Any())
             {

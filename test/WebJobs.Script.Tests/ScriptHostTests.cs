@@ -1185,8 +1185,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (!placeholderMode && !httpWorker)
             {
                 cts.Cancel();
+                Assert.Throws<OperationCanceledException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token));
             }
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token);
+            else
+            {
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token);
+            }
         }
 
         [Fact]

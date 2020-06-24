@@ -246,7 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            var ignore = LogInitializationAsync();
+            // Throw if cancellation occurred before initialization.
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _ = LogInitializationAsync();
 
             await InitializeAsync(cancellationToken);
 
@@ -264,10 +267,6 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
             _stopwatch.Start();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
@@ -482,10 +481,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
 
             AddFunctionDescriptors(functionMetadata);
 
