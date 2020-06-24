@@ -84,11 +84,12 @@ jobs:
       projects: |
         **\WebJobs.Script.Performance.App.csproj
   - task: DotNetCoreCLI@2
-    displayName: 'Build WebJobs.Script.Abstractions'
+    displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
       command: 'build'
-      arguments: '-c Release'
+      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
       projects: |
+        **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
@@ -156,13 +157,6 @@ jobs:
               "ToolVersion": "1.0"
             }
         ]
-  - task: DotNetCoreCLI@2
-    displayName: 'Build ExtensionsMetadataGenerator'
-    inputs:
-      command: 'build'      
-      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
-      projects: |
-        **\ExtensionsMetadataGenerator.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
