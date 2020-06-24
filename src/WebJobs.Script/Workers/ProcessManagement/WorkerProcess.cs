@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                ParseConsoleLog(e.Data);
+                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
             }
         }
 
