@@ -530,15 +530,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken)
         {
-            if (isPlaceholderMode)
+            if (isPlaceholderMode || isHttpWorker || cancellationToken.IsCancellationRequested)
             {
-                return;
-            }
-            if (isHttpWorker)
-            {
-                // Do not enforce langauge for http worker
                 return;
             }
             if (!IsSingleLanguage(functions, workerRuntime))

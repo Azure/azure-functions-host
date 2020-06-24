@@ -89,6 +89,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
             if (functions == null || !functions.Any())
             {
                 // do not initialize function dispachter if there are no functions
