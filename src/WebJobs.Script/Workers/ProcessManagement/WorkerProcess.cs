@@ -84,33 +84,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _processMonitor.GetStats();
         }
 
-        private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
+        internal void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+                ParseConsoleLog(e.Data, true);
+            }
+        }
+
+        internal void ParseConsoleLog(string msg, bool errorData = false)
+        {
+            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+            {
+                BuildAndLogConsoleLog(msg, LogLevel.Warning);
+            }
+            else
+            {
+                if (_useStdErrorStreamForErrorsOnly && errorData)
                 {
-                    BuildAndLogConsoleLog(e.Data, LogLevel.Warning);
+                    LogError(msg);
                 }
                 else
                 {
-                    if (_useStdErrorStreamForErrorsOnly)
+                    if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
                     {
                         LogError(msg);
                     }
                     else
                     {
-                        if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                                  (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                                  (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
-                        {
-                            LogError(msg);
-                        }
-                        else
-                        {
-                            BuildAndLogConsoleLog(e.Data, LogLevel.Information);
-                        }
+                        BuildAndLogConsoleLog(msg, LogLevel.Information);
                     }
                 }
             }
@@ -156,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        private void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
+        internal void OnOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {

@@ -29,6 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = loggerFactory.CreateLogger(WorkerConstants.FunctionConsoleLogCategoryName);
         }
 
+        internal WorkerConsoleLogService(ILogger logger, IWorkerConsoleLogSource consoleLogSource)
+        {
+            _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _processingTask = ProcessLogs();
@@ -45,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        private async Task ProcessLogs()
+        internal async Task ProcessLogs()
         {
             ISourceBlock<ConsoleLog> source = _source.LogStream;
             try
