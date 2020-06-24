@@ -1125,7 +1125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false));
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false, CancellationToken.None));
             Assert.Equal($"Did not find functions with language [{RpcWorkerConstants.DotNetLanguageWorkerName}].", ex.Message);
         }
 
@@ -1148,7 +1148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, RpcWorkerConstants.DotNetLanguageWorkerName, false, false, CancellationToken.None);
         }
 
         [Fact]
@@ -1164,13 +1164,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1
             };
 
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false);
+            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false, CancellationToken.None);
         }
 
         [Theory]
         [InlineData(true, true)]
         [InlineData(true, false)]
-        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_HttpWorkerOrPlaceholderMode(bool placeholderMode, bool httpWorker)
+        [InlineData(false, false)]
+        public void VerifyFunctionsMatchSpecifiedLanguage_NoThrow_For_HttpWorkerOrPlaceholderModeOrInitTaskCancelled(bool placeholderMode, bool httpWorker)
         {
             FunctionMetadata funcJS1 = new FunctionMetadata()
             {
@@ -1180,8 +1181,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 funcJS1
             };
-
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker);
+            CancellationTokenSource cts = new CancellationTokenSource();
+            if (!placeholderMode && !httpWorker)
+            {
+                cts.Cancel();
+                Assert.Throws<OperationCanceledException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token));
+            }
+            else
+            {
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, placeholderMode, httpWorker, cts.Token);
+            }
         }
 
         [Fact]
@@ -1202,7 +1211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 funcJS1, funcCS1
             };
 
-            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false));
+            HostInitializationException ex = Assert.Throws<HostInitializationException>(() => Utility.VerifyFunctionsMatchSpecifiedLanguage(functionsList, string.Empty, false, false, CancellationToken.None));
             Assert.Equal($"Found functions with more than one language. Select a language for your function app by specifying {RpcWorkerConstants.FunctionWorkerRuntimeSettingName} AppSetting", ex.Message);
         }
 

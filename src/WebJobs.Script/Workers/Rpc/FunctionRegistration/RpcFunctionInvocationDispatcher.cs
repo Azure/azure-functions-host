@@ -157,6 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (_environment.IsPlaceholderModeEnabled())
             {
                 return;

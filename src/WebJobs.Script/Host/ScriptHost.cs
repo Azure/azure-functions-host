@@ -246,7 +246,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
         protected override async Task StartAsyncCore(CancellationToken cancellationToken)
         {
-            var ignore = LogInitializationAsync();
+            // Throw if cancellation occurred before initialization.
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _ = LogInitializationAsync();
 
             await InitializeAsync(cancellationToken);
 
@@ -295,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 var directTypes = GetDirectTypes(functionMetadataList);
-                await InitializeFunctionDescriptorsAsync(functionMetadataList);
+                await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                 // Dispatcher not needed for non-proxy codeless function.
@@ -476,15 +479,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Initialize function descriptors from metadata.
         /// </summary>
-        internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata)
+        internal async Task InitializeFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functionMetadata, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             AddFunctionDescriptors(functionMetadata);
 
             Collection<FunctionDescriptor> functions;
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupGetFunctionDescriptorsLatency))
             {
                 _logger.CreatingDescriptors();
-                functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders);
+                functions = await GetFunctionDescriptorsAsync(functionMetadata, _descriptorProviders, cancellationToken);
                 _logger.DescriptorsCreated();
             }
             Functions = functions;
@@ -684,43 +689,45 @@ namespace Microsoft.Azure.WebJobs.Script
             return visitedTypes;
         }
 
-        internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders)
+        internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders, CancellationToken cancellationToken)
         {
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
-            var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
-
-            Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker);
-
-            foreach (FunctionMetadata metadata in functions)
+            if (!cancellationToken.IsCancellationRequested)
             {
-                try
+                var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+
+                Utility.VerifyFunctionsMatchSpecifiedLanguage(functions, _workerRuntime, _environment.IsPlaceholderModeEnabled(), _isHttpWorker, cancellationToken);
+
+                foreach (FunctionMetadata metadata in functions)
                 {
-                    bool created = false;
-                    FunctionDescriptor descriptor = null;
-                    foreach (var provider in descriptorProviders)
+                    try
                     {
-                        (created, descriptor) = await provider.TryCreate(metadata);
-                        if (created)
+                        bool created = false;
+                        FunctionDescriptor descriptor = null;
+                        foreach (var provider in descriptorProviders)
                         {
-                            break;
+                            (created, descriptor) = await provider.TryCreate(metadata);
+                            if (created)
+                            {
+                                break;
+                            }
+                        }
+
+                        if (descriptor != null)
+                        {
+                            ValidateFunction(descriptor, httpFunctions);
+                            functionDescriptors.Add(descriptor);
                         }
                     }
-
-                    if (descriptor != null)
+                    catch (Exception ex)
                     {
-                        ValidateFunction(descriptor, httpFunctions);
-                        functionDescriptors.Add(descriptor);
+                        // log any unhandled exceptions and continue
+                        Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                     }
                 }
-                catch (Exception ex)
-                {
-                    // log any unhandled exceptions and continue
-                    Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
-                }
+
+                VerifyPrecompileStatus(functionDescriptors);
             }
-
-            VerifyPrecompileStatus(functionDescriptors);
-
             return functionDescriptors;
         }
 
