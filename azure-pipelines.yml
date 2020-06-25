@@ -7,14 +7,14 @@ pr:
   branches:
     include:
     - dev
-    - release/3.0-hotfix-73.1
+    - release/3.0-hotfix-73.2
     - release/ExtensionsMetadataGenerator/1.1
 
 trigger:
   branches:
     include:
     - dev
-    - release/3.0-hotfix-73.1
+    - release/3.0-hotfix-73.2
     - release/ExtensionsMetadataGenerator/1.1
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( endswith( variables['Build.SourceBranch'], 'release/3.0-hotfix-73.1' ) ), not( endswith( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/1.1' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( endswith( variables['Build.SourceBranch'], 'release/3.0-hotfix-73.2' ) ), not( endswith( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/1.1' ) ) ) ) }}:
       suffixTemp: ci
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
