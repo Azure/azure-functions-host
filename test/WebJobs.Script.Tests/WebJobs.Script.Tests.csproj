@@ -49,7 +49,7 @@
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="FluentAssertions" Version="5.9.0" />    
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.1.0" />    
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="1.1.202005032" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="3.0.13905" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
