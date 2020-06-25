@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
-        [Fact(Skip = "Python release is hit by this PowerShell E2E test. We're only doing release on Linux.")]
+        [Fact]
         public async Task HttpTrigger_PowerShell_Get_Succeeds()
         {
             await InvokeHttpTrigger("HttpTrigger");
