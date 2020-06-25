@@ -7,11 +7,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class WorkerConsoleLogSource : IWorkerConsoleLogSource
     {
-        private readonly BufferBlock<string> _buffer = new BufferBlock<string>();
+        private readonly BufferBlock<ConsoleLog> _buffer = new BufferBlock<ConsoleLog>();
 
-        public ISourceBlock<string> LogStream => _buffer;
+        public ISourceBlock<ConsoleLog> LogStream => _buffer;
 
-        public void Log(string consoleLog)
+        public void Log(ConsoleLog consoleLog)
         {
             _buffer.Post(consoleLog);
         }

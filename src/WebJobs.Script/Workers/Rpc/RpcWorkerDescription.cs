@@ -73,6 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
+        public override bool UseStdErrorStreamForErrorsOnly { get; set; } = false;
+
         public override void ApplyDefaultsAndValidate(string workerDirectory, ILogger logger)
         {
             if (workerDirectory == null)

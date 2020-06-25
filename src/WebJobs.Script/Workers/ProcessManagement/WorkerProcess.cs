@@ -23,17 +23,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IMetricsLogger _metricsLogger;
 
         private Process _process;
+        private bool _useStdErrorStreamForErrorsOnly;
         private ProcessMonitor _processMonitor;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
             _metricsLogger = metricsLogger;
+            _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
         }
 
         public int Id => _process.Id;
@@ -84,50 +86,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            // TODO: per language stdout/err parser?
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+                ParseErrorMessageAndLog(e.Data);
+            }
+        }
+
+        internal void ParseErrorMessageAndLog(string msg)
+        {
+            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+            {
+                BuildAndLogConsoleLog(msg, LogLevel.Warning);
+            }
+            else
+            {
+                if (_useStdErrorStreamForErrorsOnly)
                 {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
-                    {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogWarning(msg);
-                    }
-                    else
-                    {
-                        _consoleLogSource?.Log(msg);
-                    }
-                }
-                else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                          (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                          (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
-                {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
-                    {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogError(msg);
-                    }
-                    else
-                    {
-                        _consoleLogSource?.Log(msg);
-                    }
-                    _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
+                    LogError(msg);
                 }
                 else
                 {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
+                    if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
                     {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogInformation(msg);
+                        LogError(msg);
                     }
                     else
                     {
-                        _consoleLogSource?.Log(msg);
+                        BuildAndLogConsoleLog(msg, LogLevel.Information);
                     }
                 }
             }
+        }
+
+        private void LogError(string msg)
+        {
+            BuildAndLogConsoleLog(msg, LogLevel.Error);
+            _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
         }
 
         private void OnProcessExited(object sender, EventArgs e)
@@ -168,16 +164,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (WorkerProcessUtilities.IsConsoleLog(msg))
-                {
-                    msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                    _workerProcessLogger?.LogInformation(msg);
-                }
-                else
-                {
-                    _consoleLogSource?.Log(msg);
-                }
+                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+            }
+        }
+
+        private void BuildAndLogConsoleLog(string msg, LogLevel level)
+        {
+            ConsoleLog consoleLog = new ConsoleLog()
+            {
+                Message = msg,
+                Level = level
+            };
+            if (WorkerProcessUtilities.IsConsoleLog(msg))
+            {
+                consoleLog.Message = WorkerProcessUtilities.RemoveLogPrefix(msg);
+                _workerProcessLogger?.Log(level, msg);
+            }
+            else
+            {
+                _consoleLogSource?.Log(consoleLog);
             }
         }
 
