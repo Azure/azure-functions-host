@@ -79,12 +79,6 @@ jobs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber)$(suffix).no-runtime.zip
-    artifact: Functions.2.0.$(buildNumber)$(suffix).no-runtime
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Binaries.2.0.$(buildNumber)$(suffix).no-runtime.zip
-    artifact: Functions.Binaries.2.0.$(buildNumber)$(suffix).no-runtime
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber)$(suffix).no-runtime.zip
-    artifact: Functions.Private.2.0.$(buildNumber)$(suffix).no-runtime
   - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.2.0.$(buildNumber)$(suffix).win-x32.inproc.zip
     artifact: Functions.Private.2.0.$(buildNumber)$(suffix).win-x32.inproc
   - publish: $(Build.ArtifactStagingDirectory)\Functions.2.0.$(buildNumber)$(suffix).zip
