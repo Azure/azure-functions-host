@@ -88,19 +88,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                ParseConsoleLog(e.Data, true);
+                ParseErrorMessageAndLog(e.Data);
             }
         }
 
-        internal void ParseConsoleLog(string msg, bool errorData = false)
+        internal void ParseErrorMessageAndLog(string msg)
         {
-            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1 && errorData)
+            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
             {
                 BuildAndLogConsoleLog(msg, LogLevel.Warning);
             }
             else
             {
-                if (_useStdErrorStreamForErrorsOnly && errorData)
+                if (_useStdErrorStreamForErrorsOnly)
                 {
                     LogError(msg);
                 }

@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     public class WorkerConsoleLogServiceTests
     {
-        private ILoggerFactory _loggerFactory = new LoggerFactory();
         private IScriptEventManager _eventManager;
         private IProcessRegistry _processRegistry;
         private TestLogger _testLogger = new TestLogger("test");
@@ -30,19 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _processRegistry = new EmptyProcessRegistry();
             _workerConsoleLogService = new WorkerConsoleLogService(_testLogger, _workerConsoleLogSource);
             WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testLogger, _workerConsoleLogSource, null, useStdErrForErroLogsOnly);
-            workerProcess.ParseConsoleLog("Test Message");
-            workerProcess.ParseConsoleLog("Error:Test Error Message");
-            workerProcess.ParseConsoleLog("Warning:Test Warning Info stream Message");
-            workerProcess.ParseConsoleLog("Warning:Test Warning Message", true);
-            workerProcess.ParseConsoleLog("Test Message No keyword", true);
+            workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
+            workerProcess.ParseErrorMessageAndLog("Test Error Message");
+            workerProcess.ParseErrorMessageAndLog("Test Warning Message");
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var allLogs = _testLogger.GetLogMessages();
-            Assert.True(allLogs.Count == 5);
-            VerifyLogLevel(allLogs, "Test Message", LogLevel.Information);
-            VerifyLogLevel(allLogs, "Error:Test Error Message", LogLevel.Error);
-            VerifyLogLevel(allLogs, "Warning:Test Warning Message", LogLevel.Warning);
-            VerifyLogLevel(allLogs, "Warning:Test Warning Info stream Message", LogLevel.Information);
+            Assert.True(allLogs.Count == 3);
+            VerifyLogLevel(allLogs, "Test Error Message", LogLevel.Error);
+            VerifyLogLevel(allLogs, "Test Warning Message", LogLevel.Warning);
             if (useStdErrForErroLogsOnly)
             {
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Error);
