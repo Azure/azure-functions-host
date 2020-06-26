@@ -8,7 +8,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public bool SiteAuthEnabled { get; set; }
 
         public string SiteAuthClientId { get; set; }
-
-        public bool? SiteAuthAutoProvisioned { get; set; }
     }
 }
