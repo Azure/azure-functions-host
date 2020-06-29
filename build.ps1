@@ -108,7 +108,7 @@ function AddDiaSymReaderToPath()
 
     $parent = Split-Path -Path $sdkBasePath.Trim()
     $maxValue = 0
-    Get-ChildItem $parent\2.2.* | 
+    Get-ChildItem $parent\2.2.* | ?{$_.psiscontainer} |
         ForEach-Object {
             $newVal = $_.Extension -replace '\.',''
             if($newVal -gt $maxValue) {

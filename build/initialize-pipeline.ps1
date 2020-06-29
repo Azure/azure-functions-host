@@ -2,6 +2,7 @@ $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 $bypassPackaging = $true
 $suffix = "-ci"
+$programFilesPath = $env:ProgramFiles
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
 if($sourceBranch.endsWith('release/2.0')) {
@@ -21,8 +22,9 @@ elseif($buildReason -eq "PullRequest")
   }
 }
 
-Write-Host "BypassPackaging: $bypassPackaging, Suffix: $suffix"
+Write-Host "BypassPackaging: $bypassPackaging, Suffix: $suffix, ProgramFilesPath: $programFilesPath"
 
 # Write to output
 "##vso[task.setvariable variable=Suffix;isOutput=true]$suffix"
 "##vso[task.setvariable variable=BypassPackaging;isOutput=true]$bypassPackaging"
+"##vso[task.setvariable variable=ProgramFilesPath;isOutput=true]$programFilesPath"

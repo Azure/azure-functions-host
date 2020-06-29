@@ -58,7 +58,6 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '2.2.x'
-      performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -66,12 +65,12 @@ jobs:
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '..\..\..\buildoutput'
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: 'WebJobs.Script.Performance.App*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)\Performance'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '..\..\buildoutput'
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: CopyFiles@2
@@ -114,7 +113,6 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '2.2.x'
-      performMultiLevelLookup: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -133,7 +131,6 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '2.2.x'
-      performMultiLevelLookup: true
   - task: UseNode@1
     inputs:      
       version: '10.x'
@@ -182,6 +179,9 @@ jobs:
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -leaseBlob $(LeaseBlob) -leaseToken $(LeaseToken)'
 
 - job: RunIntegrationTests
+  dependsOn: InitializePipeline
+  variables:
+    programFilesPath: $[ dependencies.InitializePipeline.outputs['Initialize.ProgramFilesPath'] ]
   pool:
     vmImage: 'vs2017-win2016'
   steps: 
@@ -189,7 +189,7 @@ jobs:
     inputs:
       packageType: 'sdk'
       version: '2.2.x'
-      performMultiLevelLookup: true
+      installationPath: $(programFilesPath)/dotnet
   - task: UseNode@1
     inputs:
       version: '10.x'
