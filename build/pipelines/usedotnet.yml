@@ -1,0 +1,21 @@
+steps: 
+- task: PowerShell@2
+  displayName: 'Set default dotnet path'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $infoContent = dotnet --info
+      $sdkBasePath = $infoContent  |
+          Where-Object {$_ -match 'Base Path:'} |
+          ForEach-Object {
+              ($_ -replace '\s+Base Path:','').trim()
+          }    
+      Write-Host  "dotnet SDK path: $sdkBasePath"
+      $dotnetPath = (Get-Item $sdkBasePath).Parent.Parent.FullName
+      Write-Host "dotnet path: $dotnetPath"
+      Write-Host "##vso[task.setvariable variable=DotNetPath]$dotnetPath"
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '2.2.207'
+    installationPath: $(DotNetPath)

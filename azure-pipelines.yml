@@ -54,11 +54,7 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016' 
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.x'
-      performMultiLevelLookup: true
+  - template: build/pipelines/usedotnet.yml
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -66,12 +62,12 @@ jobs:
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '..\..\..\buildoutput'
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: 'WebJobs.Script.Performance.App*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)\Performance'
   - task: CopyFiles@2
     inputs:
-      SourceFolder: '..\..\buildoutput'
+      SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
       Contents: '*.nupkg'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: CopyFiles@2
@@ -110,11 +106,7 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.x'
-      performMultiLevelLookup: true
+  - template: build/pipelines/usedotnet.yml
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -129,11 +121,7 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.x'
-      performMultiLevelLookup: true
+  - template: build/pipelines/usedotnet.yml
   - task: UseNode@1
     inputs:      
       version: '10.x'
@@ -185,11 +173,7 @@ jobs:
   pool:
     vmImage: 'vs2017-win2016'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '2.2.x'
-      performMultiLevelLookup: true
+  - template: build/pipelines/usedotnet.yml
   - task: UseNode@1
     inputs:
       version: '10.x'
