@@ -67,6 +67,8 @@
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- The System.Data.SqlClient assembly is required to be deployed. -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.3.1" />
   </ItemGroup>
 
   <ItemGroup>
