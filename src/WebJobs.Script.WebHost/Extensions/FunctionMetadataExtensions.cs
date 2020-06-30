@@ -125,7 +125,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 await FileUtility.WriteAsync(testDataPath, string.Empty);
             }
 
-            return await FileUtility.ReadAsync(testDataPath);
+            string data = await FileUtility.ReadAsync(testDataPath);
+
+            // We avoid inlining test data beyond the specified length. We do this to
+            // provide back compat for the majority of cases. In all other cases, the caller
+            // is expected to follow TestDataHref to retrieve the data.
+            bool testDataCapEnabled = (Environment.GetEnvironmentVariable(EnvironmentSettingNames.TestDataCapEnabled) ?? "1") == "1";
+            if (data.Length > ScriptConstants.MaxTestDataInlineStringLength && testDataCapEnabled)
+            {
+                return null;
+            }
+
+            return data;
         }
 
         internal static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)

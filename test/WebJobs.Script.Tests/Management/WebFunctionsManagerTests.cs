@@ -35,37 +35,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostConfig = new ScriptHostConfiguration
             {
-                RootScriptPath = @"x:\root\site\wwwroot",
+                RootScriptPath = @"x:\root",
                 IsSelfHost = false,
                 RootLogPath = @"x:\root\LogFiles\Application\Functions",
-                TestDataPath = @"x:\root\data\functions\sampledata"
+                TestDataPath = @"x:\root\data"
             };
             _hostConfig.HostConfig.HostId = "testhostid123";
 
             HostNameProvider.Reset();
         }
 
-        [Fact]
-        public async Task ReadFunctionsMetadataSucceeds()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ReadFunctionsMetadataSucceeds(bool testDataCapEnabled)
         {
-            // Setup
-            var fileSystem = CreateFileSystem(_hostConfig);
-            var loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(loggerProvider);
+            var env = new Dictionary<string, string>();
+            if (!testDataCapEnabled)
+            {
+                env.Add(EnvironmentSettingNames.TestDataCapEnabled, "0");
+            }
+            var envScope = new TestScopedEnvironmentVariable(env);
+            using (envScope)
+            {
+                // Setup
+                var fileSystem = CreateFileSystem(_hostConfig);
+                var loggerProvider = new TestLoggerProvider();
+                var loggerFactory = new LoggerFactory();
+                loggerFactory.AddProvider(loggerProvider);
 
-            var contentBuilder = new StringBuilder();
-            var httpClient = CreateHttpClient(contentBuilder);
-            var webManager = new WebFunctionsManager(_hostConfig, loggerFactory);
+                var contentBuilder = new StringBuilder();
+                var httpClient = CreateHttpClient(contentBuilder);
+                var webManager = new WebFunctionsManager(_hostConfig, loggerFactory);
 
-            FileUtility.Instance = fileSystem;
-            var functions = await webManager.GetFunctionsMetadata();
-            var jsFunctions = functions.Where(funcMetadata => funcMetadata.Language == ScriptType.Javascript.ToString()).ToList();
-            var pytonFunctions = functions.Where(funcMetadata => funcMetadata.Language == ScriptType.Python.ToString()).ToList();
+                FileUtility.Instance = fileSystem;
+                var metadata = (await webManager.GetFunctionsMetadata()).ToArray();
 
-            Assert.Equal(3, functions.Count());
-            Assert.Equal(2, jsFunctions.Count());
-            Assert.Equal(1, pytonFunctions.Count());
+                Assert.Equal(3, metadata.Count());
+                Assert.Equal(2, metadata.Count(p => p.Language == ScriptType.Javascript.ToString()));
+                Assert.Equal(1, metadata.Count(p => p.Language == ScriptType.Python.ToString()));
+
+                Assert.Equal("https://localhost/api/vfs/data/function1.dat", metadata[0].TestDataHref.AbsoluteUri);
+                Assert.Equal("https://localhost/api/vfs/data/function2.dat", metadata[1].TestDataHref.AbsoluteUri);
+                Assert.Equal("https://localhost/api/vfs/data/function3.dat", metadata[2].TestDataHref.AbsoluteUri);
+
+                Assert.Equal("Test Data 1", metadata[0].TestData);
+                Assert.Equal("Test Data 2", metadata[1].TestData);
+
+                if (testDataCapEnabled)
+                {
+                    // TestData size is capped by default
+                    Assert.Null(metadata[2].TestData);
+                }
+                else
+                {
+                    Assert.Equal(ScriptConstants.MaxTestDataInlineStringLength + 1, metadata[2].TestData.Length);
+                }
+            }
         }
 
         [Theory]
@@ -236,6 +262,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ]
 }";
 
+            string testData1 = "Test Data 1";
+            string testData2 = "Test Data 2";
+            string testData3 = TestHelpers.NewRandomString(ScriptConstants.MaxTestDataInlineStringLength + 1);
+
             fileBase.Setup(f => f.Exists(Path.Combine(rootScriptPath, @"function1\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootScriptPath, @"function1\main.py"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootScriptPath, @"function1\function.json"))).Returns(function1);
@@ -245,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData1));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootScriptPath, @"function2\function.json"))).Returns(true);
@@ -257,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function2.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData2));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootScriptPath, @"function3\function.json"))).Returns(true);
@@ -269,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData3));
             });
 
             return fileSystem.Object;
