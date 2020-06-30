@@ -8,12 +8,14 @@ pr:
     include:
     - release/2.0
     - v2.x
+    - release/2.0-hotfix-77
 
 trigger:
   branches:
     include:
     - release/2.0
     - v2.x
+    - release/2.0-hotfix-77
 
 jobs:
 - job: InitializePipeline
