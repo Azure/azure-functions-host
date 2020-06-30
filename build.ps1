@@ -108,7 +108,7 @@ function AddDiaSymReaderToPath()
 
     $parent = Split-Path -Path $sdkBasePath.Trim()
     $maxValue = 0
-    Get-ChildItem $parent\2.2.* | 
+    Get-ChildItem $parent\2.2.* | ?{ $_.PSIsContainer } |
         ForEach-Object {
             $newVal = $_.Extension -replace '\.',''
             if($newVal -gt $maxValue) {
@@ -280,7 +280,8 @@ function cleanExtension([string] $bitness) {
     Get-ChildItem "$privateSiteExtensionPath\$bitness\workers\powershell\runtimes" -Exclude $keepRuntimes -ErrorAction SilentlyContinue |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
-  
+
+dotnet --info
 dotnet --version
 dotnet build .\WebJobs.Script.sln -v q /p:BuildNumber="$buildNumber"
 
@@ -296,12 +297,12 @@ $projects =
 foreach ($project in $projects)
 {
 
-  $cmd = "pack", "src\$project\$project.csproj", "-o", "..\..\buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
+  $cmd = "pack", "src\$project\$project.csproj", "-o", "$buildoutput", "--no-build" , "-p:PackageVersion=$extensionVersion"
   
   & dotnet $cmd  
 }
 
-$cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "..\..\..\buildoutput"
+$cmd = "pack", "tools\WebJobs.Script.Performance\WebJobs.Script.Performance.App\WebJobs.Script.Performance.App.csproj", "-o", "$buildoutput"
 & dotnet $cmd
 
 AddDiaSymReaderToPath
