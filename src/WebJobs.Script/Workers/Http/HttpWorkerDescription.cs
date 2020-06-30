@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         /// </summary>
         public string WorkingDirectory { get; set; }
 
+        public override bool UseStdErrorStreamForErrorsOnly { get; set; } = true;
+
         public override void ApplyDefaultsAndValidate(string inputWorkerDirectory, ILogger logger)
         {
             if (inputWorkerDirectory == null)

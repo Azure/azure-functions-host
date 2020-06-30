@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                        ILogger workerProcessLogger,
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IMetricsLogger metricsLogger)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;
             _processFactory = processFactory;
