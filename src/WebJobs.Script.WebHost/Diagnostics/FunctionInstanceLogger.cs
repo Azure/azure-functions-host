@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
@@ -80,32 +81,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            FunctionInstanceMonitor monitor;
-            item.Properties.TryGetValue(Key, out monitor);
-
-            if (item.EndTime.HasValue)
+            if (item.IsStart)
             {
-                // Function Completed
-                bool success = item.ErrorDetails == null;
-                monitor.End(success);
+                StartFunction(item);
             }
-            else
+            else if (item.IsCompleted)
             {
-                // Function Started
-                if (monitor == null)
-                {
-                    if (_metadataManager.TryGetFunctionMetadata(item.LogName, out FunctionMetadata function))
-                    {
-                        monitor = new FunctionInstanceMonitor(function, _metrics, item.FunctionInstanceId);
-                        item.Properties[Key] = monitor;
-                        monitor.Start();
-                    }
-                    else
-                    {
-                        // This exception will cause the function to not get executed.
-                        throw new InvalidOperationException($"Missing function.json for '{item.LogName}'.");
-                    }
-                }
+                EndFunction(item);
             }
 
             if (_writer != null)
@@ -123,6 +105,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     ParentId = item.ParentId
                 });
             }
+        }
+
+        private void StartFunction(FunctionInstanceLogEntry item)
+        {
+            if (_metadataManager.TryGetFunctionMetadata(item.LogName, out FunctionMetadata function))
+            {
+                var startedEvent = new FunctionStartedEvent(item.FunctionInstanceId, function);
+                _metrics.BeginEvent(startedEvent);
+
+                var invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, function);
+                item.Properties[Key] = (startedEvent, invokeLatencyEvent);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unable to load metadata for function '{item.LogName}'.");
+            }
+        }
+
+        private void EndFunction(FunctionInstanceLogEntry item)
+        {
+            item.Properties.TryGetValue(Key, out (FunctionStartedEvent, object) invocationTuple);
+
+            bool success = item.ErrorDetails == null;
+            var startedEvent = invocationTuple.Item1;
+            startedEvent.Success = success;
+
+            var function = startedEvent.FunctionMetadata;
+            string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
+            string functionName = function != null ? function.Name : string.Empty;
+            string data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
+
+            startedEvent.Data = data;
+            _metrics.EndEvent(startedEvent);
+
+            var invokeLatencyEvent = invocationTuple.Item2;
+            if (invokeLatencyEvent is MetricEvent metricEvent)
+            {
+                metricEvent.Data = data;
+            }
+
+            _metrics.EndEvent(invokeLatencyEvent);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
