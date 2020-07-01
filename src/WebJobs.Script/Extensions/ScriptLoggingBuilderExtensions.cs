@@ -3,6 +3,8 @@
 
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -14,21 +16,24 @@ namespace Microsoft.Extensions.Logging
         internal static readonly string[] AllowedCategoryPrefixes = new[]
         {
             "Microsoft.Azure.WebJobs",
-            "Function",
-            "Worker",
-            "Host"
+            ScriptConstants.LogCategoryFunction,
+            ScriptConstants.LogCategoryWorker,
+            ScriptConstants.LogCategoryHost,
+            ScriptConstants.LogCategoryHostGeneral
         };
 
         public static void AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
+            builder.AddFilter(ScriptConstants.LogCategoryAlways, LogLevel.Information);
         }
 
         public static void AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
         {
             builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, LogLevel.Trace));
+            builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            builder.AddFilter<T>(ScriptConstants.LogCategoryAlways, LogLevel.Information);
         }
 
         private static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)

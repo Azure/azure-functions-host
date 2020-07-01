@@ -10,8 +10,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
@@ -25,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
+        private readonly ILogger _loggerAlways;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
@@ -74,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerConfigs = languageWorkerOptions.CurrentValue.WorkerConfigs;
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
+            _loggerAlways = loggerFactory.CreateLogger(ScriptConstants.LogCategoryAlways);
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
@@ -136,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             State = FunctionInvocationDispatcherState.Initialized;
             // Do not change this log message. Vs Code relies on this to figure out when to attach debuger to the worker process.
-            _logger.LogInformation("Worker process started and initialized.");
+            _loggerAlways.WorkerProcessInitialized();
         }
 
         internal async void InitializeWebhostLanguageWorkerChannel()

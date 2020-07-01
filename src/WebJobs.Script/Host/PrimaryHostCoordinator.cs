@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -26,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly TimeSpan _renewalInterval;
         private readonly TimeSpan _leaseRetryInterval;
         private readonly ILogger _logger;
+        private readonly ILogger _loggerAlways;
         private readonly IPrimaryHostStateProvider _primaryHostStateProvider;
         private readonly string _websiteInstanceId;
         private IDistributedLock _lockHandle; // If non-null, then we own the lock.
@@ -60,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _timer = new Timer(ProcessLeaseTimerTick);
 
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _loggerAlways = loggerFactory.CreateLogger(ScriptConstants.LogCategoryAlways);
             _primaryHostStateProvider = primaryHostStateProvider;
         }
 
@@ -147,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _lastRenewal = DateTime.UtcNow;
                 _lastRenewalLatency = _lastRenewal - requestStart;
 
-                _logger.PrimaryHostCoordinatorLockLeaseAcquired(_websiteInstanceId);
+                _loggerAlways.PrimaryHostCoordinatorLockLeaseAcquired(_websiteInstanceId);
 
                 // We've successfully acquired the lease, change the timer to use our renewal interval
                 SetTimerInterval(_renewalInterval);

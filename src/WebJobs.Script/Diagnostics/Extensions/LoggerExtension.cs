@@ -184,6 +184,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
             "{count} functions found");
 
+        private static readonly Action<ILogger, Exception> _workerProcessInitialized =
+            LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(329, nameof(WorkerProcessInitialized)),
+            "Worker process started and initialized.");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -334,6 +340,11 @@ Lock file hash: {currentLockFileHash}";
         public static void AutoRecoveringFileSystemWatcherUnableToRecover(this ILogger logger, Exception ex, string path)
         {
             _autoRecoveringFileSystemWatcherUnableToRecover(logger, path, ex);
+        }
+
+        public static void WorkerProcessInitialized(this ILogger logger)
+        {
+            _workerProcessInitialized(logger, null);
         }
     }
 }

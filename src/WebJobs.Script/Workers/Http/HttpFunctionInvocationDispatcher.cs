@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
+        private readonly ILogger _loggerAlways;
         private readonly IHttpWorkerChannelFactory _httpWorkerChannelFactory;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
@@ -48,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _applicationLifetime = applicationLifetime;
             _eventManager = eventManager;
             _logger = loggerFactory.CreateLogger<HttpFunctionInvocationDispatcher>();
+            _loggerAlways = loggerFactory.CreateLogger(ScriptConstants.LogCategoryAlways);
             _httpWorkerChannelFactory = httpWorkerChannelFactory ?? throw new ArgumentNullException(nameof(httpWorkerChannelFactory));
 
             State = FunctionInvocationDispatcherState.Default;
@@ -84,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private void SetFunctionDispatcherStateToInitializedAndLog()
         {
             State = FunctionInvocationDispatcherState.Initialized;
-            _logger.LogInformation("Worker process started and initialized.");
+            _loggerAlways.WorkerProcessInitialized();
         }
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
