@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
     public enum CustomHandlerType
     {
-        Http,
-        None
+        Http = 0,
+        None = 1
     }
 }

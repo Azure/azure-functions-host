@@ -47,6 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 _metricsLogger.LogEvent(MetricEventNames.CustomHandlerConfiguration);
                 ConfigureWorkerDescription(options, customHandlerSection);
+                if (options.Type == CustomHandlerType.None)
+                {
+                    // CustomHandlerType.None is only for maitaining backward compatibilty with httpWorker section.
+                    _logger.LogWarning($"CustomHandlerType {CustomHandlerType.None} is not supported. Defaulting to {CustomHandlerType.Http}.");
+                    options.Type = CustomHandlerType.Http;
+                }
                 return;
             }
 
