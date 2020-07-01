@@ -55,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // TODO: Add aka.ms/link to new docs
                 _logger.LogWarning($"Section {ConfigurationSectionNames.HttpWorker} will be deprecated. Please use {ConfigurationSectionNames.CustomHandler} section.");
                 ConfigureWorkerDescription(options, httpWorkerSection);
-                // Explicity set this empty to differentiate between customHandler and httpWorker options.
-                options.Type = string.Empty;
+                // Explicity set this to None to differentiate between customHandler and httpWorker options.
+                options.Type = CustomHandlerType.None;
             }
         }
 
