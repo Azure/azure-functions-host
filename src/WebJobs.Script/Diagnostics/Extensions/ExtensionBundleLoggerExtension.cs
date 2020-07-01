@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, Exception> _contentProviderNotConfigured =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(100, nameof(ContentProviderNotConfigured)),
             "Extension bundle configuration is not present in host.json.Cannot load content for file {path}");
 
@@ -25,31 +25,31 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, string, Exception> _locateExtensionBundle =
             LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(102, nameof(LocateExtensionBundle)),
             "Looking for extension bundle {id} at {path}");
 
         private static readonly Action<ILogger, string, Exception> _extensionBundleFound =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(103, nameof(ExtensionBundleFound)),
             "Found a matching extension bundle at {bundlePath}");
 
         private static readonly Action<ILogger, string, Exception> _extractingBundleZip =
             LoggerMessage.Define<string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(104, nameof(ExtractingBundleZip)),
             "Extracting extension bundle at {bundlePath}");
 
         private static readonly Action<ILogger, Exception> _zipExtractionComplete =
             LoggerMessage.Define(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(105, nameof(ZipExtractionComplete)),
             "Zip extraction complete");
 
         private static readonly Action<ILogger, string, string, Exception> _downloadingZip =
             LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(106, nameof(DownloadingZip)),
             "Downloading extension bundle from {zipUri} to {filePath}");
 
@@ -61,13 +61,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, string, Exception> _downloadComplete =
             LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(108, nameof(DownloadComplete)),
             "Completed downloading extension bundle from {zip} to {filePath}");
 
         private static readonly Action<ILogger, string, string, Exception> _fetchingVersionInfo =
             LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
+            LogLevel.Information,
             new EventId(109, nameof(FetchingVersionInfo)),
             "Fetching information on versions of extension bundle {id} available on {uriString}");
 
