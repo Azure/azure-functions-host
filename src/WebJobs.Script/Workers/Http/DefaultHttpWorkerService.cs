@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (scriptInvocationContext.FunctionMetadata.IsHttpInAndOutFunction())
             {
                 // type is empty for httpWorker section. EnableForwardingHttpRequest is opt-in for custom handler section.
-                if (string.IsNullOrEmpty(_httpWorkerOptions.Type) || _httpWorkerOptions.EnableForwardingHttpRequest)
+                if (_httpWorkerOptions.Type == CustomHandlerType.None || _httpWorkerOptions.EnableForwardingHttpRequest)
                 {
                     return ProcessHttpInAndOutInvocationRequest(scriptInvocationContext);
                 }
@@ -171,8 +171,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
         {
             string pathValue = functionName;
-            // _httpWorkerOptions.Type is populated only in customHandler section
-            if (httpRequestMessage.RequestUri != null && !string.IsNullOrEmpty(_httpWorkerOptions.Type))
+            // _httpWorkerOptions.Type is set to None only in HttpWorker section
+            if (httpRequestMessage.RequestUri != null && _httpWorkerOptions.Type != CustomHandlerType.None)
             {
                 pathValue = httpRequestMessage.RequestUri.AbsolutePath;
             }
