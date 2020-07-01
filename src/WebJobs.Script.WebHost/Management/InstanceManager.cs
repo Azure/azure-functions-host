@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task ApplyContext(HostAssignmentContext assignmentContext)
         {
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
-            assignmentContext.ApplyAppSettings(_environment);
+            assignmentContext.ApplyAppSettings(_environment, _logger);
 
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
