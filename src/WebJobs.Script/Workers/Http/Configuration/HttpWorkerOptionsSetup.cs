@@ -47,6 +47,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 _metricsLogger.LogEvent(MetricEventNames.CustomHandlerConfiguration);
                 ConfigureWorkerDescription(options, customHandlerSection);
+                if (options.Type == CustomHandlerType.None)
+                {
+                    // CustomHandlerType.None is only for maitaining backward compatibilty with httpWorker section.
+                    _logger.LogWarning($"CustomHandlerType {CustomHandlerType.None} is not supported. Defaulting to {CustomHandlerType.Http}.");
+                    options.Type = CustomHandlerType.Http;
+                }
                 return;
             }
 
@@ -55,8 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // TODO: Add aka.ms/link to new docs
                 _logger.LogWarning($"Section {ConfigurationSectionNames.HttpWorker} will be deprecated. Please use {ConfigurationSectionNames.CustomHandler} section.");
                 ConfigureWorkerDescription(options, httpWorkerSection);
-                // Explicity set this empty to differentiate between customHandler and httpWorker options.
-                options.Type = string.Empty;
+                // Explicity set this to None to differentiate between customHandler and httpWorker options.
+                options.Type = CustomHandlerType.None;
             }
         }
 

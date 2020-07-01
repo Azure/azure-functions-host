@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _httpWorkerOptions = new HttpWorkerOptions()
             {
                 Port = _defaultPort,
-                Type = string.Empty
+                Type = CustomHandlerType.None
             };
         }
 
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             var customHandlerOptions = new HttpWorkerOptions()
             {
                 Port = _defaultPort,
-                Type = "http"
+                Type = CustomHandlerType.Http
             };
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.IsAny<HttpRequestMessage>(),
@@ -228,7 +228,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             var customHandlerOptions = new HttpWorkerOptions()
             {
                 Port = _defaultPort,
-                Type = "http",
                 EnableForwardingHttpRequest = true
             };
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
