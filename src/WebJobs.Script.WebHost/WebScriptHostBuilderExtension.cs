@@ -106,7 +106,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
-                    services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
+                    if (environment.IsWindowsAzureManagedHosting() || environment.IsLinuxAzureManagedHosting())
+                    {
+                        // Enable breaking change analysis only when hosted in Azure
+                        services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
+                        services.AddSingleton<IHostedService, ChangeAnalysisService>();
+                    }
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
@@ -123,7 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     // Hosted services
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FileMonitoringService>());
-                    services.AddSingleton<IHostedService, ChangeAnalysisService>();
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
