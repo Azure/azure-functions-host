@@ -69,8 +69,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), new HttpMethod(httpRequest.Method), httpRequest.GetQueryCollectionAsDictionary()))
+                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), new HttpMethod(httpRequest.Method), httpRequest.GetQueryCollectionAsDictionary(), httpRequest.GetRequestUri()))
                 {
+                    httpRequestMessage.Content = new StreamContent(httpRequest.Body);
+
+                    if (!string.IsNullOrEmpty(httpRequest.ContentType))
+                    {
+                        httpRequestMessage.Content.Headers.Add("Content-Type", httpRequest.ContentType);
+                    }
+                    if (httpRequest.ContentLength != null)
+                    {
+                        httpRequestMessage.Content.Headers.Add("Content-Length", httpRequest.ContentLength.ToString());
+                    }
+
                     _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                     _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
@@ -156,13 +167,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
-        private HttpRequestMessage CreateAndGetHttpRequestMessage(string functionName, string invocationId, HttpMethod requestMethod, IDictionary<string, string> queryCollectionAsDictionary = null)
+        private HttpRequestMessage CreateAndGetHttpRequestMessage(string functionName, string invocationId, HttpMethod requestMethod, IDictionary<string, string> queryCollectionAsDictionary = null, Uri requestUriOverride = null)
         {
             var requestMessage = new HttpRequestMessage();
             AddRequestHeadersAndSetRequestUri(requestMessage, functionName, invocationId);
-            if (queryCollectionAsDictionary != null)
+            if (requestUriOverride != null)
             {
-                requestMessage.RequestUri = new Uri(QueryHelpers.AddQueryString(requestMessage.RequestUri.ToString(), queryCollectionAsDictionary));
+                requestMessage.RequestUri = new Uri(QueryHelpers.AddQueryString(requestUriOverride.ToString(), queryCollectionAsDictionary));
             }
             requestMessage.Method = requestMethod;
             return requestMessage;
