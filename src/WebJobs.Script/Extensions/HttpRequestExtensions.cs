@@ -5,13 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -120,6 +122,39 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                                 mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
             }
             return false;
+        }
+
+        public static async Task<HttpRequestMessage> GetProxyHttpRequest(this HttpRequest request, string requestUri, string invocationId)
+        {
+            HttpRequestMessage proxyRequest = new HttpRequestMessage();
+            proxyRequest.RequestUri = new Uri(QueryHelpers.AddQueryString(requestUri, request.GetQueryCollectionAsDictionary()));
+
+            foreach (var header in request.Headers)
+            {
+                proxyRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.FirstOrDefault());
+            }
+            proxyRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+            proxyRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            proxyRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+
+            proxyRequest.Method = new HttpMethod(request.Method);
+
+            // Copy body
+            MemoryStream ms = new MemoryStream();
+            await request.Body.CopyToAsync(ms);
+            ms.Position = 0;
+            proxyRequest.Content = new StreamContent(ms);
+
+            if (!string.IsNullOrEmpty(request.ContentType))
+            {
+                proxyRequest.Content.Headers.Add("Content-Type", request.ContentType);
+            }
+            if (request.ContentLength != null)
+            {
+                proxyRequest.Content.Headers.Add("Content-Length", request.ContentLength.ToString());
+            }
+
+            return proxyRequest;
         }
 
         public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)

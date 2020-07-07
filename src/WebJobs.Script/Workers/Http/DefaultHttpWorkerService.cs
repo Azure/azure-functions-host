@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Formatting;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
@@ -69,19 +67,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), new HttpMethod(httpRequest.Method), httpRequest.GetQueryCollectionAsDictionary(), httpRequest.GetRequestUri()))
+                string pathValue = scriptInvocationContext.FunctionMetadata.Name;
+                if (_httpWorkerOptions.EnableForwardingHttpRequest && _httpWorkerOptions.Type == CustomHandlerType.Http)
                 {
-                    httpRequestMessage.Content = new StreamContent(httpRequest.Body);
+                    pathValue = httpRequest.GetRequestUri().AbsolutePath;
+                }
 
-                    if (!string.IsNullOrEmpty(httpRequest.ContentType))
-                    {
-                        httpRequestMessage.Content.Headers.Add("Content-Type", httpRequest.ContentType);
-                    }
-                    if (httpRequest.ContentLength != null)
-                    {
-                        httpRequestMessage.Content.Headers.Add("Content-Length", httpRequest.ContentLength.ToString());
-                    }
-
+                using (HttpRequestMessage httpRequestMessage = await httpRequest.GetProxyHttpRequest(BuildAndGetUri(pathValue), scriptInvocationContext.ExecutionContext.InvocationId.ToString()))
+                {
                     _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                     _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
@@ -108,9 +101,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 HttpScriptInvocationContext httpScriptInvocationContext = await scriptInvocationContext.ToHttpScriptInvocationContext();
                 // Build httpRequestMessage from scriptInvocationContext
-                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), HttpMethod.Post))
+
+                using (HttpRequestMessage httpRequestMessage = await scriptInvocationContext.ToProxyHttpRequest(BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name), httpScriptInvocationContext))
                 {
-                    httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
                     _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
                     _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
@@ -124,11 +117,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     {
                         if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
                         {
-                        _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
                         if (httpScriptInvocationResult.ReturnValue == null)
                         {
-                        _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
 
                         ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);
@@ -165,32 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     }
                 }, null);
             }
-        }
-
-        private HttpRequestMessage CreateAndGetHttpRequestMessage(string functionName, string invocationId, HttpMethod requestMethod, IDictionary<string, string> queryCollectionAsDictionary = null, Uri requestUriOverride = null)
-        {
-            var requestMessage = new HttpRequestMessage();
-            AddRequestHeadersAndSetRequestUri(requestMessage, functionName, invocationId);
-            if (requestUriOverride != null)
-            {
-                requestMessage.RequestUri = new Uri(QueryHelpers.AddQueryString(requestUriOverride.ToString(), queryCollectionAsDictionary));
-            }
-            requestMessage.Method = requestMethod;
-            return requestMessage;
-        }
-
-        private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
-        {
-            string pathValue = functionName;
-            // _httpWorkerOptions.Type is set to None only in HttpWorker section
-            if (httpRequestMessage.RequestUri != null && _httpWorkerOptions.Type != CustomHandlerType.None)
-            {
-                pathValue = httpRequestMessage.RequestUri.AbsolutePath;
-            }
-            httpRequestMessage.RequestUri = new Uri(BuildAndGetUri(pathValue));
-            httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
-            httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
-            httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
         }
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)

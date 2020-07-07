@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Formatting;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -94,6 +96,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             //}
 
             return false;
+        }
+
+        public static Task<HttpRequestMessage> ToProxyHttpRequest(this ScriptInvocationContext context, string requestUri, HttpScriptInvocationContext content)
+        {
+            HttpRequestMessage proxyRequest = new HttpRequestMessage();
+            proxyRequest.RequestUri = new Uri(requestUri);
+
+            proxyRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+            proxyRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, context.ExecutionContext.InvocationId.ToString());
+            proxyRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+
+            proxyRequest.Method = HttpMethod.Post;
+
+            proxyRequest.Content = new ObjectContent<HttpScriptInvocationContext>(content, new JsonMediaTypeFormatter());
+
+            return Task.FromResult(proxyRequest);
         }
 
         public static async Task<HttpScriptInvocationContext> ToHttpScriptInvocationContext(this ScriptInvocationContext scriptInvocationContext)
