@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return false;
         }
 
-        public static async Task<HttpRequestMessage> GetProxyHttpRequest(this HttpRequest request, string requestUri, string invocationId)
+        public static Task<HttpRequestMessage> GetProxyHttpRequest(this HttpRequest request, string requestUri, string invocationId)
         {
             HttpRequestMessage proxyRequest = new HttpRequestMessage();
             proxyRequest.RequestUri = new Uri(QueryHelpers.AddQueryString(requestUri, request.GetQueryCollectionAsDictionary()));
@@ -140,21 +140,17 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             proxyRequest.Method = new HttpMethod(request.Method);
 
             // Copy body
-            MemoryStream ms = new MemoryStream();
-            await request.Body.CopyToAsync(ms);
-            ms.Position = 0;
-            proxyRequest.Content = new StreamContent(ms);
-
-            if (!string.IsNullOrEmpty(request.ContentType))
+            if (request.ContentLength != null && request.ContentLength > 0)
             {
-                proxyRequest.Content.Headers.Add("Content-Type", request.ContentType);
-            }
-            if (request.ContentLength != null)
-            {
+                proxyRequest.Content = new StreamContent(request.Body);
                 proxyRequest.Content.Headers.Add("Content-Length", request.ContentLength.ToString());
+                if (!string.IsNullOrEmpty(request.ContentType))
+                {
+                    proxyRequest.Content.Headers.Add("Content-Type", request.ContentType);
+                }
             }
 
-            return proxyRequest;
+            return Task.FromResult(proxyRequest);
         }
 
         public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)
