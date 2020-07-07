@@ -1,8 +1,7 @@
 {
 	"version": "2.0",
-	"customHandler": {
+	"httpWorker": {
 		"description": {
-			"enableForwardingHttpRequest": true,
 			"defaultExecutablePath": "node",
 			"arguments": [ "server.js" ]
 		}

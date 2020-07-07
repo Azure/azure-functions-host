@@ -317,6 +317,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CustomHandler", "CustomHandler", "{A59D3F65-53E5-4666-AEFE-882987A39A49}"
+	ProjectSection(SolutionItems) = preProject
+		sample\CustomHandler\host.json = sample\CustomHandler\host.json
+		sample\CustomHandler\proxies.json = sample\CustomHandler\proxies.json
+		sample\CustomHandler\server.js = sample\CustomHandler\server.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{209DC34B-762E-4B1B-B094-EBD7C4B972C2}"
+	ProjectSection(SolutionItems) = preProject
+		sample\CustomHandler\HttpTrigger\function.json = sample\CustomHandler\HttpTrigger\function.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
@@ -420,6 +432,8 @@ Global
 		{BA45A727-34B7-484F-9B93-B1755AF09A2A} = {0AE3CE25-4CD9-4769-AE58-399FC59CF70F}
 		{9A522D9D-2D86-4572-B7D1-ECBFBFAF312C} = {16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}
 		{F5D74052-3807-410F-9A5A-B69A57127CF4} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{A59D3F65-53E5-4666-AEFE-882987A39A49} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{209DC34B-762E-4B1B-B094-EBD7C4B972C2} = {A59D3F65-53E5-4666-AEFE-882987A39A49}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
