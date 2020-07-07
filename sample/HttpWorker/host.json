@@ -3,7 +3,7 @@
 	"httpWorker": {
 		"description": {
 			"defaultExecutablePath": "node",
-			"arguments": [ "server.js" ]
+			"defaultWorkerPath":  "server.js"
 		}
 	}
 }
