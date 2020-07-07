@@ -109,14 +109,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                    ["languageWorkers:python:defaultRuntimeVersion"] = "3.8"
+                    ["languageWorkers:python:defaultRuntimeVersion"] = "3.6"
                 });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
             var testEnvVariables = new Dictionary<string, string>
             {
-                { "languageWorkers:python:defaultRuntimeVersion", "3.8" }
+                { "languageWorkers:python:defaultRuntimeVersion", "3.6" }
             };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 var pythonWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                 Assert.Equal(4, workerConfigs.Count);
                 Assert.NotNull(pythonWorkerConfig);
-                Assert.Equal("3.8", pythonWorkerConfig.Description.DefaultRuntimeVersion);
+                Assert.Equal("3.6", pythonWorkerConfig.Description.DefaultRuntimeVersion);
             }
         }
 
