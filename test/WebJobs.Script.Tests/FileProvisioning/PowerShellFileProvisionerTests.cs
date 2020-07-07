@@ -31,6 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         private const string PSGalleryEmptyFeedResourceFileName =
             "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.PSGalleryEmptyFeed.xml";
 
+        private const string ProfileFileResourceFileName =
+            "Microsoft.Azure.WebJobs.Script.Tests.Resources.FileProvisioning.PowerShell.profile.ps1";
+
         private readonly string _scriptRootPath;
         private readonly ILoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
@@ -56,6 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             string requirementsContent = File.ReadAllText(Path.Combine(_scriptRootPath, RequirementsPsd1FileName));
             string expectedContent = FileUtility.ReadResourceString(RequirementsPsd1PSGalleryOnlineResourceFileName);
             Assert.Equal(expectedContent, requirementsContent, StringComparer.OrdinalIgnoreCase);
+
+            string profileContent = File.ReadAllText(Path.Combine(_scriptRootPath, ProfilePs1FileName));
+            string expectedProfileContent = FileUtility.ReadResourceString(ProfileFileResourceFileName);
+            Assert.Equal(expectedProfileContent, profileContent, StringComparer.OrdinalIgnoreCase);
 
             ValidateLogs(_loggerProvider, _scriptRootPath);
         }
