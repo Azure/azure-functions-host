@@ -77,29 +77,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
 
             // if this is an http request and the worker declares that it handles exclusion
-            // of http binding metadata, we'll skip those
-            if (context.FunctionMetadata.IsHttpInAndOutFunction() && excludeHttpTriggerMetadata)
+            // of req/$request binding data members
+            if (excludeHttpTriggerMetadata && bindingData.Value is HttpRequest)
             {
-                if (bindingData.Value is HttpRequest)
-                {
-                    // will exclude req/$request binding data members
-                    return true;
-                }
-
-                if (bindingData.Key.Equals("headers", StringComparison.OrdinalIgnoreCase) || bindingData.Key.Equals("query", StringComparison.OrdinalIgnoreCase))
-                {
-                    // these values are already part of the the request
-                    return true;
-                }
-            }
-
-            if (bindingData.Key.Equals("sys", StringComparison.OrdinalIgnoreCase) &&
-                bindingData.Value.GetType().Name.Equals("SystemBindingData", StringComparison.OrdinalIgnoreCase))
-            {
-                // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
-                // pipeline (e.g. sys.RandGuid, etc.)
                 return true;
             }
+
+            // TODO: re-enable this code when properties are no longer required by Node.js worker
+            // https://github.com/Azure/azure-functions-host/issues/6319
+            //if (bindingData.Key.Equals("sys", StringComparison.OrdinalIgnoreCase) &&
+            //    bindingData.Value.GetType().Name.Equals("SystemBindingData", StringComparison.OrdinalIgnoreCase))
+            //{
+            //    // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
+            //    // pipeline (e.g. sys.RandGuid, etc.)
+            //    return true;
+            //}
 
             return false;
         }
