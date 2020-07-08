@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _process.Exited += (sender, e) => OnProcessExited(sender, e);
                     _process.EnableRaisingEvents = true;
 
-                    _workerProcessLogger?.LogInformation($"Starting worker process with FileName:{_process.StartInfo.FileName} WorkingDirectory:{_process.StartInfo.WorkingDirectory} Arguments:{_process.StartInfo.Arguments}");
+                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{_process.StartInfo.FileName} WorkingDirectory:{_process.StartInfo.WorkingDirectory} Arguments:{_process.StartInfo.Arguments}");
                     _process.Start();
-                    _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                    _workerProcessLogger?.LogDebug($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
                     _process.BeginErrorReadLine();
                     _process.BeginOutputReadLine();

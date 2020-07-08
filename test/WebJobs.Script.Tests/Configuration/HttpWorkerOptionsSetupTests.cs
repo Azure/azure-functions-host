@@ -87,7 +87,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
             HttpWorkerOptions options = new HttpWorkerOptions();
-
+            options.Description = new HttpWorkerDescription();
+            options.Description.FileExists = path =>
+            {
+                return true;
+            };
             setup.Configure(options);
 
             if (options.Description != null && !string.IsNullOrEmpty(options.Description.DefaultExecutablePath))
@@ -227,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Verify worker path is expected
             if (appendCurrentDirToWorkerPath)
             {
-                Assert.Equal(Path.Combine(_scriptJobHostOptions.RootScriptPath, "httpWorker.js"), options.Description.DefaultWorkerPath);
+                Assert.Equal("httpWorker.js", options.Description.DefaultWorkerPath);
             }
             else if (!workerPathSet)
             {
@@ -270,6 +274,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = BuildHostJsonConfiguration();
             HttpWorkerOptionsSetup setup = new HttpWorkerOptionsSetup(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions), configuration, _testLoggerFactory, _metricsLogger);
             HttpWorkerOptions options = new HttpWorkerOptions();
+            options.Description = new HttpWorkerDescription();
+            options.Description.FileExists = path =>
+            {
+                return appendCurrentDirToDefaultExe;
+            };
             setup.Configure(options);
 
             Assert.True(_metricsLogger.LoggedEvents.Contains(MetricEventNames.CustomHandlerConfiguration));
