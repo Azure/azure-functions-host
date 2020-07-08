@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             string responseContent = await response.Content.ReadAsStringAsync();
             JObject res = JObject.Parse(responseContent);
-            Assert.True(res["functionName"].ToString().StartsWith(functionName));
+            Assert.True(res["functionName"].ToString().StartsWith($"api/{functionName}"));
         }
 
         private async Task InvokeProxy()

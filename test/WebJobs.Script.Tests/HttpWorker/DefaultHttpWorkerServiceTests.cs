@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Type = type,
                 EnableForwardingHttpRequest = enableForwardingHttpRequest,
             };
-            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(null, new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
             string actualValue = defaultHttpWorkerService.GetPathValue(testOptions, functionName, testHttpRequest);
             Assert.Equal(actualValue, expectedValue);
         }
