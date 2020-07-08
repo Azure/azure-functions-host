@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -97,6 +98,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         public IActionResult GetHttpHealthStatus()
         {
             // Reaching here implies that http health of the container is ok.
+            return Ok();
+        }
+
+        [HttpGet]
+        [HttpPost]
+        [Route("admin/instance/drain")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
+        {
+            _logger.LogDebug("Received request for draining host");
+
+            // Stop call to some listeners get stuck, Not waiting for the stop call to complete
+            drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
             return Ok();
         }
     }

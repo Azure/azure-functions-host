@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
         {
-            _logger.LogInformation("Received request for draining host");
+            _logger.LogDebug("Received request for draining host");
 
             // Stop call to some listeners get stuck, Not waiting for the stop call to complete
             drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
