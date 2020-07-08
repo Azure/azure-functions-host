@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using DryIoc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -99,6 +100,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.LogInformation(message);
 
             return Ok(status);
+        }
+
+        [HttpGet]
+        [HttpPost]
+        [Route("admin/host/drain")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
+        {
+            _logger.LogInformation("Received request for draining host");
+
+            // Stop call to some listeners get stuck, Not waiting for the stop call to complete
+            drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
+            return Ok();
         }
 
         [HttpGet]
