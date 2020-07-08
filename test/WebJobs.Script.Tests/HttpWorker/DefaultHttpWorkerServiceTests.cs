@@ -277,6 +277,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Assert.Equal(expectedResponseContent, await response.Content.ReadAsStringAsync());
         }
 
+        [Theory]
+        [InlineData("somePathValue")]
+        [InlineData("")]
+        public void TestBuildAndGetUri(string pathValue)
+        {
+            string expectedUriString;
+            HttpWorkerOptions testOptions = new HttpWorkerOptions
+            {
+                Port = 8080,
+            };
+
+            if (string.IsNullOrEmpty(pathValue))
+            {
+                expectedUriString = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, testOptions.Port).ToString();
+            }
+            expectedUriString = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, testOptions.Port, pathValue).ToString();
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+
+            Assert.Equal(expectedUriString, defaultHttpWorkerService.BuildAndGetUri(pathValue));
+        }
+
+        [Fact]
+        public void AddHeadersTest()
+        {
+            HttpWorkerOptions testOptions = new HttpWorkerOptions();
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            HttpRequestMessage input = new HttpRequestMessage();
+            string invocationId = Guid.NewGuid().ToString();
+
+            defaultHttpWorkerService.AddHeaders(input, invocationId);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.HostVersionHeaderName).FirstOrDefault(), ScriptHost.Version);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.InvocationIdHeaderName).FirstOrDefault(), invocationId);
+        }
+
         [Fact]
         public async Task ProcessSimpleHttpTriggerInvocationRequest_Sets_ExpectedResult()
         {

@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger)
         {
-            _httpClient = httpClient;
-            _httpWorkerOptions = httpWorkerOptions.Value;
-            _logger = logger;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -67,11 +67,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                using (HttpRequestMessage httpRequestMessage = await httpRequest.GetProxyHttpRequest(BuildAndGetUri(GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest)), scriptInvocationContext.ExecutionContext.InvocationId.ToString()))
+                string uriPathValue = GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest);
+                string uri = BuildAndGetUri(uriPathValue);
+
+                using (HttpRequestMessage httpRequestMessage = httpRequest.GetHttpRequestMessage(uri))
                 {
-                    _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
+                    _logger.LogDebug("Forwarding http request for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
                     _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+
                     BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
                     if (httpOutputBinding != null)
                     {
@@ -87,6 +93,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
             }
+        }
+
+        internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
+        {
+            httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+            httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
         }
 
         internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
@@ -105,13 +118,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             try
             {
                 HttpScriptInvocationContext httpScriptInvocationContext = await scriptInvocationContext.ToHttpScriptInvocationContext();
-                // Build httpRequestMessage from scriptInvocationContext
+                string uri = BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name);
 
-                using (HttpRequestMessage httpRequestMessage = await scriptInvocationContext.ToProxyHttpRequest(BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name), httpScriptInvocationContext))
+                // Build httpRequestMessage from scriptInvocationContext
+                using (HttpRequestMessage httpRequestMessage = httpScriptInvocationContext.ToHttpRequestMessage(uri))
                 {
+                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
                     _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    _logger.LogDebug("Received http response for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                     // Only process output bindings if response is succeess code
                     response.EnsureSuccessStatusCode();
@@ -196,13 +212,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
-        private string BuildAndGetUri(string pathValue = null)
+        internal string BuildAndGetUri(string pathValue = null)
         {
-            if (!string.IsNullOrEmpty(pathValue))
+            if (string.IsNullOrEmpty(pathValue))
             {
-                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
+                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
             }
-            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
         }
 
         private async Task<HttpResponseMessage> SendRequest(string requestUri, HttpMethod method = null)
