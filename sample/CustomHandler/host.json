@@ -1,0 +1,10 @@
+{
+  "version": "2.0",
+  "customHandler": {
+    "enableForwardingHttpRequest": true,
+    "description": {
+      "defaultExecutablePath": "node",
+      "arguments": [ "server.js" ]
+    }
+  }
+}

@@ -42,19 +42,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             ExpandEnvironmentVariables();
 
-            // If DefaultWorkerPath is not set then compute full path for DefaultExecutablePath from WorkingDirectory.
+            // If DefaultWorkerPath is not set then compute full path for DefaultExecutablePath from WorkingDirectory and check if DefaultExecutablePath exists
             // Empty DefaultWorkerPath or empty Arguments indicates DefaultExecutablePath is either a runtime on the system path or a file relative to WorkingDirectory.
             // No need to find full path for DefaultWorkerPath as WorkerDirectory will be set when launching the worker process.
             // DefaultWorkerPath can be specified as part of the arguments list
-            if (string.IsNullOrEmpty(DefaultWorkerPath) && !string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath) && !Arguments.Any())
+            if (!string.IsNullOrEmpty(DefaultExecutablePath) && !Path.IsPathRooted(DefaultExecutablePath))
             {
-                DefaultExecutablePath = Path.Combine(WorkerDirectory, DefaultExecutablePath);
-            }
-
-            // If DefaultWorkerPath is set and find full path from scriptRootDir
-            if (!string.IsNullOrEmpty(DefaultWorkerPath) && !Path.IsPathRooted(DefaultWorkerPath))
-            {
-                DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
+                var fullExePath = Path.Combine(WorkerDirectory, DefaultExecutablePath);
+                // Override DefaultExecutablePath only if the file exists. If file does not exist assume, this is a runtime available on system path
+                if (FileExists(fullExePath))
+                {
+                    DefaultExecutablePath = fullExePath;
+                }
             }
 
             if (string.IsNullOrEmpty(DefaultExecutablePath))
