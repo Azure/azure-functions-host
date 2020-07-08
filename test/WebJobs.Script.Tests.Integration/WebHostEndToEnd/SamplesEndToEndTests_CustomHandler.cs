@@ -17,25 +17,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_HttpWorker : IClassFixture<SamplesEndToEndTests_HttpWorker.TestFixture>
+    public class SamplesEndToEndTests_CustomHandler : IClassFixture<SamplesEndToEndTests_CustomHandler.TestFixture>
     {
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
 
-        public SamplesEndToEndTests_HttpWorker(TestFixture fixture)
+        public SamplesEndToEndTests_CustomHandler(TestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
         }
 
         [Fact]
-        public async Task HttpTrigger_HttpWorker_Get_Succeeds()
+        public async Task HttpTrigger_CustomHandler_Get_Succeeds()
         {
             await InvokeHttpTrigger("HttpTrigger");
         }
 
         [Fact]
-        public async Task Proxy_HttpWorker_Get_Succeeds()
+        public async Task Proxy_CustomHandler_Get_Succeeds()
         {
             await InvokeProxy();
         }
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\HttpWorker"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\CustomHandler"), "samples", RpcWorkerConstants.PowerShellLanguageWorkerName)
             {
             }
 

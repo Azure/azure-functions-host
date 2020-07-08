@@ -111,12 +111,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             };
 
             options.Arguments.ExecutableArguments.AddRange(options.Description.Arguments);
+            options.Arguments.WorkerArguments.AddRange(options.Description.WorkerArguments);
             options.Port = GetUnusedTcpPort();
         }
 
-        private static List<string> GetArgumentList(IConfigurationSection httpWorkerSection, string argumentSectionName)
+        private static List<string> GetArgumentList(IConfigurationSection workerConfigSection, string argumentSectionName)
         {
-            var argumentsSection = httpWorkerSection.GetSection(argumentSectionName);
+            var argumentsSection = workerConfigSection.GetSection(argumentSectionName);
             if (argumentsSection.Exists() && argumentsSection?.Value != null)
             {
                 try
