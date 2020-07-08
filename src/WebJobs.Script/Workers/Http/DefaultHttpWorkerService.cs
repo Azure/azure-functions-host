@@ -67,13 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                string pathValue = scriptInvocationContext.FunctionMetadata.Name;
-                if (_httpWorkerOptions.EnableForwardingHttpRequest && _httpWorkerOptions.Type == CustomHandlerType.Http)
-                {
-                    pathValue = httpRequest.GetRequestUri().AbsolutePath;
-                }
-
-                using (HttpRequestMessage httpRequestMessage = await httpRequest.GetProxyHttpRequest(BuildAndGetUri(pathValue), scriptInvocationContext.ExecutionContext.InvocationId.ToString()))
+                using (HttpRequestMessage httpRequestMessage = await httpRequest.GetProxyHttpRequest(BuildAndGetUri(GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest)), scriptInvocationContext.ExecutionContext.InvocationId.ToString()))
                 {
                     _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
@@ -93,6 +87,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
             }
+        }
+
+        internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
+        {
+            string pathValue = functionName;
+            if (httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http)
+            {
+                pathValue = httpRequest.GetRequestUri().AbsolutePath;
+            }
+
+            return pathValue;
         }
 
         internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext)

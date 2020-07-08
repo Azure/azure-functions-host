@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -391,6 +392,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Assert.True(testLogs.Count() == httpScriptInvocationResult.Logs?.Count());
                 Assert.True(testLogs.All(m => m.FormattedMessage.Contains("test log")));
             }
+        }
+
+        [Theory]
+        [InlineData("someFuntionName", CustomHandlerType.Http, true, "/")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, false, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName")]
+        public void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue)
+        {
+            HttpRequest testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest();
+            HttpWorkerOptions testOptions = new HttpWorkerOptions
+            {
+                Type = type,
+                EnableForwardingHttpRequest = enableForwardingHttpRequest,
+            };
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(null, new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            string actualValue = defaultHttpWorkerService.GetPathValue(testOptions, functionName, testHttpRequest);
+            Assert.Equal(actualValue, expectedValue);
         }
 
         [Fact]
