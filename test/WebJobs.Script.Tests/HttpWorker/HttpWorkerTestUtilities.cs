@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             var httpRequest = new DefaultHttpContext().Request;
             httpRequest.Method = "GET";
             httpRequest.Scheme = "http";
-            httpRequest.Host = new HostString(host, 8080);
+            httpRequest.Host = new HostString(host);
             httpRequest.Query = GetTestQueryParams();
             httpRequest.Headers[HeaderNames.AcceptCharset] = UTF8AcceptCharset;
             httpRequest.Headers[HeaderNames.Accept] = AcceptHeaderValue;

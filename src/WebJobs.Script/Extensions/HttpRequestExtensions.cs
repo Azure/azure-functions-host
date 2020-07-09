@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return false;
         }
 
-        public static HttpRequestMessage GetHttpRequestMessage(this HttpRequest request, string requestUri)
+        public static HttpRequestMessage ToHttpRequestMessage(this HttpRequest request, string requestUri)
         {
             HttpRequestMessage httpRequest = new HttpRequestMessage
             {

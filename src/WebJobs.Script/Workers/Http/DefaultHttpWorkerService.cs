@@ -70,13 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 string uriPathValue = GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest);
                 string uri = BuildAndGetUri(uriPathValue);
 
-                using (HttpRequestMessage httpRequestMessage = httpRequest.GetHttpRequestMessage(uri))
+                using (HttpRequestMessage httpRequestMessage = httpRequest.ToHttpRequestMessage(uri))
                 {
                     AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                     _logger.LogDebug("Forwarding http request for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                     BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
                     if (httpOutputBinding != null)

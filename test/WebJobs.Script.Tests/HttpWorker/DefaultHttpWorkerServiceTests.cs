@@ -278,23 +278,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         }
 
         [Theory]
-        [InlineData("somePathValue")]
-        [InlineData("")]
-        public void TestBuildAndGetUri(string pathValue)
+        [InlineData("somePathValue", "http://127.0.0.1:8080/somePathValue")]
+        [InlineData("", "http://127.0.0.1:8080/")]
+        public void TestBuildAndGetUri(string pathValue, string expectedUriString)
         {
-            string expectedUriString;
             HttpWorkerOptions testOptions = new HttpWorkerOptions
             {
                 Port = 8080,
             };
-
-            if (string.IsNullOrEmpty(pathValue))
-            {
-                expectedUriString = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, testOptions.Port).ToString();
-            }
-            expectedUriString = new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, testOptions.Port, pathValue).ToString();
             DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
-
             Assert.Equal(expectedUriString, defaultHttpWorkerService.BuildAndGetUri(pathValue));
         }
 
@@ -430,12 +422,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
         [Theory]
         [InlineData("someFuntionName", CustomHandlerType.Http, true, "/")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, true, "/api/hello", "localhost/api/hello")]
         [InlineData("someFuntionName", CustomHandlerType.Http, false, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, false, "someFuntionName", "localhost/api/hello")]
         [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName", "localhost/api/hello")]
         [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName")]
-        public void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue)
+        [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName", "localhost/api/hello")]
+        public void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue, string hostValue = "localhost")
         {
-            HttpRequest testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest();
+            HttpRequest testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest(hostValue);
             HttpWorkerOptions testOptions = new HttpWorkerOptions
             {
                 Type = type,

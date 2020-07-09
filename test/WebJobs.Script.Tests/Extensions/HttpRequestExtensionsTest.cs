@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             string requestUri = "http://localhost";
             HttpRequest testRequest = HttpWorkerTestUtilities.GetTestHttpRequest();
             Uri expectedUri = new Uri(QueryHelpers.AddQueryString(requestUri, testRequest.GetQueryCollectionAsDictionary()));
-            HttpRequestMessage clonedRequest = testRequest.GetHttpRequestMessage(requestUri);
+            HttpRequestMessage clonedRequest = testRequest.ToHttpRequestMessage(requestUri);
             Assert.Equal(testRequest.Headers.Count, clonedRequest.Headers.Count() + 1); // Content-Length would go to content header
 
             foreach (var header in testRequest.Headers)
