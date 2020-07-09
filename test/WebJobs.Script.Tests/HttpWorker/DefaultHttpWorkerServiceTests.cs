@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -276,6 +277,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Assert.Equal(expectedResponseContent, await response.Content.ReadAsStringAsync());
         }
 
+        [Theory]
+        [InlineData("somePathValue", "http://127.0.0.1:8080/somePathValue")]
+        [InlineData("", "http://127.0.0.1:8080/")]
+        public void TestBuildAndGetUri(string pathValue, string expectedUriString)
+        {
+            HttpWorkerOptions testOptions = new HttpWorkerOptions
+            {
+                Port = 8080,
+            };
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            Assert.Equal(expectedUriString, defaultHttpWorkerService.BuildAndGetUri(pathValue));
+        }
+
+        [Fact]
+        public void AddHeadersTest()
+        {
+            HttpWorkerOptions testOptions = new HttpWorkerOptions();
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            HttpRequestMessage input = new HttpRequestMessage();
+            string invocationId = Guid.NewGuid().ToString();
+
+            defaultHttpWorkerService.AddHeaders(input, invocationId);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.HostVersionHeaderName).FirstOrDefault(), ScriptHost.Version);
+            Assert.Equal(input.Headers.GetValues(HttpWorkerConstants.InvocationIdHeaderName).FirstOrDefault(), invocationId);
+        }
+
         [Fact]
         public async Task ProcessSimpleHttpTriggerInvocationRequest_Sets_ExpectedResult()
         {
@@ -391,6 +418,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Assert.True(testLogs.Count() == httpScriptInvocationResult.Logs?.Count());
                 Assert.True(testLogs.All(m => m.FormattedMessage.Contains("test log")));
             }
+        }
+
+        [Theory]
+        [InlineData("someFuntionName", CustomHandlerType.Http, true, "/")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, true, "/api/hello", "localhost/api/hello")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, false, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.Http, false, "someFuntionName", "localhost/api/hello")]
+        [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.None, true, "someFuntionName", "localhost/api/hello")]
+        [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName")]
+        [InlineData("someFuntionName", CustomHandlerType.None, false, "someFuntionName", "localhost/api/hello")]
+        public void TestPathValue(string functionName, CustomHandlerType type, bool enableForwardingHttpRequest, string expectedValue, string hostValue = "localhost")
+        {
+            HttpRequest testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest(hostValue);
+            HttpWorkerOptions testOptions = new HttpWorkerOptions
+            {
+                Type = type,
+                EnableForwardingHttpRequest = enableForwardingHttpRequest,
+            };
+            DefaultHttpWorkerService defaultHttpWorkerService = new DefaultHttpWorkerService(new HttpClient(), new OptionsWrapper<HttpWorkerOptions>(testOptions), _testLogger);
+            string actualValue = defaultHttpWorkerService.GetPathValue(testOptions, functionName, testHttpRequest);
+            Assert.Equal(actualValue, expectedValue);
         }
 
         [Fact]

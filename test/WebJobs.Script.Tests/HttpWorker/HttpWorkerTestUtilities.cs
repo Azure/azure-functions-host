@@ -29,10 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public const string HttpResponseContentStringValue = "hello world response";
         public const string HttpResponseNotFoundValue = "Route not found";
 
-        public static HttpRequest GetTestHttpRequest()
+        public static HttpRequest GetTestHttpRequest(string host = "localhost")
         {
             var httpRequest = new DefaultHttpContext().Request;
             httpRequest.Method = "GET";
+            httpRequest.Scheme = "http";
+            httpRequest.Host = new HostString(host);
             httpRequest.Query = GetTestQueryParams();
             httpRequest.Headers[HeaderNames.AcceptCharset] = UTF8AcceptCharset;
             httpRequest.Headers[HeaderNames.Accept] = AcceptHeaderValue;
