@@ -103,6 +103,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [HttpPost]
+        [Route("admin/host/drain")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
+        {
+            _logger.LogDebug("Received request for draining host");
+
+            // Stop call to some listeners get stuck, Not waiting for the stop call to complete
+            drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
+            return Ok();
+        }
+
+        [HttpGet]
+        [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Ping([FromServices] IScriptHostManager scriptHostManager)
