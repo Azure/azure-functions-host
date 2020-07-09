@@ -4,11 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
@@ -106,6 +108,34 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                                 mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
             }
             return false;
+        }
+
+        public static HttpRequestMessage ToHttpRequestMessage(this HttpRequest request, string requestUri)
+        {
+            HttpRequestMessage httpRequest = new HttpRequestMessage
+            {
+                RequestUri = new Uri(QueryHelpers.AddQueryString(requestUri, request.GetQueryCollectionAsDictionary()))
+            };
+
+            foreach (var header in request.Headers)
+            {
+                httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.AsEnumerable());
+            }
+
+            httpRequest.Method = new HttpMethod(request.Method);
+
+            // Copy body
+            if (request.ContentLength != null && request.ContentLength > 0)
+            {
+                httpRequest.Content = new StreamContent(request.Body);
+                httpRequest.Content.Headers.Add("Content-Length", request.ContentLength.ToString());
+                if (!string.IsNullOrEmpty(request.ContentType))
+                {
+                    httpRequest.Content.Headers.Add("Content-Type", request.ContentType);
+                }
+            }
+
+            return httpRequest;
         }
 
         public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)
