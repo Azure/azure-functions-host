@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Formatting;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
@@ -31,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger)
         {
-            _httpClient = httpClient;
-            _httpWorkerOptions = httpWorkerOptions.Value;
-            _logger = logger;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -69,11 +67,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
             try
             {
-                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), new HttpMethod(httpRequest.Method), httpRequest.GetQueryCollectionAsDictionary()))
+                string uriPathValue = GetPathValue(_httpWorkerOptions, scriptInvocationContext.FunctionMetadata.Name, httpRequest);
+                string uri = BuildAndGetUri(uriPathValue);
+
+                using (HttpRequestMessage httpRequestMessage = httpRequest.ToHttpRequestMessage(uri))
                 {
-                    _logger.LogDebug("Sending http request message for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
+                    _logger.LogDebug("Forwarding http request for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogDebug("Received http response for simple httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+
                     BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
                     if (httpOutputBinding != null)
                     {
@@ -91,18 +95,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
+        internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
+        {
+            httpRequest.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
+            httpRequest.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
+            httpRequest.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
+        }
+
+        internal string GetPathValue(HttpWorkerOptions httpWorkerOptions, string functionName, HttpRequest httpRequest)
+        {
+            string pathValue = functionName;
+            if (httpWorkerOptions.EnableForwardingHttpRequest && httpWorkerOptions.Type == CustomHandlerType.Http)
+            {
+                pathValue = httpRequest.GetRequestUri().AbsolutePath;
+            }
+
+            return pathValue;
+        }
+
         internal async Task ProcessDefaultInvocationRequest(ScriptInvocationContext scriptInvocationContext)
         {
             try
             {
                 HttpScriptInvocationContext httpScriptInvocationContext = await scriptInvocationContext.ToHttpScriptInvocationContext();
+                string uri = BuildAndGetUri(scriptInvocationContext.FunctionMetadata.Name);
+
                 // Build httpRequestMessage from scriptInvocationContext
-                using (HttpRequestMessage httpRequestMessage = CreateAndGetHttpRequestMessage(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId.ToString(), HttpMethod.Post))
+                using (HttpRequestMessage httpRequestMessage = httpScriptInvocationContext.ToHttpRequestMessage(uri))
                 {
-                    httpRequestMessage.Content = new ObjectContent<HttpScriptInvocationContext>(httpScriptInvocationContext, new JsonMediaTypeFormatter());
+                    AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
+
                     _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
                     HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogDebug("Received http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    _logger.LogDebug("Received http response for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                     // Only process output bindings if response is succeess code
                     response.EnsureSuccessStatusCode();
@@ -113,11 +138,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     {
                         if (httpScriptInvocationResult.Outputs == null || !httpScriptInvocationResult.Outputs.Any())
                         {
-                        _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogWarning("Outputs not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
                         if (httpScriptInvocationResult.ReturnValue == null)
                         {
-                        _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
+                            _logger.LogWarning("ReturnValue not set on http response for invocationId:{invocationId}", scriptInvocationContext.ExecutionContext.InvocationId);
                         }
 
                         ProcessLogsFromHttpResponse(scriptInvocationContext, httpScriptInvocationResult);
@@ -156,32 +181,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
         }
 
-        private HttpRequestMessage CreateAndGetHttpRequestMessage(string functionName, string invocationId, HttpMethod requestMethod, IDictionary<string, string> queryCollectionAsDictionary = null)
-        {
-            var requestMessage = new HttpRequestMessage();
-            AddRequestHeadersAndSetRequestUri(requestMessage, functionName, invocationId);
-            if (queryCollectionAsDictionary != null)
-            {
-                requestMessage.RequestUri = new Uri(QueryHelpers.AddQueryString(requestMessage.RequestUri.ToString(), queryCollectionAsDictionary));
-            }
-            requestMessage.Method = requestMethod;
-            return requestMessage;
-        }
-
-        private void AddRequestHeadersAndSetRequestUri(HttpRequestMessage httpRequestMessage, string functionName, string invocationId)
-        {
-            string pathValue = functionName;
-            // _httpWorkerOptions.Type is set to None only in HttpWorker section
-            if (httpRequestMessage.RequestUri != null && _httpWorkerOptions.Type != CustomHandlerType.None)
-            {
-                pathValue = httpRequestMessage.RequestUri.AbsolutePath;
-            }
-            httpRequestMessage.RequestUri = new Uri(new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString());
-            httpRequestMessage.Headers.Add(HttpWorkerConstants.InvocationIdHeaderName, invocationId);
-            httpRequestMessage.Headers.Add(HttpWorkerConstants.HostVersionHeaderName, ScriptHost.Version);
-            httpRequestMessage.Headers.UserAgent.ParseAdd($"{HttpWorkerConstants.UserAgentHeaderValue}/{ScriptHost.Version}");
-        }
-
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
         {
             bool continueWaitingForWorker = await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, async () =>
@@ -213,6 +212,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // Any other inner exception, consider HttpWorker to be ready
                 return false;
             }
+        }
+
+        internal string BuildAndGetUri(string pathValue = null)
+        {
+            if (string.IsNullOrEmpty(pathValue))
+            {
+                return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port).ToString();
+            }
+            return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
         }
     }
 }
