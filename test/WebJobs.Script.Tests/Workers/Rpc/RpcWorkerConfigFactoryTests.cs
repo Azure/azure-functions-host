@@ -9,7 +9,6 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -132,27 +131,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
         {
             var testEnvironment = new TestEnvironment();
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { "FUNCTIONS_WORKER_RUNTIME_VERSION", "7.0" },
-                { "FUNCTIONS_WORKER_RUNTIME", "Powershell" }
-            };
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "7.0");
             testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "powerShell");
-            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                .AddInMemoryCollection(testEnvVariables);
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
-            {
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger());
-                var workerConfigs = configFactory.GetConfigs();
-                var powershellWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                Assert.Equal(1, workerConfigs.Count);
-                Assert.NotNull(powershellWorkerConfig);
-                Assert.Equal("7", powershellWorkerConfig.Description.DefaultRuntimeVersion);
-            }
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger());
+            var workerConfigs = configFactory.GetConfigs();
+            var powershellWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            Assert.Equal(1, workerConfigs.Count);
+            Assert.NotNull(powershellWorkerConfig);
+            Assert.Equal("7", powershellWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]
