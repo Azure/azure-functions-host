@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _httpWorkerService.InvokeAsync(context);
         }
 
-        internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
+        internal async Task<bool> DelayUntilWokerInitialized(CancellationToken cancellationToken)
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.DelayUntilWorkerIsInitialized))
             {
@@ -62,6 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     else
                     {
                         _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                        return true;
                     }
                 }
                 catch (Exception ex)
@@ -69,14 +70,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     // HttpFunctionInvocationDispatcher will handdle the worker error events
                     PublishWorkerErrorEvent(ex);
                 }
+                return false;
             }
         }
 
-        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
+        public async Task<bool> StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-            await _workerProcess.StartProcessAsync();
-            await DelayUntilWokerInitialized(cancellationToken);
+            try
+            {
+                _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+                await _workerProcess.StartProcessAsync();
+                return await DelayUntilWokerInitialized(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _workerChannelLogger.LogError(ex, $"Failed to start process.");
+            }
+
+            return false;
         }
 
         private void PublishWorkerErrorEvent(Exception exc)

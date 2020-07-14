@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
             _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
                  {
-                     if (workerInitTask.IsCompleted)
+                     if (workerInitTask.IsCompleted && workerInitTask.Result)
                      {
                          _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
                          SetFunctionDispatcherStateToInitializedAndLog();
