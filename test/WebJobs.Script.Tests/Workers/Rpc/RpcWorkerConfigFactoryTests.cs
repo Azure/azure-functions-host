@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -106,27 +104,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void DefaultWorkerConfigs_Overrides_DefaultWorkerRuntimeVersion_AppSetting()
         {
+            var testEnvVariables = new Dictionary<string, string>
+            {
+                { "languageWorkers:python:defaultRuntimeVersion", "3.7" }
+            };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    ["languageWorkers:python:defaultRuntimeVersion"] = "3.6"
-                });
+                .AddInMemoryCollection(testEnvVariables);
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
-            var testEnvVariables = new Dictionary<string, string>
-            {
-                { "languageWorkers:python:defaultRuntimeVersion", "3.6" }
-            };
             using (var variables = new TestScopedSettings(scriptSettingsManager, testEnvVariables))
             {
                 var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
                 var workerConfigs = configFactory.GetConfigs();
                 var pythonWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+                var powershellWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("powershell", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                 Assert.Equal(4, workerConfigs.Count);
                 Assert.NotNull(pythonWorkerConfig);
-                Assert.Equal("3.6", pythonWorkerConfig.Description.DefaultRuntimeVersion);
+                Assert.NotNull(powershellWorkerConfig);
+                Assert.Equal("3.7", pythonWorkerConfig.Description.DefaultRuntimeVersion);
+                Assert.Null(powershellWorkerConfig.Description.DefaultRuntimeVersion);
             }
+        }
+
+        [Fact]
+        public void DefaultWorkerConfigs_Overrides_VersionAppSetting()
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "3.7");
+            testEnvironment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "python");
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, testEnvironment, new TestMetricsLogger());
+            var workerConfigs = configFactory.GetConfigs();
+            var pythonWorkerConfig = workerConfigs.Where(w => w.Description.Language.Equals("python", StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            Assert.Equal(1, workerConfigs.Count);
+            Assert.NotNull(pythonWorkerConfig);
+            Assert.Equal("3.7", pythonWorkerConfig.Description.DefaultRuntimeVersion);
         }
 
         [Theory]
