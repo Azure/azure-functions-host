@@ -15,7 +15,7 @@ using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class TesRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
+    public class TestRpcWorkerChannelManager : IWebHostRpcWorkerChannelManager
     {
         private IScriptEventManager _eventManager;
         private ILogger _testLogger;
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private string _scriptRootPath;
         private IRpcWorkerChannelFactory _testLanguageWorkerChannelFactory;
 
-        public TesRpcWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, IRpcWorkerChannelFactory testLanguageWorkerChannelFactory)
+        public TestRpcWorkerChannelManager(IScriptEventManager eventManager, ILogger testLogger, string scriptRootPath, IRpcWorkerChannelFactory testLanguageWorkerChannelFactory)
         {
             _eventManager = eventManager;
             _testLogger = testLogger;
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
         }
 
-        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
+        public async Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException)
         {
             if (string.IsNullOrEmpty(language))
             {
@@ -97,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         IRpcWorkerChannel channel = await value?.Task;
                         if (channel != null)
                         {
+                            channel.TryFailExecutions(workerException);
                             (channel as IDisposable)?.Dispose();
                             rpcWorkerChannels.Remove(workerId);
                             return true;

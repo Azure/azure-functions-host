@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return false;
         }
 
-        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
+        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException = null)
         {
             if (string.IsNullOrEmpty(language))
             {
@@ -168,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             if (workerChannel != null)
                             {
                                 _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
+                                // Set exception if exists
+                                workerChannel.TryFailExecutions(workerException);
                                 (channelTask.Result as IDisposable)?.Dispose();
                             }
                         }

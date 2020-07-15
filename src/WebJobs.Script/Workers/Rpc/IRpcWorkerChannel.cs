@@ -29,5 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         Task DrainInvocationsAsync();
 
         bool IsExecutingInvocation(string invocationId);
+
+        bool TryFailExecutions(Exception workerException);
     }
 }

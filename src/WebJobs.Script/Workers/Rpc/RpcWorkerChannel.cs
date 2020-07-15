@@ -346,7 +346,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
-            if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
+            bool invocationExists = _executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context);
+            if (invocationExists
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
             {
                 try
@@ -365,6 +366,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     context.ResultSource.TrySetException(responseEx);
                 }
+            }
+
+            if (!invocationExists)
+            {
+                _workerChannelLogger.LogDebug("Invocation was not found as an executing invocation (id={id})", invokeResponse.InvocationId);
             }
         }
 
@@ -506,6 +512,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public bool IsExecutingInvocation(string invocationId)
         {
             return _executingInvocations.ContainsKey(invocationId);
+        }
+
+        public bool TryFailExecutions(Exception workerException)
+        {
+            if (workerException == null)
+            {
+                return false;
+            }
+
+            foreach (ScriptInvocationContext currContext in _executingInvocations?.Values)
+            {
+                string invocationId = currContext?.ExecutionContext?.InvocationId.ToString();
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: {Id}", _workerId, invocationId);
+                _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
+                currContext?.ResultSource?.TrySetException(workerException);
+            }
+            return true;
         }
     }
 }

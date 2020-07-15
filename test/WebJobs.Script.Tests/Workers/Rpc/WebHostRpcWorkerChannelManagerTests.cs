@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -287,6 +288,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Null(initializedChannel);
+        }
+
+        [Fact]
+        public async Task ShutdownChannelsIfExistsAsync_StopsWorkerInvocations()
+        {
+            IRpcWorkerChannel javaWorkerChannel = CreateTestChannel(RpcWorkerConstants.JavaLanguageWorkerName);
+            Guid invocationId = Guid.NewGuid();
+            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = invocationId
+                }
+            };
+            (javaWorkerChannel as TestRpcWorkerChannel).SendInvocationRequest(scriptInvocationContext);
+            Assert.True(javaWorkerChannel.IsExecutingInvocation(invocationId.ToString()));
+            Exception workerException = new Exception("Worker exception");
+            // Channel is removed immediately but is not failed immediately
+            await _rpcWorkerChannelManager.ShutdownChannelIfExistsAsync(RpcWorkerConstants.JavaLanguageWorkerName, javaWorkerChannel.Id, workerException);
+
+            Assert.Null(_rpcWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName));
+
+            var initializedChannel = await _rpcWorkerChannelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
+            Assert.Null(initializedChannel);
+            // Execution will be terminated in the background - giving it 10 seconds
+            await TestHelpers.Await(() =>
+            {
+                return !javaWorkerChannel.IsExecutingInvocation(invocationId.ToString());
+            }, 10000);
+            Assert.False(javaWorkerChannel.IsExecutingInvocation(invocationId.ToString()));
         }
 
         [Fact]
