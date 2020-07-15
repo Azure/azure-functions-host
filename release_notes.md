@@ -3,7 +3,7 @@
 - My change description (#PR)
  -->
 
-- Update Python Worker to 1.1.3([Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.3))
+- Update Python Worker to 1.1.4([Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.4))
 - Update Python Library to 1.3.0([Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.0))
 - Added an admin API to enable drain mode
 
