@@ -80,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 DefaultWorkerPath = Path.Combine(WorkerDirectory, DefaultWorkerPath);
             }
-            ExpandEnvironmentVariables();
             if (string.IsNullOrEmpty(Language))
             {
                 throw new ValidationException($"WorkerDescription {nameof(Language)} cannot be empty");
