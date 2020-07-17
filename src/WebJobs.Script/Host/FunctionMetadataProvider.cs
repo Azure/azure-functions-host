@@ -170,6 +170,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+            if (workerConfig != null)
+            {
+                return workerConfig.Description.Language;
+            }
+
+            // If no worker claimed these extensions, use in-proc.
             switch (extension)
             {
                 case "csx":
@@ -178,11 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "dll":
                     return DotNetScriptTypes.DotNetAssembly;
             }
-            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
-            if (workerConfig != null)
-            {
-                return workerConfig.Description.Language;
-            }
+
             return null;
         }
 
