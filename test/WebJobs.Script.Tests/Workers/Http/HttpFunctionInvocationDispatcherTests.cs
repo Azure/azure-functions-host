@@ -28,13 +28,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             Mock<IHttpWorkerChannel> mockChannel = new Mock<IHttpWorkerChannel>();
 
             mockOptions.Setup(a => a.Value).Returns(new ScriptJobHostOptions());
-            mockChannel.Setup(a => a.StartWorkerProcessAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult(startWorkerProcessResult));
+            if (startWorkerProcessResult)
+            {
+                mockChannel.Setup(a => a.StartWorkerProcessAsync(It.IsAny<CancellationToken>())).Returns(Task.FromResult(startWorkerProcessResult));
+            }
+            else
+            {
+                mockChannel.Setup(a => a.StartWorkerProcessAsync(It.IsAny<CancellationToken>())).Throws(new Exception("Random exception"));
+            }
+
             mockFactory.Setup(a => a.Create(It.IsAny<string>(), It.IsAny<IMetricsLogger>(), It.IsAny<int>())).Returns(mockChannel.Object);
 
             HttpFunctionInvocationDispatcher dispatcher = new HttpFunctionInvocationDispatcher(mockOptions.Object, null, null, mockEventManager.Object, NullLoggerFactory.Instance, mockFactory.Object);
             Assert.Equal(dispatcher.State, FunctionInvocationDispatcherState.Default);
-            await dispatcher.InitializeHttpWorkerChannelAsync(3);
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
+            try
+            {
+                await dispatcher.InitializeHttpWorkerChannelAsync(3);
+            }
+            catch (Exception)
+            {
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
             if (startWorkerProcessResult)
             {
                 Assert.Equal(dispatcher.State, FunctionInvocationDispatcherState.Initialized);

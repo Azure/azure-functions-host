@@ -42,12 +42,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string Id { get; }
 
-        public Task InvokeFunction(ScriptInvocationContext context)
+        public Task InvokeAsync(ScriptInvocationContext context)
         {
             return _httpWorkerService.InvokeAsync(context);
         }
 
-        internal async Task<bool> DelayUntilWokerInitialized(CancellationToken cancellationToken)
+        internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.DelayUntilWorkerIsInitialized))
             {
@@ -57,37 +57,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
                     if (!isWorkerReady)
                     {
-                        PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
+                        throw new TimeoutException("Initializing HttpWorker timed out.");
                     }
                     else
                     {
                         _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
-                        return true;
                     }
                 }
                 catch (Exception ex)
                 {
                     // HttpFunctionInvocationDispatcher will handdle the worker error events
+                    _workerChannelLogger.LogError("Failed to start http worker process. workerId:{id}", Id);
                     PublishWorkerErrorEvent(ex);
+                    throw;
                 }
-                return false;
             }
         }
 
-        public async Task<bool> StartWorkerProcessAsync(CancellationToken cancellationToken)
+        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                _workerChannelLogger.LogDebug("Initiating Worker Process start up");
-                await _workerProcess.StartProcessAsync();
-                return await DelayUntilWokerInitialized(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _workerChannelLogger.LogError(ex, $"Failed to start process.");
-            }
-
-            return false;
+            _workerChannelLogger.LogDebug("Initiating Worker Process start up");
+            await _workerProcess.StartProcessAsync();
+            await DelayUntilWokerInitialized(cancellationToken);
         }
 
         private void PublishWorkerErrorEvent(Exception exc)

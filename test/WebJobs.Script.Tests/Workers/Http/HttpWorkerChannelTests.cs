@@ -2,12 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -36,8 +36,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Returns(Task.FromResult(isWorkerReady));
             workerProcess.Setup(a => a.StartProcessAsync()).Returns(Task.CompletedTask);
-            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, NullLogger.Instance, _metricsLogger, 3);
-            Assert.Equal(await testWorkerChannel.StartWorkerProcessAsync(), isWorkerReady);
+            TestLogger logger = new TestLogger("HttpWorkerChannel");
+            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
+            Task resultTask = null;
+            try
+            {
+                resultTask = testWorkerChannel.StartWorkerProcessAsync();
+                await resultTask;
+                logger.GetLogMessages().Select(a => a.FormattedMessage).Contains("HttpWorker is Initialized.");
+                Assert.Equal(resultTask.Status, TaskStatus.RanToCompletion);
+            }
+            catch (Exception)
+            {
+                logger.GetLogMessages().Select(a => a.FormattedMessage).Contains("Failed to start http worker process. workerId:");
+                Assert.NotEqual(resultTask.Status, TaskStatus.RanToCompletion);
+            }
         }
 
         [Fact]
@@ -49,8 +62,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Throws(new Exception("RandomException"));
             workerProcess.Setup(a => a.StartProcessAsync()).Returns(Task.CompletedTask);
-            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, NullLogger.Instance, _metricsLogger, 3);
-            Assert.Equal(await testWorkerChannel.StartWorkerProcessAsync(), false);
+            TestLogger logger = new TestLogger("HttpWorkerChannel");
+            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
+            Task resultTask = null;
+            try
+            {
+                resultTask = testWorkerChannel.StartWorkerProcessAsync();
+                await resultTask;
+            }
+            catch (Exception)
+            {
+                logger.GetLogMessages().Select(a => a.FormattedMessage).Contains("Failed to start http worker process. workerId:");
+                Assert.NotEqual(resultTask.Status, TaskStatus.RanToCompletion);
+            }
         }
 
         [Fact]
@@ -62,8 +86,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
 
             httpWorkerService.Setup(a => a.IsWorkerReady(It.IsAny<CancellationToken>())).Throws(new Exception("RandomException"));
             workerProcess.Setup(a => a.StartProcessAsync()).Throws(new Exception("RandomException"));
-            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, NullLogger.Instance, _metricsLogger, 3);
-            Assert.Equal(await testWorkerChannel.StartWorkerProcessAsync(), false);
+            TestLogger logger = new TestLogger("HttpWorkerChannel");
+            IHttpWorkerChannel testWorkerChannel = new HttpWorkerChannel("RandomWorkerId", _eventManager, workerProcess.Object, httpWorkerService.Object, logger, _metricsLogger, 3);
+            Task resultTask = null;
+            try
+            {
+                resultTask = testWorkerChannel.StartWorkerProcessAsync();
+                await resultTask;
+            }
+            catch (Exception)
+            {
+                logger.GetLogMessages().Select(a => a.FormattedMessage).Contains("Failed to start http worker process. workerId:");
+                Assert.NotEqual(resultTask.Status, TaskStatus.RanToCompletion);
+            }
         }
     }
 }

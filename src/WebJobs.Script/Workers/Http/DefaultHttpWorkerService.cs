@@ -185,31 +185,27 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         {
             bool continueWaitingForWorker = await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, async () =>
             {
-                return await IsWorkerNotReadyForRequest();
-            }, cancellationToken);
-            return !continueWaitingForWorker;
-        }
-
-        private async Task<bool> IsWorkerNotReadyForRequest()
-        {
-            string requestUri = BuildAndGetUri();
-            try
-            {
-                await SendRequest(requestUri);
-                // Any Http response indicates a valid server Url
-                return false;
-            }
-            catch (HttpRequestException httpRequestEx)
-            {
-                if (httpRequestEx.InnerException != null && httpRequestEx.InnerException is SocketException)
+                string requestUri = BuildAndGetUri();
+                try
                 {
-                    // Wait for the worker to be ready
-                    _logger.LogDebug("Waiting for HttpWorker to be initialized. Request to: {requestUri} failing with exception message: {message}", requestUri, httpRequestEx.Message);
-                    return true;
+                    await SendRequest(requestUri);
+                    // Any Http response indicates a valid server Url
+                    return false;
                 }
-                // Any other inner exception, consider HttpWorker to be ready
-                return false;
-            }
+                catch (HttpRequestException httpRequestEx)
+                {
+                    if (httpRequestEx.InnerException != null && httpRequestEx.InnerException is SocketException)
+                    {
+                        // Wait for the worker to be ready
+                        _logger.LogDebug("Waiting for HttpWorker to be initialized. Request to: {requestUri} failing with exception message: {message}", requestUri, httpRequestEx.Message);
+                        return true;
+                    }
+                    // Any other inner exception, consider HttpWorker to be ready
+                    return false;
+                }
+            }, cancellationToken);
+
+            return !continueWaitingForWorker;
         }
 
         internal string BuildAndGetUri(string pathValue = null)
