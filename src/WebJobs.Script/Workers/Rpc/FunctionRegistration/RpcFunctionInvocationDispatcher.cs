@@ -116,12 +116,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _workerConfigs);
             rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
-            return rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
+            rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
             {
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
                 rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
                 SetFunctionDispatcherStateToInitializedAndLog();
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
+            return Task.CompletedTask;
         }
 
         private void SetFunctionDispatcherStateToInitializedAndLog()
