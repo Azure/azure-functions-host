@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string Id { get; }
 
-        public Task InvokeFunction(ScriptInvocationContext context)
+        public Task InvokeAsync(ScriptInvocationContext context)
         {
             return _httpWorkerService.InvokeAsync(context);
         }
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
                     if (!isWorkerReady)
                     {
-                        PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
+                        throw new TimeoutException("Initializing HttpWorker timed out.");
                     }
                     else
                     {
@@ -66,7 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 catch (Exception ex)
                 {
                     // HttpFunctionInvocationDispatcher will handdle the worker error events
+                    _workerChannelLogger.LogError(ex, "Failed to start http worker process. workerId:{id}", Id);
                     PublishWorkerErrorEvent(ex);
+                    throw;
                 }
             }
         }
