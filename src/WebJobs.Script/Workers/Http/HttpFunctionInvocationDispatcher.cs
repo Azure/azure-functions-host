@@ -67,17 +67,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
             _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
-                         SetFunctionDispatcherStateToInitializedAndLog();
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start http worker process. workerId:{id}", _httpWorkerChannel.Id);
-                     }
-                 });
+            {
+                _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+
             return Task.CompletedTask;
         }
 
@@ -103,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            return _httpWorkerChannel.InvokeFunction(invocationContext);
+            return _httpWorkerChannel.InvokeAsync(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)
