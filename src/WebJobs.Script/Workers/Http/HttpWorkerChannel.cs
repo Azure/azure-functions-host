@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 catch (Exception ex)
                 {
                     // HttpFunctionInvocationDispatcher will handdle the worker error events
-                    _workerChannelLogger.LogError("Failed to start http worker process. workerId:{id}", Id);
+                    _workerChannelLogger.LogError(ex, "Failed to start http worker process. workerId:{id}", Id);
                     PublishWorkerErrorEvent(ex);
                     throw;
                 }
