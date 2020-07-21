@@ -121,6 +121,9 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string NugetXmlDocModeSettingName = "NUGET_XMLDOC_MODE";
         public const string NugetXmlDocSkipMode = "skip";
 
+        public const string MediatypeOctetStream = "application/octet-stream";
+        public const string MediatypeMutipartPrefix = "multipart/";
+
         public const int MaximumHostIdLength = 32;
         public const int DynamicSkuConnectionLimit = 50;
 

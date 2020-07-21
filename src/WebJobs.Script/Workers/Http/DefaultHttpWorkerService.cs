@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,17 +20,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     public class DefaultHttpWorkerService : IHttpWorkerService
     {
         private readonly HttpClient _httpClient;
+        private readonly IEnvironment _environment;
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
 
-        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory)
-            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>())
+        public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment)
+            : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment)
         {
         }
 
-        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger)
+        internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -74,19 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
-                    _logger.LogDebug("Forwarding http request for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-                    scriptInvocationContext.Logger.LogTrace($"Request:{httpRequestMessage}");
-                    if (httpRequestMessage.Content != null)
-                    {
-                        _logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
-                    }
-                    HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogTrace($"Response:{invocationResponse}");
-                    if (invocationResponse.Content != null)
-                    {
-                        scriptInvocationContext.Logger.LogTrace(await invocationResponse.Content.ReadAsStringAsync());
-                    }
-                    _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    HttpResponseMessage invocationResponse = await SendInvocationRequestAsync(scriptInvocationContext, httpRequestMessage);
 
                     BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
                     if (httpOutputBinding != null)
@@ -103,6 +94,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
             }
+        }
+
+        private async Task<HttpResponseMessage> SendInvocationRequestAsync(ScriptInvocationContext scriptInvocationContext, HttpRequestMessage httpRequestMessage)
+        {
+            // Only log Request / Response when running locally
+            if (_environment.IsCoreTools())
+            {
+                scriptInvocationContext.Logger.LogTrace($"Invocation Request:{httpRequestMessage}");
+                if (httpRequestMessage.Content != null)
+                {
+                    bool isMediaTypeOctetOrMultipart = httpRequestMessage.Content.Headers != null && Utility.IsMediaTypeOctetOrMultipart(httpRequestMessage.Content.Headers.ContentType);
+                    // do not log binary data as string
+                    if (!isMediaTypeOctetOrMultipart)
+                    {
+                        scriptInvocationContext.Logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
+                    }
+                }
+            }
+            _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+            HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+            if (_environment.IsCoreTools())
+            {
+                scriptInvocationContext.Logger.LogTrace($"Invocation Response:{invocationResponse}");
+                if (invocationResponse.Content != null)
+                {
+                    bool isMediaTypeOctetOrMultipart = invocationResponse.Content.Headers != null && Utility.IsMediaTypeOctetOrMultipart(invocationResponse.Content.Headers.ContentType);
+                    // do not log binary data as string
+                    if (!isMediaTypeOctetOrMultipart)
+                    {
+                        scriptInvocationContext.Logger.LogTrace(await invocationResponse.Content.ReadAsStringAsync());
+                    }
+                }
+            }
+            _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+            return invocationResponse;
         }
 
         internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
@@ -135,24 +161,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
-                    _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
-                    scriptInvocationContext.Logger.LogTrace($"Request:{httpRequestMessage}");
-                    if (httpRequestMessage.Content != null)
-                    {
-                        _logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
-                    }
-                    HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
-                    _logger.LogTrace($"Response:{response}");
-                    if (response.Content != null)
-                    {
-                        scriptInvocationContext.Logger.LogTrace(await response.Content.ReadAsStringAsync());
-                    }
-                    _logger.LogDebug("Received http response for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    HttpResponseMessage invocationResponse = await SendInvocationRequestAsync(scriptInvocationContext, httpRequestMessage);
 
                     // Only process output bindings if response is succeess code
-                    response.EnsureSuccessStatusCode();
+                    invocationResponse.EnsureSuccessStatusCode();
 
-                    HttpScriptInvocationResult httpScriptInvocationResult = await response.Content.ReadAsAsync<HttpScriptInvocationResult>();
+                    HttpScriptInvocationResult httpScriptInvocationResult = await invocationResponse.Content.ReadAsAsync<HttpScriptInvocationResult>();
 
                     if (httpScriptInvocationResult != null)
                     {
@@ -208,7 +222,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 string requestUri = BuildAndGetUri();
                 try
                 {
-                    await SendRequest(requestUri);
+                    await SendPingRequestAsync(requestUri);
                     // Any Http response indicates a valid server Url
                     return false;
                 }
@@ -237,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             return new UriBuilder(WorkerConstants.HttpScheme, WorkerConstants.HostName, _httpWorkerOptions.Port, pathValue).ToString();
         }
 
-        private async Task<HttpResponseMessage> SendRequest(string requestUri, HttpMethod method = null)
+        private async Task<HttpResponseMessage> SendPingRequestAsync(string requestUri, HttpMethod method = null)
         {
             HttpRequestMessage httpRequestMessage = new HttpRequestMessage();
             httpRequestMessage.RequestUri = new Uri(requestUri);
@@ -254,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             string requestUri = BuildAndGetUri();
             try
             {
-                HttpResponseMessage response = await SendRequest(requestUri, HttpMethod.Get);
+                HttpResponseMessage response = await SendPingRequestAsync(requestUri, HttpMethod.Get);
                 _logger.LogDebug($"Response code while pinging uri '{requestUri}' is '{response.StatusCode}'");
             }
             catch (Exception ex)
