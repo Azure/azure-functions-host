@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
             string binPath;
+            FunctionAssemblyLoadContext.ResetSharedContext();
             var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
