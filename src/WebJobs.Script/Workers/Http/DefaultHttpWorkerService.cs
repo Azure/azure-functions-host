@@ -102,33 +102,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (_environment.IsCoreTools())
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Request:{httpRequestMessage}");
-                if (httpRequestMessage.Content != null)
-                {
-                    bool isMediaTypeOctetOrMultipart = httpRequestMessage.Content.Headers != null && Utility.IsMediaTypeOctetOrMultipart(httpRequestMessage.Content.Headers.ContentType);
-                    // do not log binary data as string
-                    if (!isMediaTypeOctetOrMultipart)
-                    {
-                        scriptInvocationContext.Logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
-                    }
-                }
+                await TraceHttpContent(httpRequestMessage.Content, scriptInvocationContext.Logger);
             }
             _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
             if (_environment.IsCoreTools())
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Response:{invocationResponse}");
-                if (invocationResponse.Content != null)
-                {
-                    bool isMediaTypeOctetOrMultipart = invocationResponse.Content.Headers != null && Utility.IsMediaTypeOctetOrMultipart(invocationResponse.Content.Headers.ContentType);
-                    // do not log binary data as string
-                    if (!isMediaTypeOctetOrMultipart)
-                    {
-                        scriptInvocationContext.Logger.LogTrace(await invocationResponse.Content.ReadAsStringAsync());
-                    }
-                }
+                await TraceHttpContent(invocationResponse.Content, scriptInvocationContext.Logger);
             }
             _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             return invocationResponse;
+        }
+
+        private static async Task TraceHttpContent(HttpContent content, ILogger logger)
+        {
+            if (content != null)
+            {
+                bool isMediaTypeOctetOrMultipart = content.Headers != null && Utility.IsMediaTypeOctetOrMultipart(content.Headers.ContentType);
+                // do not log binary data as string
+                if (!isMediaTypeOctetOrMultipart)
+                {
+                    logger.LogTrace(await content.ReadAsStringAsync());
+                }
+            }
         }
 
         internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
