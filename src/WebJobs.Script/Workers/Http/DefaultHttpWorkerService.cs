@@ -75,7 +75,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                     _logger.LogDebug("Forwarding http request for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    scriptInvocationContext.Logger.LogTrace($"Request:{httpRequestMessage}");
+                    if (httpRequestMessage.Content != null)
+                    {
+                        _logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
+                    }
                     HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
+                    _logger.LogTrace($"Response:{invocationResponse}");
+                    if (invocationResponse.Content != null)
+                    {
+                        scriptInvocationContext.Logger.LogTrace(await invocationResponse.Content.ReadAsStringAsync());
+                    }
                     _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                     BindingMetadata httpOutputBinding = scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault();
@@ -126,7 +136,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     AddHeaders(httpRequestMessage, scriptInvocationContext.ExecutionContext.InvocationId.ToString());
 
                     _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
+                    scriptInvocationContext.Logger.LogTrace($"Request:{httpRequestMessage}");
+                    if (httpRequestMessage.Content != null)
+                    {
+                        _logger.LogTrace(await httpRequestMessage.Content.ReadAsStringAsync());
+                    }
                     HttpResponseMessage response = await _httpClient.SendAsync(httpRequestMessage);
+                    _logger.LogTrace($"Response:{response}");
+                    if (response.Content != null)
+                    {
+                        scriptInvocationContext.Logger.LogTrace(await response.Content.ReadAsStringAsync());
+                    }
                     _logger.LogDebug("Received http response for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
 
                     // Only process output bindings if response is succeess code
