@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public const string FunctionName = "WarmUp";
         public const string AlternateRoute = "CSharpHttpWarmup";
-        public const string PreJitFolderName = "PreJit";
+        public const string PreJitFolderName = "PreJIT";
         public const string JitTraceFileName = "coldstart.jittrace";
     }
 }
