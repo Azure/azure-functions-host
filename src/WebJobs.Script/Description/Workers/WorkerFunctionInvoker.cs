@@ -140,7 +140,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     return (binding.Metadata.Name, bindingContext.DataType, bindingContext.Value);
                 });
 
-            return await Task.WhenAll(bindingTasks);
+            var result = await Task.WhenAll(bindingTasks);
+            _logger.LogInformation($"InputInformation: {binder.GetInformation()}");
+            return result;
         }
 
         private async Task BindOutputsAsync(object input, Binder binder, ScriptInvocationResult result)
@@ -169,6 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             });
 
             await Task.WhenAll(outputBindingTasks);
+            _logger.LogInformation($"OutputInformation: {binder.GetInformation()}");
         }
 
         private object TransformInput(object input, Dictionary<string, object> bindingData)
