@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [InlineData("NoFunction", "node", null, 0)]
         public async Task CodelessFunction_DoesNot_ListFunctions(string path, string workerRuntime, string allowedList, int listCount)
         {
-            // Note: admin/functions call includes all functions, regardless of the allowed list (whitelist)
+            // Note: admin/functions call includes all functions, regardless of the allowed list
             var sourceFunctionApp = Path.Combine(Environment.CurrentDirectory, "TestScripts", path);
             var settings = new Dictionary<string, string>()
             {

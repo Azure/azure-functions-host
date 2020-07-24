@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
 
-        private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
+        private Dictionary<OSPlatform, List<string>> _hostingOSToRuntimesAllowList = new Dictionary<OSPlatform, List<string>>()
         {
             {
                 OSPlatform.Windows,
@@ -41,12 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         };
 
         // _webHostLevelWhitelistedRuntimes are started at webhost level when running in Azure and locally
-        private List<string> _webHostLevelWhitelistedRuntimes = new List<string>()
+        private List<string> _webHostLeveldRuntimesAllowList = new List<string>()
         {
             RpcWorkerConstants.JavaLanguageWorkerName
         };
 
-        private List<string> _placeholderPoolWhitelistedRuntimes = new List<string>()
+        private List<string> _placeholderPoolRuntimesAllowList = new List<string>()
         {
             RpcWorkerConstants.JavaLanguageWorkerName,
             RpcWorkerConstants.NodeLanguageWorkerName,
@@ -158,13 +158,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private Task InitializePlaceholderChannelsAsync(OSPlatform os)
         {
-            return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
+            return Task.WhenAll(_hostingOSToRuntimesAllowList[os].Select(runtime =>
                 _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
         }
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
-            if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
+            if (_webHostLeveldRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
             {
                 return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
@@ -191,10 +191,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // We are in placeholder mode but a worker runtime IS set
             return _environment.IsPlaceholderModeEnabled()
                 && !string.IsNullOrEmpty(_workerRuntime)
-                && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
+                && _placeholderPoolRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
         }
 
         // To help with unit tests
-        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLevelWhitelistedRuntimes.Add(language);
+        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLeveldRuntimesAllowList.Add(language);
     }
 }
