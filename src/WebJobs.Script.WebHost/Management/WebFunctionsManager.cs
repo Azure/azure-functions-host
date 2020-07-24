@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 filterPredicate = m => m.IsProxy() || !m.IsCodeless();
             }
 
-            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, applyWhitelist: false).Where(filterPredicate);
+            return _functionMetadataManager.GetFunctionMetadata(forceRefresh, applyAllowlist: false).Where(filterPredicate);
         }
 
         /// <summary>

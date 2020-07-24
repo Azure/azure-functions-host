@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             int idx = 0;
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "A function whitelist has been specified", LogCategories.Startup);
+            ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Generating 2 job function(s)", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);

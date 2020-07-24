@@ -75,30 +75,30 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets the function metadata array from all providers.
         /// </summary>
         /// <param name="forceRefresh">Forces reload from all providers.</param>
-        /// <param name="applyWhitelist">Apply functions whitelist filter.</param>
+        /// <param name="applyAllowList">Apply functions allow list filter.</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyWhitelist = true)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
                 _functionMetadataArray = LoadFunctionMetadata(forceRefresh);
-                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyWhitelist(_functionMetadataArray).Count());
+                _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
 
-            return applyWhitelist ? ApplyWhitelist(_functionMetadataArray) : _functionMetadataArray;
+            return applyAllowList ? ApplyAllowList(_functionMetadataArray) : _functionMetadataArray;
         }
 
-        private ImmutableArray<FunctionMetadata> ApplyWhitelist(ImmutableArray<FunctionMetadata> metadataList)
+        private ImmutableArray<FunctionMetadata> ApplyAllowList(ImmutableArray<FunctionMetadata> metadataList)
         {
-            var whitelist = _scriptOptions.Value?.Functions;
+            var allowList = _scriptOptions.Value?.Functions;
 
-            if (whitelist == null || metadataList.IsDefaultOrEmpty)
+            if (allowList == null || metadataList.IsDefaultOrEmpty)
             {
                 return metadataList;
             }
 
-            return metadataList.Where(metadata => whitelist.Any(functionName => functionName.Equals(metadata.Name, StringComparison.CurrentCultureIgnoreCase))).ToImmutableArray();
+            return metadataList.Where(metadata => allowList.Any(functionName => functionName.Equals(metadata.Name, StringComparison.CurrentCultureIgnoreCase))).ToImmutableArray();
         }
 
         private void InitializeServices()
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _functionMetadataMap.Clear();
 
-            ICollection<string> functionsWhiteList = _scriptOptions?.Value?.Functions;
+            ICollection<string> functionsAllowList = _scriptOptions?.Value?.Functions;
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
             var immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(_languageWorkerOptions.Value.WorkerConfigs, forceRefresh);
@@ -154,10 +154,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             Errors = _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-            if (functionsWhiteList != null)
+            if (functionsAllowList != null)
             {
-                _logger.LogInformation($"A function whitelist has been specified, excluding all but the following functions: [{string.Join(", ", functionsWhiteList)}]");
-                Errors = _functionErrors.Where(kvp => functionsWhiteList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
+                _logger.LogInformation($"A function allow list has been specified, excluding all but the following functions: [{string.Join(", ", functionsAllowList)}]");
+                Errors = _functionErrors.Where(kvp => functionsAllowList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
 
             return functionMetadataList.ToImmutableArray();
