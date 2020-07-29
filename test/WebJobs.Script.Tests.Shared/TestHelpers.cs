@@ -309,7 +309,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                  {
                      { extension }
                  },
-                Language = language
+                Language = language,
+                WorkerDirectory = "testDir"
             };
         }
 
