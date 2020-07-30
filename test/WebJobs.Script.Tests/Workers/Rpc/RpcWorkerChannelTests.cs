@@ -306,6 +306,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
             Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey(WorkerConstants.FunctionsWorkerDirectorySettingName));
+            Assert.True(envReloadRequest.EnvironmentVariables[WorkerConstants.FunctionsWorkerDirectorySettingName] == "testDir");
         }
 
         [Fact]

@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
-
+            request.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
             request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
 
             return request;
