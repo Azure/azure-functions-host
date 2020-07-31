@@ -5,6 +5,8 @@
 
 - Update Python Worker to 1.1.4([Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.4))
 - Update Python Library to 1.3.0([Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.0))
+- Update Java Worker to 1.7.3-SNAPSHOT([Release Note](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.7.3-SNAPSHOT))
+- Update Java Library to 1.4.0-SNAPSHOT([Release Note](https://github.com/Azure/azure-functions-java-library/releases/tag/1.4.0-SNAPSHOT))
 - Added an admin API to enable drain mode
 
 **Release sprint:** Sprint 79
