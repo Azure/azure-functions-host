@@ -187,10 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
-            var initRequest = new WorkerInitRequest()
-            {
-                HostVersion = ScriptHost.Version,
-            };
+            WorkerInitRequest initRequest = GetWorkerInitRequest();
 
             // Run as Functions Host V2 compatible
             if (_environment.IsV2CompatibilityMode())
@@ -203,6 +200,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 WorkerInitRequest = initRequest
             });
+        }
+
+        internal WorkerInitRequest GetWorkerInitRequest()
+        {
+            return new WorkerInitRequest()
+            {
+                HostVersion = ScriptHost.Version,
+                FunctionsWorkerDirectory = _workerConfig.Description.WorkerDirectory
+            };
         }
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
