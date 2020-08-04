@@ -83,15 +83,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return true;
             }
 
-            // TODO: re-enable this code when properties are no longer required by Node.js worker
-            // https://github.com/Azure/azure-functions-host/issues/6319
-            //if (bindingData.Key.Equals("sys", StringComparison.OrdinalIgnoreCase) &&
-            //    bindingData.Value.GetType().Name.Equals("SystemBindingData", StringComparison.OrdinalIgnoreCase))
-            //{
-            //    // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
-            //    // pipeline (e.g. sys.RandGuid, etc.)
-            //    return true;
-            //}
+            if (bindingData.Key.Equals("sys", StringComparison.OrdinalIgnoreCase) &&
+                bindingData.Value.GetType().Name.Equals("SystemBindingData", StringComparison.OrdinalIgnoreCase))
+            {
+                // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
+                // pipeline (e.g. sys.RandGuid, etc.)
+                return true;
+            }
 
             return false;
         }

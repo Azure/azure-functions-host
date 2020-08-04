@@ -143,10 +143,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities);
             Assert.Equal(1, result.InputData.Count);
-            Assert.Equal(3, result.TriggerMetadata.Count);
+            Assert.Equal(2, result.TriggerMetadata.Count);
             Assert.True(result.TriggerMetadata.ContainsKey("headers"));
             Assert.True(result.TriggerMetadata.ContainsKey("query"));
-            Assert.True(result.TriggerMetadata.ContainsKey("sys"));
         }
 
         private class TestPoco
