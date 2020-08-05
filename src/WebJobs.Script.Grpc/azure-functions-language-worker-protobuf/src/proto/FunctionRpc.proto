@@ -96,9 +96,6 @@ message WorkerInitRequest {
   // inform worker of supported categories and their levels
   // i.e. Worker = Verbose, Function.MyFunc = None
   map<string, RpcLog.Level> log_categories = 3;
-
- // Full path of worker.config.json location
-  string functions_worker_directory = 4;
 }
 
 // Worker responds with the result of initializing itself
