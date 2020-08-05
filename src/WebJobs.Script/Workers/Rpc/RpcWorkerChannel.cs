@@ -139,6 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
             WorkerInitRequest initRequest = GetWorkerInitRequest();
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerInitRequest = initRequest
+            });
         }
 
         internal WorkerInitRequest GetWorkerInitRequest()
