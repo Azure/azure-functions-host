@@ -171,9 +171,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void WorkerInitRequest_Expected()
         {
             WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
-            Assert.NotNull(initRequest.FunctionsWorkerDirectory);
+            Assert.NotNull(initRequest.WorkerDirectory);
             Assert.NotNull(initRequest.HostVersion);
-            Assert.Equal("testDir", initRequest.FunctionsWorkerDirectory);
+            Assert.Equal("testDir", initRequest.WorkerDirectory);
             Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
         }
 

@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return new WorkerInitRequest()
             {
                 HostVersion = ScriptHost.Version,
-                FunctionsWorkerDirectory = _workerConfig.Description.WorkerDirectory
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory
             };
         }
 
