@@ -159,7 +159,10 @@ function CreateSiteExtensions() {
 }
 
 function WriteHashesFile([string] $directoryPath) {
-  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { Write-Output ("Hash:" + ((Get-FileHash $_.FullName).Hash) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName)) } | Out-File -FilePath "$directoryPath\hashes.txt"
+  New-Item -Path "$directoryPath\..\temp_hashes" -ItemType Directory
+  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { Write-Output ("Hash:" + ((Get-FileHash $_.FullName).Hash) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName)) } | Out-File -FilePath "$directoryPath\..\temp_hashes\hashes.txt"
+  Move-Item -Path "$directoryPath\..\temp_hashes\hashes.txt" -Destination "$directoryPath"
+  Remove-Item "$directoryPath\..\temp_hashes" -Recurse -Force > $null
 }
 
 Write-Host ""
