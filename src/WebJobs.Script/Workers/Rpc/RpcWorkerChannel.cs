@@ -138,13 +138,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
+            WorkerInitRequest initRequest = GetWorkerInitRequest();
+
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerInitRequest = new WorkerInitRequest()
-                {
-                    HostVersion = ScriptHost.Version
-                }
+                WorkerInitRequest = initRequest
             });
+        }
+
+        internal WorkerInitRequest GetWorkerInitRequest()
+        {
+            return new WorkerInitRequest()
+            {
+                HostVersion = ScriptHost.Version,
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory
+            };
         }
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)

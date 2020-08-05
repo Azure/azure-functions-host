@@ -1,4 +1,4 @@
-# Azure Functions Languge Worker Protobuf
+# Azure Functions Language Worker Protobuf
 
 This repository contains the protobuf definition file which defines the gRPC service which is used between the [Azure Functions Host](https://github.com/Azure/azure-functions-host) and the Azure Functions language workers. This repo is shared across many repos in many languages (for each worker) by using git commands.
 
@@ -39,7 +39,7 @@ From within the Azure Functions language worker repo:
 ## Releasing a Language Worker Protobuf version
 
 1.	Draft a release in the GitHub UI
-    -   Be sure to inculde details of the release
+    -   Be sure to include details of the release
 2.	Create a release version, following semantic versioning guidelines ([semver.org](https://semver.org/))
 3.	Tag the version with the pattern: `v<M>.<m>.<p>-protofile` (example: `v1.1.0-protofile`)
 3.	Merge `dev` to `master`

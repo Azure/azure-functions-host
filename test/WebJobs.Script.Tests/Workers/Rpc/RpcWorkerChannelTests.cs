@@ -163,6 +163,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
         }
 
+        [Fact]
+        public void WorkerInitRequest_Expected()
+        {
+            WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
+            Assert.NotNull(initRequest.WorkerDirectory);
+            Assert.NotNull(initRequest.HostVersion);
+            Assert.Equal("testDir", initRequest.WorkerDirectory);
+            Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
+        }
+
         [Theory]
         [InlineData(RpcLog.Types.Level.Information, RpcLog.Types.Level.Information)]
         [InlineData(RpcLog.Types.Level.Error, RpcLog.Types.Level.Error)]
