@@ -168,6 +168,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void WorkerInitRequest_Expected()
+        {
+            WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
+            Assert.NotNull(initRequest.WorkerDirectory);
+            Assert.NotNull(initRequest.HostVersion);
+            Assert.Equal("testDir", initRequest.WorkerDirectory);
+            Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
+        }
+
+        [Fact]
         public void SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
         {
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
