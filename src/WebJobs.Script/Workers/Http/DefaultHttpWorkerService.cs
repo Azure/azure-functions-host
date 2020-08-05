@@ -20,9 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
     public class DefaultHttpWorkerService : IHttpWorkerService
     {
         private readonly HttpClient _httpClient;
-        private readonly IEnvironment _environment;
         private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly ILogger _logger;
+        private readonly bool _enableRequestTracing;
 
         public DefaultHttpWorkerService(IOptions<HttpWorkerOptions> httpWorkerOptions, ILoggerFactory loggerFactory, IEnvironment environment)
             : this(new HttpClient(), httpWorkerOptions, loggerFactory.CreateLogger<DefaultHttpWorkerService>(), environment)
@@ -32,9 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal DefaultHttpWorkerService(HttpClient httpClient, IOptions<HttpWorkerOptions> httpWorkerOptions, ILogger logger, IEnvironment environment)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _httpWorkerOptions = httpWorkerOptions.Value ?? throw new ArgumentNullException(nameof(httpWorkerOptions.Value));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _enableRequestTracing = environment.IsCoreTools();
         }
 
         public Task InvokeAsync(ScriptInvocationContext scriptInvocationContext)
@@ -99,14 +99,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private async Task<HttpResponseMessage> SendInvocationRequestAsync(ScriptInvocationContext scriptInvocationContext, HttpRequestMessage httpRequestMessage)
         {
             // Only log Request / Response when running locally
-            if (_environment.IsCoreTools())
+            if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Request:{httpRequestMessage}");
                 await TraceHttpContent(httpRequestMessage.Content, scriptInvocationContext.Logger);
             }
             _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
-            if (_environment.IsCoreTools())
+            if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Response:{invocationResponse}");
                 await TraceHttpContent(invocationResponse.Content, scriptInvocationContext.Logger);
