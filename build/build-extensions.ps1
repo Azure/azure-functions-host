@@ -138,6 +138,9 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host ""
 
+    Write-Host "Generating hashes.txt"
+    Write-Host "--------"
+    WriteHashesFile $siteExtensionPath
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
@@ -153,6 +156,10 @@ function CreateSiteExtensions() {
     ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
+}
+
+function WriteHashesFile([string] $directoryPath) {
+  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { Write-Output ("Hash:" + ((Get-FileHash $_.FullName).Hash) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName)) } | Out-File -FilePath "$directoryPath\hashes.txt"
 }
 
 Write-Host ""
