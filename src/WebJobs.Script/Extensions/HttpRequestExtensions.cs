@@ -117,8 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         {
             if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
-                return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                                mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
+                return Utility.IsMediaTypeOctetOrMultipart(mediaType);
             }
             return false;
         }

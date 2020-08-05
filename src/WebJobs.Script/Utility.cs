@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -750,6 +751,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public static string BuildStorageConnectionString(string accountName, string accessKey, string suffix)
         {
             return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accessKey};EndpointSuffix={suffix}";
+        }
+
+        public static bool IsMediaTypeOctetOrMultipart(MediaTypeHeaderValue mediaType)
+        {
+                return mediaType != null && (string.Equals(mediaType.MediaType, ScriptConstants.MediatypeOctetStream, StringComparison.OrdinalIgnoreCase) ||
+                                mediaType.MediaType.IndexOf(ScriptConstants.MediatypeMutipartPrefix, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
