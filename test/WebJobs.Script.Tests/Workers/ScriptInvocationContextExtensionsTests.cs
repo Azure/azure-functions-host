@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Equal("bar2", result.InputData[4].Name);
             Assert.Same(resultPoco, result.InputData[4].Data);
 
-            Assert.Equal(4, result.TriggerMetadata.Count);
+            Assert.Equal(5, result.TriggerMetadata.Count);
             Assert.Same(resultHttp, result.TriggerMetadata["req"]);
             Assert.Same(resultHttp, result.TriggerMetadata["$request"]);
             Assert.True(result.TriggerMetadata.ContainsKey("headers"));

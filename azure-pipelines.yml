@@ -37,7 +37,7 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), not( startswith ( variables['Build.SourceBranch'], 'release' ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( endswith( variables['Build.SourceBranch'], 'release/3.0' ) ), not( endswith( variables['Build.SourceBranch'], 'release/3.0-hotfix-79' ) ), not( endswith( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/1.1' ) ) ) ) }}:
       suffixTemp: ci
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
