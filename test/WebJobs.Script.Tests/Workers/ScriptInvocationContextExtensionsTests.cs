@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf.Collections;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -147,6 +148,137 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.True(result.TriggerMetadata.ContainsKey("headers"));
             Assert.True(result.TriggerMetadata.ContainsKey("query"));
             Assert.True(result.TriggerMetadata.ContainsKey("sys"));
+        }
+
+        [Fact]
+        public async Task ToRpcInvocationRequest_MultipleInputBindings()
+        {
+            var logger = new TestLogger("test");
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Host = new HostString("local");
+            httpContext.Request.Path = "/test";
+            httpContext.Request.Method = "Post";
+
+            var poco = new TestPoco { Id = 1, Name = "Test" };
+
+            var bindingData = new Dictionary<string, object>
+            {
+                { "req", httpContext.Request },
+                { "$request", httpContext.Request },
+                { "headers", httpContext.Request.Headers.ToDictionary(p => p.Key, p => p.Value) },
+                { "query", httpContext.Request.QueryString.ToString() },
+                { "sys", new SystemBindingData() }
+            };
+
+            var inputs = new List<(string name, DataType type, object val)>
+            {
+                ("req", DataType.String, httpContext.Request),
+                ("blob", DataType.String, null),  // verify that null values are handled
+                ("foo", DataType.String, "test"),
+                ("bar1", DataType.String, poco),
+                ("bar2", DataType.String, poco)
+            };
+
+            var invocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = Guid.NewGuid(),
+                    FunctionName = "Test",
+                },
+                BindingData = bindingData,
+                Inputs = inputs,
+                ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
+                Logger = logger,
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+            };
+
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "Test"
+            };
+
+            var httpTriggerBinding = new BindingMetadata
+            {
+                Name = "req",
+                Type = "httpTrigger",
+                Direction = BindingDirection.In,
+                Raw = new JObject()
+            };
+
+            var blobInputBinding = new BindingMetadata
+            {
+                Name = "blob",
+                Type = "blob",
+                Direction = BindingDirection.In
+            };
+
+            var fooInputBinding = new BindingMetadata
+            {
+                Name = "foo",
+                Type = "foo",
+                Direction = BindingDirection.In
+            };
+
+            var barInputBinding1 = new BindingMetadata
+            {
+                Name = "bar1",
+                Type = "bar",
+                Direction = BindingDirection.In
+            };
+
+            var barInputBinding2 = new BindingMetadata
+            {
+                Name = "bar2",
+                Type = "bar",
+                Direction = BindingDirection.In
+            };
+
+            var httpOutputBinding = new BindingMetadata
+            {
+                Name = "res",
+                Type = "http",
+                Direction = BindingDirection.Out,
+                Raw = new JObject(),
+                DataType = DataType.String
+            };
+
+            functionMetadata.Bindings.Add(httpTriggerBinding);
+            functionMetadata.Bindings.Add(blobInputBinding);
+            functionMetadata.Bindings.Add(fooInputBinding);
+            functionMetadata.Bindings.Add(barInputBinding1);
+            functionMetadata.Bindings.Add(barInputBinding2);
+            functionMetadata.Bindings.Add(httpOutputBinding);
+            invocationContext.FunctionMetadata = functionMetadata;
+
+            Capabilities capabilities = new Capabilities(logger);
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities);
+            Assert.Equal(5, result.InputData.Count);
+
+            Assert.Equal("req", result.InputData[0].Name);
+            var resultHttp = result.InputData[0].Data;
+            Assert.Equal("http://local/test", ((RpcHttp)result.InputData[0].Data.Http).Url);
+
+            // verify the null input was propagated properly
+            Assert.Equal("blob", result.InputData[1].Name);
+            Assert.Equal(string.Empty, result.InputData[1].Data.String);
+
+            Assert.Equal("foo", result.InputData[2].Name);
+            Assert.Equal("test", result.InputData[2].Data.String);
+
+            Assert.Equal("bar1", result.InputData[3].Name);
+            var resultPoco = result.InputData[3].Data;
+            Assert.Equal("{\"Name\":\"Test\",\"Id\":1}", resultPoco.Json);
+
+            Assert.Equal("bar2", result.InputData[4].Name);
+            Assert.Same(resultPoco, result.InputData[4].Data);
+
+            Assert.Equal(4, result.TriggerMetadata.Count);
+            Assert.Same(resultHttp, result.TriggerMetadata["req"]);
+            Assert.Same(resultHttp, result.TriggerMetadata["$request"]);
+            Assert.True(result.TriggerMetadata.ContainsKey("headers"));
+            Assert.True(result.TriggerMetadata.ContainsKey("query"));
         }
 
         private class TestPoco

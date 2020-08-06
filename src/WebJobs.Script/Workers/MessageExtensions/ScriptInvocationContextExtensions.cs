@@ -34,9 +34,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             foreach (var input in context.Inputs)
             {
-                if (!rpcValueCache.TryGetValue(input.val, out TypedData rpcValue))
+                TypedData rpcValue = null;
+                if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
                 {
                     rpcValue = await input.val.ToRpc(logger, capabilities);
+                    if (input.val != null)
+                    {
+                        rpcValueCache.Add(input.val, rpcValue);
+                    }
                 }
 
                 var parameterBinding = new ParameterBinding
