@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IEnumerable<(string, DataType, object)> inputs = new[] { triggerInput };
             if (_inputBindings.Count > 1)
             {
-                var nonTriggerInputs = await BindInputsAsync(context.Binder);
+                var nonTriggerInputs = await BindInputsAsync(context);
                 inputs = inputs.Concat(nonTriggerInputs);
             }
 
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             await _functionDispatcher.InvokeAsync(invocationContext);
             var result = await invocationContext.ResultSource.Task;
 
-            await BindOutputsAsync(triggerValue, context.Binder, result);
+            await BindOutputsAsync(triggerValue, context, result);
             return result.Return;
         }
 
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)
+        private async Task<(string name, DataType type, object value)[]> BindInputsAsync(FunctionInvocationContext context)
         {
             var bindingTasks = _inputBindings
                 .Where(binding => !binding.Metadata.IsTrigger)
@@ -130,8 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     BindingContext bindingContext = new BindingContext
                     {
-                        Binder = binder,
-                        BindingData = binder.BindingData,
+                        Binder = context.Binder,
+                        BindingData = context.Binder.BindingData,
                         DataType = binding.Metadata.DataType ?? DataType.String,
                         Cardinality = binding.Metadata.Cardinality ?? Cardinality.One
                     };
@@ -140,12 +140,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     return (binding.Metadata.Name, bindingContext.DataType, bindingContext.Value);
                 });
 
-            var result = await Task.WhenAll(bindingTasks);
-            _logger.LogInformation($"InputInformation: {binder.GetInformation()}");
+            (string name, DataType type, object value)[] result = await Task.WhenAll(bindingTasks);
+            context.Logger.LogTrace($"InputInformation: {context.Binder.GetInformation()}");
             return result;
         }
 
-        private async Task BindOutputsAsync(object input, Binder binder, ScriptInvocationResult result)
+        private async Task BindOutputsAsync(object input, FunctionInvocationContext context, ScriptInvocationResult result)
         {
             if (_outputBindings == null)
             {
@@ -162,8 +162,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     BindingContext bindingContext = new BindingContext
                     {
                         TriggerValue = input,
-                        Binder = binder,
-                        BindingData = binder.BindingData,
+                        Binder = context.Binder,
+                        BindingData = context.Binder.BindingData,
                         Value = value
                     };
                     await binding.BindAsync(bindingContext).ConfigureAwait(false);
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             });
 
             await Task.WhenAll(outputBindingTasks);
-            _logger.LogInformation($"OutputInformation: {binder.GetInformation()}");
+            context.Logger.LogTrace($"OutputInformation: {context.Binder.GetInformation()}");
         }
 
         private object TransformInput(object input, Dictionary<string, object> bindingData)
