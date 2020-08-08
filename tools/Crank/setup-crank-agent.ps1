@@ -10,7 +10,7 @@ function InstallCrankAgent {
 }
 
 function ScheduleCrankAgentStart {
-    $action = New-ScheduledTaskAction -Execute 'crank-agent'
+    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/C crank-agent 2>&1 >> %USERPROFILE%\crank-agent.log' `
     $trigger = New-ScheduledTaskTrigger -AtStartup
 
     Register-ScheduledTask `
