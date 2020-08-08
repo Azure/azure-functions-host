@@ -79,12 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
             AddLinuxConsumptionSettings(_environment);
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w))).Returns(true);
+            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
             var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
 
             var hostSecretw = _startupContextProvider.GetHostSecretsOrNull();
             Assert.Equal("test-key", hostSecretw.MasterKey);
@@ -107,11 +107,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             initializationHostService.Setup(service => service.Read(ContainerStartContextUri))
                 .Returns(Task.FromResult(serializedContext));
 
-            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w))).Returns(true);
+            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
 
             await initializationHostService.Object.StartAsync(CancellationToken.None);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context)), It.Is<bool>(w => !w)), Times.Once);
+            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
         }
 
         [Fact]
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
             await initializationHostService.StartAsync(CancellationToken.None);
 
-            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>(), It.Is<bool>(w => !w)), Times.Never);
+            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);
         }
 
         private static string GetEncryptedHostAssignmentContext(HostAssignmentContext hostAssignmentContext, string containerEncryptionKey)

@@ -202,6 +202,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(_secrets.Host.System, secrets.SystemKeys);
         }
 
+        [Fact]
+        public void Does_Not_SetContext_AppliesHostAssignmentContext_For_Warmup_Request()
+        {
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>(),
+                SiteName = "TestSite",
+                Secrets = _secrets,
+                IsWarmupRequest = true
+            };
+            string json = JsonConvert.SerializeObject(context);
+            string encrypted = SimpleWebTokenHelper.Encrypt(json, environment: _environment);
+            var encryptedContext = new EncryptedHostAssignmentContext { EncryptedContext = encrypted };
+
+            var result = _startupContextProvider.SetContext(encryptedContext);
+            Assert.Equal(context.SiteName, result.SiteName);
+            Assert.Equal(_secrets.Host.Master, result.Secrets.Host.Master);
+
+            var secrets = _startupContextProvider.GetHostSecretsOrNull();
+            Assert.Null(secrets);
+        }
+
         private string WriteStartupContext(string context = null, string path = null)
         {
             path = path ?? Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.txt");

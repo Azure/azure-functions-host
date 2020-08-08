@@ -39,33 +39,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _logger.LogDebug($"Starting container assignment for host : {Request?.Host}. ContextLength is: {encryptedAssignmentContext.EncryptedContext?.Length}");
 
-            bool succeeded = false;
-            if (!encryptedAssignmentContext.IsWarmup)
+            var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
+
+            // before starting the assignment we want to perform as much
+            // up front validation on the context as possible
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            if (error != null)
             {
-                var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
-
-                // before starting the assignment we want to perform as much
-                // up front validation on the context as possible
-                string error = await _instanceManager.ValidateContext(assignmentContext, encryptedAssignmentContext.IsWarmup);
-                if (error != null)
-                {
-                    return StatusCode(StatusCodes.Status400BadRequest, error);
-                }
-
-                // Wait for Sidecar specialization to complete before returning ok.
-                // This shouldn't take too long so ok to do this sequentially.
-                error = await _instanceManager.SpecializeMSISidecar(assignmentContext, encryptedAssignmentContext.IsWarmup);
-                if (error != null)
-                {
-                    return StatusCode(StatusCodes.Status500InternalServerError, error);
-                }
-
-                succeeded = _instanceManager.StartAssignment(assignmentContext, encryptedAssignmentContext.IsWarmup);
+                return StatusCode(StatusCodes.Status400BadRequest, error);
             }
-            else
+
+            // Wait for Sidecar specialization to complete before returning ok.
+            // This shouldn't take too long so ok to do this sequentially.
+            error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+            if (error != null)
             {
-                succeeded = true;
+                return StatusCode(StatusCodes.Status500InternalServerError, error);
             }
+
+            var succeeded = _instanceManager.StartAssignment(assignmentContext);
 
             return succeeded
                 ? Accepted()
