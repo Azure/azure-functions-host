@@ -46,9 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
 
-        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context, bool isWarmup)
+        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
-            if (isWarmup)
+            // No cold start optimization needed for side car scenarios
+            if (context.IsWarmupRequest)
             {
                 return null;
             }
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return null;
         }
 
-        public bool StartAssignment(HostAssignmentContext context, bool isWarmup)
+        public bool StartAssignment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
@@ -97,8 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (isWarmup)
+            if (context.IsWarmupRequest)
             {
+                // Based on profiling download code jit-ing holds up cold start.
+                // Pre-jit to avoid paying the cost later.
+                Task.Run(async () => await Download(context.GetRunFromPkgContext()));
                 return true;
             }
             else if (_assignmentContext == null)
@@ -134,16 +138,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<string> ValidateContext(HostAssignmentContext assignmentContext, bool isWarmup)
+        public async Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
-            if (isWarmup)
-            {
-                return null;
-            }
-
-            _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
+            _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}'. IsWarmup: '{assignmentContext.IsWarmupRequest}')");
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
-            _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");
+            _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url. IsWarmup: '{assignmentContext.IsWarmupRequest}')");
 
             if (pkgContext.IsScmRunFromPackage())
             {
@@ -154,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // In AppService, ZipUrl == 1 means the package is hosted in azure files.
                 // Otherwise we expect zipUrl to be a blobUri to a zip or a squashfs image
-                (var error, var contentLength) = await ValidateBlobPackageContext(pkgContext.Url);
+                (var error, var contentLength) = await ValidateBlobPackageContext(pkgContext);
                 if (string.IsNullOrEmpty(error))
                 {
                     assignmentContext.PackageContentLength = contentLength;
@@ -172,8 +171,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private async Task<(string, long?)> ValidateBlobPackageContext(string blobUri)
+        private async Task<(string, long?)> ValidateBlobPackageContext(RunFromPackageContext context)
         {
+            string blobUri = context.Url;
+            string eventName = context.IsWarmUpRequest
+                ? MetricEventNames.LinuxContainerSpecializationZipHeadWarmup
+                : MetricEventNames.LinuxContainerSpecializationZipHead;
             string error = null;
             HttpResponseMessage response = null;
             long? contentLength = null;
@@ -186,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         try
                         {
-                            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipHead))
+                            using (_metricsLogger.LatencyEvent(eventName))
                             {
                                 var request = new HttpRequestMessage(HttpMethod.Head, blobUri);
                                 response = await _client.SendAsync(request);
@@ -199,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         }
                         catch (Exception e)
                         {
-                            _logger.LogError(e, $"{MetricEventNames.LinuxContainerSpecializationZipHead} failed");
+                            _logger.LogError(e, $"{eventName} failed");
                             throw;
                         }
                     }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3)); // Keep this less than ~1s total
@@ -208,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception e)
             {
                 error = $"Invalid zip url specified (StatusCode: {response?.StatusCode})";
-                _logger.LogError(e, "ValidateContext failed");
+                _logger.LogError(e, $"ValidateContext failed. IsWarmupRequest = {context.IsWarmUpRequest}");
             }
 
             return (error, contentLength);
@@ -372,25 +375,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (pkgContext.PackageContentLength != null && pkgContext.PackageContentLength > 100 * 1024 * 1024)
             {
                 _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' using aria2c'");
-                AriaDownload(tmpPath, fileName, zipUri);
+                AriaDownload(tmpPath, fileName, zipUri, pkgContext.IsWarmUpRequest);
             }
             else
             {
                 _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' using httpclient'");
-                await HttpClientDownload(filePath, zipUri);
+                await HttpClientDownload(filePath, zipUri, pkgContext.IsWarmUpRequest);
             }
 
             return filePath;
         }
 
-        private async Task HttpClientDownload(string filePath, Uri zipUri)
+        private async Task HttpClientDownload(string filePath, Uri zipUri, bool isWarmupRequest)
         {
             HttpResponseMessage response = null;
             await Utility.InvokeWithRetriesAsync(async () =>
             {
                 try
                 {
-                    using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipDownload))
+                    var downloadMetricName = isWarmupRequest
+                        ? MetricEventNames.LinuxContainerSpecializationZipDownloadWarmup
+                        : MetricEventNames.LinuxContainerSpecializationZipDownload;
+                    using (_metricsLogger.LatencyEvent(downloadMetricName))
                     {
                         var request = new HttpRequestMessage(HttpMethod.Get, zipUri);
                         response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
@@ -403,23 +409,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _logger.LogError(e, error);
                     throw;
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
             }, 2, TimeSpan.FromSeconds(0.5));
 
-            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipWrite))
+            using (_metricsLogger.LatencyEvent(isWarmupRequest ? MetricEventNames.LinuxContainerSpecializationZipWriteWarmup : MetricEventNames.LinuxContainerSpecializationZipWrite))
             {
                 using (var content = await response.Content.ReadAsStreamAsync())
                 using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                 {
                     await content.CopyToAsync(stream);
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written");
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written. IsWarmupRequest = {isWarmupRequest}");
             }
         }
 
-        private void AriaDownload(string directory, string fileName, Uri zipUri)
+        private void AriaDownload(string directory, string fileName, Uri zipUri, bool isWarmupRequest)
         {
-            (string stdout, string stderr, int exitCode) = RunBashCommand($"aria2c --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'", MetricEventNames.LinuxContainerSpecializationZipDownload);
+            var metricName = isWarmupRequest
+                ? MetricEventNames.LinuxContainerSpecializationZipDownloadWarmup
+                : MetricEventNames.LinuxContainerSpecializationZipDownload;
+            (string stdout, string stderr, int exitCode) = RunBashCommand(
+                $"aria2c --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'",
+                metricName);
             if (exitCode != 0)
             {
                 var msg = $"Error downloading package. stdout: {stdout}, stderr: {stderr}, exitCode: {exitCode}";
@@ -427,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 throw new InvalidOperationException(msg);
             }
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
-            _logger.LogInformation($"{fileInfo.Length} bytes downloaded");
+            _logger.LogInformation($"{fileInfo.Length} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
         }
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext)

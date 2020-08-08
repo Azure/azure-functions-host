@@ -73,8 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         // Linux container specialization events
         public const string LinuxContainerSpecializationZipExtract = "linux.container.specialization.zip.extract";
         public const string LinuxContainerSpecializationZipDownload = "linux.container.specialization.zip.download";
+        public const string LinuxContainerSpecializationZipDownloadWarmup = "linux.container.specialization.zip.download.warmup";
         public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
+        public const string LinuxContainerSpecializationZipWriteWarmup = "linux.container.specialization.zip.write.warmup";
         public const string LinuxContainerSpecializationZipHead = "linux.container.specialization.zip.head";
+        public const string LinuxContainerSpecializationZipHeadWarmup = "linux.container.specialization.zip.head.warmup";
         public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.mount";
         public const string LinuxContainerSpecializationMSIInit = "linux.container.specialization.msi.init";
         public const string LinuxContainerSpecializationUnsquash = "linux.container.specialization.unsquash";
