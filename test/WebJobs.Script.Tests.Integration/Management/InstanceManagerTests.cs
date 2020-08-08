@@ -79,8 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     AllowedOrigins = allowedOrigins,
                     SupportCredentials = supportCredentials,
                 },
+                IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -106,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             // calling again should return false, since we're no longer
             // in placeholder mode
             _loggerProvider.ClearAllLogMessages();
-            result = _instanceManager.StartAssignment(context, isWarmup: false);
+            result = _instanceManager.StartAssignment(context);
             Assert.False(result);
 
             logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -124,9 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 {
                     // force the assignment to fail
                     { "throw", "test" }
-                }
+                },
+                IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -143,9 +145,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             var context = new HostAssignmentContext
             {
-                Environment = new Dictionary<string, string>()
+                Environment = new Dictionary<string, string>(),
+                IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
             Assert.True(_scriptWebEnvironment.InStandbyMode);
 
@@ -175,9 +178,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>()
                 {
                     { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
-                }
+                },
+                IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
 
             Thread.Sleep(assignmentWaitPeriod);
@@ -185,17 +189,59 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(_scriptWebEnvironment.InStandbyMode);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
-            Assert.Collection(logs,
-                p => Assert.StartsWith("Starting Assignment", p),
-                p => Assert.StartsWith("Applying 1 app setting(s)", p),
-                p => Assert.StartsWith("Downloading zip contents from", p),
-                p => Assert.EndsWith(" bytes downloaded", p),
-                p => Assert.EndsWith(" bytes written", p),
-                p => Assert.StartsWith("Running: ", p),
-                p => Assert.StartsWith("Output:", p),
-                p => Assert.True(p.StartsWith("bash:") || p.StartsWith("/usr/bin/bash:")),
-                p => Assert.StartsWith("exitCode:", p),
-                p => Assert.StartsWith("Triggering specialization", p));
+            if (logs.Length == 10)
+            {
+                Assert.Collection(logs,
+                    p => Assert.StartsWith("Starting Assignment", p),
+                    p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.StartsWith("Downloading zip contents from", p),
+                    p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
+                    p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
+                    p => Assert.StartsWith("Running: ", p),
+                    p => Assert.StartsWith("Output:", p),
+                    p => Assert.True(true), // this line varies depending on whether WSL is on the machine; just ignore it
+                    p => Assert.StartsWith("exitCode:", p),
+                    p => Assert.StartsWith("Triggering specialization", p));
+            }
+            else
+            {
+                Assert.Collection(logs,
+                    p => Assert.StartsWith("Starting Assignment", p),
+                    p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.StartsWith("Downloading zip contents from", p),
+                    p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
+                    p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
+                    p => Assert.StartsWith("Running: ", p),
+                    p => Assert.StartsWith("Error running bash", p),
+                    p => Assert.StartsWith("Triggering specialization", p));
+            }
+        }
+
+        [Fact]
+        public async void StartAssignment_Does_Not_Assign_Settings_For_Warmup_Request()
+        {
+            var contentRoot = Path.Combine(Path.GetTempPath(), @"FunctionsTest");
+            var zipFilePath = Path.Combine(contentRoot, "content.zip");
+            await TestHelpers.CreateContentZip(contentRoot, zipFilePath, Path.Combine(@"TestScripts", "DotNet"));
+
+            IConfiguration configuration = TestHelpers.GetTestConfiguration();
+            string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            Uri sasUri = await TestHelpers.CreateBlobSas(connectionString, zipFilePath, "scm-run-from-pkg-test", "NonEmpty.zip");
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                Environment = new Dictionary<string, string>()
+                {
+                    { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
+                },
+                IsWarmupRequest = true
+            };
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.False(logs.Any(l => l.StartsWith("Starting Assignment.")));
         }
 
         [Fact]
@@ -211,9 +257,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Environment = new Dictionary<string, string>()
                 {
                     { EnvironmentSettingNames.ScmRunFromPackage, sasUri.ToString() }
-                }
+                },
+                IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            bool result = _instanceManager.StartAssignment(context);
             Assert.True(result);
 
             Thread.Sleep(assignmentWaitPeriod);
@@ -235,7 +282,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var context = new HostAssignmentContext();
             context.Environment = new Dictionary<string, string>();
-            bool result = _instanceManager.StartAssignment(context, isWarmup: false);
+            context.IsWarmupRequest = false;
+            bool result = _instanceManager.StartAssignment(context);
             Assert.False(result);
         }
 
@@ -250,16 +298,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.ValidateContext(assignmentContext);
             Assert.Equal("Invalid zip url specified (StatusCode: NotFound)", error);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')", p),
-                p => Assert.StartsWith($"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url", p),
+                p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')", p),
+                p => Assert.StartsWith($"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url. IsWarmup: 'False'", p),
                 p => Assert.StartsWith("linux.container.specialization.zip.head failed", p),
                 p => Assert.StartsWith("linux.container.specialization.zip.head failed", p),
                 p => Assert.StartsWith("linux.container.specialization.zip.head failed", p),
@@ -274,16 +323,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
             {
-                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')",
-                $"Will be using  app setting as zip url"
+                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
+                $"Will be using  app setting as zip url. IsWarmup: 'False"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -305,16 +355,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
             {
-                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')",
-                $"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url"
+                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
+                $"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url. IsWarmup: 'False"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -337,16 +388,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
             {
-                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')",
-                $"Will be using {EnvironmentSettingNames.ScmRunFromPackage} app setting as zip url"
+                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
+                $"Will be using {EnvironmentSettingNames.ScmRunFromPackage} app setting as zip url. IsWarmup: 'False"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -369,16 +421,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.ValidateContext(assignmentContext);
             Assert.Null(error);
 
             string[] expectedOutputLines =
             {
-                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite')",
-                $"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url"
+                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
+                $"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url. IsWarmup: 'False"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -400,10 +453,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.SpecializeMSISidecar(assignmentContext, isWarmup: false);
+            string error = await _instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.Null(error);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -422,12 +476,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK);
 
-            string error = await instanceManager.SpecializeMSISidecar(assignmentContext, isWarmup: false);
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.Null(error);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -435,6 +490,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("MSI enabled status: True", p),
                 p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
                 p => Assert.StartsWith("Specialize MSI sidecar returned OK", p));
+        }
+
+        [Fact]
+        public async Task SpecializeMSISidecar_NoOp_ForWarmup_Request()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = true
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Empty(logs);
         }
 
         [Fact]
@@ -449,12 +529,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment
+                Environment = environment,
+                IsWarmupRequest = false
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
 
-            string error = await instanceManager.SpecializeMSISidecar(assignmentContext, isWarmup: false);
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.NotNull(error);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -496,7 +577,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     [EnvironmentSettingNames.MsiEndpoint] = "endpoint",
                 },
                 SiteId = 1234,
-                SiteName = "TestSite"
+                SiteName = "TestSite",
+                IsWarmupRequest = false
             };
 
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
@@ -511,7 +593,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
 
-            instanceManager.StartAssignment(hostAssignmentContext, false);
+            instanceManager.StartAssignment(hostAssignmentContext);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
@@ -551,7 +633,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     [EnvironmentSettingNames.MsiEndpoint] = "endpoint",
                 },
                 SiteId = 1234,
-                SiteName = "TestSite"
+                SiteName = "TestSite",
+                IsWarmupRequest = false
             };
 
             var meshInitServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
@@ -562,7 +645,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
 
-            instanceManager.StartAssignment(hostAssignmentContext, false);
+            instanceManager.StartAssignment(hostAssignmentContext);
 
             await Task.Delay(TimeSpan.FromSeconds(0.5));
 
