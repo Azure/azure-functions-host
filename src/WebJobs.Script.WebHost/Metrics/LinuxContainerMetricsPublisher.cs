@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private readonly TimeSpan _memorySnapshotInterval = TimeSpan.FromMilliseconds(1000);
         private readonly TimeSpan _metricPublishInterval = TimeSpan.FromMilliseconds(30 * 1000);
+        private readonly TimeSpan _timerStartDelay = TimeSpan.FromSeconds(2);
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly string _requestUri;
@@ -251,8 +252,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void Start()
         {
             Initialize();
-            _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, TimeSpan.Zero, _memorySnapshotInterval);
-            _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, TimeSpan.Zero, _metricPublishInterval);
+            _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, _timerStartDelay, _memorySnapshotInterval);
+            _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, _timerStartDelay, _metricPublishInterval);
 
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }

@@ -10,11 +10,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest)
         {
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
+            IsWarmUpRequest = isWarmupRequest;
         }
 
         public string EnvironmentVariableName { get; set; }
@@ -22,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string Url { get; set; }
 
         public long? PackageContentLength { get; set; }
+
+        public bool IsWarmUpRequest { get; }
 
         public bool IsScmRunFromPackage()
         {
