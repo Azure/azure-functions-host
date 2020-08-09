@@ -12,11 +12,12 @@ function InstallCrankAgent {
 function ScheduleCrankAgentStart {
     $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/C crank-agent 2>&1 >> %USERPROFILE%\crank-agent.log' `
     $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\NETWORKSERVICE" -LogonType ServiceAccount -RunLevel Highest
 
     Register-ScheduledTask `
         -TaskName "CrankAgent" -Description "Start crank-agent" `
         -Action $action -Trigger $trigger `
-        -User 'Functions'
+        -Principal $principal
 }
 
 #####################################
