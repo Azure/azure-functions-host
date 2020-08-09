@@ -15,7 +15,7 @@ function ScheduleCrankAgentStart {
         New-Item -Path $logsDir -ItemType Container
     }
 
-    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/C crank-agent 2>&1 >> $logsDir\crank-agent.log"
+    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/C C:\dotnet-tools\crank-agent.exe 2>&1 >> $logsDir\crank-agent.log"
     $trigger = New-ScheduledTaskTrigger -AtStartup
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\NETWORKSERVICE" -LogonType ServiceAccount -RunLevel Highest
 
