@@ -10,7 +10,12 @@ function InstallCrankAgent {
 }
 
 function ScheduleCrankAgentStart {
-    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/C crank-agent 2>&1 >> %USERPROFILE%\crank-agent.log' `
+    $logsDir = 'C:\crank-agent-logs'
+    if (-not (Test-Path $logsDir -PathType Container)) {
+        New-Item -Path $logsDir -ItemType Container
+    }
+
+    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/C crank-agent 2>&1 >> $logsDir\crank-agent.log"
     $trigger = New-ScheduledTaskTrigger -AtStartup
     $principal = New-ScheduledTaskPrincipal -UserID "NT AUTHORITY\NETWORKSERVICE" -LogonType ServiceAccount -RunLevel Highest
 
