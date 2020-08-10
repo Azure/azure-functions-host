@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
   <Import Project="..\..\build\metadatagenerator.props" />
   <PropertyGroup>
     <VersionPrefix>1.1.8</VersionPrefix>
@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
-    <Exec Command="powershell.exe –command .\updateruntimeassemblies.ps1"/>
+    <Exec Command="powershell.exe –command .\updateruntimeassemblies.ps1" />
   </Target>
   
   <Target Name="PackReferenceAssemblies">
@@ -55,7 +55,7 @@
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409">
       <PrivateAssets>all</PrivateAssets>
@@ -73,5 +73,4 @@
       <Version>4.3.0</Version>
     </PackageReference>
   </ItemGroup>
-  
 </Project>
