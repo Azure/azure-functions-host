@@ -9,4 +9,6 @@ if (-not (Test-Path $logsDir -PathType Container)) {
     New-Item -Path $logsDir -ItemType Container
 }
 
-& 'C:\dotnet-tools\crank-agent.exe' 2>&1 >> $logsDir\crank-agent.log
+$logFileName = "$logsDir\crank-agent_$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').log"
+
+& 'C:\dotnet-tools\crank-agent.exe' 2>&1 >> $logFileName
