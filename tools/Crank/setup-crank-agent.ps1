@@ -1,3 +1,8 @@
+params (
+    [bool]$InstallDotNet = $true,
+    [bool]$InstallCrankAgent = $true
+)
+
 $ErrorActionPreference = 'Stop'
 
 function InstallDotNet {
@@ -45,6 +50,6 @@ function ScheduleCrankAgentStart([pscredential]$Credential) {
 
 #####################################
 
-InstallDotNet
-InstallCrankAgent
+if ($InstallDotNet) { InstallDotNet }
+if ($InstallCrankAgent) { InstallCrankAgent }
 ScheduleCrankAgentStart -Credential (Get-Credential)
