@@ -37,10 +37,10 @@ function ScheduleCrankAgentStart([pscredential]$Credential) {
             }
         }
 
-    Register-ScheduledTask `
-        -TaskName "CrankAgent" -Description "Start crank-agent" `
-        -Action $action -Trigger $trigger `
-        @auth
+    $null = Register-ScheduledTask `
+                -TaskName "CrankAgent" -Description "Start crank-agent" `
+                -Action $action -Trigger $trigger `
+                @auth
 }
 
 #####################################
