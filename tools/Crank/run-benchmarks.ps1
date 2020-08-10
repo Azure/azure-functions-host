@@ -9,4 +9,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-& $InvokeCrankCommand --config '.\benchmarks.yml' --scenario hello --profile local --variable FunctionAppContentPath=$FunctionAppContentPath
+$crankConfigPath = Join-Path `
+                    -Path (Split-Path $PSCommandPath -Parent) `
+                    -ChildPath 'benchmarks.yml'
+
+& $InvokeCrankCommand --config $crankConfigPath --scenario hello --profile local --variable FunctionAppContentPath=$FunctionAppContentPath
