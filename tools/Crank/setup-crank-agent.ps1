@@ -15,7 +15,13 @@ function ScheduleCrankAgentStart([pscredential]$Credential) {
         New-Item -Path $logsDir -ItemType Container
     }
 
-    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/C C:\dotnet-tools\crank-agent.exe 2>&1 >> $logsDir\crank-agent.log"
+    $runCrankAgentScriptPath = Join-Path `
+                                    -Path (Split-Path $PSCommandPath -Parent) `
+                                    -ChildPath 'run-crank-agent.ps1'
+
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
+                  -Argument "-NoProfile -WindowStyle Hidden -File $runCrankAgentScriptPath"
+
     $trigger = New-ScheduledTaskTrigger -AtStartup
 
     $auth =
