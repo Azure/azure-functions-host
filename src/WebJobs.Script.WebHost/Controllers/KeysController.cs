@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
-        private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
+        internal async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
         {
             var hostSecrets = await _secretManagerProvider.Current.GetHostSecretsAsync();
 
@@ -249,10 +249,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IActionResult> DeleteFunctionSecretAsync(string keyName, string keyScope, ScriptSecretsType secretsType)
         {
-            if (keyName == null || keyName.StartsWith("_"))
+            if (keyName == null)
+            {
+                return BadRequest("Invalid key name.");
+            }
+
+            HostSecretsInfo hostSecrets = await _secretManagerProvider.Current.GetHostSecretsAsync();
+            if (hostSecrets.SystemKeys != null && hostSecrets.SystemKeys.TryGetValue(keyName, out string _))
             {
                 // System keys cannot be deleted.
-                return BadRequest("Invalid key name.");
+                return BadRequest("Cannot delete System Key.");
             }
 
             if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) ||
