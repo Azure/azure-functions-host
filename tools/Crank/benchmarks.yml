@@ -10,7 +10,7 @@ jobs:
     readyStateText: Application started.
 
 scenarios:
-  hello:
+  functionApp:
     application:
       job: server
       environmentVariables:
@@ -20,7 +20,7 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 15
+        duration: 60
 
 profiles:
   local:
