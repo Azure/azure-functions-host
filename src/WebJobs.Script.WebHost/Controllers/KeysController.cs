@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
         }
 
-        internal async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
+        private async Task<Dictionary<string, string>> GetHostSecretsByScope(string secretsScope, bool includeMasterInSystemKeys = false)
         {
             var hostSecrets = await _secretManagerProvider.Current.GetHostSecretsAsync();
 
