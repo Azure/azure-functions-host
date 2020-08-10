@@ -1,7 +1,6 @@
 param(
-    [Parameter(Mandatory = $true)]
     [string]
-    $FunctionAppContentPath,
+    $FunctionApp = 'HelloApp',
 
     [string]
     $InvokeCrankCommand = 'crank'
@@ -13,4 +12,4 @@ $crankConfigPath = Join-Path `
                     -Path (Split-Path $PSCommandPath -Parent) `
                     -ChildPath 'benchmarks.yml'
 
-& $InvokeCrankCommand --config $crankConfigPath --scenario hello --profile local --variable FunctionAppContentPath=$FunctionAppContentPath
+& $InvokeCrankCommand --config $crankConfigPath --scenario functionApp --profile local --variable FunctionApp=$FunctionApp

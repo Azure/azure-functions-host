@@ -14,7 +14,7 @@ scenarios:
     application:
       job: server
       environmentVariables:
-        AzureWebJobsScriptRoot: "{{ FunctionAppContentPath }}"
+        AzureWebJobsScriptRoot: "C:\\FunctionApps\\{{ FunctionApp }}"
         ASPNETCORE_URLS: "http://localhost:5000;https://localhost:5001"
     load:
       job: bombardier
