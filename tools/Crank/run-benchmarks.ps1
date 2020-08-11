@@ -9,14 +9,39 @@ param(
     $InvokeCrankCommand,
 
     [switch]
-    $WriteResultsToDatabase
+    $WriteResultsToDatabase,
+
+    [switch]
+    $RefreshCrankContoller
 )
 
 $ErrorActionPreference = 'Stop'
 
-if ((-not $InvokeCrankCommand) -and (-not (Get-Command crank -ErrorAction SilentlyContinue))) {
-    Write-Warning 'Crank controller is not found, installing...'
+#region Utilities
+
+function InstallCrankController {
     dotnet tool install -g Microsoft.Crank.Controller --version "0.1.0-*"
+}
+
+function UninstallCrankController {
+    dotnet tool uninstall -g microsoft.crank.controller
+}
+
+#endregion
+
+#region Main
+
+if (-not $InvokeCrankCommand) {
+    if (Get-Command crank -ErrorAction SilentlyContinue) {
+        if ($RefreshCrankContoller) {
+            Write-Warning 'Reinstalling crank controller...'
+            UninstallCrankController
+            InstallCrankController
+        }
+    } else {
+        Write-Warning 'Crank controller is not found, installing...'
+        InstallCrankController
+    }
     $InvokeCrankCommand = 'crank'
 }
 
@@ -34,3 +59,5 @@ if ($WriteResultsToDatabase) {
 } else {
     & $InvokeCrankCommand --config $crankConfigPath --scenario functionApp --profile local --variable FunctionApp=$FunctionApp --variable FunctionsHostBranchOrCommit=$FunctionsHostBranchOrCommit
 }
+
+#endregion
