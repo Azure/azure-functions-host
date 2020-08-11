@@ -6,13 +6,19 @@ param(
     $FunctionApp = 'HelloApp',
 
     [string]
-    $InvokeCrankCommand = 'crank',
+    $InvokeCrankCommand,
 
     [switch]
     $WriteResultsToDatabase
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ((-not $InvokeCrankCommand) -and (-not (Get-Command crank -ErrorAction SilentlyContinue))) {
+    Write-Warning 'Crank controller is not found, installing...'
+    dotnet tool install -g Microsoft.Crank.Controller --version "0.1.0-*"
+    $InvokeCrankCommand = 'crank'
+}
 
 $crankConfigPath = Join-Path `
                     -Path (Split-Path $PSCommandPath -Parent) `
