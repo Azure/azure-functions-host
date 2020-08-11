@@ -20,7 +20,7 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 60
+        duration: 180
 
 profiles:
   local:
