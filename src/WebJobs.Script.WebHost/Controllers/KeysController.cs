@@ -242,9 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (keyName == null)
             {
-                {
-                    return BadRequest("Invalid key name.");
-                }
+                return BadRequest("Invalid key name.");
             }
 
             if (IsBuiltInSystemKeyName(keyName))
@@ -252,7 +250,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // System keys cannot be deleted.
                 return BadRequest("Cannot delete System Key.");
             }
-
 
             if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) || 
                 !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
