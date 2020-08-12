@@ -5,6 +5,8 @@ params (
 
 $ErrorActionPreference = 'Stop'
 
+#region Utilities
+
 function InstallDotNet {
     Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
     ./dotnet-install.ps1
@@ -48,8 +50,12 @@ function ScheduleCrankAgentStart([pscredential]$Credential) {
                 @auth
 }
 
-#####################################
+#endregion
+
+#region Main
 
 if ($InstallDotNet) { InstallDotNet }
 if ($InstallCrankAgent) { InstallCrankAgent }
 ScheduleCrankAgentStart -Credential (Get-Credential)
+
+#endregion
