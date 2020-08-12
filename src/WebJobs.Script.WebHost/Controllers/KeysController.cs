@@ -244,7 +244,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 {
                     // System keys cannot be deleted.	
-                    return BadRequest("Invalid key name."); return BadRequest("Invalid key name.");
+                    return BadRequest("Invalid key name.");
                 }
             }
 
