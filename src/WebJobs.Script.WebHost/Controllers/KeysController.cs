@@ -254,8 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Invalid key name.");
             }
 
-            HostSecretsInfo hostSecrets = await _secretManagerProvider.Current.GetHostSecretsAsync();
-            if (hostSecrets.SystemKeys != null && hostSecrets.SystemKeys.TryGetValue(keyName, out string _))
+            if (IsBuiltInSystemKeyName(keyName))
             {
                 // System keys cannot be deleted.
                 return BadRequest("Cannot delete System Key.");
@@ -273,6 +272,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger.LogDebug(string.Format(Resources.TraceKeysApiSecretChange, keyName, keyScope ?? "host", "Deleted"));
 
             return StatusCode(StatusCodes.Status204NoContent);
+        }
+
+        internal bool IsBuiltInSystemKeyName(string keyName)
+        {
+            if (keyName.Equals(MasterKeyName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return false;
         }
 
         private bool IsFunction(string functionName)

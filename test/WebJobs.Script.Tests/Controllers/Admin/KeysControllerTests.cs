@@ -30,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly TempDirectory _secretsDirectory = new TempDirectory();
         private Collection<FunctionDescriptor> _testFunctions;
-        private HostSecretsInfo _testHostSecretsInfo;
         private Dictionary<string, Collection<string>> _testFunctionErrors;
         private KeysController _testController;
         private Mock<ISecretManager> _secretsManagerMock;
@@ -52,16 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 SecretsPath = _secretsDirectory.Path
             };
             _secretsManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-
-            _testHostSecretsInfo = new HostSecretsInfo
-            {
-                FunctionKeys = new Dictionary<string, string>(),
-                SystemKeys = new Dictionary<string, string>()
-                {
-                    { "testKey1", "testValue1" },
-                    { "_testKey2", "testValue2" }
-                }
-            };
 
             var fileSystem = new Mock<IFileSystem>();
             var fileBase = new Mock<FileBase>();
@@ -151,12 +140,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData("key1", false)]
         [InlineData("_key1", false)]
-        [InlineData("_testKey2", true)]
-        [InlineData("testKey1", true)]
+        [InlineData("_master", true)]
+        [InlineData("_MASter", true)]
         public async Task DeleteKey_Tests(string keyName, bool invalidKey)
         {
             _secretsManagerMock.Setup(p => p.DeleteSecretAsync(keyName, "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
-            _secretsManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_testHostSecretsInfo);
 
             if (invalidKey)
             {
@@ -177,7 +165,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task DeleteKey_NotAFunction_ReturnsNotFound()
         {
-            _secretsManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_testHostSecretsInfo);
             var result = (StatusCodeResult)(await _testController.Delete("DNE", "key2"));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
 
@@ -188,7 +175,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task DeleteKey_NotAKey_ReturnsNotFound()
         {
             _secretsManagerMock.Setup(p => p.DeleteSecretAsync("dne", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(false);
-            _secretsManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_testHostSecretsInfo);
 
             var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "dne"));
             Assert.Equal(StatusCodes.Status404NotFound, result.StatusCode);
