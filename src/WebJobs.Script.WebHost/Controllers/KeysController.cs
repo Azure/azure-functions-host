@@ -270,7 +270,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return StatusCode(HttpStatusCode.NoContent);
         }
 
-        internal bool IsBuiltInSystemKeyName(string keyName)
+        private static bool IsBuiltInSystemKeyName(string keyName)
         {
             if (keyName.Equals(MasterKeyName, StringComparison.OrdinalIgnoreCase))
             {
