@@ -141,20 +141,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("_MASter", true)]
         public async Task DeleteKey_Tests(string keyName, bool invalidKey)
         {
-            _secretsManagerMock.Setup(p => p.DeleteSecretAsync(keyName, "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
+
+            _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/functions/keys/key2");
+
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
 
             if (invalidKey)
             {
-                var result = (BadRequestObjectResult)(await _testController.Delete("TestFunction1", keyName));
-                Assert.Equal("Cannot delete System Key.", result.Value);
-
+                var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", keyName));
+                Assert.Equal("Invalid key name.", result.Message);
                 _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
             }
             else
             {
                 var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", keyName));
-                Assert.Equal(StatusCodes.Status204NoContent, result.StatusCode);
-
+                Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);
                 _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
             }
         }
