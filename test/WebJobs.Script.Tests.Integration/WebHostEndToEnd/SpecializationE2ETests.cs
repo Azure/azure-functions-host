@@ -18,7 +18,9 @@ using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Diagnostics.JitTrace;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -265,6 +267,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
             var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
+        }
+
+        [Fact]
+        public void ColdStart_JitFailuresTest()
+        {
+            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, WarmUpConstants.JitTraceFileName);
+
+            var file = new FileInfo(path);
+
+            if (file.Exists)
+            {
+                JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
+
+                // using 50 as approximate number of allowed failures before we need to regenrate a new PGO file.
+                Assert.True(failedPrepares < 50, $"Number of failed PGOs have increased. Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the coldstart.jittrace file!");
+            }
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
