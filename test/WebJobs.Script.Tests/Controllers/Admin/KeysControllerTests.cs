@@ -134,17 +134,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
         }
 
-        [Fact]
-        public async Task DeleteKey_Succeeds()
+        [Theory]
+        [InlineData("key1", false)]
+        [InlineData("_key1", false)]
+        [InlineData("_master", true)]
+        [InlineData("_MASter", true)]
+        public async Task DeleteKey_Tests(string keyName, bool invalidKey)
         {
-            _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/functions/keys/key2");
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync(keyName, "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
 
-            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
+            if (invalidKey)
+            {
+                var result = (BadRequestObjectResult)(await _testController.Delete("TestFunction1", keyName));
+                Assert.Equal("Cannot delete System Key.", result.Value);
 
-            var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", "key2"));
-            Assert.Equal(HttpStatusCode.NoContent, result.StatusCode);
+                _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
+            }
+            else
+            {
+                var result = (StatusCodeResult)(await _testController.Delete("TestFunction1", keyName));
+                Assert.Equal(StatusCodes.Status204NoContent, result.StatusCode);
 
-            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
+                _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Once);
+            }
         }
 
         [Fact]
@@ -163,15 +175,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = await _testController.Delete("TestFunction1", "dne");
             Assert.True(result is NotFoundResult);
-
-            _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
-        }
-
-        [Fact]
-        public async Task DeleteKey_InvalidKeyName_ReturnsBadRequest()
-        {
-            var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", "_test"));
-            Assert.Equal("Invalid key name.", result.Message);
 
             _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
         }

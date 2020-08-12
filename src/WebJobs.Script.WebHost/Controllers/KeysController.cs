@@ -240,11 +240,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private async Task<IHttpActionResult> DeleteFunctionSecretAsync(string keyName, string keyScope, ScriptSecretsType secretsType)
         {
-            if (keyName == null || keyName.StartsWith("_"))
+            if (keyName == null)
+            {
+                {
+                    // System keys cannot be deleted.	
+                    return BadRequest("Invalid key name."); return BadRequest("Invalid key name.");
+                }
+            }
+
+
+            if (IsBuiltInSystemKeyName(keyName))
             {
                 // System keys cannot be deleted.
-                return BadRequest("Invalid key name.");
+                return BadRequest("Cannot delete System Key.");
             }
+
 
             if ((secretsType == ScriptSecretsType.Function && keyScope != null && !IsFunction(keyScope)) || 
                 !await _secretManager.DeleteSecretAsync(keyName, keyScope, secretsType))
@@ -260,6 +270,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _logger?.LogInformation(message);
 
             return StatusCode(HttpStatusCode.NoContent);
+        }
+
+        internal bool IsBuiltInSystemKeyName(string keyName)
+        {
+            if (keyName.Equals(MasterKeyName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            return false;
         }
 
         private bool IsFunction(string functionName)
