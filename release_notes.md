@@ -4,3 +4,4 @@
  -->
 
 - Upgrade PowerShell Workers to 2.0.448 ([Release Notes](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v2.0.448))
+- Add http health status endpoint for container liveness probes (#6498)
