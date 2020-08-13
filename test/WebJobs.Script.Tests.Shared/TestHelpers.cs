@@ -250,16 +250,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs()
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false)
         {
-            var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");
-            var javaWorkerDesc = GetTestWorkerDescription("java", ".jar");
-
-            return new List<RpcWorkerConfig>()
+            var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = nodeWorkerDesc },
-                new RpcWorkerConfig() { Description = javaWorkerDesc },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js") },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar") }
             };
+
+            // Allow tests to have a worker that claims the .dll extension.
+            if (includeDllWorker)
+            {
+                workerConfigs.Add(new RpcWorkerConfig() { Description = GetTestWorkerDescription("dllWorker", ".dll") });
+            }
+
+            return workerConfigs;
         }
 
         public static IList<RpcWorkerConfig> GetTestWorkerConfigsNoLanguage()
@@ -304,7 +309,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                  {
                      { extension }
                  },
-                Language = language
+                Language = language,
+                WorkerDirectory = "testDir"
             };
         }
 

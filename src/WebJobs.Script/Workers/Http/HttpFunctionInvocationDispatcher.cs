@@ -65,21 +65,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal Task InitializeHttpWorkerChannelAsync(int attemptCount, CancellationToken cancellationToken = default)
         {
-            // TODO: Add process managment for http invoker
             _httpWorkerChannel = _httpWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _metricsLogger, attemptCount);
             _httpWorkerChannel.StartWorkerProcessAsync(cancellationToken).ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
-                         State = FunctionInvocationDispatcherState.Initialized;
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start http worker process. workerId:{id}", _httpWorkerChannel.Id);
-                     }
-                 });
+            {
+                _logger.LogDebug("Adding http worker channel. workerId:{id}", _httpWorkerChannel.Id);
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+
             return Task.CompletedTask;
+        }
+
+        private void SetFunctionDispatcherStateToInitializedAndLog()
+        {
+            State = FunctionInvocationDispatcherState.Initialized;
+            _logger.LogInformation("Worker process started and initialized.");
         }
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
@@ -98,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            return _httpWorkerChannel.InvokeFunction(invocationContext);
+            return _httpWorkerChannel.InvokeAsync(invocationContext);
         }
 
         public async void WorkerError(HttpWorkerErrorEvent workerError)

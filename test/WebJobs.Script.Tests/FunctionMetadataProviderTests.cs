@@ -115,15 +115,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("node", "test.js")]
-        [InlineData("java", "test.jar")]
-        [InlineData("CSharp", "test.cs")]
-        [InlineData("CSharp", "test.csx")]
-        [InlineData("DotNetAssembly", "test.dll")]
-        [InlineData(null, "test.x")]
-        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile)
+        [InlineData("node", "test.js", false)]
+        [InlineData("java", "test.jar", false)]
+        [InlineData("CSharp", "test.cs", false)]
+        [InlineData("CSharp", "test.csx", false)]
+        [InlineData("dllWorker", "test.dll", true)] // The test "dllWorker" will claim ".dll" extensions before falling back to DotNetAssembly
+        [InlineData("DotNetAssembly", "test.dll", false)]
+        [InlineData(null, "test.x", false)]
+        public void ParseLanguage_Returns_ExpectedLanguage(string language, string scriptFile, bool includeDllWorker)
         {
-            Assert.Equal(language, FunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs()));
+            Assert.Equal(language, FunctionMetadataProvider.ParseLanguage(scriptFile, TestHelpers.GetTestWorkerConfigs(includeDllWorker: includeDllWorker)));
         }
 
         [Theory]

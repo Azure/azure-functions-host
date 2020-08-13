@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
@@ -36,6 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("Secrets")]
         public FunctionAppSecrets Secrets { get; set; }
 
+        // This will be true for dummy specialization calls to pre-jit specialization code.
+        // For warmup requests the Run-From-Pkg appsetting will point to a local endpoint that
+        // returns 200 to ensure downloading app contents succeeds.
+        // All the other fields will be empty.
+        [JsonProperty("isWarmupRequest")]
+        public bool IsWarmupRequest { get; set; }
+
         public long? PackageContentLength { get; set; }
 
         public string AzureFilesConnectionString
@@ -55,29 +61,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
                     Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
                     Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteZipDeployment,
                     Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.ScmRunFromPackage,
                     Environment[EnvironmentSettingNames.ScmRunFromPackage],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else
             {
-                return new RunFromPackageContext(string.Empty, string.Empty, PackageContentLength);
+                return new RunFromPackageContext(string.Empty, string.Empty, PackageContentLength, IsWarmupRequest);
             }
         }
 
