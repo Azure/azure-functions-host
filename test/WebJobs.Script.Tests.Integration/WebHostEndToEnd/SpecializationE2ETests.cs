@@ -276,12 +276,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var file = new FileInfo(path);
 
-            Assert.True(file.Exists, $"{file.FullName} does not exist!");
+            Assert.True(file.Exists, $"Expected PGO file '{file.FullName}' does not exist. The file was either renamed or deleted.");
 
             JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
 
-            // using 50 as approximate number of allowed failures before we need to regenrate a new PGO file.
-            Assert.True(failedPrepares < 50, $"Number of failed PGOs have increased. Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the coldstart.jittrace file!");
+            var failurePercentage = (double) failedPrepares / successfulPrepares * 100;
+            
+            // using 1% as approximate number of allowed failures before we need to regenrate a new PGO file.
+            Assert.True( failurePercentage < 1.0 , $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {WarmUpConstants.JitTraceFileName} file!");
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
