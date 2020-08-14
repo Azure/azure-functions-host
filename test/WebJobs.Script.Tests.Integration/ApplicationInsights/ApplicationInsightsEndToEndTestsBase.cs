@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTelemetry(telemetry, expectedInvocationId, expectedOperationName, expectedCategory, SeverityLevel.Error);
         }
 
-        [Fact]
+        [Fact(Skip = "Disabled due to https://github.com/Azure/azure-functions-host/issues/6521")]
         public async Task Validate_HostLogs()
         {
             // Validate the host startup traces. Order by message string as the requests may come in
