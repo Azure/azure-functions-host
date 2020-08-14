@@ -3,6 +3,8 @@
 - My change description (#PR)
  -->
 
+- Upgrade WebJobs to 3.0.20 ([Release Notes](https://github.com/Azure/azure-webjobs-sdk/releases/tag/v3.0.20))
+  - Add "EventName" App Insights telemetry ([PR](https://github.com/Azure/azure-webjobs-sdk/pull/2544))
 - Upgrade PowerShell Workers to 3.0.446 ([Release Notes](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.446)) and 3.0.452 ([Release Notes](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.452))
 - Update Python Worker to 1.1.4([Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.4))
 - Update Python Library to 1.3.0([Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.0))
