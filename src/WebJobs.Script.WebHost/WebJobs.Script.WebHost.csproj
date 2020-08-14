@@ -9,6 +9,7 @@
     <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
     <TieredCompilation>false</TieredCompilation>
+    <NoWarn>NU5125;NU5104;NU5048</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
