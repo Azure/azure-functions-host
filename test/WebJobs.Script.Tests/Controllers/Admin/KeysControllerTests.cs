@@ -141,7 +141,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("_MASter", true)]
         public async Task DeleteKey_Tests(string keyName, bool invalidKey)
         {
-
             _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/functions/keys/key2");
 
             _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
