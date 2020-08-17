@@ -139,16 +139,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("_key1", false)]
         [InlineData("_master", true)]
         [InlineData("_MASter", true)]
+        [InlineData(null, true)]
         public async Task DeleteKey_Tests(string keyName, bool invalidKey)
         {
             _testController.Request = new HttpRequestMessage(HttpMethod.Get, "https://local/admin/functions/keys/key2");
 
-            _secretsManagerMock.Setup(p => p.DeleteSecretAsync("key2", "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
+            _secretsManagerMock.Setup(p => p.DeleteSecretAsync(keyName, "TestFunction1", ScriptSecretsType.Function)).ReturnsAsync(true);
 
             if (invalidKey)
             {
-                var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", keyName));
-                Assert.Equal("Invalid key name.", result.Message);
+                if (string.IsNullOrEmpty(keyName))
+                {
+                    var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", keyName));
+                    Assert.Equal("Invalid key name.", result.Message);
+                }
+                else
+                {
+                    var result = (BadRequestErrorMessageResult)(await _testController.Delete("TestFunction1", keyName));
+                    Assert.Equal("Cannot delete System Key.", result.Message);
+                }
                 _functionsSyncManagerMock.Verify(p => p.TrySyncTriggersAsync(false), Times.Never);
             }
             else
