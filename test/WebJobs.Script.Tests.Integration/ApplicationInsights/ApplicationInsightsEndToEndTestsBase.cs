@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 return traces
                 .Where(t => t.Message.Contains("Host lock lease acquired by instance ID") || t.Message.Contains("Job host started"))
                 .Count() == 2;
-            }, userMessageCallback: () => string.Join(Environment.NewLine, _fixture.Channel.Telemetries.OfType<TraceTelemetry>().Select(t => t.Message)));
+            }, timeout: 60000, userMessageCallback: () => string.Join(Environment.NewLine, _fixture.Channel.Telemetries.OfType<TraceTelemetry>().Select(t => t.Message)));
 
             // Excluding Node buffer deprecation warning for now
             // TODO: Remove this once the issue https://github.com/Azure/azure-functions-nodejs-worker/issues/98 is resolved
