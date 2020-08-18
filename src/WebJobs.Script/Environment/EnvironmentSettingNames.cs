@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
+        public const string DotnetAddGlobalToolsToPath = "DOTNET_ADD_GLOBAL_TOOLS_TO_PATH";
         public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
