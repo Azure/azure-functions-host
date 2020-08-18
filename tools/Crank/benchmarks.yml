@@ -30,7 +30,7 @@ profiles:
     jobs: 
       application:
         endpoints: 
-          - http://{{ CrankAgentVm }}:5010
+          - "http://{{ CrankAgentVm }}:5010"
       load:
         endpoints: 
-          - http://{{ CrankAgentVm }}:5010
+          - "http://{{ CrankAgentVm }}:5010"
