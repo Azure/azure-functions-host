@@ -8,6 +8,7 @@
     <PackageId>Microsoft.Azure.WebJobs.Script.WebHost</PackageId>
     <IsPackable Condition="'$(IsPackable)' != ''">true</IsPackable>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
