@@ -8,7 +8,7 @@
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>
     <InformationalVersion>$(FileVersion)$(RuntimeReleaseSuffix) Commit hash: $(CommitHash)</InformationalVersion> 
     <PackageId>Microsoft.Azure.WebJobs.Script.Abstractions</PackageId>
-    <PackageIconUrl>https://raw.githubusercontent.com/Azure/azure-webjobs-sdk/dev/webjobs.png</PackageIconUrl>
+    <Icon>webjobs.png</Icon>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Abstractions</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Abstractions</RootNamespace>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)key.snk</AssemblyOriginatorKeyFile>
