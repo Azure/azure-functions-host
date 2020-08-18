@@ -203,6 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         {
             TryAdd(startInfo.Environment, EnvironmentSettingNames.DotnetSkipFirstTimeExperience, "true");
             TryAdd(startInfo.Environment, EnvironmentSettingNames.DotnetAddGlobalToolsToPath, "false");
+            TryAdd(startInfo.Environment, EnvironmentSettingNames.DotnetNoLogo, "true");
             TryAdd(startInfo.Environment, NugetXmlDocModeSettingName, NugetXmlDocSkipMode);
         }
 

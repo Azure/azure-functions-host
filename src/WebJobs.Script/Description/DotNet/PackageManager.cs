@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                 startInfo.Environment.Add(EnvironmentSettingNames.DotnetSkipFirstTimeExperience, "true");
                 startInfo.Environment.Add(EnvironmentSettingNames.DotnetAddGlobalToolsToPath, "false");
+                startInfo.Environment.Add(EnvironmentSettingNames.DotnetNoLogo, "true");
 
                 var process = new Process { StartInfo = startInfo };
                 process.ErrorDataReceived += ProcessDataReceived;
