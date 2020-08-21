@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly FunctionLoader<MethodInfo> _functionLoader;
         private readonly IMetricsLogger _metricsLogger;
 
+        private MethodInvoker _methodInvoker;
         private FunctionSignature _functionSignature;
         private IFunctionMetadataResolver _metadataResolver;
         private Func<Task> _reloadScript;
@@ -267,19 +269,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             int actualParameterCount = function.GetParameters().Length;
             parameters = parameters.Take(actualParameterCount).ToArray();
 
-            object result = function.Invoke(null, parameters);
+            object result = await _methodInvoker.InvokeAsync(null, parameters);
 
             // after the function executes, we have to copy values back into the original
             // array to ensure object references are maintained (since we took a copy above)
             for (int i = 0; i < parameters.Length; i++)
             {
                 originalParameters[i] = parameters[i];
-            }
-
-            // unwrap the task
-            if (result is Task)
-            {
-                result = await ((Task)result).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
             }
 
             return result;
@@ -309,7 +305,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     // Set our function entry point signature
                     _functionSignature = functionSignature;
 
-                    return _functionSignature.GetMethod(assembly);
+                    var methodInfo = _functionSignature.GetMethod(assembly);
+                    _methodInvoker = MethodInvoker.Create(methodInfo);
+
+                    return methodInfo;
                 }
             }
             catch (CompilationErrorException exc)
@@ -449,23 +448,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return resultBuilder.ToImmutable();
         }
 
-        internal static object GetTaskResult(Task task)
-        {
-            if (task.IsFaulted)
-            {
-                throw task.Exception;
-            }
-
-            Type taskType = task.GetType();
-
-            if (taskType.IsGenericType)
-            {
-                return taskType.GetProperty("Result").GetValue(task);
-            }
-
-            return null;
-        }
-
         private void WarnIfDeprecatedNugetReferenceFound(Diagnostic diagnostic)
         {
             string functionDirectory = Metadata.FunctionDirectory;
@@ -496,6 +478,59 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (disposing)
             {
                 _functionLoader.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Uses compiled lambdas rather than reflection to invoke the target method.
+        /// </summary>
+        private abstract class MethodInvoker
+        {
+            public static MethodInvoker Create(MethodInfo methodInfo)
+            {
+                if (!TryGetReturnType(methodInfo, out Type returnType))
+                {
+                    returnType = typeof(object);
+                }
+
+                var invokerType = typeof(MethodInvoker<,>).MakeGenericType(methodInfo.DeclaringType, returnType);
+                return (MethodInvoker)Activator.CreateInstance(invokerType, methodInfo);
+            }
+
+            public abstract Task<object> InvokeAsync(object target, object[] parameters);
+
+            private static bool TryGetReturnType(MethodInfo methodInfo, out Type type)
+            {
+                Type returnType = methodInfo.ReturnType;
+                if (returnType == typeof(void) || returnType == typeof(Task))
+                {
+                    type = null;
+                }
+                else if (typeof(Task).IsAssignableFrom(methodInfo.ReturnType))
+                {
+                    type = returnType.GetGenericArguments()[0];
+                }
+                else
+                {
+                    type = returnType;
+                }
+
+                return type != null;
+            }
+        }
+
+        private class MethodInvoker<TReflected, TResult> : MethodInvoker
+        {
+            private IMethodInvoker<TReflected, TResult> _methodInvoker;
+
+            public MethodInvoker(MethodInfo methodInfo)
+            {
+                _methodInvoker = MethodInvokerFactory.Create<TReflected, TResult>(methodInfo);
+            }
+
+            public override async Task<object> InvokeAsync(object target, object[] parameters)
+            {
+                return await _methodInvoker.InvokeAsync((TReflected)target, parameters);
             }
         }
     }
