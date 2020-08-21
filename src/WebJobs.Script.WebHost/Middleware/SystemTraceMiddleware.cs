@@ -2,18 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using DryIoc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
@@ -52,11 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private static string GetIdentities(HttpContext context)
         {
-            var sbIdentities = new StringBuilder();
-
             var identities = context.User.Identities.Where(p => p.IsAuthenticated);
             if (identities.Any())
             {
+                var sbIdentities = new StringBuilder();
+
                 foreach (var identity in identities)
                 {
                     if (sbIdentities.Length > 0)
@@ -76,9 +73,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 sbIdentities.Insert(0, "(");
                 sbIdentities.Append(")");
-            }
 
-            return sbIdentities.ToString();
+                return sbIdentities.ToString();
+            }
+            else
+            {
+                return string.Empty;
+            }
         }
     }
 }
