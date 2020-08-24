@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Specialization can change the CompatMode setting, so this must run later than
             // the PlaceholderSpecializationMiddleware
-            builder.UseWhen(context => httpBodyControlOptions.CurrentValue.AllowSynchronousIO, config =>
+            builder.UseWhen(context => httpBodyControlOptions.CurrentValue.AllowSynchronousIO || context.Request.IsAdminDownloadRequest(), config =>
             {
                 config.UseMiddleware<AllowSynchronousIOMiddleware>();
             });

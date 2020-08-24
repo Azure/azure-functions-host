@@ -57,6 +57,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             }
         }
 
+        [Fact]
+        public async Task SyncDownload_Succeeds()
+        {
+            using (var host = GetHost())
+            {
+                HostSecretsInfo secrets = await host.SecretManager.GetHostSecretsAsync();
+                var response = await MakeDownloadRequest(host.HttpClient, secrets.MasterKey);
+
+                response.EnsureSuccessStatusCode();
+                Assert.True(response.Content.Headers.ContentLength > 0);
+            }
+        }
+
         private static TestFunctionHost GetHost(Action<IDictionary<string, string>> addEnvironmentVariables = null)
         {
             string scriptPath = @"TestScripts\DirectLoad\";
@@ -71,6 +84,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
                 });
 
             return host;
+        }
+
+        private static Task<HttpResponseMessage> MakeDownloadRequest(HttpClient client, string masterKey)
+        {
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/admin/functions/download?code={masterKey}")),
+                Method = HttpMethod.Get
+            };
+
+            return client.SendAsync(request);
         }
 
         private static Task<HttpResponseMessage> MakeRequest(HttpClient client, string masterKey)
