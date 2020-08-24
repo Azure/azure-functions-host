@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.20" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.21-11764" />
     <PackageReference Include="Microsoft.Net.Sdk.Functions" Version="3.0.*" />
   </ItemGroup>
 

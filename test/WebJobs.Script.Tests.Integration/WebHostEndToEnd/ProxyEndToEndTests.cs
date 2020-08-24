@@ -28,11 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
+        private string _hostName;
 
         public ProxyEndToEndTests(TestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+            _hostName = new HostNameProvider(SystemEnvironment.Instance).Value ?? "localhost";
         }
 
         [Fact]
@@ -47,16 +49,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(24, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
-            Assert.Equal("https://localhost/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "Ping");
-            Assert.Equal("https://localhost/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "LocalFunctionCall");
-            Assert.Equal("https://localhost/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "PingMakeResponse");
-            Assert.Equal("https://localhost/api/pingmakeresponse", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/pingmakeresponse", function.InvokeUrlTemplate.AbsoluteUri);
 
             // get functions omitting proxies
             uri = "admin/functions";
@@ -223,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
-            Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
+            Assert.Equal($"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
         [Fact]

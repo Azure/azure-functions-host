@@ -114,10 +114,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // unwrap the task
             if (result is Task)
             {
-                result = await ((Task)result).ContinueWith(t => DotNetFunctionInvoker.GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
+                result = await ((Task)result).ContinueWith(t => GetTaskResult(t), TaskContinuationOptions.ExecuteSynchronously);
             }
 
             return result;
+        }
+
+        internal static object GetTaskResult(Task task)
+        {
+            if (task.IsFaulted)
+            {
+                throw task.Exception;
+            }
+
+            Type taskType = task.GetType();
+
+            if (taskType.IsGenericType)
+            {
+                return taskType.GetProperty("Result").GetValue(task);
+            }
+
+            return null;
         }
 
         // Sample user functions for various return signatures.
