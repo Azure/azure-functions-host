@@ -4,6 +4,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 
 namespace Microsoft.AspNetCore.Buffering
 {
@@ -18,41 +19,48 @@ namespace Microsoft.AspNetCore.Buffering
 
         public async Task Invoke(HttpContext httpContext)
         {
-            var originalResponseBody = httpContext.Response.Body;
-
-            // no-op if buffering is already available.
-            if (originalResponseBody.CanSeek)
+            if (httpContext.Request.IsAdminDownloadRequest())
             {
-                await _next(httpContext);
-                return;
+                await _next(httpContext);   // Otherwise /admin/functions/download will throw exception at BufferingWriteStream.get_Position() because this is not implemented in https://github.com/aspnet/KestrelHttpServer/blob/master/src/Kestrel.Core/Internal/Http/HttpResponseStream.cs#L34
             }
-
-            var originalBufferingFeature = httpContext.Features.Get<IHttpBufferingFeature>();
-            try
+            else
             {
-                // Shim the response stream
-                var bufferStream = new BufferingWriteStream(originalResponseBody);
-                httpContext.Response.Body = bufferStream;
-                httpContext.Features.Set<IHttpBufferingFeature>(new HttpBufferingFeature(bufferStream, originalBufferingFeature));
+                var originalResponseBody = httpContext.Response.Body;
 
-                await _next(httpContext);
-
-                // If we're still buffered, set the content-length header and flush the buffer.
-                // Only if the content-length header is not already set, and some content was buffered.
-                if (!httpContext.Response.HasStarted && bufferStream.CanSeek && bufferStream.Length > 0)
+                // no-op if buffering is already available.
+                if (originalResponseBody.CanSeek)
                 {
-                    if (!httpContext.Response.ContentLength.HasValue)
-                    {
-                        httpContext.Response.ContentLength = bufferStream.Length;
-                    }
-                    await bufferStream.FlushAsync();
+                    await _next(httpContext);
+                    return;
                 }
-            }
-            finally
-            {
-                // undo everything
-                httpContext.Features.Set(originalBufferingFeature);
-                httpContext.Response.Body = originalResponseBody;
+
+                var originalBufferingFeature = httpContext.Features.Get<IHttpBufferingFeature>();
+                try
+                {
+                    // Shim the response stream
+                    var bufferStream = new BufferingWriteStream(originalResponseBody);
+                    httpContext.Response.Body = bufferStream;
+                    httpContext.Features.Set<IHttpBufferingFeature>(new HttpBufferingFeature(bufferStream, originalBufferingFeature));
+
+                    await _next(httpContext);
+
+                    // If we're still buffered, set the content-length header and flush the buffer.
+                    // Only if the content-length header is not already set, and some content was buffered.
+                    if (!httpContext.Response.HasStarted && bufferStream.CanSeek && bufferStream.Length > 0)
+                    {
+                        if (!httpContext.Response.ContentLength.HasValue)
+                        {
+                            httpContext.Response.ContentLength = bufferStream.Length;
+                        }
+                        await bufferStream.FlushAsync();
+                    }
+                }
+                finally
+                {
+                    // undo everything
+                    httpContext.Features.Set(originalBufferingFeature);
+                    httpContext.Response.Body = originalResponseBody;
+                }
             }
         }
     }
