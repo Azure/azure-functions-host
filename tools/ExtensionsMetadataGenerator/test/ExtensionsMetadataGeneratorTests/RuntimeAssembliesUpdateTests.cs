@@ -11,7 +11,7 @@ namespace ExtensionsMetadataGeneratorTests
     public class RuntimeAssembliesUpdateTests
     {
         public const string ExistingRuntimeAssembliesFileName = "ExistingRuntimeAssemblies.txt";
-        public const string GeneratedRuntimeAssembliesFileName = @"runtimeassemblies.txt";
+        public const string GeneratedRuntimeAssembliesFileName = "runtimeassemblies.txt";
 
         [Fact]
         public void VerifyGeneratedRuntimeAssemblies()
@@ -27,7 +27,7 @@ namespace ExtensionsMetadataGeneratorTests
 
             string diffString = string.Join(";", result);
 
-            Assert.False(result.Any(), $"Generated runtimeassemblies.txt file:{generatedRuntimeAssemblies} does not match existing list:{existingRuntimeAssemblies}.\n Review Diff list:\n{diffString}\n Verify changes and update contents in {ExistingRuntimeAssembliesFileName}");
+            Assert.False(result.Any(), $"Generated runtimeassemblies.txt file:{GeneratedRuntimeAssembliesFileName} does not match existing list:{ExistingRuntimeAssembliesFileName}.\n Review Diff list:\n{diffString}\n Verify changes and update contents in {ExistingRuntimeAssembliesFileName}");
         }
     }
 }
