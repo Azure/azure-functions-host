@@ -98,6 +98,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HostDownload_Succeeds()
+        {
+            string uri = $"admin/functions/download?code={_fixture.MasterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(response.Content.Headers.ContentLength > 0);
+        }
+
+        [Fact]
         public async Task ArmExtensionsResourceFilter_NonExtensionRoute_Succeeds()
         {
             // when request not made via ARM extensions route, expect success
