@@ -2,8 +2,10 @@
 
 $json = Get-Content '..\..\..\..\src\WebJobs.Script\runtimeassemblies.json' -raw 
 $json = $json -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*' -replace '(?ms)/\*.*?\*/'
-$result = $json | ConvertFrom-Json
 
-$files = $result.runtimeAssemblies | ForEach-Object {$_.name + '.dll'}
+$runtimeAssembliesJson = $json | ConvertFrom-Json
+# Exclude assemblies with resolutionPolicy private
+$result = $runtimeAssembliesJson.runtimeAssemblies |  Where-Object {$_.resolutionPolicy -ne "private"}
 
+$files = $result | ForEach-Object {$_.name + '.dll'}
 Set-Content -Path "runtimeAssemblies.txt" -Value $files
