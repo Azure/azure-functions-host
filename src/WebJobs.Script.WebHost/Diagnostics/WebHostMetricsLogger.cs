@@ -38,8 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void BeginEvent(MetricEvent metricEvent)
         {
-            FunctionStartedEvent startedEvent = metricEvent as FunctionStartedEvent;
-            if (startedEvent != null)
+            if (metricEvent is FunctionStartedEvent startedEvent)
             {
                 startedEvent.Timestamp = DateTime.UtcNow;
                 _metricsEventManager.FunctionStarted(startedEvent);
@@ -53,8 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void EndEvent(MetricEvent metricEvent)
         {
-            FunctionStartedEvent completedEvent = metricEvent as FunctionStartedEvent;
-            if (completedEvent != null)
+            if (metricEvent is FunctionStartedEvent completedEvent)
             {
                 completedEvent.Duration = DateTime.UtcNow - completedEvent.Timestamp;
                 _metricsEventManager.FunctionCompleted(completedEvent);

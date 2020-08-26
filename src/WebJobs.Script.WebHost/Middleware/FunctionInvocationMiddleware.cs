@@ -26,7 +26,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class FunctionInvocationMiddleware
     {
+        private static RouteData _emptyRouteData;
+        private static ActionDescriptor _emptyActionDescriptor;
         private readonly RequestDelegate _next;
+
+        static FunctionInvocationMiddleware()
+        {
+            _emptyRouteData = new RouteData();
+            _emptyActionDescriptor = new ActionDescriptor();
+        }
 
         public FunctionInvocationMiddleware(RequestDelegate next)
         {
@@ -53,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     return;
                 }
 
-                ActionContext actionContext = new ActionContext(context, new RouteData(), new ActionDescriptor());
+                ActionContext actionContext = new ActionContext(context, _emptyRouteData, _emptyActionDescriptor);
                 await result.ExecuteResultAsync(actionContext);
             }
         }
@@ -138,10 +146,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private void PopulateRouteData(HttpContext context)
         {
-            // Add route data to request info
-            // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
             var routingFeature = context.Features.Get<IRoutingFeature>();
 
+            // Add route data to request info
+            // TODO: Keeping this here for now as other code depend on this property, but this can be done in the HTTP binding.
             var routeData = new Dictionary<string, object>(routingFeature.RouteData.Values);
 
             // Get optional parameters that were not used and had no default
