@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             InstanceId = Guid.NewGuid().ToString();
             WatchDirectories = new Collection<string>();
+            WatchFiles = new Collection<string>();
         }
 
         /// <summary>
@@ -69,6 +70,14 @@ namespace Microsoft.Azure.WebJobs.Script
         /// directories, the host will restart.
         /// </summary>
         public ICollection<string> WatchDirectories { get; set; }
+
+        /// <summary>
+        /// Gets or sets the collection of file names that
+        /// should be monitored for changes. If FileWatchingEnabled is true, these files
+        /// will be monitored. When a file from this list is added/modified/deleted,
+        /// the host will restart.
+        /// </summary>
+        public ICollection<string> WatchFiles { get; set; }
 
         /// <summary>
         /// Gets or sets a value governing when logs should be written to disk.

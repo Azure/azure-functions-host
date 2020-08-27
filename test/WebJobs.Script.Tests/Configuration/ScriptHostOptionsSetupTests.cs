@@ -35,6 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(1, options.WatchDirectories.Count);
             Assert.Equal("node_modules", options.WatchDirectories.ElementAt(0));
 
+            Assert.Equal(3, options.WatchFiles.Count);
+            Assert.Contains("host.json", options.WatchFiles);
+            Assert.Contains("function.json", options.WatchFiles);
+            Assert.Contains("proxies.json", options.WatchFiles);
+
             // File watching disabled
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled")] = bool.FalseString;
 
@@ -49,6 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled")] = bool.TrueString;
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "watchDirectories", "0")] = "Shared";
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "watchDirectories", "1")] = "Tools";
+            settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "watchFiles", "0")] = "myFirstFile.ext";
+            settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "watchFiles", "1")] = "mySecondFile.ext";
 
             setup = CreateSetupWithConfiguration(settings);
 
@@ -60,6 +67,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal("node_modules", options.WatchDirectories.ElementAt(0));
             Assert.Equal("Shared", options.WatchDirectories.ElementAt(1));
             Assert.Equal("Tools", options.WatchDirectories.ElementAt(2));
+
+            Assert.Equal(5, options.WatchFiles.Count);
+            Assert.Contains("host.json", options.WatchFiles);
+            Assert.Contains("function.json", options.WatchFiles);
+            Assert.Contains("proxies.json", options.WatchFiles);
+            Assert.Contains("myFirstFile.ext", options.WatchFiles);
+            Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
 
         [Fact(Skip = "ApplyConfiguration no longer exists. Validate logic (moved to HostJsonFileConfigurationSource)")]
