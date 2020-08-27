@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -63,8 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     var functionSecrets = await secretManager.GetFunctionSecretsAsync("function1", true);
 
                     Assert.Equal(4, functionSecrets.Count);
-                    Assert.Equal("function1value", functionSecrets["test-function-1"]);
-                    Assert.Equal("function2value", functionSecrets["test-function-2"]);
+                    Assert.Equal("function1value1", functionSecrets["test-function1-1"]);
+                    Assert.Equal("function1value2", functionSecrets["test-function1-2"]);
                     Assert.Equal("hostfunction1value", functionSecrets["test-host-function-1"]);
                     Assert.Equal("hostfunction2value", functionSecrets["test-host-function-2"]);
 
@@ -84,6 +85,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal($"Loading startup context from {startupContextPath}", logs[1].FormattedMessage);
                 Assert.Equal($"Loaded keys for 2 functions from startup context", logs[2].FormattedMessage);
                 Assert.Equal($"Loaded host keys from startup context", logs[3].FormattedMessage);
+            }
+        }
+
+        [Theory]
+        [InlineData("function1value1", "test-function1-1", "function1", AuthorizationLevel.Function)]
+        [InlineData("function1value2", "test-function1-2", "function1", AuthorizationLevel.Function)]
+        [InlineData("function2value1", "test-function2-1", "function2", AuthorizationLevel.Function)]
+        [InlineData("function2value2", "test-function2-2", "function2", AuthorizationLevel.Function)]
+        [InlineData("function2value1", null, "function1", AuthorizationLevel.Anonymous)]
+        [InlineData("function1value1", null, "function2", AuthorizationLevel.Anonymous)]
+        [InlineData("invalid", null, "function1", AuthorizationLevel.Anonymous)]
+        [InlineData("invalid", null, "function2", AuthorizationLevel.Anonymous)]
+        [InlineData("hostfunction1value", "test-host-function-1", "function1", AuthorizationLevel.Function)]
+        [InlineData("hostfunction2value", "test-host-function-2", "function1", AuthorizationLevel.Function)]
+        [InlineData("hostfunction1value", "test-host-function-1", "function2", AuthorizationLevel.Function)]
+        [InlineData("hostfunction2value", "test-host-function-2", "function2", AuthorizationLevel.Function)]
+        [InlineData("test-master-key", "master", "function1", AuthorizationLevel.Admin)]
+        [InlineData("test-master-key", "master", "function2", AuthorizationLevel.Admin)]
+        [InlineData("test-master-key", "master", null, AuthorizationLevel.Admin)]
+        [InlineData("system1value", "test-system-1", null, AuthorizationLevel.System)]
+        [InlineData("system2value", "test-system-2", null, AuthorizationLevel.System)]
+        public async Task GetAuthorizationLevelOrNullAsync_ReturnsExpectedResult(string keyValue, string expectedKeyName, string functionName, AuthorizationLevel expectedLevel)
+        {
+            using (var directory = new TempDirectory())
+            {
+                string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+
+                WriteStartContextCache(startupContextPath);
+
+                using (var secretManager = CreateSecretManager(directory.Path))
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        (string, AuthorizationLevel) result = await secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
+                        Assert.Equal(result.Item2, expectedLevel);
+                        Assert.Equal(result.Item1, expectedKeyName);
+                    }
+                }
             }
         }
 
@@ -111,8 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Name = "function1",
                     Secrets = new Dictionary<string, string>
                     {
-                        { "test-function-1", "function1value" },
-                        { "test-function-2", "function2value" }
+                        { "test-function1-1", "function1value1" },
+                        { "test-function1-2", "function1value2" }
                     }
                 },
                 new FunctionAppSecrets.FunctionSecrets
@@ -120,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     Name = "function2",
                     Secrets = new Dictionary<string, string>
                     {
-                        { "test-function-1", "function1value" },
-                        { "test-function-2", "function2value" }
+                        { "test-function2-1", "function2value1" },
+                        { "test-function2-2", "function2value2" }
                     }
                 }
             };
