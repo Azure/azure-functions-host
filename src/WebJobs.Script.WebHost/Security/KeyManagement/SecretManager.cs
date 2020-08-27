@@ -385,7 +385,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (keyValue != null)
             {
-                if (_authorizationCache.TryGetValue(keyValue, out (string, AuthorizationLevel) value))
+                string cacheKey = $"{keyValue}{functionName}";
+                if (_authorizationCache.TryGetValue(cacheKey, out (string, AuthorizationLevel) value))
                 {
                     // we've already authorized this key value so return the cached result
                     return value;
@@ -399,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (result.Item2 != AuthorizationLevel.Anonymous)
                 {
                     // key match
-                    _authorizationCache[keyValue] = result;
+                    _authorizationCache[cacheKey] = result;
                     return result;
                 }
                 else
