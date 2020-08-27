@@ -3,5 +3,7 @@
 - My change description (#PR)
 -->
 
+- Add a new host.json property "watchFiles" for restarting the Host when files are modified.
+
 **Release sprint:** Sprint 83
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+83%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+83%22+label%3Afeature+is%3Aclosed) ]
