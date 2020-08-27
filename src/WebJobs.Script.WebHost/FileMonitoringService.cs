@@ -248,9 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     Shutdown();
                 }
             }
-            else if (string.Compare(fileName, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(fileName, ScriptConstants.FunctionMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(fileName, ScriptConstants.ProxyMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (_scriptOptions.WatchFiles.Any(f => string.Equals(fileName, f, StringComparison.OrdinalIgnoreCase)))
             {
                 changeDescription = "File";
             }

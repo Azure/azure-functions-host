@@ -30,6 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Add the standard built in watched directories set to any the user may have specified
             options.WatchDirectories.Add("node_modules");
 
+            // Add the default files we need to watch
+            options.WatchFiles.Add(ScriptConstants.HostMetadataFileName);
+            options.WatchFiles.Add(ScriptConstants.FunctionMetadataFileName);
+            options.WatchFiles.Add(ScriptConstants.ProxyMetadataFileName);
+
             // Set default logging mode
             options.FileLoggingMode = FileLoggingMode.DebugOnly;
 
