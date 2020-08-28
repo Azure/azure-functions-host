@@ -2,7 +2,8 @@ param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "3.0.$buildNumber",
   [string]$suffix = "",
-  [string]$commitHash = "N/A"
+  [string]$commitHash = "N/A",
+  [switch]$integrationTestsBuild = $false
 )
 
 $currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -52,7 +53,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
       $suffixCmd = "/p:VersionSuffix=$suffix"
     }
 
-    $cmd = "publish", ".\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
+    $cmd = "publish", "..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -164,6 +165,56 @@ if (Test-Path $buildOutput) {
 }
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
+
+if ($integrationTestsBuild)
+{
+    $response = $null
+    try
+    {
+        $url = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V3/HostBuild.json"
+        $response = Invoke-WebRequest -Uri $url -ErrorAction Stop       
+    }
+    catch
+    {
+        throw "Failed to download package list from '$url'"
+    }
+    if (-not $response.Content)
+    {
+        throw "Failed to download package list. Verify that the file located at '$url' is not empty."
+    }
+    $packagesToUpdate = @($response.Content | ConvertFrom-Json)
+
+    # Update packages references
+    write-host "Updating Package references"
+    $source = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
+    
+    $currentDirectory = Get-Location
+
+    $path = "$PSScriptRoot\..\src\WebJobs.Script"
+    if (-not (Test-Path $path))
+    {
+        throw "Failed to find '$path' to update package references"
+    }
+
+    try
+    {
+        set-location $path
+    
+        foreach ($package in $packagesToUpdate)
+        {
+            $packageInfo = & {NuGet list $package -Source $source}
+            $packageName = $packageInfo.Split()[0]
+            $packagVersion = $packageInfo.Split()[1]
+
+            Write-host "Adding $packageName $packagVersion to project" -ForegroundColor Green
+            & { dotnet add package $packageName -v $packagVersion -s $source }
+        }
+    }
+    finally
+    {
+        Set-Location $currentDirectory
+    }
+}
 
 BuildRuntime "win-x86"
 BuildRuntime "win-x64"
