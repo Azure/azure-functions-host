@@ -1,3 +1,8 @@
+param(
+    [string]
+    $UserName = 'Functions'
+)
+
 $ErrorActionPreference = 'Stop'
 
 if ($IsWindows) {
@@ -6,13 +11,13 @@ if ($IsWindows) {
     Add-MpPreference -ExclusionProcess 'crank-agent.exe'
 }
 
-$logsDir = $IsWindows ? 'C:\crank-agent-logs' : '/home/Functions/crank-agent-logs'
+$logsDir = $IsWindows ? 'C:\crank-agent-logs' : "/home/$UserName/crank-agent-logs"
 if (-not (Test-Path $logsDir -PathType Container)) {
     New-Item -Path $logsDir -ItemType Container > $null
 }
 
 $logFileName = Join-Path -Path $logsDir -ChildPath "$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').log"
 
-$invokeCrankAgentCommand = $IsWindows ? 'C:\dotnet-tools\crank-agent.exe' : '/home/Functions/.dotnet/tools/crank-agent';
+$invokeCrankAgentCommand = $IsWindows ? 'C:\dotnet-tools\crank-agent.exe' : "/home/$UserName/.dotnet/tools/crank-agent";
 
 & $invokeCrankAgentCommand 2>&1 >> $logFileName

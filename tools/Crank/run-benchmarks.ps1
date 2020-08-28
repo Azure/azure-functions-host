@@ -16,7 +16,10 @@ param(
     $WriteResultsToDatabase,
 
     [switch]
-    $RefreshCrankContoller
+    $RefreshCrankContoller,
+
+    [string]
+    $UserName = 'Functions'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -55,7 +58,7 @@ $crankConfigPath = Join-Path `
 
 $isLinuxApp = $CrankAgentVm -match '\blinux\b'
 
-$functionAppRootPath = $isLinuxApp ? '/home/Functions/FunctionApps' : 'C:\FunctionApps';
+$functionAppRootPath = $isLinuxApp ? "/home/$UserName/FunctionApps" : 'C:\FunctionApps';
                     
 $functionAppPath = Join-Path `
                     -Path $functionAppRootPath `
