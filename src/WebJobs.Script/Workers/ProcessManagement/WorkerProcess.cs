@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        private void BuildAndLogConsoleLog(string msg, LogLevel level)
+        internal void BuildAndLogConsoleLog(string msg, LogLevel level)
         {
             ConsoleLog consoleLog = new ConsoleLog()
             {
