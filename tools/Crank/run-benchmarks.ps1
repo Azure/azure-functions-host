@@ -58,7 +58,7 @@ $crankConfigPath = Join-Path `
 
 $isLinuxApp = $CrankAgentVm -match '\blinux\b'
 
-$functionAppRootPath = $isLinuxApp ? "/home/$UserName/FunctionApps" : 'C:\FunctionApps';
+$functionAppRootPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps" } else { 'C:\FunctionApps' }
                     
 $functionAppPath = Join-Path `
                     -Path $functionAppRootPath `
