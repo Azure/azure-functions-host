@@ -4,7 +4,10 @@ param(
     $CrankAgentVm,
 
     [string]
-    $FunctionsHostBranchOrCommit = 'dev',
+    $BranchOrCommit = 'dev',
+
+    [string]
+    $Scenario = 'http',
 
     [string]
     $FunctionApp = 'HelloApp',
@@ -59,18 +62,22 @@ $crankConfigPath = Join-Path `
 $isLinuxApp = $CrankAgentVm -match '\blinux\b'
 
 $functionAppRootPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps" } else { 'C:\FunctionApps' }
-                    
 $functionAppPath = Join-Path `
                     -Path $functionAppRootPath `
                     -ChildPath $FunctionApp
 
+$tmpPath = if ($isLinuxApp) { "/tmp" } else { 'C:\Temp' }
+$tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
+
 $crankArgs =
     '--config', $crankConfigPath,
-    '--scenario', 'functionApp',
+    '--scenario', $Scenario,
     '--profile', 'local',
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
-    '--variable', "FunctionsHostBranchOrCommit=$FunctionsHostBranchOrCommit"
+    '--variable', "TempPath=`"$tmpPath`"",
+    '--variable', "TempLogPath=`"$tmpLogPath`"",
+    '--variable', "BranchOrCommit=$BranchOrCommit"
 
 if ($WriteResultsToDatabase) {
     Set-AzContext -Subscription 'Antares-Demo' > $null
