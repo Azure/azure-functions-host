@@ -484,4 +484,7 @@ message RpcHttp {
   TypedData rawBody = 17;
   repeated RpcClaimsIdentity identities = 18;
   repeated RpcHttpCookie cookies = 19;
+  map<string,NullableString> nullable_headers = 20;
+  map<string,NullableString> nullable_params = 21;
+  map<string,NullableString> nullable_query = 22;
 }

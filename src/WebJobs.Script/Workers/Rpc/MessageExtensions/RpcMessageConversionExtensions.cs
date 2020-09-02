@@ -128,20 +128,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             foreach (var pair in request.Query)
             {
                 var value = pair.Value.ToString();
-                if (!string.IsNullOrEmpty(value))
+                if (ShouldUseNullableValueDictionary(capabilities))
                 {
-                    http.Query.Add(pair.Key, value);
+                    http.NullableQuery.Add(pair.Key, new NullableString { Value = value });
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        http.Query.Add(pair.Key, value);
+                    }
                 }
             }
 
             foreach (var pair in request.Headers)
             {
-                if (ShouldIgnoreEmptyHeaderValues(capabilities) && string.IsNullOrEmpty(pair.Value.ToString()))
+                if (ShouldUseNullableValueDictionary(capabilities))
                 {
-                    continue;
+                    http.NullableHeaders.Add(pair.Key.ToLowerInvariant(), new NullableString { Value = pair.Value.ToString() });
                 }
+                else
+                {
+                    if (ShouldIgnoreEmptyHeaderValues(capabilities) && string.IsNullOrEmpty(pair.Value.ToString()))
+                    {
+                        continue;
+                    }
 
-                http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                    http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                }
             }
 
             if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
@@ -149,9 +163,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
                 foreach (var pair in parameters)
                 {
-                    if (pair.Value != null)
+                    if (ShouldUseNullableValueDictionary(capabilities))
                     {
-                        http.Params.Add(pair.Key, pair.Value.ToString());
+                        http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
+                    }
+                    else
+                    {
+                        if (pair.Value != null)
+                        {
+                            http.Params.Add(pair.Key, pair.Value.ToString());
+                        }
                     }
                 }
             }
@@ -362,6 +383,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private static bool ShouldIgnoreEmptyHeaderValues(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders));
+        }
+
+        private static bool ShouldUseNullableValueDictionary(Capabilities capabilities)
+        {
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.UseNullableValueDictionaryForHttp));
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)
