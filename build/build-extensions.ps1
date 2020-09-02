@@ -140,7 +140,7 @@ function CreateSiteExtensions() {
 
     Write-Host "Generating hashes.txt"
     Write-Host "--------"
-    WriteHashesFile $siteExtensionPath/$extensionVersion
+    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
