@@ -10,10 +10,41 @@ jobs:
     readyStateText: Application started.
 
 scenarios:
-  functionApp:
+  http:
     application:
       job: server
       environmentVariables:
+        AzureWebJobsScriptRoot: "{{ FunctionAppPath }}"
+        ASPNETCORE_URLS: "http://localhost:5000;https://localhost:5001"
+    load:
+      job: bombardier
+      variables:
+        path: /api/Hello
+        duration: 180
+  http-appsvc:
+    application:
+      job: server
+      environmentVariables:
+        HOME: "{{ TempPath }}"
+        WEBSITE_SITE_NAME: "Test"
+        WEBSITE_INSTANCE_ID: "8399B720-AB73-46D6-94DE-5A27871B3155"
+        WEBSITE_OWNER_NAME: "A5F47496-A284-4788-A127-E79454330567+westuswebspace"
+        AzureWebJobsScriptRoot: "{{ FunctionAppPath }}"
+        ASPNETCORE_URLS: "http://localhost:5000;https://localhost:5001"
+    load:
+      job: bombardier
+      variables:
+        path: /api/Hello
+        duration: 180
+  http-linux-appsvc:
+    application:
+      job: server
+      environmentVariables:
+        HOME: "{{ TempPath }}"
+        WEBSITE_SITE_NAME: "Test"
+        WEBSITE_INSTANCE_ID: "8399B720-AB73-46D6-94DE-5A27871B3155"
+        WEBSITE_OWNER_NAME: "A5F47496-A284-4788-A127-E79454330567+westuswebspace"
+        FUNCTIONS_LOGS_MOUNT_PATH: "{{ TempLogPath }}"
         AzureWebJobsScriptRoot: "{{ FunctionAppPath }}"
         ASPNETCORE_URLS: "http://localhost:5000;https://localhost:5001"
     load:
