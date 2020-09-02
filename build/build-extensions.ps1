@@ -138,6 +138,9 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host ""
 
+    Write-Host "Generating hashes.txt"
+    Write-Host "--------"
+    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
@@ -153,6 +156,16 @@ function CreateSiteExtensions() {
     ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
+}
+
+function WriteHashesFile([string] $directoryPath) {
+  New-Item -Path "$directoryPath/../temp_hashes" -ItemType Directory | Out-Null
+  $temp_current = (Get-Location)
+  Set-Location $directoryPath
+  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\hashes.txt"
+  Move-Item -Path "$directoryPath/../temp_hashes/hashes.txt" -Destination "$directoryPath" -Force
+  Set-Location $temp_current
+  Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
 
 Write-Host ""
