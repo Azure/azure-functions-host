@@ -26,7 +26,7 @@ namespace Microsoft.Extensions.Logging
 
         private static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
-            return actualLevel >= minLevel && ScriptConstants.AllowedLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any();
+            return actualLevel >= minLevel && ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any();
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)
