@@ -13,10 +13,10 @@ namespace Microsoft.Extensions.Logging
     {
         internal static readonly string[] AllowedCategoryPrefixes = new[]
         {
-            "Microsoft.Azure.WebJobs",
-            "Function",
-            "Worker",
-            "Host"
+            "Microsoft.Azure.WebJobs.",
+            "Function.",
+            "Worker.",
+            "Host."
         };
 
         public static void AddDefaultWebJobsFilters(this ILoggingBuilder builder)
