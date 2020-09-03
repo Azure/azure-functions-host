@@ -22,7 +22,10 @@ param(
     $RefreshCrankContoller,
 
     [string]
-    $UserName = 'Functions'
+    $UserName = 'Functions',
+
+    [bool]
+    $UseHttps = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,15 +72,25 @@ $functionAppPath = Join-Path `
 $tmpPath = if ($isLinuxApp) { "/tmp" } else { 'C:\Temp' }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
+if ($UseHttps) {
+    $aspNetUrls = "http://localhost:5000;https://localhost:5001"
+    $profile = "localHttps"
+}
+else {
+    $aspNetUrls = "http://localhost:5000"
+    $profile = "local"
+}
+
 $crankArgs =
     '--config', $crankConfigPath,
     '--scenario', $Scenario,
-    '--profile', 'local',
+    '--profile', $profile,
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
     '--variable', "TempPath=`"$tmpPath`"",
     '--variable', "TempLogPath=`"$tmpLogPath`"",
-    '--variable', "BranchOrCommit=$BranchOrCommit"
+    '--variable', "BranchOrCommit=$BranchOrCommit",
+    '--variable', "AspNetUrls=$aspNetUrls"
 
 if ($WriteResultsToDatabase) {
     Set-AzContext -Subscription 'Antares-Demo' > $null
