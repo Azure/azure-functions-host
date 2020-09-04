@@ -12,16 +12,18 @@ namespace Microsoft.Extensions.Logging
 {
     public static class ScriptLoggingBuilderExtensions
     {
-        public static void AddDefaultWebJobsFilters(this ILoggingBuilder builder)
+        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
+            return builder;
         }
 
-        public static void AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
         {
             builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, LogLevel.Trace));
+            builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            return builder;
         }
 
         private static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
