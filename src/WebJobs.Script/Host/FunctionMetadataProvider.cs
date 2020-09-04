@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -157,6 +158,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
+
+            //Retry
+            functionMetadata.Retry = configMetadata.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
+            Utility.ValidateRetryOptions(functionMetadata.Retry);
+
             return functionMetadata;
         }
 

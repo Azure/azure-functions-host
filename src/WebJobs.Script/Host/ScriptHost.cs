@@ -356,29 +356,18 @@ namespace Microsoft.Azure.WebJobs.Script
             // apply the timeout settings to our type
             if (scriptConfig.FunctionTimeout != null)
             {
-                Type timeoutType = typeof(TimeoutAttribute);
-                ConstructorInfo ctorInfo = timeoutType.GetConstructor(new[] { typeof(string) });
-
-                PropertyInfo[] propertyInfos = new[]
-                {
-                    timeoutType.GetProperty("ThrowOnTimeout"),
-                    timeoutType.GetProperty("TimeoutWhileDebugging")
-                };
-
-                // Hard-code these for now. Eventually elevate to config
-                object[] propertyValues = new object[]
-                {
-                    true,
-                    true
-                };
-
-                CustomAttributeBuilder timeoutBuilder = new CustomAttributeBuilder(
-                    ctorInfo,
-                    new object[] { scriptConfig.FunctionTimeout.ToString() },
-                    propertyInfos,
-                    propertyValues);
-
+                var timeoutBuilder = CustomAttributeBuilderUtility.GetTimeoutCustomAttributeBuilder(scriptConfig.FunctionTimeout.Value);
                 customAttributes.Add(timeoutBuilder);
+            }
+            // apply retry settings for function execution
+            if (scriptConfig.Retry != null)
+            {
+                // apply the retry settings from host.json
+                var retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(scriptConfig.Retry);
+                if (retryCustomAttributeBuilder != null)
+                {
+                    customAttributes.Add(retryCustomAttributeBuilder);
+                }
             }
 
             return customAttributes;

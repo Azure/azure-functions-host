@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -18,16 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
-        private LanguageWorkerOptions _languageWorkerOptions;
 
         public FunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
-            _languageWorkerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
         }
 
         [Fact]
@@ -41,6 +36,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(18, metadataProvider.GetFunctionMetadata(workerConfigs, false).Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
+        }
+
+        [Fact]
+        public void ReadFunctionMetadata_With_Retry_Succeeds()
+        {
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node-retry");
+            _scriptApplicationHostOptions.ScriptPath = functionsPath;
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var functionMetadatas = metadataProvider.GetFunctionMetadata(workerConfigs, false);
+
+            Assert.Equal(2, functionMetadatas.Length);
+
+            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("retry", StringComparison.OrdinalIgnoreCase));
+            Assert.Single(functionMetadataWithRetry);
+            var retry = functionMetadataWithRetry.FirstOrDefault().Retry;
+            Assert.NotNull(retry);
+            Assert.Equal(RetryStrategy.FixedDelay, retry.Strategy);
+            Assert.Equal(2, retry.MaxRetryCount);
+            Assert.Equal(TimeSpan.Parse("00:00:10"), TimeSpan.FromSeconds(10));
+
+            var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("retry", StringComparison.OrdinalIgnoreCase));
+            Assert.Single(functionMetadataWithRetry);
+            Assert.Null(functionMetadata.FirstOrDefault().Retry);
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)

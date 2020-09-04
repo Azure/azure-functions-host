@@ -11,7 +11,6 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Binding;
-using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -216,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
+        protected void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
         {
             if (Utility.IsHttporManualTrigger(triggerMetadata.Type))
             {
@@ -225,6 +224,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 ConstructorInfo ctorInfo = typeof(NoAutomaticTriggerAttribute).GetConstructor(new Type[0]);
                 CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
                 methodAttributes.Add(attributeBuilder);
+            }
+
+            // apply the retry settings from function.json
+            if (functionMetadata.Retry != null)
+            {
+                CustomAttributeBuilder retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(functionMetadata.Retry);
+                if (retryCustomAttributeBuilder != null)
+                {
+                    methodAttributes.Add(retryCustomAttributeBuilder);
+                }
             }
         }
 
