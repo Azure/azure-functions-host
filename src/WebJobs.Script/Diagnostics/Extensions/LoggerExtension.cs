@@ -184,6 +184,30 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
             "{count} functions found");
 
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerForwardingHttpTriggerInvocation =
+            LoggerMessage.Define<string, Guid>(
+            LogLevel.Debug,
+            new EventId(328, nameof(CustomHandlerForwardingHttpTriggerInvocation)),
+            "Forwarding httpTrigger invocation for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerSendingInvocation =
+           LoggerMessage.Define<string, Guid>(
+           LogLevel.Debug,
+           new EventId(329, nameof(CustomHandlerSendingInvocation)),
+           "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerReceivedInvocationResponse =
+           LoggerMessage.Define<string, Guid>(
+           LogLevel.Debug,
+           new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
+           "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, Exception> _jobHostFunctionTimeoutNotSet =
+            LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(331, nameof(JobHostFunctionTimeoutNotSet)),
+            "FunctioTimeout is not set.");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -334,6 +358,26 @@ Lock file hash: {currentLockFileHash}";
         public static void AutoRecoveringFileSystemWatcherUnableToRecover(this ILogger logger, Exception ex, string path)
         {
             _autoRecoveringFileSystemWatcherUnableToRecover(logger, path, ex);
+        }
+
+        public static void CustomHandlerForwardingHttpTriggerInvocation(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerForwardingHttpTriggerInvocation(logger, functionName, invocationId, null);
+        }
+
+        public static void CustomHandlerSendingInvocation(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerSendingInvocation(logger, functionName, invocationId, null);
+        }
+
+        public static void CustomHandlerReceivedInvocationResponse(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerReceivedInvocationResponse(logger, functionName, invocationId, null);
+        }
+
+        public static void JobHostFunctionTimeoutNotSet(this ILogger logger)
+        {
+            _customHandlerReceivedInvocationResponse(logger, null);
         }
     }
 }
