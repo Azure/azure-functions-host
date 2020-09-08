@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -102,20 +101,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Request:{httpRequestMessage}");
-                await TraceHttpContent(httpRequestMessage.Content, scriptInvocationContext.Logger);
+                await GetHttpContentAsString(httpRequestMessage.Content, scriptInvocationContext.Logger);
             }
             _logger.LogDebug("Sending http request for function:{functionName} invocationId:{invocationId}", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
             if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Response:{invocationResponse}");
-                await TraceHttpContent(invocationResponse.Content, scriptInvocationContext.Logger);
+                await GetHttpContentAsString(invocationResponse.Content, scriptInvocationContext.Logger);
             }
             _logger.LogDebug("Received http response for httpTrigger function: '{functionName}' invocationId: '{invocationId}'", scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             return invocationResponse;
         }
 
-        private static async Task TraceHttpContent(HttpContent content, ILogger logger)
+        private static async Task<string> GetHttpContentAsString(HttpContent content, ILogger logger = null)
         {
             if (content != null)
             {
@@ -123,9 +122,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // do not log binary data as string
                 if (!isMediaTypeOctetOrMultipart)
                 {
-                    logger.LogTrace(await content.ReadAsStringAsync());
+                    string stringCotent = await content.ReadAsStringAsync();
+                    logger?.LogTrace(stringCotent);
+                    return stringCotent;
                 }
             }
+            return null;
         }
 
         internal void AddHeaders(HttpRequestMessage httpRequest, string invocationId)
@@ -197,7 +199,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Invalid HttpResponseMessage : {httpResponseMessage}", ex);
+                var exMessage = $"Invalid HttpResponseMessage:\n{httpResponseMessage}";
+                string httpContent = await GetHttpContentAsString(httpResponseMessage.Content);
+                if (!string.IsNullOrEmpty(httpContent))
+                {
+                    exMessage = $"{exMessage}\n {httpContent}";
+                }
+                throw new InvalidOperationException(exMessage, ex);
             }
         }
 

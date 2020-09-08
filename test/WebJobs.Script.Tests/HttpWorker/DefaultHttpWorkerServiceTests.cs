@@ -375,9 +375,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
-            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
-            Assert.Empty(invocationResult.Outputs);
-            Assert.Null(invocationResult.Return);
+            InvalidOperationException recodedEx = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testScriptInvocationContext.ResultSource.Task);
+            Assert.Contains("Hello World", recodedEx.Message);
+            Assert.Contains("StatusCode: 200", recodedEx.Message);
         }
 
         [Fact]
