@@ -377,7 +377,7 @@ Lock file hash: {currentLockFileHash}";
 
         public static void JobHostFunctionTimeoutNotSet(this ILogger logger)
         {
-            _customHandlerReceivedInvocationResponse(logger, null);
+            _jobHostFunctionTimeoutNotSet(logger, null);
         }
     }
 }
