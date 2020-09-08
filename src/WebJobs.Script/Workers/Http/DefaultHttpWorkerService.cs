@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     // Only process output bindings if response is succeess code
                     invocationResponse.EnsureSuccessStatusCode();
 
-                    HttpScriptInvocationResult httpScriptInvocationResult = await invocationResponse.Content.ReadAsAsync<HttpScriptInvocationResult>();
+                    HttpScriptInvocationResult httpScriptInvocationResult = await GetHttpScriptInvocationResult(invocationResponse);
 
                     if (httpScriptInvocationResult != null)
                     {
@@ -186,6 +186,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             catch (Exception responseEx)
             {
                 scriptInvocationContext.ResultSource.TrySetException(responseEx);
+            }
+        }
+
+        internal async Task<HttpScriptInvocationResult> GetHttpScriptInvocationResult(HttpResponseMessage httpResponseMessage)
+        {
+            try
+            {
+                return await httpResponseMessage.Content.ReadAsAsync<HttpScriptInvocationResult>();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Invalid HttpResponseMessage : {httpResponseMessage}", ex);
             }
         }
 

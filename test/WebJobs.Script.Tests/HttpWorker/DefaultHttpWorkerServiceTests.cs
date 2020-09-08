@@ -361,6 +361,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         }
 
         [Fact]
+        public async Task ProcessDefaultInvocationRequest_OkResponse_InvalidBody_Throws()
+        {
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, token) => RequestHandler(request))
+                .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage_JsonType_InvalidContent());
+
+            _httpClient = new HttpClient(handlerMock.Object);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment);
+            var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
+            await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
+            var invocationResult = await testScriptInvocationContext.ResultSource.Task;
+            Assert.Empty(invocationResult.Outputs);
+            Assert.Null(invocationResult.Return);
+        }
+
+        [Fact]
         public async Task ProcessDefaultInvocationRequest_InvalidMediaType_Throws()
         {
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
