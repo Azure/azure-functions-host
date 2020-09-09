@@ -5,11 +5,11 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
@@ -373,28 +373,48 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return base.LoadUnmanagedDll(unmanagedDllName);
         }
 
-        private string GetRuntimeNativeAssetPath(string assetFileName)
+        internal string GetRuntimeNativeAssetPath(string assetFileName)
         {
-            string basePath = _probingPaths[0];
-            const string ridSubFolder = "native";
-            string runtimesPath = Path.Combine(basePath, "runtimes");
-
-            List<string> rids = DependencyHelper.GetRuntimeFallbacks();
-
-            string result = rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
-                .Union(_probingPaths)
-                .FirstOrDefault(p => File.Exists(p));
+            string result = ProbeForNativeAsset(_probingPaths, assetFileName, FileUtility.Instance.File);
 
             if (result == null && _nativeLibraries != null)
             {
                 if (TryGetDepsAsset(_nativeLibraries, assetFileName, _currentRidFallback, out string relativePath))
                 {
+                    string basePath = _probingPaths[0];
+
                     string nativeLibraryFullPath = Path.Combine(basePath, relativePath);
                     if (File.Exists(nativeLibraryFullPath))
                     {
                         result = nativeLibraryFullPath;
                     }
                 }
+            }
+
+            return result;
+        }
+
+        internal static string ProbeForNativeAsset(IList<string> probingPaths, string assetFileName, FileBase fileBase)
+        {
+            string basePath = probingPaths[0];
+            const string ridSubFolder = "native";
+            const string runtimesSubFolder = "runtimes";
+            string runtimesPath = Path.Combine(basePath, runtimesSubFolder);
+
+            List<string> rids = DependencyHelper.GetRuntimeFallbacks();
+
+            string result = rids.Select(r => Path.Combine(runtimesPath, r, ridSubFolder, assetFileName))
+                .Union(probingPaths.Select(p => Path.Combine(p, assetFileName)))
+                .FirstOrDefault(p => fileBase.Exists(p));
+
+            // Need to also probe with the parent directory as the base due to
+            // issue https://github.com/Azure/azure-functions-host/issues/6620
+            if (result == null)
+            {
+                string fallbackBasePath = Directory.GetParent(basePath).FullName;
+                string fallbackRuntimesPath = Path.Combine(fallbackBasePath, "runtimes");
+                result = rids.Select(r => Path.Combine(fallbackRuntimesPath, r, ridSubFolder, assetFileName))
+                    .FirstOrDefault(p => fileBase.Exists(p));
             }
 
             return result;
