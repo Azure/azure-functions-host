@@ -395,7 +395,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment);
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _testLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
-            await Assert.ThrowsAsync<UnsupportedMediaTypeException>(async () => await testScriptInvocationContext.ResultSource.Task);
+            InvalidOperationException recodedEx = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testScriptInvocationContext.ResultSource.Task);
+            Assert.True(recodedEx.InnerException is UnsupportedMediaTypeException);
         }
 
         [Fact]
