@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             jObjectHttp["Method"] = request.Method.ToString();
             if (request.Query != null)
             {
-                jObjectHttp["Query"] = request.GetQueryCollectionAsString();
+                jObjectHttp["Query"] = request.GetQueryCollectionAsJObject();
             }
             if (request.Headers != null)
             {
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
             if (request.HttpContext?.User?.Identities != null)
             {
-                jObjectHttp["Identities"] = GetUserIdentitiesAsString(request.HttpContext.User.Identities);
+                jObjectHttp["Identities"] = GetUserIdentitiesAsJArray(request.HttpContext.User.Identities);
             }
 
             // parse request body as content-type
@@ -198,9 +198,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return jObjectHttp;
         }
 
-        internal static string GetQueryCollectionAsString(this HttpRequest request)
+        internal static JObject GetQueryCollectionAsJObject(this HttpRequest request)
         {
-            return JsonConvert.SerializeObject(request.GetQueryCollectionAsDictionary());
+            return JObject.FromObject(request.GetQueryCollectionAsDictionary());
         }
 
         internal static IDictionary<string, string> GetQueryCollectionAsDictionary(this HttpRequest request)
@@ -214,9 +214,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return queryParamsDictionary;
         }
 
-        internal static string GetUserIdentitiesAsString(IEnumerable<ClaimsIdentity> claimsIdentities)
+        internal static JArray GetUserIdentitiesAsJArray(IEnumerable<ClaimsIdentity> claimsIdentities)
         {
-            return JsonConvert.SerializeObject(claimsIdentities, new JsonSerializerSettings
+            return JArray.FromObject(claimsIdentities, new JsonSerializer
             {
                 // Claims property in Identities had circular reference to property 'Subject'
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore

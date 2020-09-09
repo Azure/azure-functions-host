@@ -46,16 +46,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Fact]
-        public void ConvertUserIdentitiesToString_RemovesCircularReference()
+        public void ConvertUserIdentitiesToJArray_RemovesCircularReference()
         {
-            string expectedUserIdentities = "[{\"AuthenticationType\":\"TestAuthType\",\"IsAuthenticated\":true";
             IIdentity identity = new TestIdentity();
             Claim claim = new Claim("authlevel", "admin", "test", "LOCAL AUTHORITY", "LOCAL AUTHORITY");
             List<Claim> claims = new List<Claim>() { claim };
             ClaimsIdentity claimsIdentity = new ClaimsIdentity(identity, claims);
             List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>() { claimsIdentity };
-            string userIdentitiesString = HttpRequestExtensions.GetUserIdentitiesAsString(claimsIdentities);
-            Assert.Contains(expectedUserIdentities, userIdentitiesString);
+            var userIdentitiesString = HttpRequestExtensions.GetUserIdentitiesAsJArray(claimsIdentities);
+            Assert.Contains("TestAuthType", userIdentitiesString[0]["AuthenticationType"].ToString());
+        }
+
+        [Fact]
+        public void GetQueryCollectionAsJObject_Expected()
+        {
+            var testHttpRequest = HttpWorkerTestUtilities.GetTestHttpRequest();
+            var query = testHttpRequest.GetQueryCollectionAsJObject();
+            Assert.Equal("Ink And Toner", query["name"]);
         }
 
         [Fact]
