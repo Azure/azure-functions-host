@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (scriptHostOptions.Value.FunctionTimeout == null)
             {
                 _logger.JobHostFunctionTimeoutNotSet();
-                // Default to 10 minutes if FunctionTimeout is not set in host.json
-                _httpClient.Timeout = TimeSpan.FromMinutes(10);
+                // Default to MaxValue if FunctionTimeout is not set in host.json or is set to -1
+                _httpClient.Timeout = TimeSpan.MaxValue;
             }
             else
             {
