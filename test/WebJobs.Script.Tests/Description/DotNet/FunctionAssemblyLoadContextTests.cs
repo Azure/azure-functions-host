@@ -3,15 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
+using System.IO.Abstractions;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
-using Microsoft.Extensions.DependencyModel;
 using Moq;
 using Xunit;
 
@@ -120,6 +117,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 : null;
 
             Assert.Equal(expectedMatch, assetPath);
+        }
+
+        [Theory]
+        [InlineData(@"c:\a\bin\runtimes\win\native\assembly.dll")]
+        [InlineData(@"c:\a\bin\assembly.dll")]
+        [InlineData(@"c:\a\runtimes\win\native\assembly.dll")]
+        public void ProbeForNativeAssets_FindsAsset(string assetPath)
+        {
+            var probingPaths = new List<string> { @"c:\a\bin" };
+
+            Mock<FileBase> mockFile = new Mock<FileBase>(MockBehavior.Strict);
+            mockFile
+                .Setup(m => m.Exists(It.IsAny<string>()))
+                .Returns<string>(s => s == assetPath);
+
+            string result = FunctionAssemblyLoadContext.ProbeForNativeAsset(probingPaths, "assembly.dll", mockFile.Object);
+            Assert.Equal(assetPath, result);
         }
     }
 }

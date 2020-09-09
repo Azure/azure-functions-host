@@ -108,7 +108,7 @@
   <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->  
   <Target Name="BuildTestProjects" AfterTargets="Build">
     <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Restore" />
-    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Build" Properties="Configuration=Debug" />
+    <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Publish" Properties="Configuration=Debug" />
   </Target>
   
 </Project>
