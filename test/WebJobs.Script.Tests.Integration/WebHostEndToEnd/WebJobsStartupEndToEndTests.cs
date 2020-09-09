@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,11 +8,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
     public class WebJobsStartupEndToEndTests
     {
+        private const string _projectName = "WebJobsStartupTests";
+        private readonly IDictionary<string, string> _envVars;
+
+        public WebJobsStartupEndToEndTests()
+        {
+            _envVars = new Dictionary<string, string>
+            {
+                { "WEBSITE_SKU", "Dynamic" }, // only runs in Consumption
+                { "MyOptions__MyKey", "WillBeOverwrittenInAppStartup" },
+                { "MyOptions__MyOtherKey", "FromEnvironment" },
+                { "Cron", "0 0 0 1 1 0" }
+            };
+        }
+
         [Fact]
         public async Task ExternalStartup_Succeeds()
         {
             // We need different fixture setup for each test.
-            var fixture = new TestFixture();
+            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars);
             try
             {
                 await fixture.InitializeAsync();
@@ -33,8 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [Fact]
         public async Task ExternalStartup_InvalidOverwrite_StopsHost()
         {
+            _envVars["Cron"] = "* * * * * *";
+
             // We need different fixture setup for each test.
-            var fixture = new TestFixture("* * * * * *"); // Startup.cs will change this.
+            var fixture = new CSharpPrecompiledEndToEndTestFixture(_projectName, _envVars); // Startup.cs will change this.
             try
             {
                 await fixture.InitializeAsync();
@@ -60,32 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
-        public class TestFixture : EndToEndTestFixture
-        {
-            private const string TestPath = "..\\..\\..\\..\\WebJobsStartupTests\\bin\\netcoreapp3.1";
-            private readonly IDisposable _dispose;
 
-            public TestFixture(string cronExpression = "0 0 0 1 1 0") : base(TestPath, "webjobsstartup", "dotnet")
-            {
-                _dispose = new TestScopedEnvironmentVariable(new Dictionary<string, string>
-                {
-                    { "WEBSITE_SKU", "Dynamic" }, // only runs in Consumption
-                    { "MyOptions__MyKey", "WillBeOverwrittenInAppStartup" },
-                    { "MyOptions__MyOtherKey", "FromEnvironment" },
-                    { "Cron", cronExpression }
-                });
-            }
-
-            protected override Task CreateTestStorageEntities()
-            {
-                return Task.CompletedTask;
-            }
-
-            public override Task DisposeAsync()
-            {
-                _dispose.Dispose();
-                return base.DisposeAsync();
-            }
-        }
     }
 }
