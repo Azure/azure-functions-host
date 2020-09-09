@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             _httpClient = new HttpClient(handlerMock.Object);
             _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(customHandlerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(scriptJobHostOptionsNoTimeout));
-            Assert.Equal(_httpClient.Timeout, TimeSpan.MaxValue);
+            Assert.Equal(_httpClient.Timeout, TimeSpan.FromMilliseconds(int.MaxValue));
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetSimpleHttpTriggerScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.InvokeAsync(testScriptInvocationContext);
             var invocationResult = await testScriptInvocationContext.ResultSource.Task;
