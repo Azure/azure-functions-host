@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -115,13 +116,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
 
             var expectedHttpScriptInvocationResult = HttpWorkerTestUtilities.GetHttpScriptInvocationResultWithJsonRes();
             var testLogs = _functionLogger.GetLogMessages();
+            var response = invocationResult.Outputs["res"] as ExpandoObject;
+            response.TryGetValue<object>("Body", out var body, ignoreCase: true);
+            response.TryGetValue<object>("StatusCode", out var statusCode, ignoreCase: true);
+
             Assert.True(testLogs.Count() == expectedHttpScriptInvocationResult.Logs.Count());
             Assert.True(testLogs.All(m => m.FormattedMessage.Contains("invocation log")));
             Assert.Equal(expectedHttpScriptInvocationResult.Outputs.Count(), invocationResult.Outputs.Count());
             Assert.Equal(expectedHttpScriptInvocationResult.ReturnValue, invocationResult.Return);
-            var responseJson = JObject.Parse(invocationResult.Outputs["res"].ToString());
-            Assert.Equal("my world", responseJson["Body"]);
-            Assert.Equal("201", responseJson["StatusCode"]);
+            Assert.Equal("my world", body);
+            Assert.Equal("201", statusCode);
         }
 
         [Fact]
