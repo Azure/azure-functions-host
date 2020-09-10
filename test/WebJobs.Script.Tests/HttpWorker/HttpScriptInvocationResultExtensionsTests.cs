@@ -3,8 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Dynamic;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -22,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Dictionary<string, object> outputsFromWorker = new Dictionary<string, object>();
             outputsFromWorker["httpOutput1"] = inputString;
             var actualResult = HttpScriptInvocationResultExtensions.GetHttpOutputBindingResponse("httpOutput1", outputsFromWorker);
-            Assert.Equal(expectedOutput, actualResult);
+            Assert.True(actualResult is ExpandoObject);
+            Assert.Equal(expectedOutput, JsonConvert.SerializeObject(actualResult));
         }
 
         [Theory]
