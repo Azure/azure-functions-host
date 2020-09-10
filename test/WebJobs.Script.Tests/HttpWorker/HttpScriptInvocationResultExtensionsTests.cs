@@ -40,9 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             }
             var result = testHttpInvocationResult.ToScriptInvocationResult(testInvocationContext);
             Assert.Null(result.Return);
-
-            var resResult = JObject.Parse((string)result.Outputs["res"]);
-            Assert.Equal("my world", resResult["Body"]);
+            ExpandoObject output = result.Outputs["res"] as ExpandoObject;
+            output.TryGetValue<object>("Body", out var resResult, ignoreCase: true);
+            Assert.Equal("my world", resResult);
         }
     }
 }

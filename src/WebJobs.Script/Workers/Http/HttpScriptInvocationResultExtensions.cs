@@ -80,17 +80,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
         {
             dynamic httpOutput = new ExpandoObject();
+            httpOutput.StatusCode = null;
+            httpOutput.Status = null;
+            httpOutput.Body = null;
+            httpOutput.Headers = null;
+            var a = JsonConvert.SerializeObject(httpOutput);
 
             if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
             {
                 try
                 {
-                    HttpOutputBindingResponse httpOut = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
+                    HttpOutputBindingResponse httpOutputBindingResponse = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
 
-                    httpOutput.StatusCode = httpOut.StatusCode;
-                    httpOutput.Status = httpOut.Status;
-                    httpOutput.Body = httpOut.Body;
-                    httpOutput.Headers = httpOut.Headers;
+                    httpOutput.StatusCode = httpOutputBindingResponse.StatusCode;
+                    httpOutput.Status = httpOutputBindingResponse.Status;
+                    httpOutput.Body = httpOutputBindingResponse.Body;
+                    httpOutput.Headers = httpOutputBindingResponse.Headers;
                 }
                 catch
                 {
