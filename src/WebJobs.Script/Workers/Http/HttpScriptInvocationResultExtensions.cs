@@ -84,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             httpOutput.Status = null;
             httpOutput.Body = null;
             httpOutput.Headers = null;
-            var a = JsonConvert.SerializeObject(httpOutput);
 
             if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
             {
