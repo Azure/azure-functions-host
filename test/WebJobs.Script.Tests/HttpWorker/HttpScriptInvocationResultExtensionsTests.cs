@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         [InlineData("{\"body\": \"hello\"}", "{\"StatusCode\":null,\"Status\":null,\"Body\":\"hello\",\"Headers\":null}")]
         [InlineData("{\"body\": \"hello\", \"statusCode\":\"300\"}", "{\"StatusCode\":\"300\",\"Status\":null,\"Body\":\"hello\",\"Headers\":null}")]
         [InlineData("{\"body\":\"foobar\",\"statusCode\":\"301\",\"headers\":{\"header1\":\"header1Value\",\"header2\":\"header2Value\"}}", "{\"StatusCode\":\"301\",\"Status\":null,\"Body\":\"foobar\",\"Headers\":{\"header1\":\"header1Value\",\"header2\":\"header2Value\"}}")]
+        [InlineData("SomeBlah", "{\"StatusCode\":null,\"Status\":null,\"Body\":null,\"Headers\":null}")]
         public void GetHttpOutputBindingResponse_ReturnsExpected(string inputString, string expectedOutput)
         {
             Dictionary<string, object> outputsFromWorker = new Dictionary<string, object>();
