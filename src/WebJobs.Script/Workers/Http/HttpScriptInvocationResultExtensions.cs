@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Newtonsoft.Json;
@@ -78,19 +79,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
         {
-            HttpOutputBindingResponse httpOut = new HttpOutputBindingResponse();
+            dynamic httpOutput = new ExpandoObject();
+
             if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
             {
                 try
                 {
-                    httpOut = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
+                    HttpOutputBindingResponse httpOutputBindingResponse = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
+
+                    httpOutput.StatusCode = httpOutputBindingResponse.StatusCode;
+                    httpOutput.Status = httpOutputBindingResponse.Status;
+                    httpOutput.Body = httpOutputBindingResponse.Body;
+                    httpOutput.Headers = httpOutputBindingResponse.Headers;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    //ignore
+                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex.InnerException);
                 }
             }
-            return JsonConvert.SerializeObject(httpOut);
+            return httpOutput;
         }
 
         private static BindingMetadata GetBindingMetadata(string outputBidingName, ScriptInvocationContext scriptInvocationContext)
