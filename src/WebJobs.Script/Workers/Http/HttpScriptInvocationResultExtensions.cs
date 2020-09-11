@@ -92,13 +92,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     httpOutput.Body = httpOutputBindingResponse.Body;
                     httpOutput.Headers = httpOutputBindingResponse.Headers;
                 }
-                catch (JsonReaderException e)
-                {
-                    throw new InvalidOperationException("Output is not a valid json", e);
-                }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex);
+                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex.InnerException);
                 }
             }
             return httpOutput;
