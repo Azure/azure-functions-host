@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex.InnerException);
+                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex);
                 }
             }
             return httpOutput;
