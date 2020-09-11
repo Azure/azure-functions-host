@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
@@ -13,25 +14,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
     public class HttpScriptInvocationResultExtensionsTests
     {
         [Theory]
-        [InlineData("{\"statusCode\": \"204\"}")]
-        [InlineData("{\"body\": \"hello\"}")]
-        [InlineData("{\"body\": \"hello\", \"statusCode\":\"300\"}")]
-        [InlineData("{\"StatusCode\":\"301\",\"Status\":\"Succeeded\",\"Body\":\"foobar\",\"Headers\":{\"header1\":\"header1Value\",\"header2\":\"header2Value\"}}", false)]
-        [InlineData("SomeBlah")]
-        public void GetHttpOutputBindingResponse_ReturnsExpected(string inputString, bool exceptionExpected = true)
+        [InlineData("{\"statusCode\": \"204\"}", "{\"StatusCode\":\"204\",\"Status\":null,\"Body\":null,\"Headers\":null}")]
+        [InlineData("{\"body\": \"hello\"}", "{\"StatusCode\":null,\"Status\":null,\"Body\":\"hello\",\"Headers\":null}")]
+        [InlineData("{\"body\": \"hello\", \"statusCode\":\"300\"}", "{\"StatusCode\":\"300\",\"Status\":null,\"Body\":\"hello\",\"Headers\":null}")]
+        [InlineData("{\"body\":\"foobar\",\"statusCode\":\"301\",\"headers\":{\"header1\":\"header1Value\",\"header2\":\"header2Value\"}}", "{\"StatusCode\":\"301\",\"Status\":null,\"Body\":\"foobar\",\"Headers\":{\"header1\":\"header1Value\",\"header2\":\"header2Value\"}}")]
+        [InlineData("SomeBlah", "{\"StatusCode\":null,\"Status\":null,\"Body\":null,\"Headers\":null}")]
+        public void GetHttpOutputBindingResponse_ReturnsExpected(string inputString, string expectedOutput)
         {
             Dictionary<string, object> outputsFromWorker = new Dictionary<string, object>();
             outputsFromWorker["httpOutput1"] = inputString;
-            if (exceptionExpected)
-            {
-                Assert.Throws<HttpOutputDeserializationException>(() => HttpScriptInvocationResultExtensions.GetHttpOutputBindingResponse("httpOutput1", outputsFromWorker));
-            }
-            else
-            {
-                var actualResult = HttpScriptInvocationResultExtensions.GetHttpOutputBindingResponse("httpOutput1", outputsFromWorker);
-                Assert.True(actualResult is ExpandoObject);
-                Assert.Equal(inputString, JsonConvert.SerializeObject(actualResult));
-            }
+            var actualResult = HttpScriptInvocationResultExtensions.GetHttpOutputBindingResponse("httpOutput1", outputsFromWorker);
+            Assert.True(actualResult is ExpandoObject);
+            Assert.Equal(expectedOutput, JsonConvert.SerializeObject(actualResult));
         }
 
         [Theory]
