@@ -14,10 +14,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// </summary>
     public class HostProcessLauncher : IDisposable
     {
-        private const string TestPathTemplate = "..\\..\\..\\..\\..\\test\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\netcoreapp2.2";
+        private const string TestPathTemplate = "..\\..\\..\\..\\..\\test\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\{1}";
         private const int _port = 3479;
 
         private readonly string _testPath;
+        private readonly IDictionary<string, string> _envVars;
         private readonly Process _process = new Process();
         private readonly IList<string> _outputLogs = new List<string>();
         private readonly IList<string> _errorLogs = new List<string>();
@@ -29,9 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             return client;
         });
 
-        public HostProcessLauncher(string testProjectName)
+        public HostProcessLauncher(string testProjectName, IDictionary<string, string> envVars = null,
+            bool usePublishPath = false, string targetFramework = "netcoreapp2.2")
         {
-            _testPath = Path.GetFullPath(string.Format(TestPathTemplate, testProjectName));
+            _testPath = Path.GetFullPath(string.Format(TestPathTemplate, testProjectName, targetFramework));
+
+            if (usePublishPath)
+            {
+                _testPath = Path.Combine(_testPath, "publish");
+            }
+
+            _envVars = envVars ?? new Dictionary<string, string>();
         }
 
         internal HttpClient HttpClient => _lazyClient.Value;
@@ -56,7 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 ErrorDialog = false,
                 WorkingDirectory = workingDir
             };
+
             _process.StartInfo.Environment.Add("AzureWebJobsScriptRoot", _testPath);
+            _process.StartInfo.Environment.Add("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
+
+            foreach (var envVar in _envVars)
+            {
+                _process.StartInfo.Environment.Add(envVar.Key, envVar.Value);
+            }
+
             _process.EnableRaisingEvents = true;
             _process.OutputDataReceived += Process_OutputDataReceived;
             _process.ErrorDataReceived += Process_ErrorDataReceived;
