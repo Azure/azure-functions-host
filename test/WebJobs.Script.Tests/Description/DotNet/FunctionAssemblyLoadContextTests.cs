@@ -122,7 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Theory]
         [InlineData(@"c:\a\bin\runtimes\win\native\assembly.dll")]
         [InlineData(@"c:\a\bin\assembly.dll")]
-        [InlineData(@"c:\a\runtimes\win\native\assembly.dll")]
         public void ProbeForNativeAssets_FindsAsset(string assetPath)
         {
             var probingPaths = new List<string> { @"c:\a\bin" };

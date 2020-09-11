@@ -409,16 +409,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 .Union(probingPaths.Select(p => Path.Combine(p, assetFileName)))
                 .FirstOrDefault(p => fileBase.Exists(p));
 
-            // Need to also probe with the parent directory as the base due to
-            // issue https://github.com/Azure/azure-functions-host/issues/6620
-            if (result == null)
-            {
-                string fallbackBasePath = Directory.GetParent(basePath).FullName;
-                string fallbackRuntimesPath = Path.Combine(fallbackBasePath, "runtimes");
-                result = rids.Select(r => Path.Combine(fallbackRuntimesPath, r, ridSubFolder, assetFileName))
-                    .FirstOrDefault(p => fileBase.Exists(p));
-            }
-
             return result;
         }
 
