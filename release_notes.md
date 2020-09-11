@@ -4,7 +4,7 @@
 -->
 - Update Python Worker to 1.1.5 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.5)
 - Update Python Library to 1.3.1 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.1)
-- [CustomHandler] Outputs assigned to output binding are expected to have Body, StatusCode, Status and Headers. It now throws an exception if it doesn't.
+- [CustomHandler][Breaking] Outputs assigned to output binding are expected at least have an empty JObject. It now throws an exception if it doesn't.
 
 **Release sprint:** Sprint 84
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Afeature+is%3Aclosed) ]
