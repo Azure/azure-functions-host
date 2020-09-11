@@ -380,7 +380,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 .ReturnsAsync(HttpWorkerTestUtilities.GetValidHttpResponseMessage_JsonType_InvalidContent());
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment);
+            _defaultHttpWorkerService = new DefaultHttpWorkerService(_httpClient, new OptionsWrapper<HttpWorkerOptions>(_httpWorkerOptions), _testLogger, _testEnvironment, new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions));
             var testScriptInvocationContext = HttpWorkerTestUtilities.GetScriptInvocationContext(TestFunctionName, _testInvocationId, _functionLogger);
             await _defaultHttpWorkerService.ProcessDefaultInvocationRequest(testScriptInvocationContext);
             InvalidOperationException recodedEx = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testScriptInvocationContext.ResultSource.Task);
