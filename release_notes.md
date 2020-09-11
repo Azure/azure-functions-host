@@ -6,14 +6,18 @@
 - Update Python Worker to 1.1.5 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.5)
 - Update Python Library to 1.3.1 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.1)
 - Add a new host.json property "watchFiles" for restarting the Host when files are modified.
-- [CustomHandler][Breaking] If enableForwardingHttpRequest is false, http output binding response is expected to be a valid Json object with following optional fields :
-`{
-"statusCode" : "",
-"status" : "",
-"body": "",
-"headers" : {}
-}`
-Exception is thrown if HttpOutputBindingResponse is not valid Json.
+
+- **Breaking Changes in CustomHandler**
+    -  Issue #6644 : If enableForwardingHttpRequest is false, http output binding response is expected to be a valid Json object with following optional fields :
+    ```json
+    {
+    "statusCode" : "",
+    "status" : "",
+    "body": "",
+    "headers" : {}
+    }
+    ```
+    Exception is thrown if HttpOutputBindingResponse is not valid Json.
 - Update PowerShell Worker to 2.0.554 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v2.0.554)
 
 - Update Java Worker to 1.8.0 [Release Note](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.0)
