@@ -80,10 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
         {
             dynamic httpOutput = new ExpandoObject();
-            httpOutput.StatusCode = null;
-            httpOutput.Status = null;
-            httpOutput.Body = null;
-            httpOutput.Headers = null;
 
             if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
             {
@@ -96,9 +92,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     httpOutput.Body = httpOutputBindingResponse.Body;
                     httpOutput.Headers = httpOutputBindingResponse.Headers;
                 }
-                catch
+                catch (Exception e) when (e is JsonReaderException || e is JsonSerializationException)
                 {
-                    //ignore
+                    throw new HttpOutputDeserializationException("Output body should have 'StatusCode', 'Status', 'Body', and 'Headers'", e.Message);
+                }
+                catch (Exception)
+                {
+                    // ignore
                 }
             }
             return httpOutput;

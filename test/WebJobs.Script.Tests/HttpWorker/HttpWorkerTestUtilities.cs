@@ -271,8 +271,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public static HttpScriptInvocationResult GetHttpScriptInvocationResultWithJsonRes()
         {
             JObject httpRes = new JObject();
+            JObject headers = new JObject();
+
+            headers["header1"] = "value1";
             httpRes["statusCode"] = "201";
             httpRes["body"] = "my world";
+            httpRes["status"] = "Accepted";
+            httpRes["headers"] = headers;
+
             return new HttpScriptInvocationResult()
             {
                 Logs = new List<string>() { "invocation log1", "invocation log2" },

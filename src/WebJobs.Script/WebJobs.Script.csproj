@@ -95,4 +95,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Workers\Http\Exceptions\" />
+  </ItemGroup>
+
 </Project>
