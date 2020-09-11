@@ -80,10 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
         {
             dynamic httpOutput = new ExpandoObject();
-            httpOutput.StatusCode = null;
-            httpOutput.Status = null;
-            httpOutput.Body = null;
-            httpOutput.Headers = null;
 
             if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
             {
@@ -96,9 +92,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                     httpOutput.Body = httpOutputBindingResponse.Body;
                     httpOutput.Headers = httpOutputBindingResponse.Headers;
                 }
-                catch
+                catch (JsonReaderException e)
                 {
-                    //ignore
+                    throw new InvalidOperationException("Output is not a valid json", e);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex.InnerException);
                 }
             }
             return httpOutput;
