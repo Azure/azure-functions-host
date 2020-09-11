@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
@@ -25,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private const string PrivateDependencyResolutionPolicy = "private";
 
         private static readonly Lazy<Dictionary<string, ResolutionPolicyEvaluator>> _resolutionPolicyEvaluators = new Lazy<Dictionary<string, ResolutionPolicyEvaluator>>(InitializeLoadPolicyEvaluators);
-        private static readonly ConcurrentDictionary<string, object> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, object>();
+        private static readonly ConcurrentDictionary<string, int> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, int>();
         private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
 
         private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
@@ -118,7 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // If we're not currently loading this from the shared context, an attempt to load
             // a user assembly from the default context might have been made (e.g. Assembly.Load or AppDomain.Load called in a
             // runtime/default context loaded assembly against a function assembly)
-            if (!_sharedContextAssembliesInFallbackLoad.ContainsKey(assemblyName.Name))
+            if (!_sharedContextAssembliesInFallbackLoad.TryGetValue(assemblyName.Name, out int count)
+                || count == 0)
             {
                 if (Shared.TryLoadDepsDependency(assemblyName, out Assembly assembly))
                 {
@@ -313,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             assembly = null;
             try
             {
-                _sharedContextAssembliesInFallbackLoad.TryAdd(assemblyName.Name, null);
+                _sharedContextAssembliesInFallbackLoad.AddOrUpdate(assemblyName.Name, 1, (s, i) => i + 1);
                 assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(assemblyName);
             }
             catch (FileNotFoundException)
@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             finally
             {
-                _sharedContextAssembliesInFallbackLoad.TryRemove(assemblyName.Name, out object _);
+                _sharedContextAssembliesInFallbackLoad.AddOrUpdate(assemblyName.Name, 0, (s, i) => i - 1);
             }
 
             return assembly != null;
