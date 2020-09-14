@@ -12,8 +12,10 @@ namespace MultipleDependencyVersions
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req)
         {
-            Type t56 = Dependency56.TypeGetter.ReturnSecurityKeyType();
+            // The host uses version 5.5 of this assembly, but the deps.json says that the app
+            // should use 5.6.
             Type t55 = Dependency55.TypeGetter.ReturnSecurityKeyType();
+            Type t56 = Dependency56.TypeGetter.ReturnSecurityKeyType();
 
             if (!Equals(t55, t56) || !Equals(t55.Assembly, t56.Assembly))
             {
