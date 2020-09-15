@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -113,20 +114,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Request:{httpRequestMessage}");
-                await GetHttpContentAsString(httpRequestMessage.Content, scriptInvocationContext.Logger);
+                await LogHttpContent(scriptInvocationContext, httpRequestMessage.Content);
             }
             _logger.CustomHandlerSendingInvocation(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             HttpResponseMessage invocationResponse = await _httpClient.SendAsync(httpRequestMessage);
             if (_enableRequestTracing)
             {
                 scriptInvocationContext.Logger.LogTrace($"Invocation Response:{invocationResponse}");
-                await GetHttpContentAsString(invocationResponse.Content, scriptInvocationContext.Logger);
+                await LogHttpContent(scriptInvocationContext, invocationResponse.Content);
             }
             _logger.CustomHandlerReceivedInvocationResponse(scriptInvocationContext.FunctionMetadata.Name, scriptInvocationContext.ExecutionContext.InvocationId);
             return invocationResponse;
         }
 
-        private static async Task<string> GetHttpContentAsString(HttpContent content, ILogger logger = null)
+        private static async Task LogHttpContent(ScriptInvocationContext scriptInvocationContext, HttpContent httpContent)
+        {
+            string stringContent = await GetHttpContentAsString(httpContent);
+            if (!string.IsNullOrEmpty(stringContent))
+            {
+                scriptInvocationContext.Logger.LogTrace($"{stringContent}");
+            }
+        }
+
+        private static async Task<string> GetHttpContentAsString(HttpContent content)
         {
             if (content != null)
             {
@@ -134,9 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 // do not log binary data as string
                 if (!isMediaTypeOctetOrMultipart)
                 {
-                    string stringCotent = await content.ReadAsStringAsync();
-                    logger?.LogTrace(stringCotent);
-                    return stringCotent;
+                    return await content.ReadAsStringAsync();
                 }
             }
             return null;
@@ -215,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 string httpContent = await GetHttpContentAsString(httpResponseMessage.Content);
                 if (!string.IsNullOrEmpty(httpContent))
                 {
-                    exMessage = $"{exMessage}\n {httpContent}";
+                    exMessage = $"{exMessage}\n {Sanitizer.Sanitize(httpContent)}";
                 }
                 throw new InvalidOperationException(exMessage, ex);
             }
