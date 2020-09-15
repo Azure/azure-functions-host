@@ -1,3 +1,5 @@
+#!/usr/bin/env pwsh
+
 param(
     [string]
     $UserName = 'Functions'
@@ -17,6 +19,13 @@ if (-not (Test-Path $logsDir -PathType Container)) {
 }
 
 $logFileName = Join-Path -Path $logsDir -ChildPath "$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss').log"
+New-Item -Path $logFileName -ItemType File > $null
+
+$stableLogFileName = Join-Path -Path $logsDir -ChildPath 'current.log'
+if (Test-Path $stableLogFileName) {
+    Remove-Item $stableLogFileName
+}
+New-Item -ItemType SymbolicLink -Path $stableLogFileName -Target $logFileName > $null
 
 $invokeCrankAgentCommand = $IsWindows ? 'C:\dotnet-tools\crank-agent.exe' : "/home/$UserName/.dotnet/tools/crank-agent";
 
