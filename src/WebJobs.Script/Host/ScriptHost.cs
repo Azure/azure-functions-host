@@ -1793,6 +1793,16 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
                 }
+
+                if (configSection.TryGetValue("ingestionEndpoint", out value))
+                {
+                    scriptConfig.ApplicationInsightsIngestionEndpoint = (string)value;
+                }
+
+                if (configSection.TryGetValue("liveEndpoint", out value))
+                {
+                    scriptConfig.ApplicationInsightsLiveEndpoint = (string)value;
+                }
             }
         }
 
