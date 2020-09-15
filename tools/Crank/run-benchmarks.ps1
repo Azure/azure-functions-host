@@ -75,17 +75,17 @@ $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Function
 
 if ($UseHttps) {
     $aspNetUrls = "http://localhost:5000;https://localhost:5001"
-    $profile = "localHttps"
+    $profileName = "localHttps"
 }
 else {
     $aspNetUrls = "http://localhost:5000"
-    $profile = "local"
+    $profileName = "local"
 }
 
 $crankArgs =
     '--config', $crankConfigPath,
     '--scenario', $Scenario,
-    '--profile', $profile,
+    '--profile', $profileName,
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
     '--variable', "TempPath=`"$tmpPath`"",
