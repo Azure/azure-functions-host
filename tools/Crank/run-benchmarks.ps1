@@ -64,10 +64,11 @@ $crankConfigPath = Join-Path `
 
 $isLinuxApp = $CrankAgentVm -match '\blinux\b'
 
-$functionAppRootPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps" } else { 'C:\FunctionApps' }
-$functionAppPath = Join-Path `
-                    -Path $functionAppRootPath `
-                    -ChildPath $FunctionApp
+$functionAppPath = if ($isLinuxApp) {
+                       "/home/$UserName/FunctionApps/$FunctionApp"
+                   } else {
+                       "C:\FunctionApps\$FunctionApp"
+                   }
 
 $tmpPath = if ($isLinuxApp) { "/tmp" } else { 'C:\Temp' }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
