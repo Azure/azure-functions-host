@@ -302,7 +302,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!string.IsNullOrEmpty(_settingsManager.ApplicationInsightsInstrumentationKey))
             {
                 var config = GetScriptHostConfiguration(settings);
-                var clientFactory = new ScriptTelemetryClientFactory(_settingsManager.ApplicationInsightsInstrumentationKey, config.ApplicationInsightsSamplingSettings, config.LogFilter.Filter);
+                var clientFactory = new ScriptTelemetryClientFactory(
+                                            _settingsManager.ApplicationInsightsInstrumentationKey,
+                                            config.ApplicationInsightsSamplingSettings,
+                                            config.ApplicationInsightsIngestionEndpoint,
+                                            config.ApplicationInsightsLiveEndpoint,
+                                            config.LogFilter.Filter);
                 loggerFactory.AddApplicationInsights(clientFactory);
             }
 

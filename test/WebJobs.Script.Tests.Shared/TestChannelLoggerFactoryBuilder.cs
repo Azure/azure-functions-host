@@ -65,7 +65,7 @@ namespace Microsoft.WebJobs.Script.Tests
             _channel = channel;
         }
 
-        protected override ITelemetryChannel CreateTelemetryChannel()
+        protected override ITelemetryChannel CreateTelemetryChannel(string ingestionEndpoint)
         {
             return _channel;
         }

@@ -20,6 +20,21 @@ namespace Microsoft.Azure.WebJobs.Script
         {
         }
 
+        public ScriptTelemetryClientFactory(
+                    string instrumentationKey,
+                    SamplingPercentageEstimatorSettings samplingSettings,
+                    string ingestionEndpoint,
+                    string liveEndpoint,
+                    Func<string, LogLevel, bool> filter)
+            : base(
+                  instrumentationKey,
+                  samplingSettings,
+                  ingestionEndpoint,
+                  liveEndpoint,
+                  filter)
+        {
+        }
+
         public override TelemetryClient Create()
         {
             TelemetryClient client = base.Create();

@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 _channel = channel;
             }
 
-            protected override ITelemetryChannel CreateTelemetryChannel()
+            protected override ITelemetryChannel CreateTelemetryChannel(string ingestionEndpoint)
             {
                 return _channel;
             }
