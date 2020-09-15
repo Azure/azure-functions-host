@@ -108,5 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // Machine identifier
         public const string MachineIdentifier = "WEBSITE_INSTANCE_ID";
+        public const string MachineName = "COMPUTERNAME";
     }
 }

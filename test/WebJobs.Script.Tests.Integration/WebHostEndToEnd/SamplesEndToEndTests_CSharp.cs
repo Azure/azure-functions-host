@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(5, jsonContent.Properties().Count());
+            Assert.Equal(8, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
@@ -344,6 +344,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedVersionDetails, (string)jsonContent["versionDetails"]);
             var state = (string)jsonContent["state"];
             Assert.True(state == "Running" || state == "Created" || state == "Initialized");
+            Assert.Equal((string)jsonContent["instanceId"], "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
+            Assert.Equal((string)jsonContent["platformVersion"], "89.0.7.73");
+            Assert.Equal((string)jsonContent["computerName"], "RD281878FCB8E7");
 
             // Now ensure XML content works
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -842,18 +845,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
-        [Fact]
-        public async Task TestHostStatus_ContainsInstaceIdAndPlatformVersion()
-        {
-            var response = await GetHostStatusAsync();
-            dynamic responseAsJson = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync());
-            string currentInstanceId = responseAsJson.instanceID;
-            string currentPlatformVersion = responseAsJson.platformVersion;
-
-            Assert.Equal(currentInstanceId, "SomeRandomId");
-            Assert.Equal(currentPlatformVersion, "3.0.something");
-        }
-
         private async Task<HttpResponseMessage> GetHostStatusAsync()
         {
             string uri = "admin/host/status";
@@ -951,8 +942,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.MachineIdentifier, "SomeRandomId");
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresVersionWindows, "3.0.something");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.MachineIdentifier, "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresVersionWindows, "89.0.7.73");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.MachineName, "RD281878FCB8E7");
 
                 services.AddSingleton<IEnvironment>(_ => environment);
             }

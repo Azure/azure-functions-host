@@ -42,8 +42,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// <summary>
         /// Gets or sets the machine identifier the host is running on. This corresponds to WEBSITE_INSTANCE_ID.
         /// </summary>
-        [JsonProperty(PropertyName = "instanceID", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonProperty(PropertyName = "instanceId", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string InstanceId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the machine name the host is running on. This corresponds to COMPUTERNAME environment variable.
+        /// </summary>
+        [JsonProperty(PropertyName = "computerName", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string ComputerName { get; set; }
 
         /// <summary>
         /// Gets or sets the collection of errors for the host.
