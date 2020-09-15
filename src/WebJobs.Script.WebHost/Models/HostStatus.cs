@@ -34,6 +34,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string VersionDetails { get; set; }
 
         /// <summary>
+        /// Gets or sets the Antares version. This corresponds to platform_version on linux and website_platform_version on windows.
+        /// </summary>
+        [JsonProperty(PropertyName = "platformVersion", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string PlatformVersion { get; set; }
+
+        /// <summary>
+        /// Gets or sets the machine identifier the host is running on. This corresponds to WEBSITE_INSTANCE_ID.
+        /// </summary>
+        [JsonProperty(PropertyName = "instanceID", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public string InstanceId { get; set; }
+
+        /// <summary>
         /// Gets or sets the collection of errors for the host.
         /// </summary>
         [JsonProperty(PropertyName = "errors", DefaultValueHandling = DefaultValueHandling.Ignore)]

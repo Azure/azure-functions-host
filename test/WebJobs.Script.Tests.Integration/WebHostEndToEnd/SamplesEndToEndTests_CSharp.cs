@@ -842,12 +842,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
         }
 
+        [Fact]
+        public async Task TestHostStatus_ContainsInstaceIdAndPlatformVersion()
+        {
+            var response = await GetHostStatusAsync();
+            dynamic responseAsJson = JsonConvert.DeserializeObject(await response.Content.ReadAsStringAsync());
+            string currentInstanceId = responseAsJson.instanceID;
+            string currentPlatformVersion = responseAsJson.platformVersion;
+
+            Assert.Equal(currentInstanceId, "SomeRandomId");
+            Assert.Equal(currentPlatformVersion, "3.0.something");
+        }
+
         private async Task<HttpResponseMessage> GetHostStatusAsync()
         {
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
@@ -940,6 +951,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.MachineIdentifier, "SomeRandomId");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresVersionWindows, "3.0.something");
 
                 services.AddSingleton<IEnvironment>(_ => environment);
             }

@@ -287,6 +287,21 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the Antares version.
+        /// </summary>
+        public static string GetAntaresVersion(this IEnvironment environment)
+        {
+            if (environment.IsLinuxAzureManagedHosting())
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresVersionLinux, string.Empty);
+            }
+            else
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresVersionWindows, string.Empty);
+            }
+        }
+
+        /// <summary>
         /// Gets a the subscription Id of the current site.
         /// </summary>
         public static string GetSubscriptionId(this IEnvironment environment)
