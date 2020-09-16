@@ -107,7 +107,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresVersionLinux = "PLATFORM_VERSION";
 
         // Machine identifier
-        public const string MachineIdentifier = "WEBSITE_INSTANCE_ID";
         public const string MachineName = "COMPUTERNAME";
     }
 }

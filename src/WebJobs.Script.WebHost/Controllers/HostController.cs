@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 Version = ScriptHost.Version,
                 VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
                 PlatformVersion = _environment.GetAntaresVersion(),
-                InstanceId = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.MachineIdentifier, string.Empty),
+                InstanceId = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteInstanceId, string.Empty),
                 ComputerName = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.MachineName, string.Empty),
                 Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None),
                 ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
