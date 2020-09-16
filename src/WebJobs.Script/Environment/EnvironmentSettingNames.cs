@@ -103,10 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
 
         // Antares version settings
-        public const string AntaresVersionWindows = "WEBSITE_PLATFORM_VERSION";
-        public const string AntaresVersionLinux = "PLATFORM_VERSION";
+        public const string AntaresPlatformVersionWindows = "WEBSITE_PLATFORM_VERSION";
+        public const string AntaresPlatformVersionLinux = "PLATFORM_VERSION";
 
         // Machine identifier
-        public const string MachineName = "COMPUTERNAME";
+        public const string AntaresComputerName = "COMPUTERNAME";
     }
 }

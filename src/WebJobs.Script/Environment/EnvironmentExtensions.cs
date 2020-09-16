@@ -293,11 +293,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (environment.IsLinuxAzureManagedHosting())
             {
-                return environment.GetEnvironmentVariableOrDefault(AntaresVersionLinux, string.Empty);
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionLinux, string.Empty);
             }
             else
             {
-                return environment.GetEnvironmentVariableOrDefault(AntaresVersionWindows, string.Empty);
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionWindows, string.Empty);
             }
         }
 
