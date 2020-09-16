@@ -64,13 +64,8 @@ $crankConfigPath = Join-Path `
 
 $isLinuxApp = $CrankAgentVm -match '\blinux\b'
 
-$functionAppPath = if ($isLinuxApp) {
-                       "/home/$UserName/FunctionApps/$FunctionApp"
-                   } else {
-                       "C:\FunctionApps\$FunctionApp"
-                   }
-
-$tmpPath = if ($isLinuxApp) { "/tmp" } else { 'C:\Temp' }
+$homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } else { "C:\FunctionApps\$FunctionApp" }
+$functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
 if ($UseHttps) {
@@ -88,7 +83,7 @@ $crankArgs =
     '--profile', $profileName,
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
-    '--variable', "TempPath=`"$tmpPath`"",
+    '--variable', "HomePath=`"$homePath`"",
     '--variable', "TempLogPath=`"$tmpLogPath`"",
     '--variable', "BranchOrCommit=$BranchOrCommit",
     '--variable', "AspNetUrls=$aspNetUrls"
