@@ -169,6 +169,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("TestMessage") };
         }
 
+        public static HttpResponseMessage GetValidHttpResponseMessage_JsonType_InvalidContent()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Hello World", Encoding.UTF8, "application/json")
+            };
+        }
+
         public static List<(string name, DataType type, object val)> GetScriptInvocationInputs()
         {
             List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
