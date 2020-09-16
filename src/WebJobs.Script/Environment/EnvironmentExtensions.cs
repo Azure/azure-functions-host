@@ -287,6 +287,44 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the computer name.
+        /// </summary>
+        public static string GetAntaresComputerName(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(AntaresComputerName, string.Empty);
+        }
+
+        /// <summary>
+        /// Gets the Antares version.
+        /// </summary>
+        public static string GetAntaresVersion(this IEnvironment environment)
+        {
+            if (environment.IsLinuxAzureManagedHosting())
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionLinux, string.Empty);
+            }
+            else
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionWindows, string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Gets the Instance id.
+        /// </summary>
+        public static string GetInstanceId(this IEnvironment environment)
+        {
+            if (environment.IsLinuxConsumption())
+            {
+                return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
+            }
+            else
+            {
+                return environment.GetEnvironmentVariableOrDefault(AzureWebsiteInstanceId, string.Empty);
+            }
+        }
+
+        /// <summary>
         /// Gets a the subscription Id of the current site.
         /// </summary>
         public static string GetSubscriptionId(this IEnvironment environment)

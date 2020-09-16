@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(5, jsonContent.Properties().Count());
+            Assert.Equal(8, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
@@ -344,6 +344,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedVersionDetails, (string)jsonContent["versionDetails"]);
             var state = (string)jsonContent["state"];
             Assert.True(state == "Running" || state == "Created" || state == "Initialized");
+            Assert.Equal((string)jsonContent["instanceId"], "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
+            Assert.Equal((string)jsonContent["platformVersion"], "89.0.7.73");
+            Assert.Equal((string)jsonContent["computerName"], "RD281878FCB8E7");
 
             // Now ensure XML content works
             request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -482,10 +485,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             Assert.Equal(16, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
-            Assert.Equal("https://localhost/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
+            Assert.Equal("https://somewebsite.azurewebsites.net/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
             function = metadata.Single(p => p.Name == "HttpTrigger");
-            Assert.Equal("https://localhost/api/httptrigger", function.InvokeUrlTemplate.ToString());
+            Assert.Equal("https://somewebsite.azurewebsites.net/api/httptrigger", function.InvokeUrlTemplate.ToString());
         }
 
         [Fact]
@@ -847,7 +850,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string uri = "admin/host/status";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
-
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
@@ -940,6 +942,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "somewebsite");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresPlatformVersionWindows, "89.0.7.73");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresComputerName, "RD281878FCB8E7");
 
                 services.AddSingleton<IEnvironment>(_ => environment);
             }
