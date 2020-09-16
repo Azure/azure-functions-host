@@ -287,6 +287,14 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the computer name.
+        /// </summary>
+        public static string GetAntaresComputerName(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(AntaresComputerName, string.Empty);
+        }
+
+        /// <summary>
         /// Gets the Antares version.
         /// </summary>
         public static string GetAntaresVersion(this IEnvironment environment)
