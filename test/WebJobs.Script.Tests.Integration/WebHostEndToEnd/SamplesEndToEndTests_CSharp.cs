@@ -485,10 +485,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             Assert.Equal(16, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
-            Assert.Equal("https://localhost/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
+            Assert.Equal("https://somewebsite.azurewebsites.net/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
             function = metadata.Single(p => p.Name == "HttpTrigger");
-            Assert.Equal("https://localhost/api/httptrigger", function.InvokeUrlTemplate.ToString());
+            Assert.Equal("https://somewebsite.azurewebsites.net/api/httptrigger", function.InvokeUrlTemplate.ToString());
         }
 
         [Fact]
@@ -942,7 +942,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 // The legacy http tests use sync IO so explicitly allow this
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagAllowSynchronousIO);
-                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "random.azurewebsites.net");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "somewebsite");
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, "e777fde04dea4eb931d5e5f06e65b4fdf5b375aed60af41dd7b491cf5792e01b");
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AntaresVersionWindows, "89.0.7.73");
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.MachineName, "RD281878FCB8E7");
