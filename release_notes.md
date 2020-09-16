@@ -14,6 +14,7 @@
 "headers" : {}
 }`
 Exception is thrown if HttpOutputBindingResponse is not valid Json.
+- Update PowerShell Worker to 2.0.554 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v2.0.554)
 
 - Update Java Worker to 1.8.0 [Release Note](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.0)
 - Update Java Library to 1.4.0 [Release Note](https://github.com/Azure/azure-functions-java-library)
