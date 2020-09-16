@@ -13,6 +13,7 @@
 }`
 Exception is thrown if HttpOutputBindingResponse is not valid Json.
 - **[BreakingChange]**[CustomHandler]Send query params as JObject and Identities as JArray PR #6621
+- Update PowerShell Worker to 3.0.552 (PS6) [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.552) and 3.0.549 (PS7) [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.549)
 
 **Release sprint:** Sprint 84
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Afeature+is%3Aclosed) ]
