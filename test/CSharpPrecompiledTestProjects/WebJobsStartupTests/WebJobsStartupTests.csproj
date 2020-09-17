@@ -1,13 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <AzureFunctionsVersion>V3</AzureFunctionsVersion>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <AzureFunctionsVersion>V2</AzureFunctionsVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.*" />
-    <PackageReference Include="Microsoft.Net.Sdk.Functions" Version="3.0.*" />
+    <PackageReference Include="Microsoft.Net.Sdk.Functions" Version="1.0.*" />
   </ItemGroup>
 
   <ItemGroup>

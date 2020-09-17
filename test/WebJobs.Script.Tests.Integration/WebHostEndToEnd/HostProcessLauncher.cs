@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// </summary>
     public class HostProcessLauncher : IDisposable
     {
-        private const string TestPathTemplate = "..\\..\\..\\..\\..\\test\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\netcoreapp3.1";
+        private const string TestPathTemplate = "..\\..\\..\\..\\..\\test\\CSharpPrecompiledTestProjects\\{0}\\bin\\Debug\\netcoreapp2.2";
         private const int _port = 3479;
 
         private readonly string _testPath;
@@ -42,13 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public async Task StartHostAsync()
         {
-            string workingDir = Path.GetFullPath(@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\netcoreapp3.1\");
-            string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
+            string workingDir = Path.GetFullPath(@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\netcoreapp2.2\");
+            string filePath = "dotnet";
 
             _process.StartInfo = new ProcessStartInfo
             {
                 FileName = filePath,
-                Arguments = $"--urls=http://localhost:{_port}",
+                Arguments = $"Microsoft.Azure.WebJobs.Script.WebHost.dll --urls=http://localhost:{_port}",
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 CreateNoWindow = true,
