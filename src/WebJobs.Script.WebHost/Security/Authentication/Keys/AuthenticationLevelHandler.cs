@@ -119,20 +119,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
             return Task.FromResult<(string, AuthorizationLevel)>((null, AuthorizationLevel.Anonymous));
         }
-
-        private class ClientPrincipal
-        {
-            [JsonProperty(PropertyName = "identityProvider")]
-            public string IdentityProvider { get; set; }
-
-            [JsonProperty(PropertyName = "userId")]
-            public string UserId { get; set; }
-
-            [JsonProperty(PropertyName = "userDetails")]
-            public string UserDetails { get; set; }
-
-            [JsonProperty(PropertyName = "userRoles")]
-            public string[] UserRoles { get; set; }
-        }
     }
 }
