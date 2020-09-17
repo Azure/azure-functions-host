@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
         private const string ClientPrincipalHeaderName = "x-ms-client-principal";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
-        private readonly bool _isStaticWebAppsFunction;
+        private readonly bool _isBlueridgeFunction;
 
         public AuthenticationLevelHandler(
             IOptionsMonitor<AuthenticationLevelOptions> options,
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
         {
             _secretManagerProvider = secretManagerProvider;
             _isEasyAuthEnabled = environment.IsEasyAuthEnabled();
-            _isStaticWebAppsFunction = environment.IsStaticWebAppsFunction();
+            _isBlueridgeFunction = environment.IsBlueridgeFunction();
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                     claimsIdentities.Add(easyAuthIdentity);
                 }
             }
-            else if (_isStaticWebAppsFunction)
+            else if (_isBlueridgeFunction)
             {
                 ClaimsIdentity staticWebAppsIdentity = Context.Request.GetStaticWebAppsIdentity();
                 if (staticWebAppsIdentity != null)

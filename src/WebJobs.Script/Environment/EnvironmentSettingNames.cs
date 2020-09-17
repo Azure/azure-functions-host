@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
         public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
-        public const string StaticWebAppFunction = "STATIC_WEB_APP_FUNCTION";
+        public const string BlueridgeFunction = "BLUERIDGE";
         public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";

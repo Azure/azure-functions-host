@@ -801,7 +801,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var vars = new Dictionary<string, string>
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "STATIC_WEB_APP_FUNCTION", "TRUE"}
+                { "BLUERIDGE", "TRUE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -823,7 +823,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var vars = new Dictionary<string, string>
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "STATIC_WEB_APP_FUNCTION", "TRUE"}
+                { "BLUERIDGE", "TRUE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -853,7 +853,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var vars = new Dictionary<string, string>
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "STATIC_WEB_APP_FUNCTION", "false"}
+                { "BLUERIDGE", "false"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
@@ -905,7 +905,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var vars = new Dictionary<string, string>
             {
                 { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
-                { "STATIC_WEB_APP_FUNCTION", "TRUE"}
+                { "BLUERIDGE", "TRUE"}
             };
             using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
             {
