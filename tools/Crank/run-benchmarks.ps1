@@ -25,7 +25,10 @@ param(
     $UserName = 'Functions',
 
     [bool]
-    $UseHttps = $true
+    $UseHttps = $true,
+
+    [bool]
+    $Trace = $false
 )
 
 $ErrorActionPreference = 'Stop'
@@ -87,6 +90,11 @@ $crankArgs =
     '--variable', "TempLogPath=`"$tmpLogPath`"",
     '--variable', "BranchOrCommit=$BranchOrCommit",
     '--variable', "AspNetUrls=$aspNetUrls"
+
+if ($Trace) {
+    $crankArgs += '--application.dotnetTrace', $true
+    $crankArgs += '--application.collectCounters',  $true
+}
 
 if ($WriteResultsToDatabase) {
     Set-AzContext -Subscription 'Antares-Demo' > $null
