@@ -46,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return isEasyAuthEnabled;
         }
 
+        public static bool IsStaticWebAppsFunction(this IEnvironment environment)
+        {
+            bool.TryParse(environment.GetEnvironmentVariable(StaticWebAppFunction), out bool isStaticWebAppFunction);
+            return isStaticWebAppFunction;
+        }
+
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
         {
             if (environment.IsAppService())

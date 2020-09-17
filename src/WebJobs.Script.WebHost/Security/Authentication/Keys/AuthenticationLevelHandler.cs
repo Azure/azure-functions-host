@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -16,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 {
@@ -23,8 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
         public const string FunctionsKeyQueryParamName = "code";
+        private const string IsStaticWebAppsFunctionHeaderName = "x-functions-static-web-apps";
+        private const string ClientPrincipalHeaderName = "x-ms-client-principal";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
+        private readonly bool _isStaticWebAppsFunction;
 
         public AuthenticationLevelHandler(
             IOptionsMonitor<AuthenticationLevelOptions> options,
@@ -38,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
         {
             _secretManagerProvider = secretManagerProvider;
             _isEasyAuthEnabled = environment.IsEasyAuthEnabled();
+            _isStaticWebAppsFunction = environment.IsStaticWebAppsFunction();
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -53,6 +60,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
                 if (easyAuthIdentity != null)
                 {
                     claimsIdentities.Add(easyAuthIdentity);
+                }
+            }
+            else if (_isStaticWebAppsFunction)
+            {
+                ClaimsIdentity staticWebAppsIdentity = Context.Request.GetStaticWebAppsIdentity();
+                if (staticWebAppsIdentity != null)
+                {
+                    claimsIdentities.Add(staticWebAppsIdentity);
                 }
             }
 
@@ -103,6 +118,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             }
 
             return Task.FromResult<(string, AuthorizationLevel)>((null, AuthorizationLevel.Anonymous));
+        }
+
+        private class ClientPrincipal
+        {
+            [JsonProperty(PropertyName = "identityProvider")]
+            public string IdentityProvider { get; set; }
+
+            [JsonProperty(PropertyName = "userId")]
+            public string UserId { get; set; }
+
+            [JsonProperty(PropertyName = "userDetails")]
+            public string UserDetails { get; set; }
+
+            [JsonProperty(PropertyName = "userRoles")]
+            public string[] UserRoles { get; set; }
         }
     }
 }

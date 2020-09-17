@@ -20,7 +20,18 @@ private static string GetIdentityString(ClaimsIdentity identity)
     {
         // user identity
         var userNameClaim = identity.FindFirst(ClaimTypes.Name);
-        return $"Identity: ({identity.AuthenticationType}, {userNameClaim.Value}, {userIdClaim.Value})";
+
+        // easy auth identity if no roles exist
+        var rolesClaims = identity.FindAll(ClaimTypes.Role)?.ToList();
+        if (rolesClaims == null || rolesClaims.Count == 0)
+        {
+            return $"Identity: ({identity.AuthenticationType}, {userNameClaim.Value}, {userIdClaim.Value})";
+        }
+
+        // static web app identity
+        List<string> roles = rolesClaims.Select(roleClaim => roleClaim.Value).ToList();
+        string rolesString = $"[{string.Join(",", roles)}]";
+        return $"Static Web Apps Identity: ({identity.AuthenticationType}, {userIdClaim.Value}, {userNameClaim.Value}, {rolesString})";
     }
     else
     {
