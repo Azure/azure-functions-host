@@ -724,7 +724,7 @@
     },
     {
       "name": "System.Collections",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "runtimeVersion"
     },
     {
       "name": "System.Collections.Concurrent",
@@ -732,7 +732,7 @@
     },
     {
       "name": "System.Collections.Immutable",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "runtimeVersion"
     },
     {
       "name": "System.Collections.NonGeneric",
@@ -1136,7 +1136,7 @@
     },
     {
       "name": "System.Runtime",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "runtimeVersion"
     },
     {
       "name": "System.Runtime.CompilerServices.VisualC",
