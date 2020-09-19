@@ -4,4 +4,5 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests")]
+[assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Benchmarks")]
 [assembly: InternalsVisibleTo("Microsoft.Azure.WebJobs.Script.Tests.Integration")]
