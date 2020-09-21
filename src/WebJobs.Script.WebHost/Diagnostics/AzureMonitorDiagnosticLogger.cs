@@ -3,9 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
@@ -15,16 +18,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         internal const string AzureMonitorCategoryName = "FunctionAppLogs";
         internal const string AzureMonitorOperationName = "Microsoft.Web/sites/functions/log";
 
+        private static int _processId = Process.GetCurrentProcess().Id;
+
         private readonly string _hostVersion = ScriptHost.Version;
         private readonly string _regionName;
         private readonly string _category;
         private readonly string _hostInstanceId;
+        private readonly string _roleInstance;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IExternalScopeProvider _scopeProvider;
 
-        public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider, HostNameProvider hostNameProvider)
+        public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider,
+            HostNameProvider hostNameProvider, IOptionsMonitor<AppServiceOptions> appServiceOptions)
         {
             _category = category ?? throw new ArgumentNullException(nameof(category));
             _hostInstanceId = hostInstanceId ?? throw new ArgumentNullException(nameof(hostInstanceId));
@@ -32,6 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
+            _appServiceOptions = appServiceOptions ?? throw new ArgumentNullException(nameof(appServiceOptions));
+
+            _roleInstance = _environment.GetInstanceId();
 
             _regionName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.RegionName) ?? string.Empty;
         }
@@ -93,6 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (JsonTextWriter writer = new JsonTextWriter(sw) { Formatting = Formatting.None })
             {
                 writer.WriteStartObject();
+                WritePropertyIfNotNull(writer, "appName", _appServiceOptions.CurrentValue.AppName);
+                WritePropertyIfNotNull(writer, "roleInstance", _roleInstance);
                 WritePropertyIfNotNull(writer, "message", formattedMessage);
                 WritePropertyIfNotNull(writer, "category", _category);
                 WritePropertyIfNotNull(writer, "hostVersion", _hostVersion);
@@ -101,22 +114,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 WritePropertyIfNotNull(writer, "hostInstanceId", _hostInstanceId);
                 WritePropertyIfNotNull(writer, "activityId", Utility.GetValueFromScope(scopeProps, ScriptConstants.LogPropertyActivityIdKey));
                 WritePropertyIfNotNull(writer, "level", logLevel.ToString());
+                WritePropertyIfNotNull(writer, "levelId", (int)logLevel);
+                WritePropertyIfNotNull(writer, "processId", _processId);
                 WritePropertyIfNotNull(writer, nameof(exceptionDetails), exceptionDetails);
                 WritePropertyIfNotNull(writer, nameof(exceptionMessage), exceptionMessage);
                 WritePropertyIfNotNull(writer, nameof(exceptionType), exceptionType);
+
+                // Only write the event if it's relevant
+                if (eventId.Id != 0 || !string.IsNullOrEmpty(eventId.Name))
+                {
+                    WriteProperty(writer, "eventId", eventId.Id);
+                    WriteProperty(writer, "eventName", eventId.Name);
+                }
+
                 writer.WriteEndObject();
             }
 
             _eventGenerator.LogAzureMonitorDiagnosticLogEvent(logLevel, _hostNameProvider.Value, AzureMonitorOperationName, AzureMonitorCategoryName, _regionName, sw.ToString());
         }
 
-        private static void WritePropertyIfNotNull(JsonTextWriter writer, string propertyName, string propertyValue)
+        private static void WritePropertyIfNotNull<T>(JsonTextWriter writer, string propertyName, T propertyValue)
         {
             if (propertyValue != null)
             {
-                writer.WritePropertyName(propertyName);
-                writer.WriteValue(propertyValue);
+                WriteProperty(writer, propertyName, propertyValue);
             }
+        }
+
+        private static void WriteProperty<T>(JsonTextWriter writer, string propertyName, T propertyValue)
+        {
+            writer.WritePropertyName(propertyName);
+            writer.WriteValue(propertyValue);
         }
     }
 }
