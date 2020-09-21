@@ -136,14 +136,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class RuntimeFileComparer : IEqualityComparer<RuntimeFile>
         {
-            public bool Equals([AllowNull] RuntimeFile x, [AllowNull] RuntimeFile y)
+            public bool Equals(RuntimeFile x, RuntimeFile y)
             {
                 return x.AssemblyVersion == y.AssemblyVersion &&
                     x.FileVersion == y.FileVersion &&
                     x.Path == y.Path;
             }
 
-            public int GetHashCode([DisallowNull] RuntimeFile obj)
+            public int GetHashCode(RuntimeFile obj)
             {
                 string code = obj.Path + obj.AssemblyVersion + obj.FileVersion;
                 return code.GetHashCode();
