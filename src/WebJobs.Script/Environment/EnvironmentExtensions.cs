@@ -46,9 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return isEasyAuthEnabled;
         }
 
-        public static bool IsBlueridgeFunction(this IEnvironment environment)
+        public static bool IsStaticWebAppsFunction(this IEnvironment environment)
         {
-            bool.TryParse(environment.GetEnvironmentVariable(BlueridgeFunction), out bool isStaticWebAppFunction);
+            bool.TryParse(environment.GetEnvironmentVariable(StaticWebAppsFunction), out bool isStaticWebAppFunction);
             return isStaticWebAppFunction;
         }
 

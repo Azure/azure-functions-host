@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
         private const string ClientPrincipalHeaderName = "x-ms-client-principal";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
-        private readonly bool _isBlueridgeFunction;
+        private readonly bool _isStaticWebAppsFunction;
 
         public AuthenticationLevelHandler(
             IOptionsMonitor<AuthenticationLevelOptions> options,
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
         {
             _secretManagerProvider = secretManagerProvider;
             _isEasyAuthEnabled = environment.IsEasyAuthEnabled();
-            _isBlueridgeFunction = environment.IsBlueridgeFunction();
+            _isStaticWebAppsFunction = environment.IsStaticWebAppsFunction();
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -54,21 +54,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
             List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
 
-            if (_isEasyAuthEnabled)
+            if (_isEasyAuthEnabled
+                && Context.Request.TryGetAppServiceIdentity(out ClaimsIdentity easyAuthIdentity)
+                && easyAuthIdentity != null)
             {
-                ClaimsIdentity easyAuthIdentity = Context.Request.GetAppServiceIdentity();
-                if (easyAuthIdentity != null)
-                {
-                    claimsIdentities.Add(easyAuthIdentity);
-                }
+                claimsIdentities.Add(easyAuthIdentity);
             }
-            else if (_isBlueridgeFunction)
+            else if (_isStaticWebAppsFunction &&
+                Context.Request.TryGetStaticWebAppsIdentity(out ClaimsIdentity staticWebAppsIdentity)
+                && staticWebAppsIdentity != null)
             {
-                ClaimsIdentity staticWebAppsIdentity = Context.Request.GetStaticWebAppsIdentity();
-                if (staticWebAppsIdentity != null)
-                {
-                    claimsIdentities.Add(staticWebAppsIdentity);
-                }
+                claimsIdentities.Add(staticWebAppsIdentity);
             }
 
             if (requestAuthorizationLevel != AuthorizationLevel.Anonymous)
