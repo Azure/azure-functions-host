@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
             catch (Exception e)
             {
-                fullException = e;  // Outer exception will have stack trace whereas the inner exceptions's stack trace will be null
+                fullException = e;  // Outer exception will have stack trace whereas the inner exception's stack trace will be null
             }
 
             (string exceptionType, string exceptionMessage, string exceptionDetails) = fullException.GetExceptionDetails();
