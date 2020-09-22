@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Rest.Azure;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -133,6 +134,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             }
         }
+
+        [Theory] // Only for Key Vault to test paging over large number of secrets
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Host)]
+        [InlineData(SecretsRepositoryType.KeyVault, ScriptSecretsType.Function)]
+        public async Task ReadAsync_ReadsExpectedKeyVaultPages(SecretsRepositoryType repositoryType, ScriptSecretsType secretsType)
+        {
+            using (var directory = new TempDirectory())
+            {
+                await _fixture.TestInitialize(repositoryType, directory.Path);
+                ScriptSecrets testSecrets = null;
+                int keyCount = 35;
+
+                List<Key> functionKeys = new List<Key>();
+                for (int i = 0; i < keyCount; ++i)
+                {
+                    functionKeys.Add(new Key(KeyName + Guid.NewGuid().ToString(), "test" + i.ToString()));
+                }
+
+                if (secretsType == ScriptSecretsType.Host)
+                {
+                    testSecrets = new HostSecrets()
+                    {
+                        MasterKey = new Key("master", "test"),
+                        FunctionKeys = functionKeys,
+                        SystemKeys = new List<Key>() { new Key(KeyName, "test") }
+                    };
+                }
+                else
+                {
+                    testSecrets = new FunctionSecrets()
+                    {
+                        Keys = functionKeys
+                    };
+                }
+                string testFunctionName = secretsType == ScriptSecretsType.Host ? "host" : functionName;
+
+                await _fixture.WriteSecret(testFunctionName, testSecrets);
+
+                var target = _fixture.GetNewSecretRepository();
+
+                ScriptSecrets secretsContent = await target.ReadAsync(secretsType, testFunctionName);
+
+                if (secretsType == ScriptSecretsType.Host)
+                {
+                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Name, "master");
+                    Assert.Equal((secretsContent as HostSecrets).MasterKey.Value, "test");
+
+                    Assert.Equal((secretsContent as HostSecrets).FunctionKeys.Count, functionKeys.Count);
+                    foreach (Key originalKey in functionKeys)
+                    {
+                        var matchingKeys = (secretsContent as HostSecrets).FunctionKeys.Where(x => string.Equals(x.Name, originalKey.Name));
+                        Assert.Equal(matchingKeys.Count(), 1);
+                        Assert.Equal(matchingKeys.First().Value, originalKey.Value);
+                    }
+
+                    Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Name, KeyName);
+                    Assert.Equal((secretsContent as HostSecrets).SystemKeys[0].Value, "test");
+                }
+                else
+                {
+                    Assert.Equal((secretsContent as FunctionSecrets).Keys.Count, functionKeys.Count);
+                    foreach (Key originalKey in functionKeys)
+                    {
+                        var matchingKeys = (secretsContent as FunctionSecrets).Keys.Where(x => string.Equals(x.Name, originalKey.Name));
+                        Assert.Equal(matchingKeys.Count(), 1);
+                        Assert.Equal(matchingKeys.First().Value, originalKey.Value);
+                    }
+                }
+
+            }
+        }
+
 
         [Theory]
         [InlineData(SecretsRepositoryType.BlobStorage, ScriptSecretsType.Host)]
@@ -565,9 +638,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private async Task ClearAllKeyVaultSecrets()
             {
-                foreach (SecretItem item in await KeyVaultClient.GetSecretsAsync(GetKeyVaultBaseUrl()))
+                var secretsPages = await KeyVaultSecretsRepository.GetKeyVaultSecretsPagesAsync(KeyVaultClient, GetKeyVaultBaseUrl());
+                foreach (IPage<SecretItem> secretsPage in secretsPages)
                 {
-                    await KeyVaultClient.DeleteSecretAsync(GetKeyVaultBaseUrl(), item.Identifier.Name);
+                    foreach (SecretItem item in secretsPage)
+                    {
+                        await KeyVaultClient.DeleteSecretAsync(GetKeyVaultBaseUrl(), item.Identifier.Name);
+                    }
                 }
             }
         }
