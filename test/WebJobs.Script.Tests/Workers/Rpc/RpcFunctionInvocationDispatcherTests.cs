@@ -93,12 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             foreach (var invocationId in invocationIds)
             {
                 restartTasks.Add(functionDispatcher.RestartWorkerWithInvocationIdAsync(invocationId.ToString()));
-                restartTasks.Add(functionDispatcher.RestartAllWorkersAsync());  // Purposely going crazy with bundling restarting all and restarting a specific worker.
             }
             await Task.WhenAll(restartTasks);
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count always stays at the initial count
         }
 
+        [Fact]
         public async Task Restart_ParticularWorkerChannel_Succeeds_OnlyThatIsDisposed()
         {
             int expectedProcessCount = 3;
@@ -120,24 +120,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             for (int i = 1; i < workerChannels.Count; ++i)
             {
                 Assert.False(workerChannels[i].IsDisposed); // Ensure no other channel is disposed
-            }
-
-            Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count goes back to initial count
-        }
-
-        [Fact]
-        public async Task Restart_AllChannels_Succeeds()
-        {
-            int expectedProcessCount = 3;
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount.ToString());
-            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
-            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
-            Guid invocationId = Guid.NewGuid();
-            List<TestRpcWorkerChannel> workerChannels = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Cast<TestRpcWorkerChannel>().ToList();
-            await functionDispatcher.RestartAllWorkersAsync();
-            foreach (TestRpcWorkerChannel channel in workerChannels)
-            {
-                Assert.True(channel.IsDisposed);
             }
 
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());   // Ensure count goes back to initial count
