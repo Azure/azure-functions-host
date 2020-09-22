@@ -1,8 +1,13 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using Autofac.Core.Lifetime;
+using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Rest.Azure;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -52,6 +57,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(hostSecrets, functionName);
 
             Assert.True(dictionary[$"function--{KeyVaultSecretsRepository.Normalize(functionName)}--{KeyVaultSecretsRepository.Normalize(secretName)}"] == "test");
+        }
+
+        [Theory]
+        [MemberData(nameof(FindSecretsDataProvider.TestCases), MemberType = typeof(FindSecretsDataProvider))]
+        public void FindSecrets(Func<SecretItem, bool> comparison, List<string> expectedMatches)
+        {
+            List<IEnumerable<SecretItem>> secretsPages = new List<IEnumerable<SecretItem>>()
+            {
+                new List<SecretItem>()
+                {
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Atlanta"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Seattle"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/NewYork"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Chicago")
+                },
+                new List<SecretItem>()
+                {
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Portland"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Austin"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/SanDiego"),
+                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/LosAngeles")
+                }
+            };
+
+            var matches = KeyVaultSecretsRepository.FindSecrets(secretsPages, comparison);
+
+            Assert.Equal(expectedMatches.Count, matches.Count);
+            foreach (string name in expectedMatches)
+            {
+                var matchingNames = matches.Where(x => x.Identifier.Name == name);
+                Assert.Equal(matchingNames.Count(), 1);
+                Assert.Equal(matchingNames.First().Identifier.Name, name);
+            }
+        }
+
+        public class FindSecretsDataProvider
+        {
+            public static IEnumerable<object[]> TestCases
+            {
+                get
+                {
+                    yield return new object[] { (Func<SecretItem, bool>)(x => x.Identifier.Name.StartsWith("S")), new List<string>() { "Seattle", "SanDiego" } };
+                    yield return new object[] { (Func<SecretItem, bool>)(x => x.Identifier.Name.EndsWith("o")), new List<string>() { "Chicago", "SanDiego" } };
+                }
+            }
         }
     }
 }
