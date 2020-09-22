@@ -26,7 +26,6 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 180
   http-appsvc:
     application:
       job: functionsServer
@@ -40,7 +39,6 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 180
   http-linux-appsvc:
     application:
       job: functionsServer
@@ -55,7 +53,6 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 180
   aspnet-hello:
     application:
       job: aspnetServer
@@ -65,7 +62,6 @@ scenarios:
       job: bombardier
       variables:
         path: /api/Hello
-        duration: 180
 
 profiles:
   localHttps:

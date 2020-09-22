@@ -28,7 +28,13 @@ param(
     $UseHttps = $true,
 
     [bool]
-    $Trace = $false
+    $Trace = $false,
+
+    [int]
+    $Duration = 15,
+
+    [int]
+    $Warmup = 15
 )
 
 $ErrorActionPreference = 'Stop'
@@ -89,11 +95,12 @@ $crankArgs =
     '--variable', "HomePath=`"$homePath`"",
     '--variable', "TempLogPath=`"$tmpLogPath`"",
     '--variable', "BranchOrCommit=$BranchOrCommit",
+    '--variable', "duration=$Duration",
+    '--variable', "warmup=$Warmup",
     '--variable', "AspNetUrls=$aspNetUrls"
 
 if ($Trace) {
     $crankArgs += '--application.dotnetTrace', $true
-    $crankArgs += '--application.collectCounters',  $true
 }
 
 if ($WriteResultsToDatabase) {
