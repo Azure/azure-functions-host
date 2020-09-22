@@ -49,17 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
             List<ClaimsIdentity> claimsIdentities = new List<ClaimsIdentity>();
 
-            if (_isEasyAuthEnabled
-                && Context.Request.TryGetAppServiceIdentity(out ClaimsIdentity easyAuthIdentity)
-                && easyAuthIdentity != null)
-            {
-                claimsIdentities.Add(easyAuthIdentity);
-            }
-            else if (_isStaticWebAppsFunction &&
+            if (_isStaticWebAppsFunction &&
                 Context.Request.TryGetStaticWebAppsIdentity(out ClaimsIdentity staticWebAppsIdentity)
                 && staticWebAppsIdentity != null)
             {
                 claimsIdentities.Add(staticWebAppsIdentity);
+            }
+            else if (_isEasyAuthEnabled
+                && Context.Request.TryGetAppServiceIdentity(out ClaimsIdentity easyAuthIdentity)
+                && easyAuthIdentity != null)
+            {
+                claimsIdentities.Add(easyAuthIdentity);
             }
 
             if (requestAuthorizationLevel != AuthorizationLevel.Anonymous)

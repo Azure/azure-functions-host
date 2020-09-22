@@ -848,6 +848,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_StaticWebAppsFunctionTrue_WebsiteAuthEnabled_StaticWebAppsIdentity_Succeeds()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { "STATIC_WEB_APPS_FUNCTION", "TRUE"},
+                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+            };
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
+            {
+                string functionKey = await _fixture.Host.GetFunctionSecretAsync("HttpTrigger-Identities");
+                string uri = $"api/httptrigger-identities?code={functionKey}";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockStaticWebAppsClientPrincipal(
+                    request,
+                    "aad",
+                    "d8ae339e417f4a70bb1d377184740f72",
+                    "mikarmar@microsoft.com",
+                    new List<string> { "admin", "super_admin" });
+
+                HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+                Assert.Equal("Static Web Apps Identity: (aad, d8ae339e417f4a70bb1d377184740f72, mikarmar@microsoft.com, [admin,super_admin])", identityStrings[0]);
+                Assert.Equal("Identity: (WebJobsAuthLevel, Function, Key1)", identityStrings[1]);
+            }
+        }
+
+        [Fact]
         public async Task HttpTrigger_StaticWebApps_Identities_BlocksSpoofedEasyAuthIdentity()
         {
             var vars = new Dictionary<string, string>
