@@ -21,6 +21,12 @@ namespace System
                 innerException = innerException.InnerException;
             }
 
+            // If innerMost exception does not have the stack trace, default to the outermost one.
+            if (innerException.StackTrace == null || innerException.StackTrace.Length < 1)
+            {
+                innerException = exception;
+            }
+
             string exceptionType = innerException.GetType().ToString();
             string exceptionMessage = Sanitizer.Sanitize(innerException.Message);
             string exceptionDetails = Sanitizer.Sanitize(innerException.ToFormattedString());
