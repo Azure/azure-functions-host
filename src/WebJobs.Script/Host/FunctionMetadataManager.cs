@@ -26,11 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
-        private IEnumerable<IFunctionProvider> _functionProviders;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IEnumerable<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
+            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory)
         {
             _scriptOptions = scriptOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
@@ -38,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
-            _functionProviders = functionProviders;
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -82,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeServices()
         {
-            _functionProviders = _serviceProvider.GetService<IEnumerable<IFunctionProvider>>();
             _isHttpWorker = _serviceProvider.GetService<IOptions<HttpWorkerOptions>>()?.Value?.Description != null;
             _scriptOptions = _serviceProvider.GetService<IOptions<ScriptJobHostOptions>>();
 
@@ -158,16 +155,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void LoadCustomProviderFunctions(List<FunctionMetadata> functionMetadataList)
         {
-            if (_functionProviders != null && _functionProviders.Any())
+            // We always want to get the most updated function providers in case this list was changed.
+            IEnumerable<IFunctionProvider> functionProviders = _serviceProvider?.GetService<IEnumerable<IFunctionProvider>>();
+
+            if (functionProviders != null && functionProviders.Any())
             {
-                AddMetadataFromCustomProviders(functionMetadataList);
+                AddMetadataFromCustomProviders(functionProviders, functionMetadataList);
             }
         }
 
-        private void AddMetadataFromCustomProviders(List<FunctionMetadata> functionMetadataList)
+        private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
-            foreach (var functionProvider in _functionProviders)
+            foreach (var functionProvider in functionProviders)
             {
                 functionProviderTasks.Add(functionProvider.GetFunctionMetadataAsync());
             }
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
 
-            foreach (var functionProvider in _functionProviders)
+            foreach (var functionProvider in functionProviders)
             {
                 if (functionProvider.FunctionErrors == null)
                 {
