@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
         public const string FunctionsKeyQueryParamName = "code";
-        private const string IsStaticWebAppsFunctionHeaderName = "x-functions-static-web-apps";
-        private const string ClientPrincipalHeaderName = "x-ms-client-principal";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
         private readonly bool _isStaticWebAppsFunction;
