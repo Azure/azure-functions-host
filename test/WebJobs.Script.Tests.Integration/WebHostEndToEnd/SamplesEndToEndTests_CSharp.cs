@@ -833,10 +833,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 MockStaticWebAppsClientPrincipal(
                     request,
-                    "aad",
-                    "d8ae339e417f4a70bb1d377184740f72",
-                    "mikarmar@microsoft.com",
-                    new List<string> { "admin", "super_admin" });
+                    provider: "aad",
+                    userId: "d8ae339e417f4a70bb1d377184740f72",
+                    userDetails: "mikarmar@microsoft.com",
+                    roles: new List<string> { "admin", "super_admin" });
 
                 HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -864,10 +864,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 MockStaticWebAppsClientPrincipal(
                     request,
-                    "aad",
-                    "d8ae339e417f4a70bb1d377184740f72",
-                    "mikarmar@microsoft.com",
-                    new List<string> { "admin", "super_admin" });
+                    provider: "aad",
+                    userId: "d8ae339e417f4a70bb1d377184740f72",
+                    userDetails: "mikarmar@microsoft.com",
+                    roles: new List<string> { "admin", "super_admin" });
 
                 HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -894,10 +894,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 MockStaticWebAppsClientPrincipal(
                     request,
-                    "aad",
-                    "d8ae339e417f4a70bb1d377184740f72",
-                    "mikarmar@microsoft.com",
-                    new List<string> { "admin", "super_admin" });
+                    provider: "aad",
+                    userId: "d8ae339e417f4a70bb1d377184740f72",
+                    userDetails: "mikarmar@microsoft.com",
+                    roles: new List<string> { "admin", "super_admin" });
 
                 HttpResponseMessage response = await this._fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -945,10 +945,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 MockStaticWebAppsClientPrincipal(
                     request,
-                    "aad",
-                    "d8ae339e417f4a70bb1d377184740f72",
-                    "mikarmar@microsoft.com",
-                    new List<string> { "admin", "super_admin" });
+                    provider: "aad",
+                    userId: "d8ae339e417f4a70bb1d377184740f72",
+                    userDetails: "mikarmar@microsoft.com",
+                    roles: new List<string> { "admin", "super_admin" });
 
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
