@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // verify the rest of the expected logs
             logLines = _loggerProvider.GetAllLogMessages().Where(p => p.FormattedMessage != null).Select(p => p.FormattedMessage).ToArray();
+
             Assert.True(logLines.Count(p => p.Contains("Stopping JobHost")) >= 1);
             Assert.Equal(1, logLines.Count(p => p.Contains("Creating StandbyMode placeholder function directory")));
             Assert.Equal(1, logLines.Count(p => p.Contains("StandbyMode placeholder function directory created")));
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"0 functions loaded")));
+            Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
             Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
