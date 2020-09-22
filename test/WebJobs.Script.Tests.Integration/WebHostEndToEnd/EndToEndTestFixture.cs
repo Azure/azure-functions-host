@@ -142,7 +142,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     ConfigureWebHost(s);
                 });
 
-            string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            //string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            string connectionString = "DefaultEndpointsProtocol=https;AccountName=mikarmarfunctionsstorage;AccountKey=IW6Ikj+VzN8c0ZI94ApySwqqqMj8TywfRL79HpNGRm+6c0W9pvNo1J3/TiJ2Ga2hQmSF9k3UWQnnkpr/TAlB1A==;EndpointSuffix=core.windows.net";
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
 
             QueueClient = storageAccount.CreateCloudQueueClient();
