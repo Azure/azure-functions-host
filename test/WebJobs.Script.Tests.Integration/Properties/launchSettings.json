@@ -1,10 +1,7 @@
 {
   "profiles": {
     "WebJobs.Script.Tests.Integration": {
-      "commandName": "Project",
-      "environmentVariables": {
-        "connectionString": "DefaultEndpointsProtocol=https;AccountName=mikarmarfunctionsstorage;AccountKey=IW6Ikj+VzN8c0ZI94ApySwqqqMj8TywfRL79HpNGRm+6c0W9pvNo1J3/TiJ2Ga2hQmSF9k3UWQnnkpr/TAlB1A==;EndpointSuffix=core.windows.net"
-      }
+      "commandName": "Project"
     }
   }
 }
