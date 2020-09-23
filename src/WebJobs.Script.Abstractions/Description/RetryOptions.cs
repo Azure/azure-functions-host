@@ -2,10 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Microsoft.Azure.WebJobs.Script.Abstractions.Description
+namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class RetryOptions
     {
