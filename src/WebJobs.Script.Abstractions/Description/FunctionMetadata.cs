@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Abstractions.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -41,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// Gets all the properties tagged to this instance.
         /// </summary>
         public IDictionary<string, object> Properties { get; }
+
+        /// <summary>
+        /// Gets or sets the optional function execution retry strategy to use on invocation failures.<see cref="Abstractions.Description.RetryOptions"/>.
+        /// </summary>
+        public RetryOptions Retry { get; set; }
 
         public Collection<BindingMetadata> Bindings { get; }
 
