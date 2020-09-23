@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_With_Retry_Succeeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node-retry");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
@@ -50,15 +50,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(2, functionMetadatas.Length);
 
-            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("retry", StringComparison.OrdinalIgnoreCase));
+            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
             var retry = functionMetadataWithRetry.FirstOrDefault().Retry;
             Assert.NotNull(retry);
             Assert.Equal(RetryStrategy.FixedDelay, retry.Strategy);
-            Assert.Equal(2, retry.MaxRetryCount);
-            Assert.Equal(TimeSpan.Parse("00:00:10"), TimeSpan.FromSeconds(10));
+            Assert.Equal(4, retry.MaxRetryCount);
+            Assert.Equal(TimeSpan.Parse("00:00:03"), retry.DelayInterval);
 
-            var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("retry", StringComparison.OrdinalIgnoreCase));
+            var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
             Assert.Null(functionMetadata.FirstOrDefault().Retry);
         }
