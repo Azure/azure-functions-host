@@ -25,9 +25,6 @@ param(
     $UserName = 'Functions',
 
     [bool]
-    $UseHttps = $true,
-
-    [bool]
     $Trace = $false,
 
     [int]
@@ -77,19 +74,16 @@ $homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } els
 $functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
-if ($UseHttps) {
-    $aspNetUrls = "http://localhost:5000;https://localhost:5001"
-    $profileName = "localHttps"
-}
-else {
-    $aspNetUrls = "http://localhost:5000"
-    $profileName = "local"
-}
+ $aspNetUrls = "http://localhost:5000"
+ $profileName = "default"
 
 $crankArgs =
     '--config', $crankConfigPath,
     '--scenario', $Scenario,
     '--profile', $profileName,
+    '--chart',
+    '--chart-type hex',
+    '--application.collectCounters', $true,
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
     '--variable', "HomePath=`"$homePath`"",
@@ -100,7 +94,7 @@ $crankArgs =
     '--variable', "AspNetUrls=$aspNetUrls"
 
 if ($Trace) {
-    $crankArgs += '--application.dotnetTrace', $true
+    $crankArgs += '--application.collect', $true
 }
 
 if ($WriteResultsToDatabase) {
