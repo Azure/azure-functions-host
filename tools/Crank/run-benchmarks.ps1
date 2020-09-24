@@ -31,7 +31,10 @@ param(
     $Duration = 15,
 
     [int]
-    $Warmup = 15
+    $Warmup = 15,
+
+    [int]
+    $Iterations = 1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -105,6 +108,11 @@ if ($WriteResultsToDatabase) {
 
     $crankArgs += '--sql', $sqlConnectionString
     $crankArgs += '--table', 'FunctionsPerf'
+}
+
+if ($Iterations -gt 1) {
+    $crankArgs += '--iterations', $Iterations
+    $crankArgs += '--display-iterations'
 }
 
 & $InvokeCrankCommand $crankArgs 2>&1 | Tee-Object -Variable crankOutput
