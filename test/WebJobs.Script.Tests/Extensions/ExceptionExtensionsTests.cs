@@ -28,6 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 
             Assert.Equal("System.InvalidOperationException", exceptionType);
             Assert.Equal("Some inner exception", exceptionMessage);
+            Console.WriteLine($"ExceptionExceptionsTests: {exceptionDetails}");
             Assert.Contains("System.Exception : some outer exception ---> System.InvalidOperationException : Some inner exception \r\n   End of inner exception\r\n   at Microsoft.Azure.WebJobs.Script.Tests.Extensions.ExceptionExtensionsTests.GetExceptionDetails_ReturnsExpectedResult() at D:\\Repo_Functions\\runtime\\azure-functions-host\\test\\WebJobs.Script.Tests\\Extensions\\ExceptionExtensionsTests.cs : 20", exceptionDetails);
         }
     }
