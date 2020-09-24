@@ -215,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
         }
 
-        protected void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
+        protected static void ApplyMethodLevelAttributes(FunctionMetadata functionMetadata, BindingMetadata triggerMetadata, Collection<CustomAttributeBuilder> methodAttributes)
         {
             if (Utility.IsHttporManualTrigger(triggerMetadata.Type))
             {
