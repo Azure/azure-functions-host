@@ -119,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testServer = new TestServer(builder) { BaseAddress = new Uri("https://localhost/") };
 
             HttpClient = _testServer.CreateClient();
+            HttpClient.Timeout = TimeSpan.FromMinutes(5);
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
