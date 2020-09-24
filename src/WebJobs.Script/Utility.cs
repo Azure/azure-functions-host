@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -764,8 +765,40 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsMediaTypeOctetOrMultipart(MediaTypeHeaderValue mediaType)
         {
-                return mediaType != null && (string.Equals(mediaType.MediaType, ScriptConstants.MediatypeOctetStream, StringComparison.OrdinalIgnoreCase) ||
-                                mediaType.MediaType.IndexOf(ScriptConstants.MediatypeMutipartPrefix, StringComparison.OrdinalIgnoreCase) >= 0);
+            return mediaType != null && (string.Equals(mediaType.MediaType, ScriptConstants.MediatypeOctetStream, StringComparison.OrdinalIgnoreCase) ||
+                            mediaType.MediaType.IndexOf(ScriptConstants.MediatypeMutipartPrefix, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        public static void ValidateRetryOptions(RetryOptions
+            retryOptions)
+        {
+            if (retryOptions == null)
+            {
+                return;
+            }
+            switch (retryOptions.Strategy)
+            {
+                case RetryStrategy.FixedDelay:
+                    if (retryOptions.DelayInterval.Ticks <= 0)
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                    }
+                    // ensure values specified to create FixedDelayRetryAttribute are valid
+                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount, retryOptions.DelayInterval.ToString());
+                    break;
+                case RetryStrategy.ExponentialBackoff:
+                    if (retryOptions.MinimumInterval.Ticks <= 0)
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                    }
+                    if (retryOptions.MaximumInterval.Ticks <= 0)
+                    {
+                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                    }
+                    // ensure values specified to create ExponentialBackoffRetryAttribute are valid
+                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
+                    break;
+            }
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
