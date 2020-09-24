@@ -14,6 +14,7 @@ using Google.Protobuf.Collections;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
@@ -22,7 +23,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class RpcMessageConversionExtensionsTests
+    public class GrpcMessageConversionExtensionsTests
     {
         private static readonly string TestImageLocation = "Workers\\Rpc\\Resources\\functions.png";
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpObjects_StringBody(string expectedContentType, object body, bool rcpHttpBodyOnly)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             if (rcpHttpBodyOnly)
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
@@ -69,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpObjects_JsonBody(string expectedContentType, string body, bool rcpHttpBodyOnly)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             if (rcpHttpBodyOnly)
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
@@ -107,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpTrigger_Post_ByteArray(string expectedContentType, bool rcpHttpBodyOnly)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             if (rcpHttpBodyOnly)
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
@@ -146,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpObjects_Query(string queryString, string[] expectedKeys, string[] expectedValues)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/api/httptrigger-scenarios?{queryString}");
 
@@ -172,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var logger = MockNullLoggerFactory.CreateLogger();
             // Capability must be enabled
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             if (ignoreEmptyValues)
             {
@@ -310,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 };
             }
 
-            var appendCookieArguments = RpcMessageExtensionUtilities.RpcHttpCookieConverter(rpcCookie);
+            var appendCookieArguments = GrpcMessageExtensionUtilities.RpcHttpCookieConverter(rpcCookie);
             Assert.Equal(appendCookieArguments.Item1, name);
             Assert.Equal(appendCookieArguments.Item2, value);
 
@@ -329,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpObjects_ClaimsPrincipal()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             HttpRequest request = HttpTestHelpers.CreateHttpRequest("GET", $"http://localhost/apihttptrigger-scenarios");
 
@@ -398,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task HttpObjects_RawBodyBytes_Image_Length(string contentType, string rawBytesEnabled)
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             if (!string.Equals(rawBytesEnabled, null))
             {
                 capabilities.UpdateCapabilities(new MapField<string, string>
@@ -444,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_String_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
@@ -473,7 +474,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_String_Without_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             string[] arrString = { "element1", "element_2" };
             TypedData returned_typedata = await arrString.ToRpc(logger, capabilities);
@@ -488,7 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Long_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
@@ -514,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Long_Without_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             long[] arrLong = { 1L, 2L };
             TypedData returned_typedata = await arrLong.ToRpc(logger, capabilities);
@@ -529,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Double_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
@@ -555,7 +556,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Double_Without_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             double[] arrDouble = { 1.1, 2.2 };
             TypedData returned_typedata = await arrDouble.ToRpc(logger, capabilities);
@@ -570,7 +571,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Byte_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }
@@ -603,7 +604,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Collection_Byte_Without_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             byte[][] arrByte = new byte[2][];
             arrByte[0] = new byte[] { 22 };
@@ -621,7 +622,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Bytes_Without_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
 
             byte[] arrByte = Encoding.Default.GetBytes("HellowWorld");
 
@@ -637,7 +638,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public async Task ToRpc_Bytes_With_Capabilities_Value()
         {
             var logger = MockNullLoggerFactory.CreateLogger();
-            var capabilities = new Capabilities(logger);
+            var capabilities = new GrpcCapabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.TypedDataCollection, RpcWorkerConstants.TypedDataCollection }

@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -68,6 +69,10 @@ namespace Microsoft.WebJobs.Script.Tests
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddGrpc();
                 });
 
             if (!runStartupHostedServices)
