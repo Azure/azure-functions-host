@@ -31,9 +31,10 @@ function New-TemporaryDirectory {
     New-Item -ItemType Directory -Path (Join-Path $parent $name)
 }
 
-function BuildCrankAgent {
+function BuildCrankAgent($BranchOrCommit) {
     Write-Verbose "Cloning crank repo..."
     git clone https://github.com/dotnet/crank.git > $null
+    git checkout $BranchOrCommit
     Set-Location crank
 
     $logFileName = 'build.log'
@@ -49,6 +50,13 @@ function GetDotNetToolsLocationArgs {
 }
 
 function InstallCrankAgentTool($LocalPackageSource) {
+    Write-Verbose 'Stopping crank-agent...'
+
+    $crankAgentProcessName = 'crank-agent'
+    if (Get-Process -Name $crankAgentProcessName -ErrorAction SilentlyContinue) {
+        Stop-Process -Name $crankAgentProcessName -Force
+    }
+
     Write-Verbose 'Uninstalling crank-agent...'
 
     $uninstallArgs = 'tool', 'uninstall', 'Microsoft.Crank.Agent'
@@ -76,7 +84,7 @@ function InstallCrankAgent {
         Write-Verbose "Creating temporary directory: $($tempDir.FullName)"
         Push-Location -Path $tempDir.FullName
         try {
-            $packagesDirectory = BuildCrankAgent
+            $packagesDirectory = BuildCrankAgent -BranchOrCommit $CrankBranch
             InstallCrankAgentTool -LocalPackageSource $packagesDirectory
         } finally {
             Pop-Location
