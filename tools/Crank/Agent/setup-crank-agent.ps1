@@ -50,6 +50,13 @@ function GetDotNetToolsLocationArgs {
 }
 
 function InstallCrankAgentTool($LocalPackageSource) {
+    Write-Verbose 'Stopping crank-agent...'
+
+    $crankAgentProcessName = 'crank-agent'
+    if (Get-Process -Name $crankAgentProcessName -ErrorAction SilentlyContinue) {
+        Stop-Process -Name $crankAgentProcessName -Force
+    }
+
     Write-Verbose 'Uninstalling crank-agent...'
 
     $uninstallArgs = 'tool', 'uninstall', 'Microsoft.Crank.Agent'

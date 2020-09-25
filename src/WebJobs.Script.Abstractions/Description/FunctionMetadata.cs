@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// </summary>
         public IDictionary<string, object> Properties { get; }
 
+        /// <summary>
+        /// Gets or sets the optional function execution retry strategy to use on invocation failures.<see cref="Abstractions.Description.RetryOptions"/>.
+        /// </summary>
+        public RetryOptions Retry { get; set; }
+
         public Collection<BindingMetadata> Bindings { get; }
 
         public IEnumerable<BindingMetadata> InputBindings

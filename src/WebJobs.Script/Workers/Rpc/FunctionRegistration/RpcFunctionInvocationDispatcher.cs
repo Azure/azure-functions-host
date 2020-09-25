@@ -428,7 +428,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
         {
             // Dispose and restart errored channel with the particular invocation id
-            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
             var channels = await GetInitializedWorkerChannelsAsync();
             foreach (var channel in channels)
             {
@@ -440,17 +439,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             return false;
-        }
-
-        public async Task RestartAllWorkersAsync()
-        {
-            State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
-            var channels = await GetAllWorkerChannelsAsync();
-            foreach (var channel in channels)
-            {
-                _logger.LogInformation($"Restarting channel '{channel.Id}' that is as part of restarting all channels.");
-                await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
-            }
         }
     }
 }

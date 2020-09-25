@@ -25,10 +25,16 @@ param(
     $UserName = 'Functions',
 
     [bool]
-    $UseHttps = $true,
+    $Trace = $false,
 
-    [bool]
-    $Trace = $false
+    [int]
+    $Duration = 15,
+
+    [int]
+    $Warmup = 15,
+
+    [int]
+    $Iterations = 1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,29 +77,27 @@ $homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } els
 $functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
-if ($UseHttps) {
-    $aspNetUrls = "http://localhost:5000;https://localhost:5001"
-    $profileName = "localHttps"
-}
-else {
-    $aspNetUrls = "http://localhost:5000"
-    $profileName = "local"
-}
+ $aspNetUrls = "http://localhost:5000"
+ $profileName = "default"
 
 $crankArgs =
     '--config', $crankConfigPath,
     '--scenario', $Scenario,
     '--profile', $profileName,
+    '--chart',
+    '--chart-type hex',
+    '--application.collectCounters', $true,
     '--variable', "CrankAgentVm=$CrankAgentVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
     '--variable', "HomePath=`"$homePath`"",
     '--variable', "TempLogPath=`"$tmpLogPath`"",
     '--variable', "BranchOrCommit=$BranchOrCommit",
+    '--variable', "duration=$Duration",
+    '--variable', "warmup=$Warmup",
     '--variable', "AspNetUrls=$aspNetUrls"
 
 if ($Trace) {
-    $crankArgs += '--application.dotnetTrace', $true
-    $crankArgs += '--application.collectCounters',  $true
+    $crankArgs += '--application.collect', $true
 }
 
 if ($WriteResultsToDatabase) {
@@ -104,6 +108,11 @@ if ($WriteResultsToDatabase) {
 
     $crankArgs += '--sql', $sqlConnectionString
     $crankArgs += '--table', 'FunctionsPerf'
+}
+
+if ($Iterations -gt 1) {
+    $crankArgs += '--iterations', $Iterations
+    $crankArgs += '--display-iterations'
 }
 
 & $InvokeCrankCommand $crankArgs 2>&1 | Tee-Object -Variable crankOutput
