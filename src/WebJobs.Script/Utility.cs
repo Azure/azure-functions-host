@@ -776,6 +776,10 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return;
             }
+            if (retryOptions.MaxRetryCount <= 0 && retryOptions.MaxRetryCount != -1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(retryOptions.MaxRetryCount));
+            }
             switch (retryOptions.Strategy)
             {
                 case RetryStrategy.FixedDelay:
