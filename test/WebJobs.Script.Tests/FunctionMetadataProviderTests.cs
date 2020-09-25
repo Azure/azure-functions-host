@@ -8,6 +8,7 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -19,11 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
+        private LanguageWorkerOptions _languageWorkerOptions;
 
         public FunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            _languageWorkerOptions = new LanguageWorkerOptions
+            {
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
         }
 
         [Fact]
@@ -44,9 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(_languageWorkerOptions), NullLogger<FunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            var functionMetadatas = metadataProvider.GetFunctionMetadata(workerConfigs, false);
+            var functionMetadatas = metadataProvider.GetFunctionMetadata(false);
 
             Assert.Equal(2, functionMetadatas.Length);
 
