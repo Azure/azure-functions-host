@@ -23,7 +23,7 @@ namespace System
 
             string exceptionType = innerException.GetType().ToString();
             string exceptionMessage = Sanitizer.Sanitize(innerException.Message);
-            string exceptionDetails = Sanitizer.Sanitize(innerException.ToFormattedString());
+            string exceptionDetails = Sanitizer.Sanitize(exception.ToFormattedString());
 
             return (exceptionType, exceptionMessage, exceptionDetails);
         }
