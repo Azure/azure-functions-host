@@ -65,6 +65,12 @@
             "metadata": {
                 "description": "The name of the subscription that contains the keyvault."
             }
+        },
+        "customScriptParameters": {
+            "type": "string",
+            "metadata": {
+                "description": "Parameters passed to the custom script."
+            }
         }
     },
     "resources": [
@@ -139,6 +145,12 @@
                             "type": "string",
                             "metadata": {
                                 "description": "The OS disk type."
+                            }
+                        },
+                        "customScriptParameters": {
+                            "type": "string",
+                            "metadata": {
+                                "description": "Parameters passed to the custom script."
                             }
                         },
                         "virtualNetworkName": {
@@ -344,7 +356,7 @@
                                     "fileUris": [
                                         "https://raw.githubusercontent.com/Azure/azure-functions-host/dev/tools/Crank/Agent/Linux/bootstrap.sh"
                                     ],
-                                    "commandToExecute": "./bootstrap.sh"
+                                    "commandToExecute": "[concat('mv bootstrap.sh /home/Functions/ && cd /home/Functions && chmod +xr bootstrap.sh && sudo -H -u Functions ./bootstrap.sh \"', replace(parameters('customScriptParameters'), '\"', '\\\"'), '\"')]"
                                 },
                                 "publisher": "Microsoft.Azure.Extensions",
                                 "type": "CustomScript",
@@ -387,6 +399,9 @@
                     },
                     "osDiskType": {
                         "value": "[parameters('osDiskType')]"
+                    },
+                    "customScriptParameters": {
+                        "value": "[parameters('customScriptParameters')]"
                     },
                     "adminPasswordOrKey": {
                         "reference": {
