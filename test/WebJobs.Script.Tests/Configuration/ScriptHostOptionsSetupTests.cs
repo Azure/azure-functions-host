@@ -148,9 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [InlineData("fixedDelay", "3", null, true)]
         [InlineData("fixedDelay", "3", "-10000000000", true)]
         [InlineData("fixedDelay", "3", "10000000000:00000000:40000", true)]
-        [InlineData("fixedDelay", null, "00:00:05", true)]
-        [InlineData("fixedDelay", "-1", "00:00:05", false)]
-        [InlineData("fixedDelay", "-4", "00:00:05", true)]
         public void Configure_AppliesRetry_FixedDelay(string expectedStrategy, string maxRetryCount, string delayInterval, bool throwsError)
         {
             var settings = new Dictionary<string, string>
@@ -159,18 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maxRetryCount"), maxRetryCount },
                 { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "delayInterval"), delayInterval }
             };
-            if (string.IsNullOrEmpty(delayInterval) || string.IsNullOrEmpty(maxRetryCount))
+            if (string.IsNullOrEmpty(delayInterval))
             {
                 Assert.Throws<ArgumentOutOfRangeException>(() => GetConfiguredOptions(settings));
                 return;
             }
             if (throwsError)
             {
-                if (int.Parse(maxRetryCount) <= 0)
-                {
-                    Assert.Throws<ArgumentOutOfRangeException>(() => GetConfiguredOptions(settings));
-                    return;
-                }
                 Assert.Throws<InvalidOperationException>(() => GetConfiguredOptions(settings));
                 return;
             }
