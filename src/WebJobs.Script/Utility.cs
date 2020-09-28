@@ -767,9 +767,9 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return;
             }
-            if (retryOptions.MaxRetryCount <= 0 && retryOptions.MaxRetryCount != -1)
+            if (!retryOptions.MaxRetryCount.HasValue)
             {
-                throw new ArgumentOutOfRangeException(nameof(retryOptions.MaxRetryCount));
+                throw new ArgumentNullException(nameof(retryOptions.MaxRetryCount));
             }
             switch (retryOptions.Strategy)
             {
@@ -779,7 +779,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create FixedDelayRetryAttribute are valid
-                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount, retryOptions.DelayInterval.ToString());
+                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.DelayInterval.ToString());
                     break;
                 case RetryStrategy.ExponentialBackoff:
                     if (retryOptions.MinimumInterval.Ticks <= 0)
@@ -791,7 +791,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create ExponentialBackoffRetryAttribute are valid
-                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
+                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
         }
