@@ -530,7 +530,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Assert.Equal(expectedMetadata.Count(), httpScriptInvocationContext.Metadata.Count());
             foreach (var key in expectedMetadata.Keys)
             {
-                Assert.Equal(JsonConvert.SerializeObject(expectedMetadata[key]), httpScriptInvocationContext.Metadata[key]);
+                if (expectedMetadata[key] is DateTime)
+                {
+                    Assert.Equal(DateTime.Parse(expectedMetadata[key].ToString()), httpScriptInvocationContext.Metadata[key]);
+                }
+                else if (expectedMetadata[key] is DateTimeOffset)
+                {
+                    Assert.Equal(DateTimeOffset.Parse(expectedMetadata[key].ToString()), httpScriptInvocationContext.Metadata[key]);
+                }
+                else
+                {
+                    Assert.Equal(JsonConvert.SerializeObject(expectedMetadata[key]), httpScriptInvocationContext.Metadata[key]);
+                }
             }
 
             // Verify Data
