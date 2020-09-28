@@ -14,7 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class RawAssemblyCompilation : IDotNetCompilation
     {
-        private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
+        // RegexOptions.Compiled is specifically removed as it impacts the cold start. The default uses interpreter.
+        private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$");
         private readonly string _assemblyFilePath;
         private readonly string _entryPointName;
 
