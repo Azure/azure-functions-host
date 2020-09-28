@@ -21,10 +21,12 @@
     }
     ```
     Exception is thrown if HttpOutputBindingResponse is not valid Json.
-
-    - Issue [#6606](https://github.com/Azure/azure-functions-host/issues/6606): We identified a couple of inconsistencies in the request schema and next release will include following changes.
-        - Query property will change from a JSON serialized string to a dictionary
-        - Identities property will change from a JSON serialized string to an array
+    - We identified a couple of inconsistencies in the request schema and next release will include following changes.
+        - Issue [#6606](https://github.com/Azure/azure-functions-host/issues/6606): 
+            - Query property will change from a JSON serialized string to a dictionary
+            - Identities property will change from a JSON serialized string to an array
+        - Issue [#6574](https://github.com/Azure/azure-functions-host/issues/6574)
+            - Metadata / Input binding data of type DateTime will not be serialzed as string
     If you are using these properties, please ensure your app is able to detect and handle the new schema.
 
 **Release sprint:** Sprint 84
