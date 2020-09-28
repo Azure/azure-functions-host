@@ -125,6 +125,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 return Convert.ToBase64String(byteArray);
             }
+            if (inputValue is DateTime)
+            {
+                return DateTime.Parse(inputValue.ToString());
+            }
+            if (inputValue is DateTimeOffset)
+            {
+                return DateTimeOffset.Parse(inputValue.ToString());
+            }
             try
             {
                 return JObject.FromObject(inputValue);

@@ -120,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Dictionary<string, object> bindingData = new Dictionary<string, object>();
             bindingData["dequeueCount"] = 4;
             bindingData["VisibleTime"] = new DateTime(2019, 10, 1);
+            bindingData["VisibleTimeOffset"] = new DateTimeOffset(new DateTime(2019, 10, 1));
             bindingData["helloString"] = "helloMetadata";
             return bindingData;
         }
