@@ -32,10 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");
+
+            workerProcess.BuildAndLogConsoleLog("LanguageWorkerConsoleLog[Test worker log]", LogLevel.Information);
+
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var allLogs = _testLogger.GetLogMessages();
-            Assert.True(allLogs.Count == 3);
+            Assert.True(allLogs.Count == 4);
             VerifyLogLevel(allLogs, "Test Error Message", LogLevel.Error);
             VerifyLogLevel(allLogs, "Test Warning Message", LogLevel.Warning);
             if (useStdErrForErroLogsOnly)
@@ -46,12 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Information);
             }
+
+            VerifyLogLevel(allLogs, "[Test worker log]", LogLevel.Debug);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();
             Assert.NotNull(message);
+            Assert.DoesNotContain(WorkerConstants.LanguageWorkerConsoleLogPrefix, message.FormattedMessage);
             Assert.Equal(expectedLevel, message.Level);
         }
     }

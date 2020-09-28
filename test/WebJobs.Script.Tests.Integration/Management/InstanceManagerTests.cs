@@ -287,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(result);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/6643")]
         public async Task ValidateContext_InvalidZipUrl_WebsiteUseZip_ReturnsError()
         {
             var environment = new Dictionary<string, string>()

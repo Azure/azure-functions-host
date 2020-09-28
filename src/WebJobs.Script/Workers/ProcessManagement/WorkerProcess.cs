@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
-        private void BuildAndLogConsoleLog(string msg, LogLevel level)
+        internal void BuildAndLogConsoleLog(string msg, LogLevel level)
         {
             ConsoleLog consoleLog = new ConsoleLog()
             {
@@ -166,8 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             };
             if (WorkerProcessUtilities.IsConsoleLog(msg))
             {
-                consoleLog.Message = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                _workerProcessLogger?.Log(level, msg);
+                _workerProcessLogger?.LogDebug(WorkerProcessUtilities.RemoveLogPrefix(msg));
             }
             else
             {

@@ -51,7 +51,7 @@
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="2.0.14118" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="2.0.14361" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
@@ -109,13 +109,15 @@
     <None Remove="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
     <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
     <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
+    <None Remove="Resources\FileProvisioning\PowerShell\profile.ps1" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1">
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1"/>
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\profile.ps1">
     <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

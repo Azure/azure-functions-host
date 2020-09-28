@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             //await WaitForMobileTableRecordAsync("Item", id);
         }
 
-        [Fact]
+        [Fact(Skip = "Disabled due to https://github.com/Azure/azure-functions-host/issues/6523")]
         public async Task FunctionLogging_Succeeds()
         {
             Fixture.Host.ClearLogMessages();

@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Disabled due to https://github.com/Azure/azure-functions-host/issues/6522")]
         public async Task Specialization_ThreadUtilization()
         {
             var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
