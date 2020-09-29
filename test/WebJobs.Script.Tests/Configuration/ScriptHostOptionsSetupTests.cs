@@ -161,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
             if (string.IsNullOrEmpty(delayInterval) || string.IsNullOrEmpty(maxRetryCount))
             {
-                Assert.Throws<ArgumentOutOfRangeException>(() => GetConfiguredOptions(settings));
+                Assert.Throws<ArgumentNullException>(() => GetConfiguredOptions(settings));
                 return;
             }
             if (throwsError)
@@ -197,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
             if (string.IsNullOrEmpty(minimumInterval) || string.IsNullOrEmpty(maximumInterval))
             {
-                Assert.Throws<ArgumentOutOfRangeException>(() => GetConfiguredOptions(settings));
+                Assert.Throws<ArgumentNullException>(() => GetConfiguredOptions(settings));
                 return;
             }
             var minIntervalTimeSpan = TimeSpan.Parse(minimumInterval);
