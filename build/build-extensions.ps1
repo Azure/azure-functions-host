@@ -5,8 +5,7 @@ param (
   [string]$commitHash = "N/A"
 )
 
-$currentDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$rootDir = Split-Path -Parent $currentDir
+$rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
@@ -50,6 +49,12 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $suffixCmd = ""
     if ($hasSuffix) {
       $suffixCmd = "/p:VersionSuffix=$suffix"
+    }
+
+    $projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
+    if (-not (Test-Path $projectPath))
+    {
+        throw "Project path '$projectPath' does not exist."
     }
 
     $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
