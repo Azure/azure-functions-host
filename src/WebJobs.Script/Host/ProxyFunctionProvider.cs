@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class ProxyFunctionProvider : IFunctionProvider, IDisposable
     {
-        private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ProxyNameValidationRegex = new Regex(@"[^a-zA-Z0-9_-]", RegexOptions.IgnoreCase);
         private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IEnvironment _environment;
