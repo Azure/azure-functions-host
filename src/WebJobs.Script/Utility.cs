@@ -776,27 +776,31 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return;
             }
+            if (!retryOptions.MaxRetryCount.HasValue)
+            {
+                throw new ArgumentNullException(nameof(retryOptions.MaxRetryCount));
+            }
             switch (retryOptions.Strategy)
             {
                 case RetryStrategy.FixedDelay:
-                    if (retryOptions.DelayInterval.Ticks <= 0)
+                    if (!retryOptions.DelayInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create FixedDelayRetryAttribute are valid
-                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount, retryOptions.DelayInterval.ToString());
+                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.DelayInterval.ToString());
                     break;
                 case RetryStrategy.ExponentialBackoff:
-                    if (retryOptions.MinimumInterval.Ticks <= 0)
+                    if (!retryOptions.MinimumInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
-                    if (retryOptions.MaximumInterval.Ticks <= 0)
+                    if (!retryOptions.MaximumInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create ExponentialBackoffRetryAttribute are valid
-                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
+                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
         }
