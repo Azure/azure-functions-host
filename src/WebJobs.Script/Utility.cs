@@ -792,6 +792,35 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string ReadAutorestGeneratedJson(string rootScriptPath)
+        {
+            string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
+            string autorestGeneratedJsonPathContents;
+            JObject autorestGeneratedJson;
+
+            try
+            {
+                autorestGeneratedJsonPathContents = FileUtility.ReadAllText(autorestGeneratedJsonPath);
+            }
+            catch (FileNotFoundException)
+            {
+                // If we dont find the .autorest_generated.json in the function app, we just return empty string.
+                return string.Empty;
+            }
+
+            try
+            {
+                autorestGeneratedJson = JObject.Parse(autorestGeneratedJsonPathContents);
+            }
+            catch (JsonException ex)
+            {
+                // This is an error Stencil plugins should know about and not generate.
+                throw new FormatException($"Unable to parse autorest configuration file '{autorestGeneratedJsonPath}' with content '{autorestGeneratedJsonPathContents}'.", ex);
+            }
+
+            return autorestGeneratedJson.ToString();
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;
