@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IEnvironment _environment;
-        private readonly IScriptJobHostEnvironment _scriptJobHostEnvironment;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly int _debounceSeconds = 10;
         private readonly int _maxAllowedProcessCount = 10;
         private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
@@ -53,11 +54,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
             IEnvironment environment,
-            IScriptJobHostEnvironment scriptJobHostEnvironment,
+            IApplicationLifetime applicationLifetime,
             IScriptEventManager eventManager,
             ILoggerFactory loggerFactory,
             IRpcWorkerChannelFactory rpcWorkerChannelFactory,
-            IOptions<LanguageWorkerOptions> languageWorkerOptions,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
@@ -66,12 +67,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
             _environment = environment;
-            _scriptJobHostEnvironment = scriptJobHostEnvironment;
+            _applicationLifetime = applicationLifetime;
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
-            _managedDependencyOptions = managedDependencyOptions;
+            _workerConfigs = languageWorkerOptions.CurrentValue.WorkerConfigs;
+            _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
@@ -82,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
 
             State = FunctionInvocationDispatcherState.Default;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
                .Subscribe(WorkerError);
@@ -93,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
+
+        public int ErrorEventsThreshold { get; private set; }
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
@@ -109,23 +113,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
-            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _managedDependencyOptions);
+            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _workerConfigs);
             rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
-                 {
-                     if (workerInitTask.IsCompleted)
-                     {
-                         _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                         rpcWorkerChannel.SendFunctionLoadRequests();
-                         State = FunctionInvocationDispatcherState.Initialized;
-                     }
-                     else
-                     {
-                         _logger.LogWarning("Failed to start language worker process for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                     }
-                 });
+            {
+                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
+                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
             return Task.CompletedTask;
+        }
+
+        private void SetFunctionDispatcherStateToInitializedAndLog()
+        {
+            State = FunctionInvocationDispatcherState.Initialized;
+            // Do not change this log message. Vs Code relies on this to figure out when to attach debuger to the worker process.
+            _logger.LogInformation("Worker process started and initialized.");
         }
 
         internal async void InitializeWebhostLanguageWorkerChannel()
@@ -133,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             workerChannel.SetupFunctionInvocationBuffers(_functions);
-            workerChannel.SendFunctionLoadRequests();
+            workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
         }
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
@@ -153,6 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (_environment.IsPlaceholderModeEnabled())
             {
                 return;
@@ -171,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (functions == null || functions.Count() == 0)
             {
-                // do not initialize function dispachter if there are no functions
+                // do not initialize function dispatcher if there are no functions
                 return;
             }
 
@@ -190,18 +196,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
                                 initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                initializedLanguageWorkerChannel.SendFunctionLoadRequests();
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
                             }
                             catch (Exception ex)
                             {
                                 _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId);
+                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
                                 InitializeWebhostLanguageWorkerChannel();
                             }
                         }
                     }
                     StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                    State = FunctionInvocationDispatcherState.Initialized;
+                    SetFunctionDispatcherStateToInitializedAndLog();
                 }
                 else
                 {
@@ -209,6 +215,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     StartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannelAsync);
                 }
             }
+        }
+
+        public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
+        {
+            var workerChannels = (await GetInitializedWorkerChannelsAsync()).ToArray();
+            _logger.LogDebug($"[HostMonitor] Checking worker statuses (Count={workerChannels.Length})");
+
+            // invoke the requests to each channel in parallel
+            var workerStatuses = new Dictionary<string, WorkerStatus>(StringComparer.OrdinalIgnoreCase);
+            var tasks = new List<Task<WorkerStatus>>();
+            foreach (var channel in workerChannels)
+            {
+                tasks.Add(channel.GetWorkerStatusAsync());
+            }
+
+            await Task.WhenAll(tasks);
+
+            for (int i = 0; i < workerChannels.Length; i++)
+            {
+                var workerChannel = workerChannels[i];
+                var workerStatus = tasks[i].Result;
+                _logger.LogDebug($"[HostMonitor] Worker status: ID={workerChannel.Id}, Latency={Math.Round(workerStatus.Latency.TotalMilliseconds)}ms");
+                workerStatuses.Add(workerChannel.Id, workerStatus);
+            }
+
+            return workerStatuses;
         }
 
         public async Task ShutdownAsync()
@@ -230,47 +262,47 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
-            try
+            // This could throw if no initialized workers are found. Shut down instance and retry.
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
+            var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
+            if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.GetFunctionId(), out BufferBlock<ScriptInvocationContext> bufferBlock))
             {
-                IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync();
-                var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels, _maxProcessCount);
-                if (rpcWorkerChannel.FunctionInputBuffers.TryGetValue(invocationContext.FunctionMetadata.FunctionId, out BufferBlock<ScriptInvocationContext> bufferBlock))
-                {
-                    _logger.LogDebug("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
-                    rpcWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.FunctionId].Post(invocationContext);
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {rpcWorkerChannel.Id}");
-                }
+                _logger.LogTrace("Posting invocation id:{InvocationId} on workerId:{workerChannelId}", invocationContext.ExecutionContext.InvocationId, rpcWorkerChannel.Id);
+                rpcWorkerChannel.FunctionInputBuffers[invocationContext.FunctionMetadata.GetFunctionId()].Post(invocationContext);
             }
-            catch (Exception invokeEx)
+            else
             {
-                invocationContext.ResultSource.TrySetException(invokeEx);
+                throw new InvalidOperationException($"Function:{invocationContext.FunctionMetadata.Name} is not loaded by the language worker: {rpcWorkerChannel.Id}");
             }
         }
 
-        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetAllWorkerChannelsAsync()
         {
-            Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+            var webhostChannelDictionary = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
             List<IRpcWorkerChannel> webhostChannels = null;
             if (webhostChannelDictionary != null)
             {
                 webhostChannels = new List<IRpcWorkerChannel>();
-                foreach (string workerId in webhostChannelDictionary.Keys)
+                foreach (var pair in webhostChannelDictionary)
                 {
-                    if (webhostChannelDictionary.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
-                    {
-                        webhostChannels.Add(await initializedLanguageWorkerChannelTask.Task);
-                    }
+                    var workerChannel = await pair.Value.Task;
+                    webhostChannels.Add(workerChannel);
                 }
             }
+
             IEnumerable<IRpcWorkerChannel> workerChannels = webhostChannels == null ? _jobHostLanguageWorkerChannelManager.GetChannels() : webhostChannels.Union(_jobHostLanguageWorkerChannelManager.GetChannels());
-            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.State == RpcWorkerChannelState.Initialized);
+            return workerChannels;
+        }
+
+        internal async Task<IEnumerable<IRpcWorkerChannel>> GetInitializedWorkerChannelsAsync()
+        {
+            IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
+            IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             if (initializedWorkers.Count() > _maxProcessCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
             }
+
             return initializedWorkers;
         }
 
@@ -278,9 +310,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (!_disposing)
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                AddOrUpdateErrorBucket(workerError);
-                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId);
+                if (string.Equals(_workerRuntime, workerError.Language))
+                {
+                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                    AddOrUpdateErrorBucket(workerError);
+                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
+                }
+                else
+                {
+                    _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                }
             }
         }
 
@@ -293,24 +333,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId)
+        private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException = null)
         {
-            bool isWebHostChannel = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId);
-            bool isJobHostChannel = false;
-            if (!isWebHostChannel)
+            _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: {channelId}, runtime:{language}", workerId, runtime);
+
+            bool isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
+            bool isJobHostChannelDisposed = false;
+            if (!isWebHostChannelDisposed)
             {
-                _logger.LogDebug("Disposing channel for workerId: {channelId}, for runtime:{language}", workerId, runtime);
-                var channel = _jobHostLanguageWorkerChannelManager.GetChannels().Where(ch => ch.Id == workerId).FirstOrDefault();
-                if (channel != null)
-                {
-                    isJobHostChannel = true;
-                    _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannel(channel);
-                }
+                isJobHostChannelDisposed = await _jobHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(workerId, workerException);
             }
-            if (ShouldRestartWorkerChannel(runtime, isWebHostChannel, isJobHostChannel))
+
+            if (!isWebHostChannelDisposed && !isJobHostChannelDisposed)
             {
+                _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: {channelId}, runtime:{language}", workerId, runtime);
+            }
+
+            if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
+            {
+                // Set state to "WorkerProcessRestarting" if there are no other workers to handle work
+                if ((await GetInitializedWorkerChannelsAsync()).Count() == 0)
+                {
+                    State = FunctionInvocationDispatcherState.WorkerProcessRestarting;
+                    _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
+                }
+                // Restart worker channel
                 _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
                 await RestartWorkerChannel(runtime, workerId);
+                // State is set back to "Initialized" when worker channel is up again
+            }
+            else
+            {
+                _logger.LogDebug("Skipping worker channel restart for errored worker runtime:{runtime}, current runtime:{currentRuntime}, isWebHostChannel:{isWebHostChannel}, isJobHostChannel:{isJobHostChannel}",
+                    runtime, _workerRuntime, isWebHostChannelDisposed, isJobHostChannelDisposed);
             }
         }
 
@@ -321,14 +376,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task RestartWorkerChannel(string runtime, string workerId)
         {
-            if (_languageWorkerErrors.Count < 3 * _maxProcessCount)
+            if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
                 await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
             {
-                _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down Functions Host", runtime);
-                _scriptJobHostEnvironment.Shutdown();
+                _logger.LogError("Exceeded language worker restart retry count for runtime:{runtime}. Shutting down and proactively recycling the Functions Host to recover", runtime);
+                _applicationLifetime.StopApplication();
             }
         }
 
@@ -357,7 +412,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _workerRestartSubscription.Dispose();
                 _processStartCancellationToken.Cancel();
                 _processStartCancellationToken.Dispose();
-                _jobHostLanguageWorkerChannelManager.DisposeAndRemoveChannels();
+                _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+                State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
         }
@@ -365,7 +421,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Dispose()
         {
             _disposing = true;
+            State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
+        }
+
+        public async Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId)
+        {
+            // Dispose and restart errored channel with the particular invocation id
+            var channels = await GetInitializedWorkerChannelsAsync();
+            foreach (var channel in channels)
+            {
+                if (channel.IsExecutingInvocation(invocationId))
+                {
+                    _logger.LogInformation($"Restarting channel '{channel.Id}' that is executing invocation '{invocationId}' and timed out.");
+                    await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

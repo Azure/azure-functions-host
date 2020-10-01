@@ -10,7 +10,6 @@ using System.Net.Http.Formatting;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
@@ -28,15 +27,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public const string AcceptHeaderValue = "text/plain";
         public const string HttpContentStringValue = "hello world";
         public const string HttpResponseContentStringValue = "hello world response";
+        public const string HttpResponseNotFoundValue = "Route not found";
 
-        public static HttpRequest GetTestHttpRequest()
+        public static HttpRequest GetTestHttpRequest(string host = "localhost")
         {
             var httpRequest = new DefaultHttpContext().Request;
             httpRequest.Method = "GET";
+            httpRequest.Scheme = "http";
+            httpRequest.Host = new HostString(host);
             httpRequest.Query = GetTestQueryParams();
             httpRequest.Headers[HeaderNames.AcceptCharset] = UTF8AcceptCharset;
             httpRequest.Headers[HeaderNames.Accept] = AcceptHeaderValue;
-
             var json = JsonConvert.SerializeObject(HttpContentStringValue);
             var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
             httpRequest.Body = stream;
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
         public static List<(string name, DataType type, object val)> GetSimpleHttpTriggerScriptInvocationInputs()
         {
             List<(string name, DataType type, object val)> inputs = new List<(string name, DataType type, object val)>();
-            inputs.Add(("myqueueItem", DataType.String, GetTestHttpRequest()));
+            inputs.Add(("testInputReq", DataType.String, GetTestHttpRequest()));
             return inputs;
         }
 
@@ -119,6 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             Dictionary<string, object> bindingData = new Dictionary<string, object>();
             bindingData["dequeueCount"] = 4;
             bindingData["VisibleTime"] = new DateTime(2019, 10, 1);
+            bindingData["VisibleTimeOffset"] = new DateTimeOffset(new DateTime(2019, 10, 1));
             bindingData["helloString"] = "helloMetadata";
             return bindingData;
         }
@@ -128,6 +130,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ObjectContent<HttpScriptInvocationResult>(GetTestHttpScriptInvocationResult(), new JsonMediaTypeFormatter())
+            };
+        }
+
+        public static HttpResponseMessage GetValidHttpResponseMessageWithJsonRes()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ObjectContent<HttpScriptInvocationResult>(GetHttpScriptInvocationResultWithJsonRes(), new JsonMediaTypeFormatter())
             };
         }
 
@@ -155,9 +165,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             };
         }
 
+        public static HttpResponseMessage GetSimpleNotFoundHttpResponseMessage()
+        {
+            return new HttpResponseMessage(HttpStatusCode.NotFound)
+            {
+                Content = new StringContent(HttpResponseNotFoundValue)
+            };
+        }
+
         public static HttpResponseMessage GetHttpResponseMessageWithStringContent()
         {
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("TestMessage") };
+        }
+
+        public static HttpResponseMessage GetValidHttpResponseMessage_JsonType_InvalidContent()
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Hello World", Encoding.UTF8, "application/json")
+            };
         }
 
         public static List<(string name, DataType type, object val)> GetScriptInvocationInputs()
@@ -241,6 +267,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
             functionMetadata.Bindings.Add(queueOutputRetrun);
             scriptInvocationContext.FunctionMetadata = functionMetadata;
             return scriptInvocationContext;
+        }
+
+        public static HttpScriptInvocationResult GetHttpScriptInvocationResultWithJsonRes()
+        {
+            JObject httpRes = new JObject();
+            httpRes["statusCode"] = "201";
+            httpRes["body"] = "my world";
+            return new HttpScriptInvocationResult()
+            {
+                Logs = new List<string>() { "invocation log1", "invocation log2" },
+                Outputs = new Dictionary<string, object>()
+                {
+                    { "res", httpRes }
+                }
+            };
         }
 
         public static ScriptInvocationContext GetSimpleHttpTriggerScriptInvocationContext(string functionName, Guid invocationId, ILogger testLogger)

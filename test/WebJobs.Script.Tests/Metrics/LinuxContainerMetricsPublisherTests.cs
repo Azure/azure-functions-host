@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
             loggerFactory.AddProvider(_testLoggerProvider);
 
             ILogger<LinuxContainerMetricsPublisher> logger = loggerFactory.CreateLogger<LinuxContainerMetricsPublisher>();
-            var hostNameProvider = new HostNameProvider(mockEnvironment.Object, new Mock<ILogger<HostNameProvider>>().Object);
+            var hostNameProvider = new HostNameProvider(mockEnvironment.Object);
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = true });
             _metricsPublisher = new LinuxContainerMetricsPublisher(mockEnvironment.Object, standbyOptions, logger, hostNameProvider, _httpClient);
             _testLoggerProvider.ClearAllLogMessages();
@@ -140,14 +140,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
                 _testFunctionActivity.EventTimeStamp,
                 _testFunctionActivity.StartTime);
 
-            Assert.Matches("Added function activity", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
-            Assert.Equal(LogLevel.Debug, _testLoggerProvider.GetAllLogMessages().Single().Level);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
 
             _testLoggerProvider.ClearAllLogMessages();
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
         }
 
         [Fact]
@@ -160,14 +159,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Metrics
 
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
             _metricsPublisher.OnFunctionMetricsPublishTimer(null);
-            Assert.Matches("Publishing", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Empty(_testLoggerProvider.GetAllLogMessages());
         }
 
         [Fact]
         public void SendRequest_FailsWithNullQueue()
         {
             ConcurrentQueue<string> testQueue = null;
-            Assert.Throws<NullReferenceException>(() => _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult());
+            _metricsPublisher.SendRequest(testQueue, "testPath").GetAwaiter().GetResult();
+            Assert.Matches("Failed to publish status to testPath", _testLoggerProvider.GetAllLogMessages().Single().FormattedMessage);
+            Assert.Matches("NullReferenceException", _testLoggerProvider.GetAllLogMessages().Single().Exception.ToString());
+            Assert.Equal(LogLevel.Error, _testLoggerProvider.GetAllLogMessages().Single().Level);
         }
 
         [Fact]

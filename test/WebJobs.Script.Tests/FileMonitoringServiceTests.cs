@@ -2,10 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
@@ -57,6 +57,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public static async Task HostRestarts_OnWatchFilesChange()
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+                File.Create(Path.Combine(tempDir, "my_watched_file.txt"));
+                File.Create(Path.Combine(tempDir, "my_ignored_file.txt"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "my_watched_file.txt" }
+                };
+
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
+
+                var ignoredFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "my_ignored_file.txt");
+                FileEvent ignoredFileEvent = new FileEvent("ScriptFiles", ignoredFileEventArgs);
+
+                var watchedFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "my_watched_file.txt");
+                FileEvent watchedFileEvent = new FileEvent("ScriptFiles", watchedFileEventArgs);
+
+                // Test
+                mockEventManager.Publish(ignoredFileEvent);
+                await Task.Delay(TimeSpan.FromSeconds(3));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+
+                mockEventManager.Publish(watchedFileEvent);
+                await Task.Delay(TimeSpan.FromSeconds(3));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+            }
+        }
+
         [Theory]
         [InlineData("app_offline.htm", 150, true, false)]
         [InlineData("app_offline.htm", 10, true, false)]
@@ -76,15 +123,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     RootLogPath = tempDir,
                     RootScriptPath = tempDir,
-                    FileWatchingEnabled = true
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "host.json" }
                 };
                 var loggerFactory = new LoggerFactory();
-                var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
                 var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
 
                 // Act
                 FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
-                    loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
                 await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
 
                 var offlineEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, fileName);
@@ -100,20 +150,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // Test
                 if (expectShutdown)
                 {
-                    mockWebHostEnvironment.Verify(m => m.Shutdown());
+                    mockApplicationLifetime.Verify(m => m.StopApplication());
                 }
                 else
                 {
-                    mockWebHostEnvironment.Verify(m => m.Shutdown(), Times.Never);
+                    mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
                 }
 
                 if (expectRestart)
                 {
-                    mockWebHostEnvironment.Verify(m => m.RestartHost());
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
                 }
                 else
                 {
-                    mockWebHostEnvironment.Verify(m => m.RestartHost(), Times.Never);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
                 }
             }
         }
@@ -129,11 +179,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 FileWatchingEnabled = true
             };
             var loggerFactory = new LoggerFactory();
-            var mockWebHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Loose);
+            var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+            var mockScriptHostManager = new Mock<IScriptHostManager>();
             var mockEventManager = new ScriptEventManager();
+            var environment = new TestEnvironment();
 
             // Act
-            return new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), loggerFactory, mockEventManager, mockWebHostEnvironment.Object);
+            return new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
         }
     }
 }

@@ -9,11 +9,13 @@ using System.Globalization;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -31,18 +33,47 @@ namespace Microsoft.Azure.WebJobs.Script
         // i.e.: "f-<functionname>"
         public const string AssemblyPrefix = "f-";
         public const string AssemblySeparator = "__";
-        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
-        private static readonly string[] _allowedFunctionNameKeys = new[]
-        {
-            "functionName",
-            LogConstants.NameKey,
-            ScopeKeys.FunctionName
-        };
 
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
+
+        public static int ColdStartDelayMS { get; set; } = 5000;
+
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        internal static T GetHierarchicalAttributeOrNull<T>(MethodInfo method) where T : Attribute
+        {
+            return (T)GetHierarchicalAttributeOrNull(method, typeof(T));
+        }
+
+        /// <summary>
+        /// Walk from the method up to the containing type, looking for an instance
+        /// of the specified attribute type, returning it if found.
+        /// </summary>
+        /// <param name="method">The method to check.</param>
+        /// <param name="type">The attribute type to look for.</param>
+        internal static Attribute GetHierarchicalAttributeOrNull(MethodInfo method, Type type)
+        {
+            var attribute = method.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            attribute = method.DeclaringType.GetCustomAttribute(type);
+            if (attribute != null)
+            {
+                return attribute;
+            }
+
+            return null;
+        }
 
         internal static async Task InvokeWithRetriesAsync(Action action, int maxRetries, TimeSpan retryInterval)
         {
@@ -81,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="pollingIntervalMilliseconds">The polling interval.</param>
         /// <param name="condition">The condition to check</param>
         /// <returns>A Task representing the delay.</returns>
-        internal static Task DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
+        internal static Task<bool> DelayAsync(int timeoutSeconds, int pollingIntervalMilliseconds, Func<bool> condition)
         {
             Task<bool> Condition() => Task.FromResult(condition());
             return DelayAsync(timeoutSeconds, pollingIntervalMilliseconds, Condition, CancellationToken.None);
@@ -409,21 +440,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool GetStateBoolValue(IEnumerable<KeyValuePair<string, object>> state, string key)
         {
-            if (state == null)
-            {
-                return false;
-            }
-
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
-            {
-                return false;
-            }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return Convert.ToBoolean(kvps.Last().Value);
+            return GetStateValueOrDefault<bool>(state, key);
         }
 
         public static TValue GetStateValueOrDefault<TValue>(IEnumerable<KeyValuePair<string, object>> state, string key)
@@ -433,28 +450,39 @@ namespace Microsoft.Azure.WebJobs.Script
                 return default(TValue);
             }
 
-            var kvps = state.Where(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
-
-            if (!kvps.Any())
+            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
+            // this, we shouldn't have conflicts.
+            var value = state.LastOrDefault(k => string.Equals(k.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (value.Equals(default(KeyValuePair<string, object>)))
             {
                 return default(TValue);
             }
-
-            // Choose the last one rather than throwing for multiple hits. Since we use our own keys to track
-            // this, we shouldn't have conflicts.
-            return (TValue)kvps.Last().Value;
+            else
+            {
+                return (TValue)value.Value;
+            }
         }
 
-        public static string ResolveFunctionName(IEnumerable<KeyValuePair<string, object>> stateProps, IDictionary<string, object> scopeProps)
+        public static bool TryGetFunctionName(IDictionary<string, object> scopeProps, out string functionName)
         {
-            // State wins, then scope. To find function name, we'll look for any of these values.
-            // "last" wins with state values, so reverse it.
-            var firstKvp = stateProps
-                .Reverse()
-                .Concat(scopeProps)
-                .FirstOrDefault(p => _allowedFunctionNameKeys.Contains(p.Key));
+            functionName = null;
 
-            return firstKvp.Value?.ToString();
+            object scopeValue = null;
+            if ((scopeProps.TryGetValue("functionName", out scopeValue) ||
+                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue) ||
+                 scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue)) && scopeValue != null)
+            {
+                functionName = scopeValue.ToString();
+            }
+
+            return functionName != null;
+        }
+
+        public static bool IsFunctionName(KeyValuePair<string, object> p)
+        {
+            return string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
@@ -466,7 +494,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return null;
         }
 
-        public static string GetAssemblyNameFromMetadata(Description.FunctionMetadata metadata, string suffix)
+        public static string GetAssemblyNameFromMetadata(FunctionMetadata metadata, string suffix)
         {
             return AssemblyPrefix + metadata.Name + AssemblySeparator + suffix.GetHashCode().ToString();
         }
@@ -504,17 +532,15 @@ namespace Microsoft.Azure.WebJobs.Script
             return true;
         }
 
-        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker)
+        internal static void VerifyFunctionsMatchSpecifiedLanguage(IEnumerable<FunctionMetadata> functions, string workerRuntime, bool isPlaceholderMode, bool isHttpWorker, CancellationToken cancellationToken)
         {
-            if (isPlaceholderMode)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (isPlaceholderMode || isHttpWorker)
             {
                 return;
             }
-            if (isHttpWorker)
-            {
-                // Do not enforce langauge for http worker
-                return;
-            }
+
             if (!IsSingleLanguage(functions, workerRuntime))
             {
                 if (string.IsNullOrEmpty(workerRuntime))
@@ -534,24 +560,29 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 throw new ArgumentNullException(nameof(functions));
             }
-            var functionsListWithoutProxies = functions.Where(f => f.IsProxy == false).ToArray();
-            if (functionsListWithoutProxies.Length == 0)
+            var filteredFunctions = functions.Where(f => !f.IsCodeless()).ToArray();
+            if (filteredFunctions.Length == 0)
             {
                 return true;
             }
             if (string.IsNullOrEmpty(workerRuntime))
             {
-                return functionsListWithoutProxies.Select(f => f.Language).Distinct().Count() <= 1;
+                return filteredFunctions.Select(f => f.Language).Distinct().Count() <= 1;
             }
-            return ContainsFunctionWithWorkerRuntime(functionsListWithoutProxies, workerRuntime);
+            return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
         {
             if (IsSingleLanguage(functions, null))
             {
-                var functionsListWithoutProxies = functions?.Where(f => f.IsProxy == false);
-                string functionLanguage = functionsListWithoutProxies.FirstOrDefault()?.Language;
+                var filteredFunctions = functions?.Where(f => !f.IsCodeless());
+                string functionLanguage = filteredFunctions.FirstOrDefault()?.Language;
+                if (string.IsNullOrEmpty(functionLanguage))
+                {
+                    return null;
+                }
+
                 if (IsDotNetLanguageFunction(functionLanguage))
                 {
                     return RpcWorkerConstants.DotNetLanguageWorkerName;
@@ -571,7 +602,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return true;
             }
-            return functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)
@@ -592,7 +623,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             if (functions != null && functions.Any())
             {
-                return functions.Any(f => f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
+                return functions.Any(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase));
             }
             return false;
         }
@@ -641,6 +672,30 @@ namespace Microsoft.Azure.WebJobs.Script
                 return true;
             }
             return false;
+        }
+
+        public static void ExecuteAfterDelay(Action targetAction, TimeSpan delay, CancellationToken cancellationToken = default)
+        {
+            Task.Delay(delay, cancellationToken).ContinueWith(_ =>
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    targetAction();
+                }
+            }, TaskContinuationOptions.OnlyOnRanToCompletion);
+        }
+
+        public static void ExecuteAfterColdStartDelay(IEnvironment environment, Action targetAction, CancellationToken cancellationToken = default)
+        {
+            // for Dynamic SKUs where coldstart is important, we want to delay the action
+            if (environment.IsDynamicSku())
+            {
+                ExecuteAfterDelay(targetAction, TimeSpan.FromMilliseconds(ColdStartDelayMS), cancellationToken);
+            }
+            else
+            {
+                targetAction();
+            }
         }
 
         public static bool TryCleanUrl(string url, out string cleaned)
@@ -694,9 +749,51 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static string BuildStorageConnectionString(string accountName, string accessKey)
+        public static string BuildStorageConnectionString(string accountName, string accessKey, string suffix)
         {
-            return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accessKey}";
+            return $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accessKey};EndpointSuffix={suffix}";
+        }
+
+        public static bool IsMediaTypeOctetOrMultipart(MediaTypeHeaderValue mediaType)
+        {
+            return mediaType != null && (string.Equals(mediaType.MediaType, ScriptConstants.MediatypeOctetStream, StringComparison.OrdinalIgnoreCase) ||
+                            mediaType.MediaType.IndexOf(ScriptConstants.MediatypeMutipartPrefix, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        public static void ValidateRetryOptions(RetryOptions
+            retryOptions)
+        {
+            if (retryOptions == null)
+            {
+                return;
+            }
+            if (!retryOptions.MaxRetryCount.HasValue)
+            {
+                throw new ArgumentNullException(nameof(retryOptions.MaxRetryCount));
+            }
+            switch (retryOptions.Strategy)
+            {
+                case RetryStrategy.FixedDelay:
+                    if (!retryOptions.DelayInterval.HasValue)
+                    {
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
+                    }
+                    // ensure values specified to create FixedDelayRetryAttribute are valid
+                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.DelayInterval.ToString());
+                    break;
+                case RetryStrategy.ExponentialBackoff:
+                    if (!retryOptions.MinimumInterval.HasValue)
+                    {
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
+                    }
+                    if (!retryOptions.MaximumInterval.HasValue)
+                    {
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
+                    }
+                    // ensure values specified to create ExponentialBackoffRetryAttribute are valid
+                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
+                    break;
+            }
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

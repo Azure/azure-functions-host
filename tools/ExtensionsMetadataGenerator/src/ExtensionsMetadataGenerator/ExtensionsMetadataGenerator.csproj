@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
   <Import Project="..\..\build\metadatagenerator.props" />
   <PropertyGroup>
-    <Version>1.1.2</Version>
+    <Version>1.2.0</Version>
     <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0;net46</TargetFrameworks>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator</AssemblyName>
@@ -11,7 +11,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <IsPackable>true</IsPackable>
-    <BeforePack>Build;PackReferenceAssemblies</BeforePack>
+    <BeforePack>PackReferenceAssemblies</BeforePack>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +29,10 @@
     </Content>
   </ItemGroup>
 
+  <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
+    <Exec Command="powershell.exe –command .\updateruntimeassemblies.ps1" />
+  </Target>
+  
   <Target Name="PackReferenceAssemblies">
     <ItemGroup>
       <Content Include="$(OutputPath)\netstandard2.0\generator\*">
@@ -41,10 +45,24 @@
       </Content>
     </ItemGroup>
   </Target>
-  
+
   <ItemGroup>
-    <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409" />
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409" />
+    <None Remove="runtimeassemblies.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="runtimeassemblies.txt">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Build.Framework" Version="15.3.409">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="15.3.409">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="StyleCop.Analyzers" Version="1.0.2">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -55,5 +73,4 @@
       <Version>4.3.0</Version>
     </PackageReference>
   </ItemGroup>
-  
 </Project>

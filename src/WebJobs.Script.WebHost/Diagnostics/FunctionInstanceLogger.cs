@@ -2,18 +2,18 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
@@ -23,18 +23,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const string Key = "metadata";
 
         private readonly ILogWriter _writer;
-        private readonly IProxyMetadataManager _proxyMetadataManager;
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
 
         public FunctionInstanceLogger(
             IFunctionMetadataManager metadataManager,
-            IProxyMetadataManager proxyMetadataManager,
             IMetricsLogger metrics,
             IHostIdProvider hostIdProvider,
             IConfiguration configuration,
-            ILoggerFactory loggerFactory)
-            : this(metadataManager, proxyMetadataManager, metrics)
+            ILoggerFactory loggerFactory,
+            IDelegatingHandlerProvider delegatingHandlerProvider)
+            : this(metadataManager, metrics)
         {
             if (hostIdProvider == null)
             {
@@ -51,11 +50,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
+            if (delegatingHandlerProvider == null)
+            {
+                throw new ArgumentNullException(nameof(delegatingHandlerProvider));
+            }
+
             string accountConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Dashboard);
             if (accountConnectionString != null)
             {
                 CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
-                var client = account.CreateCloudTableClient();
+                var restConfig = new RestExecutorConfiguration { DelegatingHandler = delegatingHandlerProvider.Create() };
+                var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
+
+                var client = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
                 var tableProvider = LogFactory.NewLogTableProvider(client);
 
                 ILogger logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
@@ -66,43 +73,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        internal FunctionInstanceLogger(IFunctionMetadataManager metadataManager, IProxyMetadataManager proxyMetadataManager, IMetricsLogger metrics)
+        internal FunctionInstanceLogger(IFunctionMetadataManager metadataManager, IMetricsLogger metrics)
         {
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-            _proxyMetadataManager = proxyMetadataManager ?? throw new ArgumentNullException(nameof(proxyMetadataManager));
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
         }
 
         public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
-            FunctionInstanceMonitor state;
-            item.Properties.TryGetValue(Key, out state);
-
-            if (item.EndTime.HasValue)
+            if (item.IsStart)
             {
-                // Completed
-                bool success = item.ErrorDetails == null;
-                state.End(success);
+                StartFunction(item);
             }
-            else
+            else if (item.IsCompleted)
             {
-                // Started
-                if (state == null)
-                {
-                    string shortName = Utility.GetFunctionShortName(item.FunctionName);
-                    FunctionMetadata function = GetFunctionMetadata(shortName);
-
-                    if (function == null)
-                    {
-                        // This exception will cause the function to not get executed.
-                        throw new InvalidOperationException($"Missing function.json for '{shortName}'.");
-                    }
-                    state = new FunctionInstanceMonitor(function, _metrics, item.FunctionInstanceId);
-
-                    item.Properties[Key] = state;
-
-                    state.Start();
-                }
+                EndFunction(item);
             }
 
             if (_writer != null)
@@ -110,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 await _writer.AddAsync(new FunctionInstanceLogItem
                 {
                     FunctionInstanceId = item.FunctionInstanceId,
-                    FunctionName = Utility.GetFunctionShortName(item.FunctionName),
+                    FunctionName = item.LogName,
                     StartTime = item.StartTime,
                     EndTime = item.EndTime,
                     TriggerReason = item.TriggerReason,
@@ -122,15 +107,46 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        private FunctionMetadata GetFunctionMetadata(string functionName)
+        private void StartFunction(FunctionInstanceLogEntry item)
         {
-            FunctionMetadata GetMetadataFromCollection(IEnumerable<FunctionMetadata> functions)
+            if (_metadataManager.TryGetFunctionMetadata(item.LogName, out FunctionMetadata function))
             {
-                return functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));
+                var startedEvent = new FunctionStartedEvent(item.FunctionInstanceId, function);
+                _metrics.BeginEvent(startedEvent);
+
+                var invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, function);
+                item.Properties[Key] = (startedEvent, invokeLatencyEvent);
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unable to load metadata for function '{item.LogName}'.");
+            }
+        }
+
+        private void EndFunction(FunctionInstanceLogEntry item)
+        {
+            item.Properties.TryGetValue(Key, out (FunctionStartedEvent, object) invocationTuple);
+
+            bool success = item.ErrorDetails == null;
+            var startedEvent = invocationTuple.Item1;
+            startedEvent.Success = success;
+
+            var function = startedEvent.FunctionMetadata;
+            string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
+            string functionName = function != null ? function.Name : string.Empty;
+            string data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
+
+            startedEvent.Data = data;
+            _metrics.EndEvent(startedEvent);
+
+            var invokeLatencyEvent = invocationTuple.Item2;
+            if (invokeLatencyEvent is MetricEvent metricEvent)
+            {
+                metricEvent.Data = data;
             }
 
-            return GetMetadataFromCollection(_metadataManager.Functions)
-                ?? GetMetadataFromCollection(_proxyMetadataManager.ProxyMetadata.Functions);
+            _metrics.EndEvent(invokeLatencyEvent);
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
@@ -139,13 +155,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 return Task.CompletedTask;
             }
+
             return _writer.FlushAsync();
         }
 
         public static void OnException(Exception exception, ILogger logger)
         {
-            string errorString = $"Error writing logs to table storage: {exception.ToString()}";
-            logger.LogError(errorString, exception);
+            logger.LogError($"Error writing logs to table storage: {exception.ToString()}", exception);
         }
     }
 }

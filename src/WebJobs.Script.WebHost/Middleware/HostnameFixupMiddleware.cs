@@ -3,6 +3,7 @@
 
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
@@ -10,18 +11,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly ILogger _logger;
 
-        public HostnameFixupMiddleware(RequestDelegate next, HostNameProvider hostNameProvider)
+        public HostnameFixupMiddleware(RequestDelegate next, HostNameProvider hostNameProvider, ILogger<HostnameFixupMiddleware> logger)
         {
             _next = next;
             _hostNameProvider = hostNameProvider;
+            _logger = logger;
         }
 
-        public async Task Invoke(HttpContext context)
+        public Task Invoke(HttpContext context)
         {
-            _hostNameProvider.Synchronize(context.Request);
-
-            await _next.Invoke(context);
+            _hostNameProvider.Synchronize(context.Request, _logger);
+            return _next.Invoke(context);
         }
     }
 }

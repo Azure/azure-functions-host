@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     c.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=some_other_key" },
                         { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SamplingSettings", "IsEnabled"), "false" },
                         { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SnapshotConfiguration", "IsEnabled"), "false" }
                     });
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 ApplicationInsightsLoggerOptions appInsightsOptions = host.Services.GetService<IOptions<ApplicationInsightsLoggerOptions>>().Value;
 
                 Assert.Equal("some_key", appInsightsOptions.InstrumentationKey);
+                Assert.Equal("InstrumentationKey=some_other_key", appInsightsOptions.ConnectionString);
                 Assert.Null(appInsightsOptions.SamplingSettings);
                 Assert.False(appInsightsOptions.SnapshotConfiguration.IsEnabled);
             }
@@ -186,11 +188,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(4, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
-                loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }
@@ -206,12 +207,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(6, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ConsoleLoggerProvider>().Single();
-                loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }
@@ -233,12 +233,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(6, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ConsoleLoggerProvider>().Single();
-                loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }
@@ -260,12 +259,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(6, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ApplicationInsightsLoggerProvider>().Single();
-                loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }
@@ -286,11 +284,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(4, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
-                loggerProviders.OfType<UserLogMetricsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }

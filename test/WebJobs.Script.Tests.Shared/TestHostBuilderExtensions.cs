@@ -2,14 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Tests;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -17,6 +20,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.WebJobs.Script.Tests
 {
@@ -48,13 +52,13 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IEventGenerator>(services);
             AddMockedSingleton<IFunctionInvocationDispatcherFactory>(services);
             AddMockedSingleton<IHttpWorkerService>(services);
-            AddMockedSingleton<AspNetCore.Hosting.IApplicationLifetime>(services);
+            AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
             services.AddLogging();
-            services.AddFunctionMetadataProvider(webHostOptions, metricsLogger);
+            services.AddFunctionMetadataManager(webHostOptions, metricsLogger);
             configureRootServices?.Invoke(services);
 
             var rootProvider = new WebHostServiceProvider(services);
@@ -81,19 +85,19 @@ namespace Microsoft.WebJobs.Script.Tests
             return services.AddSingleton<T>(mock.Object);
         }
 
-        private static IServiceCollection AddFunctionMetadataProvider(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
+        private static IServiceCollection AddFunctionMetadataManager(this IServiceCollection services, ScriptApplicationHostOptions options, IMetricsLogger metricsLogger)
         {
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            var workerOptions = new LanguageWorkerOptions
-            {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-            };
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, metricsLogger);
-            return services.AddSingleton<IFunctionMetadataProvider>(metadataProvider);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, metricsLogger);
+            var metadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, new List<IFunctionProvider>(), new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), new NullLoggerFactory(), new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+            services.AddSingleton<IFunctionMetadataManager>(metadataManager);
+            services.AddSingleton<IFunctionMetadataProvider>(metadataProvider);
+
+            return services;
         }
     }
 }

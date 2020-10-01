@@ -14,7 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public class RawAssemblyCompilation : IDotNetCompilation
     {
-        private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$", RegexOptions.Compiled);
+        // RegexOptions.Compiled is specifically removed as it impacts the cold start. The default uses interpreter.
+        private static readonly Regex _entryPointRegex = new Regex("^(?<typename>.*)\\.(?<methodname>\\S*)$");
         private readonly string _assemblyFilePath;
         private readonly string _entryPointName;
 
@@ -29,7 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(DotNetCompilationResult.FromPath(_assemblyFilePath));
+            DotNetCompilationResult result = null;
+            if (DependencyHelper.TryGetAssemblyReference(_assemblyFilePath, out string assemblyName))
+            {
+                result = DotNetCompilationResult.FromAssemblyName(assemblyName);
+            }
+            else
+            {
+                result = DotNetCompilationResult.FromPath(_assemblyFilePath);
+            }
+
+            return Task.FromResult(result);
         }
 
         public ImmutableArray<Diagnostic> GetDiagnostics() => ImmutableArray<Diagnostic>.Empty;

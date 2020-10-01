@@ -12,12 +12,12 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -102,17 +102,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await WaitForBlobAsync(blob, userMessageCallback: userMessageCallback);
 
             string result = await blob.DownloadTextAsync(Encoding.UTF8,
-                null, new BlobRequestOptions(), new Microsoft.WindowsAzure.Storage.OperationContext());
+                null, new BlobRequestOptions(), new OperationContext());
 
             return result;
         }
 
         public static async Task WaitForBlobAsync(CloudBlockBlob blob, Func<string> userMessageCallback = null)
         {
+            StringBuilder sb = new StringBuilder();
+
             await TestHelpers.Await(async () =>
             {
-                return await blob.ExistsAsync();
-            }, userMessageCallback: userMessageCallback);
+                bool exists = await blob.ExistsAsync();
+                sb.AppendLine($"{blob.Name} exists: {exists}.");
+                return exists;
+            },
+            pollingInterval: 500,
+            userMessageCallback: () => sb.ToString() + Environment.NewLine + userMessageCallback());
         }
 
         public static void ClearFunctionLogs(string functionName)
@@ -250,15 +256,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs()
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false)
         {
-            var nodeWorkerDesc = GetTestWorkerDescription("node", ".js");
-            var javaWorkerDesc = GetTestWorkerDescription("java", ".jar");
-
-            return new List<RpcWorkerConfig>()
+            var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = nodeWorkerDesc },
-                new RpcWorkerConfig() { Description = javaWorkerDesc },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js") },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar") }
+            };
+
+            // Allow tests to have a worker that claims the .dll extension.
+            if (includeDllWorker)
+            {
+                workerConfigs.Add(new RpcWorkerConfig() { Description = GetTestWorkerDescription("dllWorker", ".dll") });
+            }
+
+            return workerConfigs;
+        }
+
+        public static LanguageWorkerOptions GetTestLanguageWorkerOptions()
+        {
+            return new LanguageWorkerOptions
+            {
+                WorkerConfigs = GetTestWorkerConfigs()
             };
         }
 
@@ -304,7 +323,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                  {
                      { extension }
                  },
-                Language = language
+                Language = language,
+                WorkerDirectory = "testDir"
             };
         }
 

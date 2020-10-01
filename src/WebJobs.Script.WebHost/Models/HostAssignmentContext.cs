@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -28,6 +29,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         [JsonProperty("CorsSpecializationPayload")]
         public CorsSettings CorsSettings { get; set; }
 
+        [JsonProperty("EasyAuthSpecializationPayload")]
+        public EasyAuthSettings EasyAuthSettings { get; set; }
+
+        [JsonProperty("Secrets")]
+        public FunctionAppSecrets Secrets { get; set; }
+
+        // This will be true for dummy specialization calls to pre-jit specialization code.
+        // For warmup requests the Run-From-Pkg appsetting will point to a local endpoint that
+        // returns 200 to ensure downloading app contents succeeds.
+        // All the other fields will be empty.
+        [JsonProperty("isWarmupRequest")]
+        public bool IsWarmupRequest { get; set; }
+
         public long? PackageContentLength { get; set; }
 
         public string AzureFilesConnectionString
@@ -47,29 +61,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
                     Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteAltZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
                     Environment[EnvironmentSettingNames.AzureWebsiteAltZipDeployment],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.AzureWebsiteZipDeployment))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteZipDeployment,
                     Environment[EnvironmentSettingNames.AzureWebsiteZipDeployment],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else if (Environment.ContainsKey(EnvironmentSettingNames.ScmRunFromPackage))
             {
                 return new RunFromPackageContext(EnvironmentSettingNames.ScmRunFromPackage,
                     Environment[EnvironmentSettingNames.ScmRunFromPackage],
-                    PackageContentLength);
+                    PackageContentLength, IsWarmupRequest);
             }
             else
             {
-                return new RunFromPackageContext(string.Empty, string.Empty, PackageContentLength);
+                return new RunFromPackageContext(string.Empty, string.Empty, PackageContentLength, IsWarmupRequest);
             }
         }
 
@@ -105,13 +119,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return SiteId == other.SiteId && LastModifiedTime.CompareTo(other.LastModifiedTime) == 0;
         }
 
-        public void ApplyAppSettings(IEnvironment environment)
+        public void ApplyAppSettings(IEnvironment environment, ILogger logger)
         {
             foreach (var pair in Environment)
             {
                 environment.SetEnvironmentVariable(pair.Key, pair.Value);
             }
-
             if (CorsSettings != null)
             {
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsSupportCredentials, CorsSettings.SupportCredentials.ToString());
@@ -121,6 +134,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                     var allowedOrigins = JsonConvert.SerializeObject(CorsSettings.AllowedOrigins);
                     environment.SetEnvironmentVariable(EnvironmentSettingNames.CorsAllowedOrigins, allowedOrigins);
                 }
+            }
+
+            if (EasyAuthSettings != null)
+            {
+                // App settings take precedence over site config for easy auth enabled.
+                if (string.IsNullOrEmpty(environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled)))
+                {
+                    logger.LogDebug($"ApplyAppSettings is adding {EnvironmentSettingNames.EasyAuthEnabled} = {EasyAuthSettings.SiteAuthEnabled.ToString()}");
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled, EasyAuthSettings.SiteAuthEnabled.ToString());
+                }
+                else
+                {
+                    logger.LogDebug($"ApplyAppSettings operating on existing {EnvironmentSettingNames.EasyAuthEnabled} = {environment.GetEnvironmentVariable(EnvironmentSettingNames.EasyAuthEnabled)}");
+                }
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.EasyAuthClientId, EasyAuthSettings.SiteAuthClientId);
             }
         }
     }

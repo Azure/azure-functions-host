@@ -38,9 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 Config = await GetFunctionConfig(functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
-                IsDirect = functionMetadata.IsDirect,
-                IsDisabled = functionMetadata.IsDisabled,
-                IsProxy = functionMetadata.IsProxy,
+                IsDirect = functionMetadata.IsDirect(),
+                IsDisabled = functionMetadata.IsDisabled(),
+                IsProxy = functionMetadata.IsProxy(),
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };
@@ -70,26 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <returns>JObject that represent the trigger for scale controller to consume</returns>
         public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptJobHostOptions config)
         {
-            // Get function.json path
-            var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
-            var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
-
-            // Read function.json as a JObject
-            var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
-
-            // Find the trigger and add functionName to it
-            foreach (JObject binding in (JArray)functionConfig["bindings"])
+            // Codeless functions do not have a physical file and need to be converted differently.
+            if (functionMetadata.IsCodeless())
             {
-                var type = (string)binding["type"];
-                if (type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
-                {
-                    binding.Add("functionName", functionMetadata.Name);
-                    return binding;
-                }
+                return await GetCodelessFunctionTrigger(functionMetadata);
             }
 
-            // If the function has no trigger return null
-            return null;
+            return await GetRegularFunctionTrigger(functionMetadata, config);
         }
 
         public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions) =>
@@ -97,6 +84,55 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions hostOptions) =>
             Path.Combine(hostOptions.TestDataPath, $"{functionName}.dat");
+
+        private static async Task<JObject> GetRegularFunctionTrigger(FunctionMetadata functionMetadata, ScriptJobHostOptions config)
+        {
+            var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
+            var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+
+            // Read function.json as a JObject
+            var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
+
+            if (functionConfig.TryGetValue("bindings", out JToken value) &&
+                value is JArray)
+            {
+                // Find the trigger and add functionName to it
+                foreach (JObject binding in (JArray)value)
+                {
+                    var type = (string)binding["type"];
+                    if (type != null && type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                    {
+                        binding.Add("functionName", functionMetadata.Name);
+                        return binding;
+                    }
+                }
+            }
+
+            // If the function has no trigger return null
+            return null;
+        }
+
+        private static Task<JObject> GetCodelessFunctionTrigger(FunctionMetadata functionMetadata)
+        {
+            if (functionMetadata.Bindings == null)
+            {
+                return null;
+            }
+
+            foreach (BindingMetadata binding in functionMetadata.Bindings)
+            {
+                JObject rawBinding = binding.Raw;
+                var type = (string)rawBinding["type"];
+                if (type != null && type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                {
+                    JObject newBinding = (JObject)rawBinding.DeepClone();
+                    newBinding.Add("functionName", functionMetadata.Name);
+                    return Task.FromResult(newBinding);
+                }
+            }
+
+            return null;
+        }
 
         private static async Task<JObject> GetFunctionConfig(string path)
         {
@@ -126,7 +162,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 await FileUtility.WriteAsync(testDataPath, string.Empty);
             }
 
-            return await FileUtility.ReadAsync(testDataPath);
+            string data = await FileUtility.ReadAsync(testDataPath);
+
+            // We avoid inlining test data beyond the specified length. We do this to
+            // provide back compat for the majority of cases. In all other cases, the caller
+            // is expected to follow TestDataHref to retrieve the data.
+            if (data.Length > ScriptConstants.MaxTestDataInlineStringLength &&
+                SystemEnvironment.Instance.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.TestDataCapEnabled, "1") == "1")
+            {
+                return null;
+            }
+
+            return data;
         }
 
         private static Uri GetFunctionHref(string functionName, string baseUrl) =>

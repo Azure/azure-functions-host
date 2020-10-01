@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 {
     public class HttpBinding : FunctionBinding
     {
-        private static bool isActionResultHandlingEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling);
+        private static Lazy<bool> isActionResultHandlingEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableActionResultHandling));
 
         public HttpBinding(ScriptJobHostOptions config, BindingMetadata metadata, FileAccess access)
             : base(config, metadata, access)
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             int statusCode = StatusCodes.Status200OK;
             IDictionary<string, object> responseHeaders = null;
             bool enableContentNegotiation = false;
-            List<Tuple<string, string, CookieOptions>> cookies = new List<Tuple<string, string, CookieOptions>>();
+            List<Tuple<string, string, CookieOptions>> cookies = null;
             if (responseObject != null)
             {
                 ParseResponseObject(responseObject, ref content, out responseHeaders, out statusCode, out cookies, out enableContentNegotiation);
@@ -115,12 +115,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             // Sniff the object to see if it looks like a response object
             // by convention
             object bodyValue = null;
-            if (responseObject.TryGetValue(RpcWorkerConstants.RpcHttpBody, out bodyValue, ignoreCase: true))
+            if (responseObject.TryGetValue(WorkerConstants.HttpBody, out bodyValue, ignoreCase: true))
             {
                 // the response content becomes the specified body value
                 content = bodyValue;
 
-                if (responseObject.TryGetValue(RpcWorkerConstants.RpcHttpHeaders, out IDictionary<string, object> headersValue, ignoreCase: true))
+                if (responseObject.TryGetValue(WorkerConstants.HttpHeaders, out IDictionary<string, object> headersValue, ignoreCase: true))
                 {
                     headers = headersValue;
                 }
@@ -130,12 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     statusCode = responseStatusCode.Value;
                 }
 
-                if (responseObject.TryGetValue<bool>(RpcWorkerConstants.RpcHttpEnableContentNegotiation, out bool enableContentNegotiationValue, ignoreCase: true))
+                if (responseObject.TryGetValue<bool>(WorkerConstants.HttpEnableContentNegotiation, out bool enableContentNegotiationValue, ignoreCase: true))
                 {
                     enableContentNegotiation = enableContentNegotiationValue;
                 }
 
-                if (responseObject.TryGetValue(RpcWorkerConstants.RpcHttpCookies, out List<Tuple<string, string, CookieOptions>> cookiesValue, ignoreCase: true))
+                if (responseObject.TryGetValue(WorkerConstants.HttpCookies, out List<Tuple<string, string, CookieOptions>> cookiesValue, ignoreCase: true))
                 {
                     cookies = cookiesValue;
                 }
@@ -146,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             statusCode = StatusCodes.Status200OK;
 
-            if (!responseObject.TryGetValue(RpcWorkerConstants.RpcHttpStatusCode, out object statusValue, ignoreCase: true) &&
-                !responseObject.TryGetValue(RpcWorkerConstants.RpcHttpStatus, out statusValue, ignoreCase: true))
+            if (!responseObject.TryGetValue(WorkerConstants.HttpStatusCode, out object statusValue, ignoreCase: true) &&
+                !responseObject.TryGetValue(WorkerConstants.HttpStatus, out statusValue, ignoreCase: true))
             {
                 return false;
             }
@@ -198,7 +198,49 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        private static IActionResult CreateObjectResult(object result)
+        {
+            var objectResult = new ObjectResult(result);
+
+            if (result is HttpResponseMessage)
+            {
+                // To maintain backwards compatibility, if the type returned is an
+                // instance of an HttpResponseMessage, add the appropriate formatter to
+                // handle the response
+                objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
+            }
+
+            return objectResult;
+        }
+
         internal static void SetResponse(HttpRequest request, object result)
+        {
+            // Use the existing response if already set (IBinder model).
+            // This is always set by OOP languages.
+            if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing) && existing is IActionResult)
+            {
+                return;
+            }
+
+            if (!(result is IActionResult actionResult))
+            {
+                if (result is IConvertToActionResult actionResultConvertible)
+                {
+                    actionResult = actionResultConvertible.Convert();
+                }
+                else
+                {
+                    actionResult = CreateObjectResult(result);
+                }
+            }
+
+            request.HttpContext.Items[ScriptConstants.AzureFunctionsHttpResponseKey] = actionResult;
+        }
+
+        /// <summary>
+        /// This method is used when running in compatibility mode, maintained to preserve the behavior in 2.x
+        /// </summary>
+        internal static void LegacySetResponse(HttpRequest request, object result)
         {
             // use the existing response if already set (IBinder model)
             if (request.HttpContext.Items.TryGetValue(ScriptConstants.AzureFunctionsHttpResponseKey, out object existing) && existing is IActionResult)
@@ -206,8 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 return;
             }
 
-            IActionResult actionResult = result as IActionResult;
-            if (actionResult == null)
+            if (!(result is IActionResult actionResult))
             {
                 if (result is Stream)
                 {
@@ -220,24 +261,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     actionResult = CreateResult(request, result);
                 }
-                else if (isActionResultHandlingEnabled && result is IConvertToActionResult convertable)
+                else if (isActionResultHandlingEnabled.Value && result is IConvertToActionResult actionResultConvertible)
                 {
                     // Convert ActionResult<T> to ActionResult
-                    actionResult = convertable.Convert();
+                    actionResult = actionResultConvertible.Convert();
                 }
                 else
                 {
-                    var objectResult = new ObjectResult(result);
-
-                    if (result is System.Net.Http.HttpResponseMessage)
-                    {
-                        // To maintain backwards compatibility, if the type returned is an
-                        // instance of an HttpResponseMessage, add the appropriate formatter to
-                        // handle the response
-                        objectResult.Formatters.Add(new HttpResponseMessageOutputFormatter());
-                    }
-
-                    actionResult = objectResult;
+                    actionResult = CreateObjectResult(result);
                 }
             }
 

@@ -23,18 +23,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var processRegistry = new Mock<IProcessRegistry>();
             var rpcServer = new TestRpcServer();
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-            var scriptJobHostEnvironment = new Mock<IScriptJobHostEnvironment>();
             var testEnv = new TestEnvironment();
+            var testWorkerConfigs = TestHelpers.GetTestWorkerConfigs();
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
                 rpcServer.Uri,
-                null,
+                testWorkerConfigs.ElementAt(0),
                 _eventManager.Object,
                 workerProcessFactory.Object,
                 processRegistry.Object,
                 new TestLogger("test"),
-                languageWorkerConsoleLogSource.Object);
+                languageWorkerConsoleLogSource.Object,
+                new TestMetricsLogger());
         }
 
         [Fact]

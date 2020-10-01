@@ -123,6 +123,22 @@
   <data name="ErrorTooManySecretBackups" xml:space="preserve">
     <value>Repository has more than {0} non-decryptable secrets backups ({1}). {2}</value>
   </data>
+  <data name="ExecutedHttpRequest" xml:space="preserve">
+    <value>Executed HTTP request: {{
+  requestId: "{mS_ActivityId}",
+  identities: "{identities}",
+  status: "{statusCode}",
+  duration: "{duration}"
+}}</value>
+  </data>
+  <data name="ExecutingHttpRequest" xml:space="preserve">
+    <value>Executing HTTP request: {{
+  requestId: "{mS_ActivityId}",
+  method: "{httpMethod}",
+  userAgent: "{userAgent}",
+  uri: "{uri}"
+}}</value>
+  </data>
   <data name="FunctionSecretsSchemaV0" xml:space="preserve">
     <value>{
     "type": "object",
@@ -293,5 +309,8 @@
   </data>
   <data name="TraceStaleHostSecretRefresh" xml:space="preserve">
     <value>Stale host secrets detected. Refreshing secrets.</value>
+  </data>
+  <data name="UnauthorizedArmExtensionResourceRequest" xml:space="preserve">
+    <value>GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API.</value>
   </data>
 </root>

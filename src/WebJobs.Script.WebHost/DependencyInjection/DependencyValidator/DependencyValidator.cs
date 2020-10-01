@@ -5,6 +5,8 @@ using System.Text;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
+using Microsoft.Azure.WebJobs.Script.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
@@ -41,21 +43,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             expected.ExpectCollection<IHostedService>()
                 .Expect<JobHostService>("Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService")
+                .ExpectFactory<ExternalConfigurationStartupValidatorService>()
                 .Expect<PrimaryHostCoordinator>()
                 .Expect<FileMonitoringService>()
                 .Expect<WorkerConsoleLogService>()
                 .Expect<FunctionInvocationDispatcherShutdownManager>()
+                .Optional<ChangeAnalysisService>()
                 .Optional<FunctionsScaleMonitorService>()
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
-                .Optional<FunctionsSyncService>(); // Conditionally registered.
+                .Optional<FunctionsSyncService>() // Conditionally registered.
+                .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60"); // Popularly-registered by DataProtection.
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<AzureMonitorDiagnosticLoggerProvider>()
                 .Expect<FunctionFileLoggerProvider>()
                 .Expect<HostFileLoggerProvider>()
-                .Expect<SystemLoggerProvider>()
-                .Expect<UserLogMetricsLoggerProvider>();
+                .Expect<SystemLoggerProvider>();
 
             return expected;
         }

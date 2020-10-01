@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.CodeAnalysis;
@@ -26,9 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly ILogger _logger;
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
+        private readonly IApplicationLifetime _applicationLifetime;
 
         internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
@@ -36,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _outputBindings = outputBindings;
             _functionDispatcher = functionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerFunctionInvoker>();
+            _applicationLifetime = applicationLifetime;
 
             InitializeFileWatcherIfEnabled();
 
@@ -51,24 +54,32 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)
         {
-            // Need to wait for atleast one language worker process to be initialized before accepting invocations
-            await DelayUntilFunctionDispatcherInitialized();
-            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            // Need to wait for at least one language worker process to be initialized before accepting invocations
+            if (!IsDispatcherReady())
+            {
+                await DelayUntilFunctionDispatcherInitializedOrShutdown();
+            }
 
-            // TODO: fix extensions and remove
-            object triggerValue = TransformInput(parameters[0], context.Binder.BindingData);
+            var bindingData = context.Binder.BindingData;
+            object triggerValue = TransformInput(parameters[0], bindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
-            var inputs = new[] { triggerInput }.Concat(await BindInputsAsync(context.Binder));
+            IEnumerable<(string, DataType, object)> inputs = new[] { triggerInput };
+            if (_inputBindings.Count > 1)
+            {
+                var nonTriggerInputs = await BindInputsAsync(context.Binder);
+                inputs = inputs.Concat(nonTriggerInputs);
+            }
 
-            ScriptInvocationContext invocationContext = new ScriptInvocationContext()
+            var invocationContext = new ScriptInvocationContext
             {
                 FunctionMetadata = Metadata,
-                BindingData = context.Binder.BindingData,   // This has duplicates too (of type DefaultHttpRequest). Needs to be removed after verifying this can indeed be constructed by the workers from the rest of the data being passed (https://github.com/Azure/azure-functions-host/issues/4735).
+                BindingData = bindingData,
                 ExecutionContext = context.ExecutionContext,
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
                 Traceparent = Activity.Current?.Id,
+                Tracestate = Activity.Current?.TraceStateString,
                 Attributes = Activity.Current?.Tags,
 
                 // TODO: link up cancellation token to parameter descriptors
@@ -76,23 +87,38 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            _logger.LogDebug($"Sending invocation id:{invocationId}");
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+            _logger.LogTrace($"Sending invocation id:{invocationId}");
             await _functionDispatcher.InvokeAsync(invocationContext);
-            ScriptInvocationResult result = await invocationContext.ResultSource.Task;
+            var result = await invocationContext.ResultSource.Task;
 
             await BindOutputsAsync(triggerValue, context.Binder, result);
             return result.Return;
         }
 
-        private async Task DelayUntilFunctionDispatcherInitialized()
+        private bool IsDispatcherReady()
         {
-            if (_functionDispatcher != null && _functionDispatcher.State == FunctionInvocationDispatcherState.Initializing)
+            return _functionDispatcher.State == FunctionInvocationDispatcherState.Initialized || _functionDispatcher.State == FunctionInvocationDispatcherState.Default;
+        }
+
+        private async Task DelayUntilFunctionDispatcherInitializedOrShutdown()
+        {
+            // Don't delay if functionDispatcher is already initialized OR is skipping initialization for one of
+            // these reasons: started in placeholder, has no functions, functions do not match set language.
+
+            if (!IsDispatcherReady())
             {
-                _logger.LogDebug($"functionDispatcher state: {_functionDispatcher.State}");
-                await Utility.DelayAsync(WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
+                _logger.LogTrace($"FunctionDispatcher state: {_functionDispatcher.State}");
+                bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });
+
+                if (result)
+                {
+                    _logger.LogError($"Final functionDispatcher state: {_functionDispatcher.State}. Initialization timed out and host is shutting down");
+                    _applicationLifetime.StopApplication();
+                }
             }
         }
 

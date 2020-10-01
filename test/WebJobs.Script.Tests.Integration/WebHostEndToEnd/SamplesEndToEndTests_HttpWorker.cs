@@ -29,9 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task HttpTrigger_PowerShell_Get_Succeeds()
+        public async Task HttpTrigger_HttpWorker_Get_Succeeds()
         {
             await InvokeHttpTrigger("HttpTrigger");
+        }
+
+        [Fact]
+        public async Task Proxy_HttpWorker_Get_Succeeds()
+        {
+            await InvokeProxy();
         }
 
         private async Task InvokeHttpTrigger(string functionName)
@@ -47,6 +53,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string responseContent = await response.Content.ReadAsStringAsync();
             JObject res = JObject.Parse(responseContent);
             Assert.True(res["functionName"].ToString().StartsWith(functionName));
+        }
+
+        private async Task InvokeProxy()
+        {
+            string uri = "something";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            var response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            Assert.Equal(responseContent, uri);
         }
 
         public class TestFixture : EndToEndTestFixture

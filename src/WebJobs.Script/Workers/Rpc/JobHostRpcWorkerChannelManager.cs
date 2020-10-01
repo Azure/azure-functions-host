@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -23,16 +24,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _channels.TryAdd(channel.Id, channel);
         }
 
-        public void DisposeAndRemoveChannel(IRpcWorkerChannel channel)
+        public Task<bool> ShutdownChannelIfExistsAsync(string channelId, Exception workerException)
         {
-            if (_channels.TryRemove(channel.Id, out IRpcWorkerChannel removedChannel))
+            if (_channels.TryRemove(channelId, out IRpcWorkerChannel removedChannel))
             {
-                _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+                _logger.LogDebug("Disposing JobHost language worker channel with id:{workerId}", removedChannel.Id);
+                removedChannel.TryFailExecutions(workerException);
                 (removedChannel as IDisposable)?.Dispose();
+                return Task.FromResult(true);
             }
+            return Task.FromResult(false);
         }
 
-        public void DisposeAndRemoveChannels()
+        public void ShutdownChannels()
         {
             foreach (string channelId in _channels.Keys)
             {

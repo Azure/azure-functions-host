@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Http;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -16,12 +17,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.Cosmos.Table;
 using Moq;
 using Xunit;
+using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -42,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FixtureId = testId;
             RequestConfiguration = new HttpConfiguration();
             EventManager = new ScriptEventManager();
-            ScriptJobHostEnvironmentMock = new Mock<IScriptJobHostEnvironment>();
+            MockApplicationLifetime = new Mock<IApplicationLifetime>();
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
@@ -54,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestLoggerProvider LoggerProvider { get; }
 
-        public Mock<IScriptJobHostEnvironment> ScriptJobHostEnvironmentMock { get; }
+        public Mock<IApplicationLifetime> MockApplicationLifetime { get; }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
 
@@ -93,7 +97,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
-            TableClient = storageAccount.CreateCloudTableClient();
+
+            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+            TableClient = tableStorageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
 
@@ -106,41 +112,45 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("TimerTrigger");
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
-             Host = new HostBuilder()
-                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
-                {
-                    webjobsBuilder.AddAzureStorage();
-                },                
-                o =>
-                {
-                    o.ScriptPath = _rootPath;
-                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
-                },
-                runStartupHostedServices: true)
-                .ConfigureServices(services =>
-                {
-                    services.Configure<ScriptJobHostOptions>(o =>
-                    {
-                        o.FileLoggingMode = FileLoggingMode.Always;
+            Host = new HostBuilder()
+               .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+               {
+                   webjobsBuilder.AddAzureStorage();
 
-                        if (_functions != null)
-                        {
-                            o.Functions = _functions;
-                        }
-                    });
+                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                   // it needs to change the services during its lifetime.
+                   webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
+               },
+               o =>
+               {
+                   o.ScriptPath = _rootPath;
+                   o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+               },
+               runStartupHostedServices: true)
+               .ConfigureServices(services =>
+               {
+                   services.Configure<ScriptJobHostOptions>(o =>
+                   {
+                       o.FileLoggingMode = FileLoggingMode.Always;
 
-                    if (_proxyClient != null)
-                    {
-                        services.AddSingleton<ProxyClientExecutor>(_proxyClient);
-                    }
+                       if (_functions != null)
+                       {
+                           o.Functions = _functions;
+                       }
+                   });
 
-                    ConfigureServices(services);
-                })
-                .ConfigureLogging(b =>
-                {
-                    b.AddProvider(LoggerProvider);
-                })
-                .Build();
+                   if (_proxyClient != null)
+                   {
+                       services.AddSingleton<ProxyClientExecutor>(_proxyClient);
+                   }
+
+                   ConfigureServices(services);
+               })
+               .ConfigureLogging(b =>
+               {
+                   b.AddProvider(LoggerProvider);
+               })
+               .Build();
 
             JobHost = Host.GetScriptHost();
 

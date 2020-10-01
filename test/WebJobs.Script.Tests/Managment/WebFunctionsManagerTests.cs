@@ -11,18 +11,16 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -79,26 +77,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady)).Returns("1");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.CoreToolsEnvironment)).Returns((string)null);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
-            var hostNameProvider = new HostNameProvider(_mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
+            var hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
             var workerOptions = new LanguageWorkerOptions();
             FileUtility.Instance = fileSystem;
             _fileSystem = fileSystem;
-            var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings());
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, languageWorkerOptions, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, metadataProvider);
-            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, metadataProvider);
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager);
+            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager);
         }
 
-        [Fact]
-        public async Task ReadFunctionsMetadataSucceeds()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ReadFunctionsMetadataSucceeds(bool testDataCapEnabled)
         {
-            IEnumerable<FunctionMetadataResponse> metadata = await _webFunctionsManager.GetFunctionsMetadata(includeProxies: false);
-            var jsFunctions = metadata.Where(funcMetadata => funcMetadata.Language == RpcWorkerConstants.NodeLanguageWorkerName).ToList();
-            var unknownFunctions = metadata.Where(funcMetadata => string.IsNullOrEmpty(funcMetadata.Language)).ToList();
+            var env = new Dictionary<string, string>();
+            if (!testDataCapEnabled)
+            {
+                env.Add(EnvironmentSettingNames.TestDataCapEnabled, "0");
+            }
+            var envScope = new TestScopedEnvironmentVariable(env);
+            using (envScope)
+            {
+                var metadata = (await _webFunctionsManager.GetFunctionsMetadata(includeProxies: false)).ToArray();
 
-            Assert.Equal(2, jsFunctions.Count());
-            Assert.Equal(1, unknownFunctions.Count());
+                Assert.Equal(2, metadata.Count(p => p.Language == RpcWorkerConstants.NodeLanguageWorkerName));
+                Assert.Equal(1, metadata.Count(p => string.IsNullOrEmpty(p.Language)));
+
+                Assert.Equal("https://test.azurewebsites.net/admin/vfs/function1.dat", metadata[0].TestDataHref.AbsoluteUri);
+                Assert.Equal("https://test.azurewebsites.net/admin/vfs/function2.dat", metadata[1].TestDataHref.AbsoluteUri);
+                Assert.Equal("https://test.azurewebsites.net/admin/vfs/function3.dat", metadata[2].TestDataHref.AbsoluteUri);
+
+                Assert.Equal("Test Data 1", metadata[0].TestData);
+                Assert.Equal("Test Data 2", metadata[1].TestData);
+
+                if (testDataCapEnabled)
+                {
+                    // TestData size is capped by default
+                    Assert.Null(metadata[2].TestData);
+                }
+                else
+                {
+                    Assert.Equal(ScriptConstants.MaxTestDataInlineStringLength + 1, metadata[2].TestData.Length);
+                }
+            }
         }
 
         [Fact]
@@ -140,39 +164,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             string prefix = await WebFunctionsManager.GetRoutePrefix(_testRootScriptPath);
             Assert.Equal(expected, prefix);
-        }
-
-        [Fact]
-        public void GetFunctionInvokeUrlTemplate_ReturnsExpectedResult()
-        {
-            string baseUrl = "https://localhost";
-            var functionMetadata = new FunctionMetadata
-            {
-                Name = "TestFunction"
-            };
-            var httpTriggerBinding = new BindingMetadata
-            {
-                Name = "req",
-                Type = "httpTrigger",
-                Direction = BindingDirection.In,
-                Raw = new JObject()
-            };
-            functionMetadata.Bindings.Add(httpTriggerBinding);
-            var uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
-            Assert.Equal("https://localhost/api/testfunction", uri.ToString());
-
-            // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
-            Assert.Equal("https://localhost/testfunction", uri.ToString());
-
-            // with a custom route
-            httpTriggerBinding.Raw.Add("route", "catalog/products/{category:alpha?}/{id:int?}");
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, "api");
-            Assert.Equal("https://localhost/api/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
-
-            // with empty route prefix
-            uri = FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
-            Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
         }
 
         [Theory]
@@ -298,6 +289,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ]
 }";
 
+            string testData1 = "Test Data 1";
+            string testData2 = "Test Data 2";
+            string testData3 = TestHelpers.NewRandomString(ScriptConstants.MaxTestDataInlineStringLength + 1);
+
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
@@ -307,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData1));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
@@ -319,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function2.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData2));
             });
 
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
@@ -331,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
-                return new MemoryStream(Encoding.UTF8.GetBytes(function1));
+                return new MemoryStream(Encoding.UTF8.GetBytes(testData3));
             });
 
             return fileSystem.Object;

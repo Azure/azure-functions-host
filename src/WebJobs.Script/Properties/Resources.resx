@@ -156,4 +156,12 @@
   <data name="ExtensionBundleTemplatesNotFound" xml:space="preserve">
     <value>Templates not found within the extension bundle or extension bundle is not configured for the function app.</value>
   </data>
+  <data name="FunctionInvocationMetricsData" xml:space="preserve">
+    <value>{{
+  Language: "{0}",
+  FunctionName: "{1}",
+  Success: {2}
+  IsStopwatchHighResolution: {3}
+}}</value>
+  </data>
 </root>

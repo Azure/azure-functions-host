@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 using Google.Protobuf;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public static TypedData ToRpc(this object value, ILogger logger, Capabilities capabilities)
+        public static async Task<TypedData> ToRpc(this object value, ILogger logger, Capabilities capabilities)
         {
             TypedData typedData = new TypedData();
             if (value == null)
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else if (value is JObject jobj)
             {
-                typedData.Json = jobj.ToString();
+                typedData.Json = jobj.ToString(Formatting.None);
             }
             else if (value is string str)
             {
@@ -74,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             else if (value is HttpRequest request)
             {
-                typedData = request.ToRpcHttp(logger, capabilities);
+                typedData = await request.ToRpcHttp(logger, capabilities);
             }
             else
             {
@@ -111,28 +112,50 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return typedData;
         }
 
-        internal static TypedData ToRpcHttp(this HttpRequest request, ILogger logger, Capabilities capabilities)
+        internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, Capabilities capabilities)
         {
-            TypedData typedData = new TypedData();
             var http = new RpcHttp()
             {
-                Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}", // [http|https]://{url}{path}{query}
-                Method = request.Method.ToString()
+                Url = $"{(request.IsHttps ? "https" : "http")}://{request.Host}{request.Path}{request.QueryString}",
+                Method = request.Method.ToString(),
+                RawBody = null
             };
-            typedData.Http = http;
+            var typedData = new TypedData
+            {
+                Http = http
+            };
 
-            http.RawBody = null;
             foreach (var pair in request.Query)
             {
-                if (!string.IsNullOrEmpty(pair.Value.ToString()))
+                var value = pair.Value.ToString();
+                if (ShouldUseNullableValueDictionary(capabilities))
                 {
-                    http.Query.Add(pair.Key, pair.Value.ToString());
+                    http.NullableQuery.Add(pair.Key, new NullableString { Value = value });
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        http.Query.Add(pair.Key, value);
+                    }
                 }
             }
 
             foreach (var pair in request.Headers)
             {
-                http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                if (ShouldUseNullableValueDictionary(capabilities))
+                {
+                    http.NullableHeaders.Add(pair.Key.ToLowerInvariant(), new NullableString { Value = pair.Value.ToString() });
+                }
+                else
+                {
+                    if (ShouldIgnoreEmptyHeaderValues(capabilities) && string.IsNullOrEmpty(pair.Value.ToString()))
+                    {
+                        continue;
+                    }
+
+                    http.Headers.Add(pair.Key.ToLowerInvariant(), pair.Value.ToString());
+                }
             }
 
             if (request.HttpContext.Items.TryGetValue(HttpExtensionConstants.AzureWebJobsHttpRouteDataKey, out object routeData))
@@ -140,9 +163,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
                 foreach (var pair in parameters)
                 {
-                    if (pair.Value != null)
+                    if (ShouldUseNullableValueDictionary(capabilities))
                     {
-                        http.Params.Add(pair.Key, pair.Value.ToString());
+                        http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
+                    }
+                    else
+                    {
+                        if (pair.Value != null)
+                        {
+                            http.Params.Add(pair.Key, pair.Value.ToString());
+                        }
                     }
                 }
             }
@@ -150,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // parse ClaimsPrincipal if exists
             if (request.HttpContext?.User?.Identities != null)
             {
-                logger.LogDebug("HttpContext has ClaimsPrincipal; parsing to gRPC.");
+                logger.LogTrace("HttpContext has ClaimsPrincipal; parsing to gRPC.");
                 foreach (var id in request.HttpContext.User.Identities)
                 {
                     var rpcClaimsIdentity = new RpcClaimsIdentity();
@@ -186,44 +216,45 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (IsBodyOnlySupported(capabilities))
                 {
-                    PopulateBody(request, http, capabilities, logger);
+                    await PopulateBody(request, http, capabilities, logger);
                 }
                 else
                 {
-                    PopulateBodyAndRawBody(request, http, capabilities, logger);
+                    await PopulateBodyAndRawBody(request, http, capabilities, logger);
                 }
             }
 
             return typedData;
         }
 
-        private static void PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        private static async Task PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
             if (request.IsMediaTypeOctetOrMultipart() || IsRawBodyBytesRequested(capabilities))
             {
-                body = request.GetRequestBodyAsBytes();
+                body = await request.GetRequestBodyAsBytesAsync();
             }
             else
             {
-                body = request.ReadAsStringAsync().GetAwaiter().GetResult();
+                body = await request.ReadAsStringAsync();
             }
-            http.Body = body.ToRpc(logger, capabilities);
+            http.Body = await body.ToRpc(logger, capabilities);
         }
 
-        private static void PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
+        private static async Task PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
             string rawBodyString = null;
-            byte[] bytes = request.GetRequestBodyAsBytes();
 
             if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
                 if (string.Equals(mediaType.MediaType, "application/json", StringComparison.OrdinalIgnoreCase))
                 {
-                    rawBodyString = request.ReadAsStringAsync().GetAwaiter().GetResult();
+                    rawBodyString = await request.ReadAsStringAsync();
                     try
                     {
+                        // REVIEW: We are json deserializing this to a JObject only to serialze
+                        // it back to string below. Why?
                         body = JsonConvert.DeserializeObject(rawBodyString);
                     }
                     catch (JsonException)
@@ -233,6 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else if (request.IsMediaTypeOctetOrMultipart())
                 {
+                    byte[] bytes = await request.GetRequestBodyAsBytesAsync();
                     body = bytes;
                     if (!IsRawBodyBytesRequested(capabilities))
                     {
@@ -240,20 +272,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
+
             // default if content-tye not found or recognized
             if (body == null && rawBodyString == null)
             {
-                body = rawBodyString = request.ReadAsStringAsync().GetAwaiter().GetResult();
+                body = rawBodyString = await request.ReadAsStringAsync();
             }
 
-            http.Body = body.ToRpc(logger, capabilities);
+            http.Body = await body.ToRpc(logger, capabilities);
             if (IsRawBodyBytesRequested(capabilities))
             {
-                http.RawBody = bytes.ToRpc(logger, capabilities);
+                byte[] bytes = await request.GetRequestBodyAsBytesAsync();
+                http.RawBody = await bytes.ToRpc(logger, capabilities);
             }
             else
             {
-                http.RawBody = rawBodyString.ToRpc(logger, capabilities);
+                http.RawBody = await rawBodyString.ToRpc(logger, capabilities);
             }
         }
 
@@ -263,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             TypedData typedData = new TypedData();
             try
             {
-                typedData.Json = JsonConvert.SerializeObject(value);
+                typedData.Json = JsonConvert.SerializeObject(value, Formatting.None);
             }
             catch
             {
@@ -344,6 +378,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.TypedDataCollection));
+        }
+
+        private static bool ShouldIgnoreEmptyHeaderValues(Capabilities capabilities)
+        {
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders));
+        }
+
+        private static bool ShouldUseNullableValueDictionary(Capabilities capabilities)
+        {
+            return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.UseNullableValueDictionaryForHttp));
         }
 
         public static BindingInfo ToBindingInfo(this BindingMetadata bindingMetadata)

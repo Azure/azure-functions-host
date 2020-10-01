@@ -38,8 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns(TestHostName);
 
-            _hostNameProvider = new HostNameProvider(mockEnvironment.Object, loggerFactory.CreateLogger<HostNameProvider>());
-            _middleware = new HostnameFixupMiddleware(requestDelegate, _hostNameProvider);
+            _hostNameProvider = new HostNameProvider(mockEnvironment.Object);
+            _middleware = new HostnameFixupMiddleware(requestDelegate, _hostNameProvider, loggerFactory.CreateLogger<HostnameFixupMiddleware>());
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             // validate hostname sync trace
             var log = logs[0];
-            Assert.Equal("Microsoft.Azure.WebJobs.Script.WebHost.HostNameProvider", log.Category);
+            Assert.Equal("Microsoft.Azure.WebJobs.Script.WebHost.Middleware.HostnameFixupMiddleware", log.Category);
             Assert.Equal(LogLevel.Information, log.Level);
             Assert.Equal("HostName updated from 'test.azurewebsites.net' to 'test2.azurewebsites.net'", log.FormattedMessage);
 

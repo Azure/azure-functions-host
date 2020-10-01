@@ -20,11 +20,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string WorkersDirectorySectionName = "workersDirectory";
         public const string WorkerDirectorySectionName = "workerDirectory";
 
+        // Environment variables names
+        public const string FunctionsWorkerDirectorySettingName = "FUNCTIONS_WORKER_DIRECTORY";
+
         // Worker description constants
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";
         public const string WorkerDescriptionArguments = "arguments";
+        public const string WorkerDescriptionDefaultRuntimeVersion = "defaultRuntimeVersion";
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
@@ -40,5 +44,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         // Language Worker process exit codes
         public const int SuccessExitCode = 0;
         public const int IntentionalRestartExitCode = 200;
+
+        // Http Constants
+        public const string HttpBody = "body";
+        public const string HttpHeaders = "headers";
+        public const string HttpEnableContentNegotiation = "enableContentNegotiation";
+        public const string HttpCookies = "cookies";
+        public const string HttpStatusCode = "statusCode";
+        public const string HttpStatus = "status";
     }
 }

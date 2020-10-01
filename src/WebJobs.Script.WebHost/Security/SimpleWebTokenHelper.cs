@@ -22,11 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
         /// <returns>a SWT signed by this app</returns>
         public static string CreateToken(DateTime validUntil, byte[] key = null) => Encrypt($"exp={validUntil.Ticks}", key);
 
-        internal static string Encrypt(string value, byte[] key = null)
+        internal static string Encrypt(string value, byte[] key = null, IEnvironment environment = null)
         {
             if (key == null)
             {
-                TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
+                TryGetEncryptionKey(environment, EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
             }
 
             using (var aes = new AesManaged { Key = key })
@@ -84,6 +84,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             }
         }
 
+        public static string Decrypt(string value, IEnvironment environment = null)
+        {
+            // Use WebSiteAuthEncryptionKey if available else fallback to ContainerEncryptionKey.
+            // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
+            byte[] key;
+            if (!TryGetEncryptionKey(environment, EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key, false))
+            {
+                TryGetEncryptionKey(environment, EnvironmentSettingNames.ContainerEncryptionKey, out key);
+            }
+
+            return Decrypt(key, value);
+        }
+
         public static bool TryValidateToken(string token, ISystemClock systemClock)
         {
             try
@@ -96,17 +109,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             }
         }
 
-        public static bool ValidateToken(string token, ISystemClock systemClock)
+        public static bool ValidateToken(string token, ISystemClock systemClock, IEnvironment environment = null)
         {
-            // Use WebSiteAuthEncryptionKey if available else fallback to ContainerEncryptionKey.
-            // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
-            byte[] key;
-            if (!TryGetEncryptionKey(EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key, false))
-            {
-                TryGetEncryptionKey(EnvironmentSettingNames.ContainerEncryptionKey, out key);
-            }
-
-            var data = Decrypt(key, token);
+            var data = Decrypt(token, environment);
 
             var parsedToken = data
                 // token = key1=value1;key2=value2
@@ -127,10 +132,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             }
         }
 
-        private static bool TryGetEncryptionKey(string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
+        private static bool TryGetEncryptionKey(IEnvironment environment, string keyName, out byte[] encryptionKey, bool throwIfFailed = true)
         {
+            environment = environment ?? SystemEnvironment.Instance;
+
             encryptionKey = null;
-            var hexOrBase64 = Environment.GetEnvironmentVariable(keyName);
+            var hexOrBase64 = environment.GetEnvironmentVariable(keyName);
             if (string.IsNullOrEmpty(hexOrBase64))
             {
                 if (throwIfFailed)

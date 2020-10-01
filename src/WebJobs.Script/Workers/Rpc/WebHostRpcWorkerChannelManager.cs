@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger = null;
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
+        private readonly IOptionsMonitor<LanguageWorkerOptions> _lanuageworkerOptions = null;
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment;
         private readonly ILoggerFactory _loggerFactory = null;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
+            _lanuageworkerOptions = languageWorkerOptions;
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -56,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating language worker channel for runtime:{runtime}", runtime);
             try
             {
-                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0);
+                rpcWorkerChannel = _rpcWorkerChannelFactory.Create(scriptRootPath, runtime, _metricsLogger, 0, _lanuageworkerOptions.CurrentValue.WorkerConfigs);
                 AddOrUpdateWorkerChannels(runtime, rpcWorkerChannel);
                 await rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(processStartTask =>
                 {
@@ -121,10 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     await ShutdownChannelIfExistsAsync(_workerRuntime, rpcWorkerChannel.Id);
                 }
             }
-            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
-            {
-                _shutdownStandbyWorkerChannels();
-            }
+            _shutdownStandbyWorkerChannels();
             _logger.LogDebug("Completed language worker channel specialization");
         }
 
@@ -132,18 +131,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (!string.IsNullOrEmpty(workerRuntime))
             {
-                // Special case: node apps must be read-only to use the placeholder mode channel
+                // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
+                // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
-                if (string.Equals(workerRuntime, RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(workerRuntime, RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return _environment.IsFileSystemReadOnly();
+                    // Use if readonly and not v2 compatible on ~3 extension
+                    return _environment.IsFileSystemReadOnly() && !_environment.IsV2CompatibileOnV3Extension();
                 }
                 return true;
             }
             return false;
         }
 
-        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId)
+        public Task<bool> ShutdownChannelIfExistsAsync(string language, string workerId, Exception workerException = null)
         {
             if (string.IsNullOrEmpty(language))
             {
@@ -164,6 +166,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             IRpcWorkerChannel workerChannel = channelTask.Result;
                             if (workerChannel != null)
                             {
+                                _logger.LogDebug("Disposing WebHost channel for workerId: {channelId}, for runtime:{language}", workerId, language);
+                                workerChannel.TryFailExecutions(workerException);
                                 (channelTask.Result as IDisposable)?.Dispose();
                             }
                         }
@@ -176,36 +180,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void ScheduleShutdownStandbyChannels()
         {
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (!string.IsNullOrEmpty(_workerRuntime))
+            using (_metricsLogger.LatencyEvent(MetricEventNames.SpecializationScheduleShutdownStandbyChannels))
             {
-                var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
-                foreach (var runtime in standbyWorkerChannels)
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+                if (!string.IsNullOrEmpty(_workerRuntime))
                 {
-                    using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
+                    var standbyWorkerChannels = _workerChannels.Where(ch => !ch.Key.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase));
+                    foreach (var runtime in standbyWorkerChannels)
                     {
-                        _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
-                        if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
+                        using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannels, runtime.Key)))
                         {
-                            foreach (string workerId in standbyChannels.Keys)
+                            _logger.LogInformation("Disposing standby channel for runtime:{language}", runtime.Key);
+                            if (_workerChannels.TryRemove(runtime.Key, out Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> standbyChannels))
                             {
-                                IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannel, workerId));
-                                standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
+                                foreach (string workerId in standbyChannels.Keys)
                                 {
-                                    if (channelTask.Status == TaskStatus.Faulted)
+                                    IDisposable latencyEvent = _metricsLogger.LatencyEvent(string.Format(MetricEventNames.SpecializationShutdownStandbyChannel, workerId));
+                                    standbyChannels[workerId]?.Task.ContinueWith(channelTask =>
                                     {
-                                        _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
-                                    }
-                                    else
-                                    {
-                                        IRpcWorkerChannel workerChannel = channelTask.Result;
-                                        if (workerChannel != null)
+                                        if (channelTask.Status == TaskStatus.Faulted)
                                         {
-                                            (channelTask.Result as IDisposable)?.Dispose();
+                                            _logger.LogDebug(channelTask.Exception, "Removing errored worker channel");
                                         }
-                                    }
-                                    latencyEvent.Dispose();
-                                });
+                                        else
+                                        {
+                                            IRpcWorkerChannel workerChannel = channelTask.Result;
+                                            if (workerChannel != null)
+                                            {
+                                                (channelTask.Result as IDisposable)?.Dispose();
+                                            }
+                                        }
+                                        latencyEvent.Dispose();
+                                    });
+                                }
                             }
                         }
                     }

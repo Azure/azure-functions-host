@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)), RegexOptions.Compiled);
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
 
         protected FunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
         {
@@ -85,8 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (unresolvedBindings.Any())
             {
                 string allUnresolvedBindings = string.Join(", ", unresolvedBindings);
-                throw new FunctionConfigurationException($"The binding type(s) '{allUnresolvedBindings}' are not registered. " +
-                        $"Please ensure the type is correct and the binding extension is installed.");
+                string errorMessage = CreateBindingError(allUnresolvedBindings);
+                throw new FunctionConfigurationException(errorMessage);
             }
         }
 
@@ -135,8 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
             else
             {
-                throw new FunctionConfigurationException($"The binding type '{triggerMetadata.Type}' is not registered. " +
-                    $"Please ensure the type is correct and the binding extension is installed.");
+                string errorMessage = CreateBindingError(triggerMetadata.Type);
+                throw new FunctionConfigurationException(errorMessage);
             }
 
             return triggerParameter;
@@ -225,6 +225,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 CustomAttributeBuilder attributeBuilder = new CustomAttributeBuilder(ctorInfo, new object[0]);
                 methodAttributes.Add(attributeBuilder);
             }
+
+            // apply the retry settings from function.json
+            if (functionMetadata.Retry != null)
+            {
+                CustomAttributeBuilder retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(functionMetadata.Retry);
+                if (retryCustomAttributeBuilder != null)
+                {
+                    methodAttributes.Add(retryCustomAttributeBuilder);
+                }
+            }
         }
 
         protected abstract IFunctionInvoker CreateFunctionInvoker(string scriptFilePath, BindingMetadata triggerMetadata, FunctionMetadata functionMetadata, Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings);
@@ -242,6 +252,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return new ParameterDescriptor(trigger.Name, triggerParameterType);
+        }
+
+        private string CreateBindingError(string unresolvedBindings)
+        {
+            return (Host.ExtensionBundleManager?.IsExtensionBundleConfigured() ?? false)
+                    ? $"The binding type(s) '{unresolvedBindings}' were not found in the configured extension bundle. Please ensure the type is correct and the correct version of extension bundle is configured"
+                    : $"The binding type(s) '{unresolvedBindings}' are not registered. Please ensure the type is correct and the binding extension is installed.";
         }
     }
 }

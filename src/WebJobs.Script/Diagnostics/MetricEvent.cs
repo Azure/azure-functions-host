@@ -21,5 +21,13 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public string RuntimeSiteName { get; set; }
 
         public string SlotName { get; set; }
+
+        public bool Completed
+        {
+            get
+            {
+                return Duration != default(TimeSpan);
+            }
+        }
     }
 }

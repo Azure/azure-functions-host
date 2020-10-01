@@ -20,10 +20,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         private const int _workerPort = 8090;
         private readonly ScriptSettingsManager _settingsManager;
         private readonly Mock<IScriptEventManager> _mockEventManager = new Mock<IScriptEventManager>();
-        private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory();
+        private readonly IWorkerProcessFactory _defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(new LoggerFactory());
         private readonly IProcessRegistry _processRegistry = new EmptyProcessRegistry();
         private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
-        private readonly ILogger _testLogger = new TestLogger("test");
+        private readonly TestLogger _testLogger = new TestLogger("test");
         private readonly HttpWorkerOptions _httpWorkerOptions;
 
         public HttpWorkerProcessTests()
@@ -31,7 +31,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
             _httpWorkerOptions = new HttpWorkerOptions()
             {
                 Port = _workerPort,
-                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" }
+                Arguments = new WorkerProcessArguments() { ExecutablePath = "test" },
+                Description = new HttpWorkerDescription()
+                {
+                   WorkingDirectory = @"c:\testDir"
+                }
             };
             _settingsManager = ScriptSettingsManager.Instance;
         }
@@ -48,12 +52,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 {
                     Assert.Equal(Environment.GetEnvironmentVariable(HttpWorkerConstants.PortEnvVarName), processEnvValue);
                 }
-                HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object);
+                HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger());
                 Process childProcess = httpWorkerProcess.CreateWorkerProcess();
                 Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.WorkerIdEnvVarName], _testWorkerId);
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.CustomHandlerPortEnvVarName], _workerPort.ToString());
+                Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName], _testWorkerId);
                 childProcess.Dispose();
             }
+        }
+
+        [Fact]
+        public void CreateWorkerProcess_LinuxConsumption_AssingnsExecutePermissions_invoked()
+        {
+            TestEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
+            var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger());
+            mockHttpWorkerProcess.CreateWorkerProcess();
+            // Verify method invocation
+            var testLogs = _testLogger.GetLogMessages();
+            Assert.Contains("Error while assigning execute permission", testLogs[0].FormattedMessage);
         }
     }
 }

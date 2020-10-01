@@ -5,24 +5,26 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using Xunit;
+using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
+using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -70,6 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public TestEventGenerator EventGenerator { get; private set; } = new TestEventGenerator();
 
+        public string HostInstanceId => Host.JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value.InstanceId;
+
+        public string MasterKey { get; private set; }
+
         protected virtual ExtensionPackageReference[] GetExtensionsToInstall()
         {
             return null;
@@ -77,7 +83,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task InitializeAsync()
         {
-            _copiedRootPath = Path.Combine(Path.GetTempPath(), "FunctionsE2E", DateTime.UtcNow.ToString("yyMMdd-HHmmss"));
+            string nowString = DateTime.UtcNow.ToString("yyMMdd-HHmmss");
+            string GetDestPath(int counter)
+            {
+                return Path.Combine(Path.GetTempPath(), "FunctionsE2E", $"{nowString}_{counter}");
+            }
+
+            // Prevent collisions.
+            int i = 0;
+            _copiedRootPath = GetDestPath(i++);
+            while (Directory.Exists(_copiedRootPath))
+            {
+                _copiedRootPath = GetDestPath(i++);
+            }
+
             FileUtility.CopyDirectory(_rootPath, _copiedRootPath);
 
             var extensionsToInstall = GetExtensionsToInstall();
@@ -120,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
+                    ConfigureWebHost(s);
                 });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
@@ -127,12 +147,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             QueueClient = storageAccount.CreateCloudQueueClient();
             BlobClient = storageAccount.CreateCloudBlobClient();
-            TableClient = storageAccount.CreateCloudTableClient();
+
+            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+            TableClient = tableStorageAccount.CreateCloudTableClient();
 
             await CreateTestStorageEntities();
+
+            MasterKey = await Host.GetMasterKeyAsync();
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+        {
+        }
+
+        public virtual void ConfigureWebHost(IServiceCollection services)
         {
         }
 
@@ -238,8 +266,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return Task.CompletedTask;
         }
 
+        public void AssertNoScriptHostErrors()
+        {
+            var logs = Host.GetScriptHostLogMessages();
+            var errors = logs.Where(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error).ToList();
+            if (errors.Count > 0)
+            {
+                var messageBuilder = new StringBuilder();
+
+                foreach (var e in errors)
+                    messageBuilder.AppendLine(e.FormattedMessage);
+
+                Assert.True(errors.Count == 0, messageBuilder.ToString());
+            }
+        }
+
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient = null) => Task.FromResult<string>(null);
@@ -247,6 +291,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Task<string> GetExtensionBundlePath() => Task.FromResult<string>(null);
 
             public bool IsExtensionBundleConfigured() => false;
+
+            public bool IsLegacyExtensionBundle() => false;
 
         }
 

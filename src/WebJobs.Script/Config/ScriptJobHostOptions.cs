@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.IO;
+using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
             FileLoggingMode = FileLoggingMode.Never;
             InstanceId = Guid.NewGuid().ToString();
             WatchDirectories = new Collection<string>();
+            WatchFiles = new Collection<string>();
         }
 
         /// <summary>
@@ -72,6 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public ICollection<string> WatchDirectories { get; set; }
 
         /// <summary>
+        /// Gets or sets the collection of file names that
+        /// should be monitored for changes. If FileWatchingEnabled is true, these files
+        /// will be monitored. When a file from this list is added/modified/deleted,
+        /// the host will restart.
+        /// </summary>
+        public ICollection<string> WatchFiles { get; set; }
+
+        /// <summary>
         /// Gets or sets a value governing when logs should be written to disk.
         /// When enabled, logs will be written to the directory specified by
         /// <see cref="RootLogPath"/>.
@@ -98,5 +107,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// locally or via CLI.
         /// </summary>
         public bool IsSelfHost { get; set; }
+
+        /// <summary>
+        /// Gets or sets retry options to use on function executions on function invocation failures.
+        /// </summary>
+        public RetryOptions Retry { get; set; }
     }
 }

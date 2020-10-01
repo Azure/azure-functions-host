@@ -2,9 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
+using Mono.Unix;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -17,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly string _scriptRootPath;
         private readonly string _workerId;
         private readonly WorkerProcessArguments _workerProcessArguments;
+        private readonly IEnvironment _environment;
 
         internal HttpWorkerProcess(string workerId,
                                        string rootScriptPath,
@@ -25,8 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
+                                       IWorkerConsoleLogSource consoleLogSource,
+                                       IEnvironment environment,
+                                       IMetricsLogger metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;
@@ -35,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _scriptRootPath = rootScriptPath;
             _httpWorkerOptions = httpWorkerOptions;
             _workerProcessArguments = _httpWorkerOptions.Arguments;
+            _environment = environment;
         }
 
         internal override Process CreateWorkerProcess()
@@ -44,21 +51,50 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 RequestId = Guid.NewGuid().ToString(),
                 WorkerId = _workerId,
                 Arguments = _workerProcessArguments,
-                WorkingDirectory = _scriptRootPath,
+                WorkingDirectory = _httpWorkerOptions.Description.WorkingDirectory,
                 Port = _httpWorkerOptions.Port
             };
             workerContext.EnvironmentVariables.Add(HttpWorkerConstants.PortEnvVarName, _httpWorkerOptions.Port.ToString());
-            return _processFactory.CreateWorkerProcess(workerContext);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.WorkerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerPortEnvVarName, _httpWorkerOptions.Port.ToString());
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.CustomHandlerWorkerIdEnvVarName, _workerId);
+            workerContext.EnvironmentVariables.Add(HttpWorkerConstants.FunctionAppRootVarName, _scriptRootPath);
+            Process workerProcess = _processFactory.CreateWorkerProcess(workerContext);
+            if (_environment.IsLinuxConsumption())
+            {
+                AssignUserExecutePermissionsIfNotExists(workerProcess.StartInfo.FileName);
+            }
+            return workerProcess;
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        private void AssignUserExecutePermissionsIfNotExists(string filePath)
         {
-            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
+            try
             {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _workerProcessArguments.ExecutablePath);
-                _eventManager.Publish(new HttpWorkerErrorEvent(_workerId, langExc));
+                UnixFileInfo fileInfo = new UnixFileInfo(filePath);
+                if (!fileInfo.FileAccessPermissions.HasFlag(FileAccessPermissions.UserExecute))
+                {
+                    _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
+                    fileInfo.FileAccessPermissions |= FileAccessPermissions.UserExecute |
+                                                      FileAccessPermissions.GroupExecute |
+                                                      FileAccessPermissions.OtherExecute;
+                }
             }
+            catch (Exception ex)
+            {
+                _workerProcessLogger.LogWarning(ex, "Error while assigning execute permission.");
+            }
+        }
+
+        internal override void HandleWorkerProcessExitError(WorkerProcessExitException httpWorkerProcessExitException)
+        {
+            if (httpWorkerProcessExitException == null)
+            {
+                throw new ArgumentNullException(nameof(httpWorkerProcessExitException));
+            }
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerProcessLogger.LogDebug(httpWorkerProcessExitException, $"Language Worker Process exited. Pid={httpWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _eventManager.Publish(new HttpWorkerErrorEvent(_workerId, httpWorkerProcessExitException));
         }
 
         internal override void HandleWorkerProcessRestart()

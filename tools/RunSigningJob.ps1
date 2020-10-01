@@ -6,6 +6,8 @@ if (-not $bypassPackaging) {
     "Signing disabled. Skipping signing process."
     exit 0;
   }
+  
+  Install-Module -Name AzureRM -AllowClobber -Scope CurrentUser
 
   # Only sign the ExtensionsMetadataGenerator
   New-Item -ItemType Directory -Force -Path "$directoryPath\..\buildoutput\signing"

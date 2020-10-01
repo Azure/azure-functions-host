@@ -23,6 +23,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
@@ -32,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string TestLogPath = Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions");
 
         private readonly WebJobsScriptHostService _scriptHostService;
-        private readonly Mock<IScriptJobHostEnvironment> _mockJobHostEnvironment;
+        private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly TestFunctionHost _testHost;
         private readonly Collection<string> _exceededCounters = new Collection<string>();
         private readonly HostHealthMonitorOptions _healthMonitorOptions;
-        private bool _underHighLoad;
+        private bool _countersExceeded;
         private bool _shutdownCalled;
 
         public WebJobsScriptHostServiceTests()
@@ -51,23 +52,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             };
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_healthMonitorOptions);
 
-            _mockJobHostEnvironment = new Mock<IScriptJobHostEnvironment>(MockBehavior.Strict);
-            _mockJobHostEnvironment.Setup(p => p.Shutdown())
-                .Callback(() =>
-                {
-                    _shutdownCalled = true;
-                });
+            _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Loose);
+            _mockApplicationLifetime.Setup(p => p.StopApplication())
+               .Callback(() =>
+               {
+                   _shutdownCalled = true;
+               });
 
             _mockEnvironment = new Mock<IEnvironment>();
+            var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("testapp");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns("testapp");
 
-            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions);
+            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object, null);
 
-            mockHostPerformanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
+            mockHostPerformanceManager.Setup(p => p.PerformanceCountersExceeded(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
                 .Callback<Collection<string>, ILogger>((c, l) =>
                 {
-                    if (_underHighLoad)
+                    if (_countersExceeded)
                     {
                         foreach (var counter in _exceededCounters)
                         {
@@ -75,13 +77,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                         }
                     }
                 })
-                .Returns(() => _underHighLoad);
+                .Returns(() => _countersExceeded);
 
             _testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
                 configureWebHostServices: services =>
                 {
                     services.AddSingleton<IOptions<HostHealthMonitorOptions>>(wrappedHealthMonitorOptions);
-                    services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
+                    services.AddSingleton<IApplicationLifetime>(_mockApplicationLifetime.Object);
                     services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
                     services.AddSingleton<HostPerformanceManager>(mockHostPerformanceManager.Object);
 
@@ -195,12 +197,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             // make host unhealthy
             _exceededCounters.Add("Connections");
-            _underHighLoad = true;
+            _countersExceeded = true;
 
             await TestHelpers.Await(() => _shutdownCalled);
 
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Once);
+            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Once);
 
             // we expect a few restart iterations
             var scriptHostLogMessages = _testHost.GetScriptHostLogMessages();
@@ -231,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             // now that host is running make host unhealthy and wait
             // for host shutdown
             _exceededCounters.Add("Connections");
-            _underHighLoad = true;
+            _countersExceeded = true;
 
             await TestHelpers.Await(() => _scriptHostService.State == ScriptHostState.Error);
             var lastError = _scriptHostService.LastError;
@@ -244,12 +246,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                 return allLogs.Contains("Host initialization: ConsecutiveErrors=3");
             });
             Assert.Equal(ScriptHostState.Error, _scriptHostService.State);
-            _mockJobHostEnvironment.Verify(p => p.Shutdown(), Times.Never);
+            _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
 
             // after a few retries, put the host back to health and verify
             // it starts successfully
             _exceededCounters.Clear();
-            _underHighLoad = false;
+            _countersExceeded = false;
 
             await TestHelpers.Await(() => _scriptHostService.State == ScriptHostState.Running);
             Assert.Null(_scriptHostService.LastError);
@@ -267,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _healthMonitorOptions.Enabled = true;
             Assert.True(_scriptHostService.IsHostHealthy());
 
-            _underHighLoad = true;
+            _countersExceeded = true;
             _exceededCounters.Add("Foo");
             _exceededCounters.Add("Bar");
             Assert.False(_scriptHostService.IsHostHealthy());
@@ -294,7 +296,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
                       o.MinLevel = LogLevel.Debug;
                   });
 
-                  services.AddSingleton<IScriptJobHostEnvironment>(_mockJobHostEnvironment.Object);
                   services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
 
                   services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>

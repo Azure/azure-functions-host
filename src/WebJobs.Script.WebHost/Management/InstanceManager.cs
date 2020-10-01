@@ -10,12 +10,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.File;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -27,27 +28,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IMeshInitServiceClient _meshInitServiceClient;
+        private readonly IMeshServiceClient _meshServiceClient;
         private readonly IEnvironment _environment;
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshInitServiceClient meshInitServiceClient)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;
-            _meshInitServiceClient = meshInitServiceClient;
+            _meshServiceClient = meshServiceClient;
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
 
-        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context, bool isWarmup)
+        public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
         {
-            if (isWarmup)
+            // No cold start optimization needed for side car scenarios
+            if (context.IsWarmupRequest)
             {
                 return null;
             }
@@ -88,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return null;
         }
 
-        public bool StartAssignment(HostAssignmentContext context, bool isWarmup)
+        public bool StartAssignment(HostAssignmentContext context)
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
@@ -96,8 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return false;
             }
 
-            if (isWarmup)
+            if (context.IsWarmupRequest)
             {
+                // Based on profiling download code jit-ing holds up cold start.
+                // Pre-jit to avoid paying the cost later.
+                Task.Run(async () => await Download(context.GetRunFromPkgContext()));
                 return true;
             }
             else if (_assignmentContext == null)
@@ -111,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _assignmentContext = context;
                 }
 
-                _logger.LogInformation("Starting Assignment");
+                _logger.LogInformation($"Starting Assignment. Cloud Name: {_environment.GetCloudName()}");
 
                 // set a flag which will cause any incoming http requests to buffer
                 // until specialization is complete
@@ -133,15 +138,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        public async Task<string> ValidateContext(HostAssignmentContext assignmentContext, bool isWarmup)
+        public async Task<string> ValidateContext(HostAssignmentContext assignmentContext)
         {
-            if (isWarmup)
-            {
-                return null;
-            }
-            _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}')");
+            _logger.LogInformation($"Validating host assignment context (SiteId: {assignmentContext.SiteId}, SiteName: '{assignmentContext.SiteName}'. IsWarmup: '{assignmentContext.IsWarmupRequest}')");
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
-            _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url");
+            _logger.LogInformation($"Will be using {pkgContext.EnvironmentVariableName} app setting as zip url. IsWarmup: '{assignmentContext.IsWarmupRequest}')");
 
             if (pkgContext.IsScmRunFromPackage())
             {
@@ -152,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // In AppService, ZipUrl == 1 means the package is hosted in azure files.
                 // Otherwise we expect zipUrl to be a blobUri to a zip or a squashfs image
-                (var error, var contentLength) = await ValidateBlobPackageContext(pkgContext.Url);
+                (var error, var contentLength) = await ValidateBlobPackageContext(pkgContext);
                 if (string.IsNullOrEmpty(error))
                 {
                     assignmentContext.PackageContentLength = contentLength;
@@ -170,8 +171,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        private async Task<(string, long?)> ValidateBlobPackageContext(string blobUri)
+        private async Task<(string, long?)> ValidateBlobPackageContext(RunFromPackageContext context)
         {
+            string blobUri = context.Url;
+            string eventName = context.IsWarmUpRequest
+                ? MetricEventNames.LinuxContainerSpecializationZipHeadWarmup
+                : MetricEventNames.LinuxContainerSpecializationZipHead;
             string error = null;
             HttpResponseMessage response = null;
             long? contentLength = null;
@@ -184,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         try
                         {
-                            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipHead))
+                            using (_metricsLogger.LatencyEvent(eventName))
                             {
                                 var request = new HttpRequestMessage(HttpMethod.Head, blobUri);
                                 response = await _client.SendAsync(request);
@@ -197,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         }
                         catch (Exception e)
                         {
-                            _logger.LogError(e, $"{MetricEventNames.LinuxContainerSpecializationZipHead} failed");
+                            _logger.LogError(e, $"{eventName} failed");
                             throw;
                         }
                     }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3)); // Keep this less than ~1s total
@@ -206,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             catch (Exception e)
             {
                 error = $"Invalid zip url specified (StatusCode: {response?.StatusCode})";
-                _logger.LogError(e, "ValidateContext failed");
+                _logger.LogError(e, $"ValidateContext failed. IsWarmupRequest = {context.IsWarmUpRequest}");
             }
 
             return (error, contentLength);
@@ -258,7 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private async Task ApplyContext(HostAssignmentContext assignmentContext)
         {
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
-            assignmentContext.ApplyAppSettings(_environment);
+            assignmentContext.ApplyAppSettings(_environment, _logger);
 
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.
@@ -272,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString))
             {
-                await _meshInitServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
+                await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
             }
 
             // BYOS
@@ -283,10 +288,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 (await Task.WhenAll(storageVolumes.Where(v => v != null).Select(MountStorageAccount))).Where(
                     result => result).ToList();
 
-            if (mountedVolumes.Count != storageVolumes.Count)
+            if (storageVolumes.Any())
             {
-                _logger.LogWarning(
-                    $"Successfully mounted {mountedVolumes.Count} / {storageVolumes.Count} BYOS storage accounts");
+                if (mountedVolumes.Count != storageVolumes.Count)
+                {
+                    _logger.LogWarning(
+                        $"Successfully mounted {mountedVolumes.Count} / {storageVolumes.Count} BYOS storage accounts");
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        $"Successfully mounted {storageVolumes.Count} BYOS storage accounts");
+                }
             }
         }
 
@@ -295,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             try
             {
                 var storageConnectionString =
-                    Utility.BuildStorageConnectionString(storageInfoValue.AccountName, storageInfoValue.AccessKey);
+                    Utility.BuildStorageConnectionString(storageInfoValue.AccountName, storageInfoValue.AccessKey, _environment.GetStorageSuffix());
 
                 await Utility.InvokeWithRetriesAsync(async () =>
                 {
@@ -306,10 +319,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             switch (storageInfoValue.Type)
                             {
                                 case AzureStorageType.AzureFiles:
-                                    await _meshInitServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    await _meshServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
                                     break;
                                 case AzureStorageType.AzureBlob:
-                                    await _meshInitServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    await _meshServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
                                     break;
                                 default:
                                     throw new NotSupportedException($"Unknown BYOS storage type {storageInfoValue.Type}");
@@ -362,25 +375,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (pkgContext.PackageContentLength != null && pkgContext.PackageContentLength > 100 * 1024 * 1024)
             {
                 _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' using aria2c'");
-                AriaDownload(tmpPath, fileName, zipUri);
+                AriaDownload(tmpPath, fileName, zipUri, pkgContext.IsWarmUpRequest);
             }
             else
             {
                 _logger.LogInformation($"Downloading zip contents from '{cleanedUrl}' using httpclient'");
-                await HttpClientDownload(filePath, zipUri);
+                await HttpClientDownload(filePath, zipUri, pkgContext.IsWarmUpRequest);
             }
 
             return filePath;
         }
 
-        private async Task HttpClientDownload(string filePath, Uri zipUri)
+        private async Task HttpClientDownload(string filePath, Uri zipUri, bool isWarmupRequest)
         {
             HttpResponseMessage response = null;
             await Utility.InvokeWithRetriesAsync(async () =>
             {
                 try
                 {
-                    using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipDownload))
+                    var downloadMetricName = isWarmupRequest
+                        ? MetricEventNames.LinuxContainerSpecializationZipDownloadWarmup
+                        : MetricEventNames.LinuxContainerSpecializationZipDownload;
+                    using (_metricsLogger.LatencyEvent(downloadMetricName))
                     {
                         var request = new HttpRequestMessage(HttpMethod.Get, zipUri);
                         response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
@@ -393,23 +409,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _logger.LogError(e, error);
                     throw;
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded");
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
             }, 2, TimeSpan.FromSeconds(0.5));
 
-            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationZipWrite))
+            using (_metricsLogger.LatencyEvent(isWarmupRequest ? MetricEventNames.LinuxContainerSpecializationZipWriteWarmup : MetricEventNames.LinuxContainerSpecializationZipWrite))
             {
                 using (var content = await response.Content.ReadAsStreamAsync())
                 using (var stream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                 {
                     await content.CopyToAsync(stream);
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written");
+                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written. IsWarmupRequest = {isWarmupRequest}");
             }
         }
 
-        private void AriaDownload(string directory, string fileName, Uri zipUri)
+        private void AriaDownload(string directory, string fileName, Uri zipUri, bool isWarmupRequest)
         {
-            (string stdout, string stderr, int exitCode) = RunBashCommand($"aria2c --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'", MetricEventNames.LinuxContainerSpecializationZipDownload);
+            var metricName = isWarmupRequest
+                ? MetricEventNames.LinuxContainerSpecializationZipDownloadWarmup
+                : MetricEventNames.LinuxContainerSpecializationZipDownload;
+            (string stdout, string stderr, int exitCode) = RunBashCommand(
+                $"aria2c --allow-overwrite -x12 -d {directory} -o {fileName} '{zipUri}'",
+                metricName);
             if (exitCode != 0)
             {
                 var msg = $"Error downloading package. stdout: {stdout}, stderr: {stderr}, exitCode: {exitCode}";
@@ -417,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 throw new InvalidOperationException(msg);
             }
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
-            _logger.LogInformation($"{fileInfo.Length} bytes downloaded");
+            _logger.LogInformation($"{fileInfo.Length} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
         }
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext)
@@ -437,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    await _meshInitServiceClient.MountFuse("squashfs", filePath, scriptPath);
+                    await _meshServiceClient.MountFuse("squashfs", filePath, scriptPath);
                 }
             }
             else if (packageType == CodePackageType.Zip)
@@ -445,7 +466,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
-                    await _meshInitServiceClient.MountFuse("zip", filePath, scriptPath);
+                    await _meshServiceClient.MountFuse("zip", filePath, scriptPath);
                 }
                 else
                 {

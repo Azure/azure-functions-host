@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -48,8 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             private static readonly string[] WellKnownHostJsonProperties = new[]
             {
-                "version", "functionTimeout", "functions", "http", "watchDirectories", "queues", "serviceBus",
-                "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle", "managedDependencies"
+                "version", "functionTimeout", "retry", "functions", "http", "watchDirectories", "watchFiles", "queues", "serviceBus",
+                "eventHub", "singleton", "logging", "aggregator", "healthMonitor", "extensionBundle", "managedDependencies",
+                "customHandler", "httpWorker"
             };
 
             private readonly HostJsonFileConfigurationSource _configurationSource;
@@ -142,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     ScriptApplicationHostOptions options = _configurationSource.HostOptions;
                     string hostFilePath = Path.Combine(options.ScriptPath, ScriptConstants.HostMetadataFileName);
                     JObject hostConfigObject = LoadHostConfig(hostFilePath);
-                    InitializeHostConfig(hostFilePath, hostConfigObject);
+                    hostConfigObject = InitializeHostConfig(hostFilePath, hostConfigObject);
                     string sanitizedJson = SanitizeHostJson(hostConfigObject);
 
                     _logger.HostConfigApplied();
@@ -155,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private void InitializeHostConfig(string hostJsonPath, JObject hostConfigObject)
+            private JObject InitializeHostConfig(string hostJsonPath, JObject hostConfigObject)
             {
                 using (_metricsLogger.LatencyEvent(MetricEventNames.InitializeHostConfiguration))
                 {
@@ -168,11 +170,25 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         TryWriteHostJson(hostJsonPath, hostConfigObject);
                     }
 
-                    if (hostConfigObject["version"]?.Value<string>() != "2.0")
+                    string hostJsonVersion = hostConfigObject["version"]?.Value<string>();
+                    if (string.IsNullOrEmpty(hostJsonVersion))
                     {
                         throw new HostConfigurationException($"The {ScriptConstants.HostMetadataFileName} file is missing the required 'version' property. See https://aka.ms/functions-hostjson for steps to migrate the configuration file.");
                     }
+
+                    if (!hostJsonVersion.Equals("2.0"))
+                    {
+                        StringBuilder errorMsg = new StringBuilder($"'{hostJsonVersion}' is an invalid value for {ScriptConstants.HostMetadataFileName} 'version' property. We recommend you set the 'version' property to '2.0'. ");
+                        if (hostJsonVersion.StartsWith("3", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // In case the customer has confused host.json version with the fact that they're running Functions v3
+                            errorMsg.Append($"This does not correspond to the function runtime version, only to the schema version of the {ScriptConstants.HostMetadataFileName} file. ");
+                        }
+                        errorMsg.Append($"See https://aka.ms/functions-hostjson for more information on this configuration file.");
+                        throw new HostConfigurationException(errorMsg.ToString());
+                    }
                 }
+                return hostConfigObject;
             }
 
             internal JObject LoadHostConfig(string configFilePath)
@@ -195,6 +211,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigNotFound();
 
                         hostConfigObject = GetDefaultHostConfigObject();
+
+                        // Add bundle configuration if no file exists and file system is not read only
+                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject);
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
 
@@ -231,6 +250,17 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     _logger.HostConfigFileSystemReadOnly();
                 }
+            }
+
+            private JObject TryAddBundleConfiguration(JObject content)
+            {
+                if (!_configurationSource.Environment.IsFileSystemReadOnly())
+                {
+                    string bundleConfiguration = "{ 'id': 'Microsoft.Azure.Functions.ExtensionBundle', 'version': '[1.*, 2.0.0)'}";
+                    content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
+                    _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
+                }
+                return content;
             }
 
             internal static string SanitizeHostJson(JObject hostJsonObject)

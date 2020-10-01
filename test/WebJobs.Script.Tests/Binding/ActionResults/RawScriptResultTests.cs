@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Extensions.Primitives;
-using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
@@ -62,13 +61,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
                 {
                     new Tuple<string, string, CookieOptions>("firstCookie", "cookieValue", new CookieOptions()
                     {
-                        SameSite = SameSiteMode.None
+                        SameSite = SameSiteMode.Lax
                     }),
                     new Tuple<string, string, CookieOptions>("secondCookie", "cookieValue2", new CookieOptions()
                     {
                         Path = "/",
                         HttpOnly = true,
-                        MaxAge = TimeSpan.FromSeconds(20)
+                        MaxAge = TimeSpan.FromSeconds(20),
+                        SameSite = SameSiteMode.Unspecified
+                    }),
+                    new Tuple<string, string, CookieOptions>("thirdCookie", "cookieValue3", new CookieOptions()
+                    {
+                        SameSite = SameSiteMode.None
                     })
                 }
             };
@@ -78,9 +82,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Binding.ActionResults
             await result.ExecuteResultAsync(context);
             context.HttpContext.Response.Headers.TryGetValue("Set-Cookie", out StringValues cookies);
 
-            Assert.Equal(2, cookies.Count);
-            Assert.Equal("firstCookie=cookieValue; path=/", cookies[0]);
-            Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; samesite=lax; httponly", cookies[1]);
+            Assert.Equal(3, cookies.Count);
+            Assert.Equal("firstCookie=cookieValue; path=/; samesite=lax", cookies[0]);
+            Assert.Equal("secondCookie=cookieValue2; max-age=20; path=/; httponly", cookies[1]);
+            Assert.Equal("thirdCookie=cookieValue3; path=/; samesite=none", cookies[2]);
         }
 
         [Fact]

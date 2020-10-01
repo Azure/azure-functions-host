@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
-using Microsoft.Azure.AppService.Proxy.Common.Expressions;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -20,7 +19,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions.Internal;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -81,16 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                     ValidateMetric(metric, invocationId, functionName);
                 }
             }
-
-            // App Insights logs first, so wait until this metric appears
-            string metricKey = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, functionName);
-            IEnumerable<string> GetMetrics() => _fixture.MetricsLogger.LoggedEvents.Where(p => p == metricKey);
-
-            // TODO: Remove this check when metrics are supported in Node:
-            // https://github.com/Azure/azure-functions-host/issues/2189
-            int expectedCount = this is ApplicationInsightsCSharpEndToEndTests ? 10 : 5;
-            await TestHelpers.Await(() => GetMetrics().Count() == expectedCount,
-                timeout: 15000, userMessageCallback: () => string.Join(Environment.NewLine, GetMetrics().Select(p => p.ToString())));
         }
 
         [Fact]
@@ -247,13 +235,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTelemetry(telemetry, expectedInvocationId, expectedOperationName, expectedCategory, SeverityLevel.Error);
         }
 
-        [Fact]
+        [Fact(Skip = "Disabled due to https://github.com/Azure/azure-functions-host/issues/6521")]
         public async Task Validate_HostLogs()
         {
             // Validate the host startup traces. Order by message string as the requests may come in
             // slightly out-of-order or on different threads
             TraceTelemetry[] traces = null;
-            string routesManagerLogCategory = TypeNameHelper.GetTypeDisplayName(typeof(WebHost.WebScriptHostHttpRoutesManager));
+            string routesManagerLogCategory = typeof(WebHost.WebScriptHostHttpRoutesManager).FullName;
 
             await TestHelpers.Await(() =>
             {
@@ -286,14 +274,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             int idx = 0;
             ValidateTrace(traces[idx++], "2 functions loaded", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "A function whitelist has been specified", LogCategories.Startup);
+            ValidateTrace(traces[idx++], "A function allow list has been specified", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Found the following functions:\r\n", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Generating 2 job function(s)", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host initialization: ConsecutiveErrors=0, StartupCount=1", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host initialized (", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Host lock lease acquired by instance ID", ScriptConstants.LogCategoryHostGeneral);
             ValidateTrace(traces[idx++], "Host started (", LogCategories.Startup);
-            ValidateTrace(traces[idx++], "Initializing function HTTP routes" + Environment.NewLine 
+            ValidateTrace(traces[idx++], "Initializing function HTTP routes" + Environment.NewLine
                 + "Mapped function route 'api/HttpTrigger-Scenarios'", routesManagerLogCategory);
             ValidateTrace(traces[idx++], "Initializing Host", LogCategories.Startup);
             ValidateTrace(traces[idx++], "Initializing Warmup Extension", LogCategories.CreateTriggerCategory("Warmup"));

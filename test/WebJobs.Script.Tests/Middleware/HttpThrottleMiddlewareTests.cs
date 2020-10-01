@@ -47,8 +47,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Interlocked.Increment(ref _throttleMetricCount);
             });
             var environment = SystemEnvironment.Instance;
+            var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             var healthMonitorOptions = new HostHealthMonitorOptions();
-            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, new object[] { environment, new OptionsWrapper<HostHealthMonitorOptions>(healthMonitorOptions) });
+            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, environment, new OptionsWrapper<HostHealthMonitorOptions>(healthMonitorOptions), mockServiceProvider.Object, null);
             _httpOptions = new HttpOptions();
             _loggerFactory = new LoggerFactory();
             _loggerProvider = new TestLoggerProvider();
@@ -208,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _requestQueue = new HttpRequestQueue(new OptionsWrapper<HttpOptions>(_httpOptions));
 
             bool isOverloaded = false;
-            _performanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), null)).Returns(() => isOverloaded);
+            _performanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<Collection<string>>(), null)).Returns(() => Task.FromResult(isOverloaded));
 
             RequestDelegate next = async (ctxt) =>
             {
@@ -242,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             bool highLoad = false;
             int highLoadQueryCount = 0;
-            _performanceManager.Setup(p => p.IsUnderHighLoad(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
+            _performanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
                 .Callback<Collection<string>, ILogger>((exceededCounters, tw) =>
                 {
                     if (highLoad)
@@ -253,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }).Returns(() =>
                 {
                     highLoadQueryCount++;
-                    return highLoad;
+                    return Task.FromResult(highLoad);
                 });
 
             // issue some requests while not under high load

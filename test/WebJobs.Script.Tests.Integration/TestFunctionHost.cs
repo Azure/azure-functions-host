@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -11,14 +10,18 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
+using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -28,6 +31,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -58,10 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 HasParentScope = true
             };
 
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_hostOptions);
-            var serviceProvider = new TestServiceProvider(_hostOptions, optionsMonitor);
-            _hostOptions.RootServiceProvider = serviceProvider;
-
             var builder = new WebHostBuilder()
                 .ConfigureLogging(b =>
                 {
@@ -71,10 +71,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                   {
                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                       services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
-                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions)));
-                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                      services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), sp =>
+                      {
+                          _hostOptions.RootServiceProvider = sp;
+                          return new OptionsWrapper<ScriptApplicationHostOptions>(_hostOptions);
+                      }, ServiceLifetime.Singleton));
+                      services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), sp =>
+                      {
+                          _hostOptions.RootServiceProvider = sp;
+                          return TestHelpers.CreateOptionsMonitor(_hostOptions);
+                      }, ServiceLifetime.Singleton));
                       services.Replace(new ServiceDescriptor(typeof(IExtensionBundleManager), new TestExtensionBundleManager()));
+                      services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataManager), sp =>
+                      {
+                          var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                          var scriptManager = sp.GetService<IScriptHostManager>();
+                          var loggerFactory = sp.GetService<ILoggerFactory>();
 
+                          return GetMetadataManager(montior, scriptManager, loggerFactory);
+                      }, ServiceLifetime.Singleton));
 
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
@@ -101,15 +116,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .UseStartup<TestStartup>();
 
-            _testServer = new TestServer(builder);
+            _testServer = new TestServer(builder) { BaseAddress = new Uri("https://localhost/") };
 
-            HttpClient = new HttpClient(new UpdateContentLengthHandler(_testServer.CreateHandler()))
-            {
-                BaseAddress = new Uri("https://localhost/")
-            };
+            HttpClient = _testServer.CreateClient();
+            HttpClient.Timeout = TimeSpan.FromMinutes(5);
 
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
+
+            // Wire up StopApplication calls as they behave in hosted scenarios
+            var lifetime = WebHostServices.GetService<IApplicationLifetime>();
+            lifetime.ApplicationStopping.Register(async () => await _testServer.Host.StopAsync());
+
             StartAsync().GetAwaiter().GetResult();
         }
 
@@ -144,17 +162,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await _hostService.RestartHostAsync(cancellationToken);
         }
 
-        private async Task StartAsync()
+        private Task StartAsync()
         {
-            bool running = false;
-            while (!running)
+            bool exit = false;
+            var startTask = Task.Run(async () =>
             {
-                running = await IsHostStarted(HttpClient);
-
-                if (!running)
+                bool running = false;
+                while (!running && !exit)
                 {
-                    await Task.Delay(50);
+                    running = await IsHostStarted();
+
+                    if (!running)
+                    {
+                        await Task.Delay(50);
+                    }
                 }
+            });
+
+            if (startTask.Wait(TimeSpan.FromMinutes(1)))
+            {
+                return Task.CompletedTask;
+            }
+            else
+            {
+                exit = true;
+                throw new Exception("Functions Host timed out trying to start.");
             }
         }
 
@@ -185,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         /// <summary>
-        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level.
         /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
         /// </summary>
         /// <returns>The messages from the ScriptHost LoggerProvider</returns>
@@ -193,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public IEnumerable<LogMessage> GetScriptHostLogMessages(string category) => GetScriptHostLogMessages().Where(p => p.Category == category);
 
         /// <summary>
-        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level. 
+        /// The functions host has two logger providers -- one at the WebHost level and one at the ScriptHost level.
         /// These providers use different LoggerProviders, so it's important to know which one is receiving the logs.
         /// </summary>
         /// <returns>The messages from the WebHost LoggerProvider</returns>
@@ -248,29 +280,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testServer.Dispose();
         }
 
-        private async Task<bool> IsHostStarted(HttpClient client)
+        private async Task<bool> IsHostStarted()
         {
             HostStatus status = await GetHostStatusAsync();
             return status.State == $"{ScriptHostState.Running}" || status.State == $"{ScriptHostState.Error}";
-        }
-
-        private class UpdateContentLengthHandler : DelegatingHandler
-        {
-            public UpdateContentLengthHandler(HttpMessageHandler innerHandler)
-                : base(innerHandler)
-            {
-            }
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                // Force reading the content-length to ensure the header is populated.
-                if (request.Content != null)
-                {
-                    Trace.Write(request.Content.Headers.ContentLength);
-                }
-
-                return base.SendAsync(request, cancellationToken);
-            }
         }
 
         private class TestStartup
@@ -290,36 +303,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _postConfigure?.ConfigureServices(services);
             }
 
-            public void Configure(AspNetCore.Builder.IApplicationBuilder app, AspNetCore.Hosting.IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, Microsoft.Extensions.Logging.ILoggerFactory loggerFactory)
+            public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, AspNetCore.Hosting.IHostingEnvironment env, ILoggerFactory loggerFactory)
             {
+                // This middleware is only added when env.IsLinuxConsumption()
+                // It should be a no-op for most tests
+                app.UseMiddleware<AppServiceHeaderFixupMiddleware>();
+
                 _startup.Configure(app, applicationLifetime, env, loggerFactory);
             }
         }
 
-        private class TestServiceProvider : IServiceProvider
+        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory)
         {
-            private readonly ScriptApplicationHostOptions _scriptApplicationHostOptions;
-            private readonly IOptionsMonitor<ScriptApplicationHostOptions> _optionsMonitor;
-
-            public TestServiceProvider(ScriptApplicationHostOptions scriptApplicationHostOptions, IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor)
+            var workerOptions = new LanguageWorkerOptions
             {
-                _scriptApplicationHostOptions = scriptApplicationHostOptions;
-                _optionsMonitor = optionsMonitor;
-            }
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
+            };
 
-            public object GetService(System.Type serviceType)
-            {
-                var workerOptions = new LanguageWorkerOptions
-                {
-                    WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
-                };
+            var managerServiceProvider = manager as IServiceProvider;
 
-                return new FunctionMetadataProvider(_optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            }
+            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), metadataProvider,
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions));
+
+            return metadataManager;
         }
 
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
+            public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);
+
             public Task<ExtensionBundleDetails> GetExtensionBundleDetails() => Task.FromResult<ExtensionBundleDetails>(null);
 
             public Task<string> GetExtensionBundlePath(HttpClient httpClient = null) => Task.FromResult<string>(null);
@@ -327,6 +340,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Task<string> GetExtensionBundlePath() => Task.FromResult<string>(null);
 
             public bool IsExtensionBundleConfigured() => false;
+
+            public bool IsLegacyExtensionBundle() => true;
 
         }
 

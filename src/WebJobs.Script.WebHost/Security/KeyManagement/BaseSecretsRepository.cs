@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
@@ -14,30 +13,35 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public abstract class BaseSecretsRepository : ISecretsRepository, IDisposable
     {
-        private readonly AutoRecoveringFileSystemWatcher _sentinelFileWatcher;
+        private readonly object _sentinelWatcherInitializationLock = new object();
         private readonly string _hostSecretsSentinelFilePath;
         private readonly string _secretsSentinelFilePath;
 
+        private AutoRecoveringFileSystemWatcher _sentinelFileWatcher;
+        private bool _disposing = false;
         private bool _disposed = false;
 
-        public BaseSecretsRepository(string secretsSentinelFilePath)
+        public BaseSecretsRepository(string secretsSentinelFilePath, ILogger logger, IEnvironment environment)
         {
             if (secretsSentinelFilePath == null)
             {
                 throw new ArgumentNullException(nameof(secretsSentinelFilePath));
             }
+            if (logger == null)
+            {
+                throw new ArgumentNullException(nameof(logger));
+            }
+
             _secretsSentinelFilePath = secretsSentinelFilePath;
+            Logger = logger;
             _hostSecretsSentinelFilePath = Path.Combine(_secretsSentinelFilePath, ScriptConstants.HostMetadataFileName);
 
-            Directory.CreateDirectory(_secretsSentinelFilePath);
-
-            _sentinelFileWatcher = new AutoRecoveringFileSystemWatcher(_secretsSentinelFilePath, "*.json");
-            _sentinelFileWatcher.Changed += OnChanged;
-        }
-
-        public BaseSecretsRepository(string secretsSentinelFilePath, ILogger logger) : this(secretsSentinelFilePath)
-        {
-            Logger = logger;
+            // Initialize sentinel watcher on a delay so we don't affect cold start.
+            // this does open a small window for race conditions in multi-instance scenarios,
+            // (e.g. if an instance has loaded/cached secrets but hasn't setup the watcher yet).
+            // However, the "reload on failure" logic in SecretManager.GetAuthorizationLevelOrNullAsync
+            // will handle those rare cases.
+            Utility.ExecuteAfterColdStartDelay(environment, InitializeSentinelDirectoryAndWatcher);
         }
 
         public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
@@ -91,10 +95,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (disposing)
                 {
-                    _sentinelFileWatcher.Dispose();
+                    _disposing = true;
+                    if (_sentinelFileWatcher != null)
+                    {
+                        lock (_sentinelWatcherInitializationLock)
+                        {
+                            _sentinelFileWatcher?.Dispose();
+                            _sentinelFileWatcher = null;
+                        }
+                    }
                 }
 
                 _disposed = true;
+            }
+        }
+
+        private void InitializeSentinelDirectoryAndWatcher()
+        {
+            if (!_disposing)
+            {
+                FileUtility.EnsureDirectoryExists(_secretsSentinelFilePath);
+
+                lock (_sentinelWatcherInitializationLock)
+                {
+                    if (!_disposing)
+                    {
+                        _sentinelFileWatcher = new AutoRecoveringFileSystemWatcher(_secretsSentinelFilePath, "*.json");
+                        _sentinelFileWatcher.Changed += OnChanged;
+                    }
+                }
+
+                Logger.LogDebug($"Sentinel watcher initialized for path {_secretsSentinelFilePath}");
             }
         }
 

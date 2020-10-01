@@ -8,7 +8,7 @@
 
 If you have questions about Azure Functions, we encourage you to reach out to the community and Azure Functions dev team for help.
 
- - For all questions and technical help, [our MSDN forums](https://social.msdn.microsoft.com/Forums/azure/en-US/home?forum=AzureFunctions) are an easy place to have a conversation with our engineering team.
+ - For all questions and technical help, [our Q&A forums](https://docs.microsoft.com/en-us/answers/questions/topics/single/25345.html) are an easy place to have a conversation with our engineering team.
  - For questions which fit the Stack Overflow format ("*how* does this work?"), we monitor the [azure-functions](http://stackoverflow.com/questions/tagged/azure-functions) tag.
  - You can also tweet/follow [@AzureFunctions](https://twitter.com/azurefunctions).
  
@@ -27,7 +27,7 @@ We track functional issues in a variety of places for Azure Functions. If you ha
 |Portal|User Interface or Experience Issue|[File an Issue](https://github.com/ProjectKudu/AzureFunctionsPortal/issues)|
 |Templates|Code Issues with Creation Template|[File an Issue](https://github.com/Azure/azure-webjobs-sdk-templates/issues)|
 
-Before filing an issue, please check that it doesn't already exist. If you're not sure if you should file an issue, you can open up an [MSDN forum question](https://social.msdn.microsoft.com/Forums/azure/en-US/home?forum=AzureFunctions). We also have a [uservoice feedback site](https://feedback.azure.com/forums/355860-azure-functions) which we can track your feature requests through.
+Before filing an issue, please check that it doesn't already exist. If you're not sure if you should file an issue, you can open up a [Q&A forum question](https://docs.microsoft.com/en-us/answers/questions/topics/single/25345.html). We also have a [uservoice feedback site](https://feedback.azure.com/forums/355860-azure-functions) which we can track your feature requests through.
 
 ## Pre-reqs for developing
 
@@ -39,9 +39,9 @@ Before filing an issue, please check that it doesn't already exist. If you're no
     - Note: today you have to have Node.js and Java installed, but in the long run we hope move those tests out into their own repos
     - [Java 8 ](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (JDK and JRE required)
     - [Node 8.4+](https://nodejs.org/en/)
-    - .NET Core 2.0
+    - [.NET Core 2.2 SDK](https://dotnet.microsoft.com/download/dotnet-core/2.2)
  - Editor
-    - [Visual Studio 2017](https://visualstudio.microsoft.com/vs/) (recommended)
+    - [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) (recommended)
     - [VS Code](https://code.visualstudio.com/) (works, but has some quirks running tests)
  - Misc tools (suggested)
     - [git](https://git-scm.com/downloads) - source control

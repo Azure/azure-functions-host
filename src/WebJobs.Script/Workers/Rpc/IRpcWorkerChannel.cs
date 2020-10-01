@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
@@ -15,16 +16,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
-        RpcWorkerChannelState State { get; }
+        bool IsChannelReadyForInvocations();
 
         void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions);
 
-        void SendFunctionLoadRequests();
+        void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions);
 
         Task SendFunctionEnvironmentReloadRequest();
 
         Task StartWorkerProcessAsync();
 
+        Task<WorkerStatus> GetWorkerStatusAsync();
+
         Task DrainInvocationsAsync();
+
+        bool IsExecutingInvocation(string invocationId);
+
+        bool TryFailExecutions(Exception workerException);
     }
 }

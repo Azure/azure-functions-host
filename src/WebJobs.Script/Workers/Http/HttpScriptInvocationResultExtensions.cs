@@ -3,8 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 {
@@ -16,49 +18,91 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             {
                 Outputs = new Dictionary<string, object>()
             };
-            if (httpScriptInvocationResult.Outputs != null && httpScriptInvocationResult.Outputs.Any())
+
+            foreach (var outputBindingMetadata in scriptInvocationContext.FunctionMetadata.OutputBindings)
             {
-                foreach (var outputFromHttpWorker in httpScriptInvocationResult.Outputs)
+                object outputValue = GetOutputValue(outputBindingMetadata.Name, outputBindingMetadata.Type, outputBindingMetadata.DataType, httpScriptInvocationResult.Outputs);
+                if (outputValue != null)
                 {
-                    BindingMetadata outputBindingMetadata = GetBindingMetadata(outputFromHttpWorker.Key, scriptInvocationContext);
-                    scriptInvocationResult.Outputs[outputFromHttpWorker.Key] = GetOutputValue(outputBindingMetadata, outputFromHttpWorker.Value);
+                    scriptInvocationResult.Outputs[outputBindingMetadata.Name] = outputValue;
                 }
             }
+
             if (httpScriptInvocationResult.ReturnValue != null)
             {
                 BindingMetadata returnParameterBindingMetadata = GetBindingMetadata(ScriptConstants.SystemReturnParameterBindingName, scriptInvocationContext);
-                scriptInvocationResult.Return = GetOutputValue(returnParameterBindingMetadata, httpScriptInvocationResult.ReturnValue);
+                if (returnParameterBindingMetadata != null)
+                {
+                    scriptInvocationResult.Return = GetBindingValue(returnParameterBindingMetadata.DataType, httpScriptInvocationResult.ReturnValue);
+                }
             }
             return scriptInvocationResult;
         }
 
-        private static object GetOutputValue(BindingMetadata bindingMetadata, object outputBindingValue)
+        internal static object GetOutputValue(string outputBindingName, string bindingType, DataType? bindingDataType, IDictionary<string, object> outputsFromWorker)
         {
-            if (bindingMetadata != null && outputBindingValue != null)
+            if (outputsFromWorker == null)
             {
-                if (bindingMetadata.DataType == DataType.Binary)
-                {
-                    return outputBindingValue;
-                }
-                else
-                {
-                    try
-                    {
-                        return Convert.FromBase64String((string)outputBindingValue);
-                    }
-                    catch
-                    {
-                        //ignore
-                    }
-                }
-                return outputBindingValue;
+                return null;
+            }
+            object outputBindingValue;
+            if (bindingType == "http" && !outputBindingName.Equals(ScriptConstants.SystemReturnParameterBindingName))
+            {
+                return GetHttpOutputBindingResponse(outputBindingName, outputsFromWorker);
+            }
+            if (outputsFromWorker.TryGetValue(outputBindingName, out outputBindingValue))
+            {
+                return GetBindingValue(bindingDataType, outputBindingValue);
             }
             return null;
         }
 
+        private static object GetBindingValue(DataType? bindingDataType, object outputBindingValue)
+        {
+            if (bindingDataType == DataType.Binary)
+            {
+                return outputBindingValue;
+            }
+            else
+            {
+                try
+                {
+                    return Convert.FromBase64String((string)outputBindingValue);
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+            return outputBindingValue;
+        }
+
+        internal static object GetHttpOutputBindingResponse(string bindingName, IDictionary<string, object> outputsFromWorker)
+        {
+            dynamic httpOutput = new ExpandoObject();
+
+            if (outputsFromWorker.TryGetValue(bindingName, out object outputBindingValue))
+            {
+                try
+                {
+                    HttpOutputBindingResponse httpOutputBindingResponse = JsonConvert.DeserializeObject<HttpOutputBindingResponse>(outputBindingValue.ToString());
+
+                    httpOutput.StatusCode = httpOutputBindingResponse.StatusCode;
+                    httpOutput.Status = httpOutputBindingResponse.Status;
+                    httpOutput.Body = httpOutputBindingResponse.Body;
+                    httpOutput.Headers = httpOutputBindingResponse.Headers;
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Failed while trying to Deserialize to httpOutputBindingResponse. Output is not in expected format", ex.InnerException);
+                }
+            }
+            return httpOutput;
+        }
+
         private static BindingMetadata GetBindingMetadata(string outputBidingName, ScriptInvocationContext scriptInvocationContext)
         {
-            // Find dataType for outputbinding if exists
+            // Find BindingMetadata that matches output form http response
             return scriptInvocationContext.FunctionMetadata.OutputBindings.FirstOrDefault(outputBindingMetadata => outputBindingMetadata.Name == outputBidingName);
         }
     }

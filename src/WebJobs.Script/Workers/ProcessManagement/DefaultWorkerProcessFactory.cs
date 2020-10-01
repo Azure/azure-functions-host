@@ -5,11 +5,24 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
+        private ILogger _logger;
+
+        public DefaultWorkerProcessFactory(ILoggerFactory loggerFactory)
+        {
+            if (loggerFactory == null)
+            {
+                throw new ArgumentNullException(nameof(loggerFactory));
+            }
+            _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
+        }
+
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
             if (context == null)
@@ -34,19 +47,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 WorkingDirectory = context.WorkingDirectory,
                 Arguments = GetArguments(context),
             };
-
             var processEnvVariables = context.EnvironmentVariables;
             if (processEnvVariables != null && processEnvVariables.Any())
             {
-                foreach (var evnVar in processEnvVariables)
+                foreach (var envVar in processEnvVariables)
                 {
-                    startInfo.EnvironmentVariables[evnVar.Key] = evnVar.Value;
+                    startInfo.EnvironmentVariables[envVar.Key] = envVar.Value;
+                    startInfo.Arguments = startInfo.Arguments.Replace($"%{envVar.Key}%", envVar.Value);
                 }
+                startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);
             }
             return new Process { StartInfo = startInfo };
         }
 
-        private StringBuilder MergeArguments(StringBuilder builder, string arg) => builder.AppendFormat(" {0}", arg);
+        private StringBuilder MergeArguments(StringBuilder builder, string arg)
+        {
+            string expandedArg = Environment.ExpandEnvironmentVariables(arg);
+            return builder.AppendFormat(" {0}", expandedArg);
+        }
 
         public string GetArguments(WorkerContext context)
         {
@@ -58,6 +76,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             context.Arguments.WorkerArguments.Aggregate(argumentsBuilder, MergeArguments);
             argumentsBuilder.Append(context.GetFormattedArguments());
             return argumentsBuilder.ToString();
+        }
+
+        internal string SanitizeExpandedArgument(string envExpandedString)
+        {
+            var regex = new Regex(@"%(.+?)%");
+            var matches = regex.Matches(envExpandedString);
+            foreach (Match match in matches)
+            {
+                _logger.LogDebug($"Environment variable:{match.Value} is not set");
+                envExpandedString = envExpandedString.Replace(match.Value, string.Empty);
+            }
+            return envExpandedString;
         }
     }
 }

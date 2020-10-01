@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly TestLogger _logger;
         private readonly IEnumerable<FunctionMetadata> _functions = new List<FunctionMetadata>();
         private readonly RpcWorkerConfig _testWorkerConfig;
+        private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
         private RpcWorkerChannel _workerChannel;
 
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
+            _testEnvironment = new TestEnvironment();
 
             var hostOptions = new ScriptApplicationHostOptions
             {
@@ -67,17 +69,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
+               _testEnvironment,
                _hostOptionsMonitor);
         }
 
         [Fact]
-        public async Task StartWorkerProcessAsync_Invoked()
+        public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync();
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             await initTask;
             _mockrpcWorkerProcess.Verify(m => m.StartProcessAsync(), Times.Once);
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
+        public async Task DisposingChannel_NotReadyForInvocation()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await initTask;
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.True(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.Dispose();
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+        }
+
+        [Fact]
+        public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
+        {
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            Assert.False(_workerChannel.IsChannelReadyForInvocations());
         }
 
         [Fact]
@@ -116,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
+               _testEnvironment,
                _hostOptionsMonitor);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
@@ -136,6 +165,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
+        [Fact]
+        public void WorkerInitRequest_Expected()
+        {
+            WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
+            Assert.NotNull(initRequest.WorkerDirectory);
+            Assert.NotNull(initRequest.HostVersion);
+            Assert.Equal("testDir", initRequest.WorkerDirectory);
+            Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
+        }
+
+        [Fact]
+        public void SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
+        {
+            _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+            RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker and host running in V2 compatibility mode")));
         }
 
         [Theory]
@@ -160,6 +219,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void SendInvocationRequest_IsInExecutingInvocation()
+        {
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
+        }
+
+        [Fact]
         public async Task Drain_Verify()
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
@@ -172,10 +240,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _logger,
                _metricsLogger,
                0,
+               _testEnvironment,
                _hostOptionsMonitor);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
-            channel.SendInvocationRequest(scriptInvocationContext);
+            await channel.SendInvocationRequest(scriptInvocationContext);
             Task result = channel.DrainInvocationsAsync();
             Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
             channel.InvokeResponse(new InvocationResponse
@@ -191,11 +260,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void InFlight_Functions_FailedWithException()
+        {
+            var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Exception workerException = new Exception("worker failed");
+            _workerChannel.TryFailExecutions(workerException);
+            Assert.False(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
+            Assert.Equal(TaskStatus.Faulted, resultSource.Task.Status);
+            Assert.Equal(workerException, resultSource.Task.Exception.InnerException);
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents()
         {
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
@@ -212,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functions.First().Name == funcName);
 
             _workerChannel.SetupFunctionInvocationBuffers(functions);
-            _workerChannel.SendFunctionLoadRequests();
+            _workerChannel.SendFunctionLoadRequests(null);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
             var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
@@ -258,6 +341,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(envReloadRequest.EnvironmentVariables.ContainsKey("TestEmpty"));
             Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey("TestValid"));
             Assert.True(envReloadRequest.EnvironmentVariables["TestValid"] == "TestValue");
+            Assert.True(envReloadRequest.EnvironmentVariables.ContainsKey(WorkerConstants.FunctionsWorkerDirectorySettingName));
+            Assert.True(envReloadRequest.EnvironmentVariables[WorkerConstants.FunctionsWorkerDirectorySettingName] == "testDir");
         }
 
         [Fact]
@@ -298,39 +383,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             FunctionMetadata metadata = new FunctionMetadata()
             {
                 Language = "node",
-                Name = "js1",
-                FunctionId = "TestFunctionId1"
+                Name = "js1"
             };
-            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata);
+
+            metadata.SetFunctionId("TestFunctionId1");
+
+            var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata, null);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
-            FunctionMetadata proxyMetadata = new FunctionMetadata()
+            ProxyFunctionMetadata proxyMetadata = new ProxyFunctionMetadata(null)
             {
                 Language = "node",
-                Name = "js1",
-                FunctionId = "TestFunctionId1",
-                IsProxy = true
+                Name = "js1"
             };
-            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata);
+
+            metadata.SetFunctionId("TestFunctionId1");
+
+            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata, null);
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
+            var metadata1 = new FunctionMetadata()
+            {
+                Language = runtime,
+                Name = "js1"
+            };
+
+            metadata1.SetFunctionId("TestFunctionId1");
+
+            var metadata2 = new FunctionMetadata()
+            {
+                Language = runtime,
+                Name = "js2",
+            };
+
+            metadata2.SetFunctionId("TestFunctionId2");
+
             return new List<FunctionMetadata>()
             {
-                new FunctionMetadata()
-                {
-                     Language = runtime,
-                     Name = "js1",
-                     FunctionId = "TestFunctionId1"
-                },
-
-                new FunctionMetadata()
-                {
-                     Language = runtime,
-                     Name = "js2",
-                     FunctionId = "TestFunctionId2"
-                }
+                metadata1,
+                metadata2
             };
         }
 
@@ -354,15 +447,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime, string funcName)
         {
+            var metadata = new FunctionMetadata()
+            {
+                Language = runtime,
+                Name = funcName
+            };
+
+            metadata.SetFunctionId("DisabledFunctionId1");
+            metadata.SetIsDisabled(true);
+
             var disabledList = new List<FunctionMetadata>()
             {
-                new FunctionMetadata()
-                {
-                    Language = runtime,
-                    Name = funcName,
-                    FunctionId = "DisabledFunctionId1",
-                    IsDisabled = true
-                }
+                metadata
             };
 
             return disabledList.Union(GetTestFunctionsList(runtime));

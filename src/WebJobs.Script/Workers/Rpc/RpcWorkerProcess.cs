@@ -3,6 +3,7 @@
 
 using System;
 using System.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Extensions.Logging;
 
@@ -18,18 +19,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly Uri _serverUri;
         private readonly string _scriptRootPath;
         private readonly WorkerProcessArguments _workerProcessArguments;
+        private readonly string _workerDirectory;
 
         internal RpcWorkerProcess(string runtime,
                                        string workerId,
                                        string rootScriptPath,
                                        Uri serverUri,
-                                       WorkerProcessArguments workerProcessArguments,
+                                       RpcWorkerConfig rpcWorkerConfig,
                                        IScriptEventManager eventManager,
                                        IWorkerProcessFactory processFactory,
                                        IProcessRegistry processRegistry,
                                        ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource)
+                                       IWorkerConsoleLogSource consoleLogSource,
+                                       IMetricsLogger metricsLogger)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;
             _processFactory = processFactory;
@@ -38,23 +41,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerId = workerId;
             _serverUri = serverUri;
             _scriptRootPath = rootScriptPath;
-            _workerProcessArguments = workerProcessArguments;
+            _workerProcessArguments = rpcWorkerConfig.Arguments;
+            _workerDirectory = rpcWorkerConfig.Description.WorkerDirectory;
         }
 
         internal override Process CreateWorkerProcess()
         {
             var workerContext = new RpcWorkerContext(Guid.NewGuid().ToString(), RpcWorkerConstants.DefaultMaxMessageLengthBytes, _workerId, _workerProcessArguments, _scriptRootPath, _serverUri);
+            workerContext.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerDirectory);
             return _processFactory.CreateWorkerProcess(workerContext);
         }
 
-        internal override void HandleWorkerProcessExitError(WorkerProcessExitException langExc)
+        internal override void HandleWorkerProcessExitError(WorkerProcessExitException rpcWorkerProcessExitException)
         {
-            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            if (langExc != null && langExc.ExitCode != -1)
+            if (rpcWorkerProcessExitException == null)
             {
-                _workerProcessLogger.LogDebug(langExc, $"Language Worker Process exited.", _workerProcessArguments.ExecutablePath);
-                _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, langExc));
+                throw new ArgumentNullException(nameof(rpcWorkerProcessExitException));
             }
+            // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
+            _workerProcessLogger.LogDebug(rpcWorkerProcessExitException, $"Language Worker Process exited. Pid={rpcWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, _workerId, rpcWorkerProcessExitException));
         }
 
         internal override void HandleWorkerProcessRestart()

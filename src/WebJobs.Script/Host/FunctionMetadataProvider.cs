@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -22,28 +23,26 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IOptions<LanguageWorkerOptions> languageWorkerOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
-            _workerConfigs = languageWorkerOptions.Value.WorkerConfigs;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
                 _logger.FunctionMetadataProviderParsingFunctions();
-                Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata();
+                Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata(workerConfigs);
                 _logger.FunctionMetadataProviderFunctionFound(functionMetadata.Count);
                 _functions = functionMetadata.ToImmutableArray();
             }
@@ -51,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _functions;
         }
 
-        internal Collection<FunctionMetadata> ReadFunctionsMetadata(IFileSystem fileSystem = null)
+        internal Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, IFileSystem fileSystem = null)
         {
             _functionErrors.Clear();
             fileSystem = fileSystem ?? FileUtility.Instance;
@@ -67,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
                 foreach (var functionDirectory in functionDirectories)
                 {
-                    var function = ReadFunctionMetadata(functionDirectory, fileSystem);
+                    var function = ReadFunctionMetadata(functionDirectory, fileSystem, workerConfigs);
                     if (function != null)
                     {
                         functions.Add(function);
@@ -77,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private FunctionMetadata ReadFunctionMetadata(string functionDirectory, IFileSystem fileSystem)
+        private FunctionMetadata ReadFunctionMetadata(string functionDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             using (_metricsLogger.LatencyEvent(string.Format(MetricEventNames.ReadFunctionMetadata, functionDirectory)))
             {
@@ -98,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     JObject functionConfig = JObject.Parse(json);
 
-                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem);
+                    return ParseFunctionMetadata(functionName, functionConfig, functionDirectory, fileSystem, workerConfigs);
                 }
                 catch (Exception ex)
                 {
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem)
+        private FunctionMetadata ParseFunctionMetadata(string functionName, JObject configMetadata, string scriptDirectory, IFileSystem fileSystem, IEnumerable<RpcWorkerConfig> workerConfigs)
         {
             var functionMetadata = new FunctionMetadata
             {
@@ -146,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var isDirectValue = isDirect.ToString();
                 if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
                 {
-                    functionMetadata.IsDirect = true;
+                    functionMetadata.SetIsDirect(true);
                 }
                 else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
                 {
@@ -156,9 +155,14 @@ namespace Microsoft.Azure.WebJobs.Script
             functionMetadata.ScriptFile = DeterminePrimaryScriptFile((string)configMetadata["scriptFile"], scriptDirectory, fileSystem);
             if (!string.IsNullOrWhiteSpace(functionMetadata.ScriptFile))
             {
-                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, _workerConfigs);
+                functionMetadata.Language = ParseLanguage(functionMetadata.ScriptFile, workerConfigs);
             }
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
+
+            //Retry
+            functionMetadata.Retry = configMetadata.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
+            Utility.ValidateRetryOptions(functionMetadata.Retry);
+
             return functionMetadata;
         }
 
@@ -172,6 +176,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // determine the script type based on the primary script file extension
             string extension = Path.GetExtension(scriptFilePath).ToLowerInvariant().TrimStart('.');
+            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
+            if (workerConfig != null)
+            {
+                return workerConfig.Description.Language;
+            }
+
+            // If no worker claimed these extensions, use in-proc.
             switch (extension)
             {
                 case "csx":
@@ -180,13 +191,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 case "dll":
                     return DotNetScriptTypes.DotNetAssembly;
             }
-            var workerConfig = workerConfigs.FirstOrDefault(config => config.Description.Extensions.Contains("." + extension));
-            if (workerConfig != null)
-            {
-                return workerConfig.Description.Language;
-            }
+
             return null;
         }
+
+        // Logic for this function is copied to:
+        // https://github.com/projectkudu/kudu/blob/master/Kudu.Core/Functions/FunctionManager.cs
+        // These two implementations must stay in sync!
 
         /// <summary>
         /// Determines which script should be considered the "primary" entry point script. Returns null if Primary script file cannot be determined

@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         private readonly TimeSpan _memorySnapshotInterval = TimeSpan.FromMilliseconds(1000);
         private readonly TimeSpan _metricPublishInterval = TimeSpan.FromMilliseconds(30 * 1000);
+        private readonly TimeSpan _timerStartDelay = TimeSpan.FromSeconds(2);
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly string _requestUri;
@@ -156,8 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
                 _logger.LogWarning($"Buffer for function activities is full with {_functionActivities.Count} elements. Dropping current batch of function activities");
                 DrainActivities(_currentFunctionActivities, _functionActivities);
             }
-
-            _logger.LogDebug($"Added function activity : {functionName} {invocationId} {concurrency} {executionStage} {success} {executionTimeSpan}");
         }
 
         public void AddMemoryActivity(DateTime timeStampUtc, long data)
@@ -229,10 +228,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
 
         internal async Task SendRequest<T>(ConcurrentQueue<T> activitiesToPublish, string publishPath)
         {
-            var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
-            _logger.LogDebug($"Publishing {activitiesToPublish.Count()} activities to {publishPath}.");
-            HttpResponseMessage response = await _httpClient.SendAsync(request);
-            response.EnsureSuccessStatusCode();
+            try
+            {
+                var request = BuildRequest(HttpMethod.Post, publishPath, activitiesToPublish.ToArray());
+
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Failed to publish status to {publishPath}");
+            }
         }
 
         public void Initialize()
@@ -246,19 +252,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Metrics
         public void Start()
         {
             Initialize();
-            _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, TimeSpan.Zero, _memorySnapshotInterval);
-            _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, TimeSpan.Zero, _metricPublishInterval);
+            _processMonitorTimer = new Timer(OnProcessMonitorTimer, null, _timerStartDelay, _memorySnapshotInterval);
+            _metricsPublisherTimer = new Timer(OnFunctionMetricsPublishTimer, null, _timerStartDelay, _metricPublishInterval);
 
             _logger.LogInformation(string.Format("Starting metrics publisher for container : {0}. Publishing endpoint is {1}", _containerName, _requestUri));
         }
 
         private void OnProcessMonitorTimer(object state)
         {
-            _process.Refresh();
-            var commitSizeBytes = _process.WorkingSet64;
-            if (commitSizeBytes != 0)
+            try
             {
-                AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                _process.Refresh();
+                var commitSizeBytes = _process.WorkingSet64;
+                if (commitSizeBytes != 0)
+                {
+                    AddMemoryActivity(DateTime.UtcNow, commitSizeBytes);
+                }
+            }
+            catch (Exception e)
+            {
+                // throwing this exception will mask other underlying exceptions.
+                // Log and let other interesting exceptions bubble up.
+                _logger.LogError(e, nameof(OnProcessMonitorTimer));
             }
         }
 

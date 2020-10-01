@@ -3,11 +3,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
@@ -20,6 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static bool IsAdminRequest(this HttpRequest request)
         {
             return request.Path.StartsWithSegments("/admin");
+        }
+
+        public static bool IsAdminDownloadRequest(this HttpRequest request)
+        {
+            return request.Path.StartsWithSegments("/admin/functions/download");
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)
@@ -35,6 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         public static string GetRequestId(this HttpRequest request)
         {
             return request.GetRequestPropertyOrDefault<string>(ScriptConstants.AzureFunctionsRequestIdKey);
+        }
+
+        public static bool HasHeader(this HttpRequest request, string headerName)
+        {
+            return !string.IsNullOrEmpty(request.GetHeaderValueOrDefault(headerName));
+        }
+
+        public static bool HasHeaderValue(this HttpRequest request, string headerName, string value)
+        {
+            return string.Equals(request.GetHeaderValueOrDefault(headerName), value, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetHeaderValueOrDefault(this HttpRequest request, string headerName)
@@ -78,12 +97,24 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static Uri GetRequestUri(this HttpRequest request) => new Uri(request.GetDisplayUrl());
 
-        public static byte[] GetRequestBodyAsBytes(this HttpRequest request)
+        public static async Task<byte[]> GetRequestBodyAsBytesAsync(this HttpRequest request)
         {
-            var length = Convert.ToInt32(request.ContentLength);
-            var bytes = new byte[length];
-            request.Body.Read(bytes, 0, length);
-            request.Body.Position = 0;
+            // allows the request to be read multiple times
+            request.EnableBuffering();
+
+            byte[] bytes;
+            using (var ms = new MemoryStream())
+            using (var reader = new StreamReader(ms))
+            {
+                await request.Body.CopyToAsync(ms);
+                bytes = ms.ToArray();
+            }
+
+            if (request.Body.CanSeek)
+            {
+                request.Body.Seek(0, SeekOrigin.Begin);
+            }
+
             return bytes;
         }
 
@@ -91,20 +122,47 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
         {
             if (MediaTypeHeaderValue.TryParse(request.ContentType, out MediaTypeHeaderValue mediaType))
             {
-                return mediaType != null && (string.Equals(mediaType.MediaType, "application/octet-stream", StringComparison.OrdinalIgnoreCase) ||
-                                mediaType.MediaType.IndexOf("multipart/", StringComparison.OrdinalIgnoreCase) >= 0);
+                return Utility.IsMediaTypeOctetOrMultipart(mediaType);
             }
             return false;
+        }
+
+        public static HttpRequestMessage ToHttpRequestMessage(this HttpRequest request, string requestUri)
+        {
+            HttpRequestMessage httpRequest = new HttpRequestMessage
+            {
+                RequestUri = new Uri(QueryHelpers.AddQueryString(requestUri, request.GetQueryCollectionAsDictionary()))
+            };
+
+            foreach (var header in request.Headers)
+            {
+                httpRequest.Headers.TryAddWithoutValidation(header.Key, header.Value.AsEnumerable());
+            }
+
+            httpRequest.Method = new HttpMethod(request.Method);
+
+            // Copy body
+            if (request.ContentLength != null && request.ContentLength > 0)
+            {
+                httpRequest.Content = new StreamContent(request.Body);
+                httpRequest.Content.Headers.Add("Content-Length", request.ContentLength.ToString());
+                if (!string.IsNullOrEmpty(request.ContentType))
+                {
+                    httpRequest.Content.Headers.Add("Content-Type", request.ContentType);
+                }
+            }
+
+            return httpRequest;
         }
 
         public static async Task<JObject> GetRequestAsJObject(this HttpRequest request)
         {
             var jObjectHttp = new JObject();
-            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}"; // [http|https]://{url}{path}{query}
+            jObjectHttp["Url"] = $"{(request.IsHttps ? "https" : "http")}://{request.Host.ToString()}{request.Path.ToString()}{request.QueryString.ToString()}";
             jObjectHttp["Method"] = request.Method.ToString();
             if (request.Query != null)
             {
-                jObjectHttp["Query"] = request.GetQueryCollectionAsString();
+                jObjectHttp["Query"] = request.GetQueryCollectionAsJObject();
             }
             if (request.Headers != null)
             {
@@ -121,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
             if (request.HttpContext?.User?.Identities != null)
             {
-                jObjectHttp["Identities"] = JsonConvert.SerializeObject(request.HttpContext.User.Identities);
+                jObjectHttp["Identities"] = GetUserIdentitiesAsJArray(request.HttpContext.User.Identities);
             }
 
             // parse request body as content-type
@@ -129,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             {
                 if (request.IsMediaTypeOctetOrMultipart())
                 {
-                    jObjectHttp["Body"] = request.GetRequestBodyAsBytes();
+                    jObjectHttp["Body"] = await request.GetRequestBodyAsBytesAsync();
                 }
                 else
                 {
@@ -140,9 +198,9 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             return jObjectHttp;
         }
 
-        internal static string GetQueryCollectionAsString(this HttpRequest request)
+        internal static JObject GetQueryCollectionAsJObject(this HttpRequest request)
         {
-            return JsonConvert.SerializeObject(request.GetQueryCollectionAsDictionary());
+            return JObject.FromObject(request.GetQueryCollectionAsDictionary());
         }
 
         internal static IDictionary<string, string> GetQueryCollectionAsDictionary(this HttpRequest request)
@@ -154,6 +212,15 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
                 queryParamsDictionary.Add(key, value.ToString());
             }
             return queryParamsDictionary;
+        }
+
+        internal static JArray GetUserIdentitiesAsJArray(IEnumerable<ClaimsIdentity> claimsIdentities)
+        {
+            return JArray.FromObject(claimsIdentities, new JsonSerializer
+            {
+                // Claims property in Identities had circular reference to property 'Subject'
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            });
         }
     }
 }

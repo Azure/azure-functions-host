@@ -7,8 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     public interface IWorkerConsoleLogSource
     {
-        ISourceBlock<string> LogStream { get; }
+        ISourceBlock<ConsoleLog> LogStream { get; }
 
-        void Log(string consoleLog);
+        void Log(ConsoleLog consoleLog);
     }
 }

@@ -29,6 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = loggerFactory.CreateLogger(WorkerConstants.FunctionConsoleLogCategoryName);
         }
 
+        internal WorkerConsoleLogService(ILogger logger, IWorkerConsoleLogSource consoleLogSource)
+        {
+            _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _processingTask = ProcessLogs();
@@ -38,17 +44,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _cts.Cancel();
-            await _processingTask;
+
+            if (_processingTask != null)
+            {
+                await _processingTask;
+            }
         }
 
-        private async Task ProcessLogs()
+        internal async Task ProcessLogs()
         {
-            ISourceBlock<string> source = _source.LogStream;
+            ISourceBlock<ConsoleLog> source = _source.LogStream;
             try
             {
                 while (await source.OutputAvailableAsync(_cts.Token))
                 {
-                    _logger.LogInformation(await source.ReceiveAsync());
+                    var consoleLog = await source.ReceiveAsync();
+                    _logger.Log(consoleLog.Level, consoleLog.Message);
                 }
             }
             catch (OperationCanceledException)

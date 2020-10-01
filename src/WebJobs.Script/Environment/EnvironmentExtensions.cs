@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -61,13 +62,23 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
-        public static bool IsZipDeployment(this IEnvironment environment)
+        public static bool IsZipDeployment(this IEnvironment environment, bool validate = true)
         {
             // Run From Package app setting exists
-            return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            if (validate)
+            {
+                return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                    IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            }
+            else
+            {
+                return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
+            }
         }
 
         public static bool IsValidZipSetting(string appSetting)
@@ -84,6 +95,28 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
+        }
+
+        public static bool IsV2CompatibilityMode(this IEnvironment environment)
+        {
+            string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
+            bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
+
+            string extensionVersion = environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            bool isV2ExtensionVersion = string.Compare(extensionVersion, "~2", CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0;
+
+            return isFunctionsV2CompatibilityMode || isV2ExtensionVersion;
+        }
+
+        public static bool IsV2CompatibileOnV3Extension(this IEnvironment environment)
+        {
+            string compatModeString = environment.GetEnvironmentVariable(FunctionsV2CompatibilityModeKey);
+            bool.TryParse(compatModeString, out bool isFunctionsV2CompatibilityMode);
+
+            string extensionVersion = environment.GetEnvironmentVariable(FunctionsExtensionVersion);
+            bool isV3ExtensionVersion = string.Compare(extensionVersion, "~3", CultureInfo.InvariantCulture, CompareOptions.OrdinalIgnoreCase) == 0;
+
+            return isFunctionsV2CompatibilityMode && isV3ExtensionVersion;
         }
 
         public static bool IsContainer(this IEnvironment environment)
@@ -135,6 +168,26 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
+        /// </summary>
+        public static bool IsVMSS(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(EnvironmentSettingNames.RoleInstanceId);
+            return value != null && value.IndexOf("HostRole", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Gets the number of effective cores taking into account SKU/environment restrictions.
+        /// </summary>
+        public static int GetEffectiveCoresCount(this IEnvironment environment)
+        {
+            // When not running on VMSS, the dynamic plan has some limits that mean that a given instance is using effectively a single core,
+            // so we should not use Environment.Processor count in this case.
+            var effectiveCores = (environment.IsWindowsConsumption() && !environment.IsVMSS()) ? 1 : Environment.ProcessorCount;
+            return effectiveCores;
+        }
+
+        /// <summary>
         /// Gets a value indicating whether the application is running in a Windows Elastic Premium
         /// App Service environment.
         /// </summary>
@@ -144,6 +197,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             string value = environment.GetEnvironmentVariable(AzureWebsiteSku);
             return string.Equals(value, ScriptConstants.ElasticPremiumSku, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsDynamicSku(this IEnvironment environment)
+        {
+            return environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium() || environment.IsLinuxConsumption();
         }
 
         /// <summary>
@@ -229,6 +287,44 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the computer name.
+        /// </summary>
+        public static string GetAntaresComputerName(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(AntaresComputerName, string.Empty);
+        }
+
+        /// <summary>
+        /// Gets the Antares version.
+        /// </summary>
+        public static string GetAntaresVersion(this IEnvironment environment)
+        {
+            if (environment.IsLinuxAzureManagedHosting())
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionLinux, string.Empty);
+            }
+            else
+            {
+                return environment.GetEnvironmentVariableOrDefault(AntaresPlatformVersionWindows, string.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Gets the Instance id.
+        /// </summary>
+        public static string GetInstanceId(this IEnvironment environment)
+        {
+            if (environment.IsLinuxConsumption())
+            {
+                return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
+            }
+            else
+            {
+                return environment.GetEnvironmentVariableOrDefault(AzureWebsiteInstanceId, string.Empty);
+            }
+        }
+
+        /// <summary>
         /// Gets a the subscription Id of the current site.
         /// </summary>
         public static string GetSubscriptionId(this IEnvironment environment)
@@ -295,6 +391,38 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return string.Equals(environment.GetEnvironmentVariable(MountEnabled), "0")
                 || string.IsNullOrEmpty(environment.GetEnvironmentVariable(MeshInitURI));
+        }
+
+        public static CloudName GetCloudName(this IEnvironment environment)
+        {
+            var cloudName = environment.GetEnvironmentVariable(EnvironmentSettingNames.CloudName);
+            if (Enum.TryParse(cloudName, true, out CloudName cloud))
+            {
+                return cloud;
+            }
+
+            return CloudName.Azure;
+        }
+
+        public static string GetStorageSuffix(this IEnvironment environment)
+        {
+            switch (GetCloudName(environment))
+            {
+                case CloudName.Azure:
+                    return CloudConstants.AzureStorageSuffix;
+                case CloudName.Blackforest:
+                    return CloudConstants.BlackforestStorageSuffix;
+                case CloudName.Fairfax:
+                    return CloudConstants.FairfaxStorageSuffix;
+                case CloudName.Mooncake:
+                    return CloudConstants.MooncakeStorageSuffix;
+                case CloudName.USNat:
+                    return CloudConstants.USNatStorageSuffix;
+                case CloudName.USSec:
+                    return CloudConstants.USSecStorageSuffix;
+                default:
+                    return CloudConstants.AzureStorageSuffix;
+            }
         }
     }
 }

@@ -59,7 +59,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
         {
             get
             {
-                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(\\.)(?<version>\\d*\\.\\d*\\.\\d*)(\\-prerelease.*|\\..*)?\\.zip$");
+                Match versionMatch = Regex.Match(RuntimeExtensionPackageUrl, "(\\.)(?<version>\\d*\\.\\d*\\.\\d*)(\\-ci.*|\\..*)?\\.zip$");
 
                 if (!versionMatch.Success)
                 {

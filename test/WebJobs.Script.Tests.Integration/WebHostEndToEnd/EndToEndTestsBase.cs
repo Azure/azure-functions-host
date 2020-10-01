@@ -15,9 +15,9 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.MobileServices;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
-using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
+using Microsoft.Azure.Cosmos.Table;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -100,6 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected async Task TableOutputTest()
         {
             CloudTable table = Fixture.TableClient.GetTableReference("testoutput");
+            await table.CreateIfNotExistsAsync();
             await Fixture.DeleteEntities(table);
 
             JObject item = new JObject
@@ -269,7 +270,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         protected async Task<CloudBlobContainer> GetEmptyContainer(string containerName)
         {
             var container = Fixture.BlobClient.GetContainerReference(containerName);
-            await TestHelpers.ClearContainerAsync(container);
+            if (!await container.CreateIfNotExistsAsync())
+            {
+                await TestHelpers.ClearContainerAsync(container);
+            }
             return container;
         }
 

@@ -13,10 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private ProxyClientExecutor _proxyClient;
 
-        public ProxyFunctionInvoker(ScriptHost host, FunctionMetadata functionMetadata, ProxyClientExecutor proxyClient, ILoggerFactory loggerFactory)
-            : base(host, functionMetadata, loggerFactory)
+        public ProxyFunctionInvoker(ScriptHost host, ProxyFunctionMetadata proxyfunctionMetadata, ILoggerFactory loggerFactory)
+            : base(host, proxyfunctionMetadata, loggerFactory)
         {
-            _proxyClient = proxyClient;
+            _proxyClient = proxyfunctionMetadata.ProxyClient;
         }
 
         protected override async Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context)

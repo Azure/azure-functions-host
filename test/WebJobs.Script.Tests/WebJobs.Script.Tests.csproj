@@ -1,12 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
-
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
-
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests</AssemblyName>
-
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -49,11 +47,13 @@
 
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
+    <PackageReference Include="FluentAssertions" Version="5.9.0" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="3.0.14413" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="3.0.10-11660" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.2" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="2.1.0.227">
     </PackageReference>
     <PackageReference Include="xunit" Version="2.4.0" />
@@ -76,6 +76,12 @@
     <None Update="Description\DotNet\TestFiles\DepsFiles\function.deps.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Description\DotNet\TestFiles\DepsFiles\function2.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Description\DotNet\TestFiles\DepsFiles\RidNativeDeps\function.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Description\DotNet\TestFiles\PackageReferences\FunctionWithNoProject\function.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -86,6 +92,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.assets.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Workers\Rpc\Resources\functions.png">
@@ -101,13 +110,15 @@
     <None Remove="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
     <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
     <None Remove="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
+    <None Remove="Resources\FileProvisioning\PowerShell\profile.ps1" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGallerySampleFeed.xml" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\PSGalleryEmptyFeed.xml" />
     <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOffline.psd1" />
-    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1">
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\requirements_PSGalleryOnline.psd1" />
+    <EmbeddedResource Include="Resources\FileProvisioning\PowerShell\profile.ps1">
     <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

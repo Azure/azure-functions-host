@@ -28,11 +28,17 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(302, nameof(ScriptStartUpErrorLoadingExtensionBundle)),
             "Unable to find or download extension bundle");
 
-        private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
-            LoggerMessage.Define<string>(
+        private static readonly Action<ILogger, string, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
+            LoggerMessage.Define<string, bool, bool, bool>(
             LogLevel.Information,
-            new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
-            "Loading Extention bundle from {path}");
+            new EventId(328, nameof(ScriptStartNotLoadingExtensionBundle)),
+            "Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}");
+
+        private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
+           LoggerMessage.Define<string>(
+           LogLevel.Information,
+           new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
+           "Loading extension bundle from {path}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingStartUpExtension =
             LoggerMessage.Define<string>(
@@ -52,11 +58,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(306, nameof(ScriptStartUpUnableToLoadExtension)),
             "Unable to load startup extension '{startupExtensionName}' (Type: '{typeName}'). The type does not exist. Please validate the type and assembly names.");
 
-        private static readonly Action<ILogger, string, string, Exception> _scriptStartUpTypeIsNotValid =
-            LoggerMessage.Define<string, string>(
+        private static readonly Action<ILogger, string, string, string, Exception> _scriptStartUpTypeIsNotValid =
+            LoggerMessage.Define<string, string, string>(
             LogLevel.Warning,
             new EventId(307, nameof(ScriptStartUpTypeIsNotValid)),
-            "Type '{typeName}' is not a valid startup extension. The type does not implement {className}.");
+            "Type '{typeName}' is not a valid startup extension. The type does not implement {startupClassName} or {startupConfigurationClassName}.");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpUnableParseMetadataMissingProperty =
             LoggerMessage.Define<string>(
@@ -178,6 +184,30 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
             "{count} functions found");
 
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerForwardingHttpTriggerInvocation =
+            LoggerMessage.Define<string, Guid>(
+            LogLevel.Debug,
+            new EventId(328, nameof(CustomHandlerForwardingHttpTriggerInvocation)),
+            "Forwarding httpTrigger invocation for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerSendingInvocation =
+           LoggerMessage.Define<string, Guid>(
+           LogLevel.Debug,
+           new EventId(329, nameof(CustomHandlerSendingInvocation)),
+           "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, string, Guid, Exception> _customHandlerReceivedInvocationResponse =
+           LoggerMessage.Define<string, Guid>(
+           LogLevel.Debug,
+           new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
+           "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
+
+        private static readonly Action<ILogger, Exception> _jobHostFunctionTimeoutNotSet =
+            LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(331, nameof(JobHostFunctionTimeoutNotSet)),
+            "FunctioTimeout is not set.");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -196,6 +226,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpLoadingExtensionBundle(this ILogger logger, string path)
         {
             _scriptStartUpLoadingExtensionBundle(logger, path, null);
+        }
+
+        public static void ScriptStartNotLoadingExtensionBundle(this ILogger logger, string path, bool bundleConfigured, bool isPrecompiledFunctionApp, bool isLegacyExtensionBundle)
+        {
+            _scriptStartUpNotLoadingExtensionBundle(logger, path, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle, null);
         }
 
         public static void ScriptStartUpLoadingStartUpExtension(this ILogger logger, string startupExtensionName)
@@ -218,9 +253,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             _scriptStartUpUnableToLoadExtension(logger, startupExtensionName, typeName, null);
         }
 
-        public static void ScriptStartUpTypeIsNotValid(this ILogger logger, string typeName, string className)
+        public static void ScriptStartUpTypeIsNotValid(this ILogger logger, string typeName, string startupClassName, string startupConfigurationClassName)
         {
-            _scriptStartUpTypeIsNotValid(logger, typeName, className, null);
+            _scriptStartUpTypeIsNotValid(logger, typeName, startupClassName, startupConfigurationClassName, null);
         }
 
         public static void ScriptStartUpUnableParseMetadataMissingProperty(this ILogger logger, string metadataFilePath)
@@ -323,6 +358,26 @@ Lock file hash: {currentLockFileHash}";
         public static void AutoRecoveringFileSystemWatcherUnableToRecover(this ILogger logger, Exception ex, string path)
         {
             _autoRecoveringFileSystemWatcherUnableToRecover(logger, path, ex);
+        }
+
+        public static void CustomHandlerForwardingHttpTriggerInvocation(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerForwardingHttpTriggerInvocation(logger, functionName, invocationId, null);
+        }
+
+        public static void CustomHandlerSendingInvocation(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerSendingInvocation(logger, functionName, invocationId, null);
+        }
+
+        public static void CustomHandlerReceivedInvocationResponse(this ILogger logger, string functionName, Guid invocationId)
+        {
+            _customHandlerReceivedInvocationResponse(logger, functionName, invocationId, null);
+        }
+
+        public static void JobHostFunctionTimeoutNotSet(this ILogger logger)
+        {
+            _jobHostFunctionTimeoutNotSet(logger, null);
         }
     }
 }

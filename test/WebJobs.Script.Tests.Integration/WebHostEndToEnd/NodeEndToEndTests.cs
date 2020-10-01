@@ -14,19 +14,19 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage.Blob;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.Storage.Queue;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Workers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // write a binary queue message
             byte[] inputBytes = new byte[] { 1, 2, 3 };
-            CloudQueueMessage message = CloudQueueMessage.CreateCloudQueueMessageFromByteArray(inputBytes);
+            CloudQueueMessage message = new CloudQueueMessage(inputBytes);
             var queue = Fixture.QueueClient.GetQueueReference("test-input-byte");
             await queue.CreateIfNotExistsAsync();
             await queue.ClearAsync();
@@ -227,12 +227,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // verify the console log
             Assert.Equal("console log", consoleLog);
 
-            // We only expect 9 user log metrics to be counted, since
-            // verbose logs are filtered by default (the TestLogger explicitly
-            // allows all levels for testing purposes)
-            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
-            Assert.Equal(9, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
-
             // Make sure that no user logs made it to the EventGenerator (which the SystemLogger writes to)
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
             Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
@@ -319,8 +313,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "value", "TestInput" },
                 { "metadata", metadata }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -361,8 +356,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "value", JToken.FromObject(body) },
                 { "contenttype", expectedContentType }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
 
@@ -393,8 +389,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "scenario", "echo" },
                 { "value", value }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -487,6 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
             string json = "} not json";
             request.Content = new StringContent(json, Encoding.UTF8, "AppLication/json");
+            request.Content.Headers.ContentLength = json.Length;
 
             var response = await Fixture.Host.HttpClient.SendAsync(request);
 
@@ -804,7 +802,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // verify all 3 output blobs were written
             var blob = Fixture.TestOutputContainer.GetBlockBlobReference(id1);
-            await TestHelpers.WaitForBlobAsync(blob);
+            await TestHelpers.WaitForBlobAsync(blob, Fixture.Host.GetLog);
             string blobContent = await blob.DownloadTextAsync();
             // TODO: why required?
             Assert.Equal("Test Blob 1", blobContent.TrimEnd('\0').Trim('"'));

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -18,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class HostJsonFileConfigurationSourceTests
     {
+        private readonly string _hostJsonWithBundles = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle\",\r\n    \"version\": \"[1.*, 2.0.0)\"\r\n  }\r\n}";
         private readonly string _defaultHostJson = "{\r\n  \"version\": \"2.0\"\r\n}";
         private readonly ScriptApplicationHostOptions _options;
         private readonly string _hostJsonFile;
@@ -55,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             AreExpectedMetricsGenerated(testMetricsLogger);
 
-            Assert.Equal(_defaultHostJson, File.ReadAllText(_hostJsonFile));
+            Assert.Equal(_hostJsonWithBundles, File.ReadAllText(_hostJsonFile));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
             Assert.Equal(LogLevel.Information, log.Level);
@@ -80,20 +82,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(LogLevel.Information, log.Level);
         }
 
-        [Fact]
-        public void MissingVersion_ThrowsException()
+        [Theory]
+        [InlineData("", "The host.json file is missing the required 'version' property.", "")]
+        [InlineData("'version': '4.0',", "'4.0' is an invalid value for host.json 'version' property.", "")]
+        [InlineData("'version': '3.0',", "'3.0' is an invalid value for host.json 'version' property.", "This does not correspond to the function runtime version")]
+        public void InvalidVersionThrowsException(string versionLine, string errorStartsWith, string errorContains)
         {
-            string hostJsonContent = @"
-            {
-              'functions': [ 'FunctionA', 'FunctionB' ]
-            }";
+            StringBuilder hostJsonContentBuilder = new StringBuilder(@"{");
+            hostJsonContentBuilder.Append(versionLine);
+            hostJsonContentBuilder.Append(@"'functions': [ 'FunctionA', 'FunctionB' ]}");
+            string hostJsonContent = hostJsonContentBuilder.ToString();
+
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             File.WriteAllText(_hostJsonFile, hostJsonContent);
             Assert.True(File.Exists(_hostJsonFile));
 
             var ex = Assert.Throws<HostConfigurationException>(() => BuildHostJsonConfiguration(testMetricsLogger));
-            Assert.StartsWith("The host.json file is missing the required 'version' property.", ex.Message);
+            Assert.StartsWith(errorStartsWith, ex.Message);
+            Assert.Contains(errorContains, ex.Message);
         }
 
         [Fact]
@@ -108,7 +115,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             IConfiguration config = BuildHostJsonConfiguration(testMetricsLogger, environment);
             AreExpectedMetricsGenerated(testMetricsLogger);
+            var configList = config.AsEnumerable().ToList();
             Assert.Equal(config["AzureFunctionsJobHost:version"], "2.0");
+            Assert.Equal(configList.Count, 2);
+            Assert.True(configList.TrueForAll((k) => !k.Key.Contains("extensionBundle")));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
             Assert.Equal(LogLevel.Information, log.Level);

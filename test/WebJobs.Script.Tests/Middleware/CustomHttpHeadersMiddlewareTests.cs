@@ -2,13 +2,17 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using System.Text;
+using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -16,6 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 {
     public class CustomHttpHeadersMiddlewareTests
     {
+        private bool _nextInvoked = false;
+        private IWebHost _host;
+
         [Fact]
         public async Task Invoke_hasCustomHeaders_AddsResponseHeaders()
         {
@@ -26,42 +33,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             };
             var headerOptions = new OptionsWrapper<CustomHttpHeadersOptions>(headers);
 
-            bool nextInvoked = false;
-            RequestDelegate next = (context) =>
+            using (var host = GetTestHost(o =>
             {
-                nextInvoked = true;
-                context.Response.StatusCode = (int)HttpStatusCode.Accepted;
-                return Task.CompletedTask;
-            };
+                o.Add("X-Content-Type-Options", "nosniff");
+                o.Add("Feature-Policy", "camera 'none'; geolocation 'none'");
+            }))
+            {
+                await host.StartAsync();
+                HttpResponseMessage response = await host.GetTestClient().GetAsync(string.Empty);
+                await host.StopAsync();
 
-            var middleware = new CustomHttpHeadersMiddleware(headerOptions);
-
-            var httpContext = new DefaultHttpContext();
-            await middleware.Invoke(httpContext, next);
-            Assert.True(nextInvoked);
-            Assert.Equal(httpContext.Response.Headers["X-Content-Type-Options"].ToString(), "nosniff");
-            Assert.Equal(httpContext.Response.Headers["Feature-Policy"].ToString(), "camera 'none'; geolocation 'none'");
+                Assert.True(_nextInvoked);
+                Assert.Equal(response.Headers.GetValues("X-Content-Type-Options").Single(), "nosniff");
+                Assert.Equal(response.Headers.GetValues("Feature-Policy").Single(), "camera 'none'; geolocation 'none'");
+            }
         }
 
         [Fact]
         public async Task Invoke_noCustomHeaders_DoesNotAddResponseHeader()
         {
-            var headerOptions = new OptionsWrapper<CustomHttpHeadersOptions>(new CustomHttpHeadersOptions());
-
-            bool nextInvoked = false;
-            RequestDelegate next = (context) =>
+            using (var host = GetTestHost())
             {
-                nextInvoked = true;
-                context.Response.StatusCode = (int)HttpStatusCode.Accepted;
-                return Task.CompletedTask;
-            };
+                await _host.StartAsync();
+                HttpResponseMessage response = await host.GetTestClient().GetAsync(string.Empty);
+                await _host.StopAsync();
 
-            var middleware = new CustomHttpHeadersMiddleware(headerOptions);
+                Assert.True(_nextInvoked);
+                Assert.True(response.Headers.Count() == 0,
+                    $"Expected 0 headers. Actual: {string.Join(", ", response.Headers.Select(h => h.Key))}");
+            }
+        }
 
-            var httpContext = new DefaultHttpContext();
-            await middleware.Invoke(httpContext, next);
-            Assert.True(nextInvoked);
-            Assert.Equal(httpContext.Response.Headers.Count, 0);
+        private IWebHost GetTestHost(Action<CustomHttpHeadersOptions> configureOptions = null)
+        {
+            // The custom middleware relies on the host starting the request (thus invoking OnStarting),
+            // so we need to create a test host to flow through the entire pipeline.
+            _host = new WebHostBuilder()
+                .UseTestServer()
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                    s.AddSingleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>();
+                    s.AddOptions<CustomHttpHeadersOptions>().Configure(o => configureOptions?.Invoke(o));
+                })
+                .Configure(app =>
+                {
+                    app.UseMiddleware<JobHostPipelineMiddleware>();
+                    app.Use((context, next) =>
+                    {
+                        _nextInvoked = true;
+                        context.Response.StatusCode = (int)HttpStatusCode.Accepted;
+                        return Task.CompletedTask;
+                    });
+                })
+                .Build();
+
+            return _host;
         }
     }
 }

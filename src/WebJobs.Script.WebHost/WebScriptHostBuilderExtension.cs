@@ -2,10 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -14,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -40,11 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<HostHstsOptionsSetup>();
                     services.ConfigureOptions<HostCorsOptionsSetup>();
                     services.ConfigureOptions<CorsOptionsSetup>();
+                    services.ConfigureOptions<AppServiceOptionsSetup>();
+                    services.ConfigureOptions<HostEasyAuthOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder
-                        .AddAzureStorageCoreServices();
+                    webJobsBuilder.AddAzureStorageCoreServices();
 
                     configureWebJobs?.Invoke(webJobsBuilder);
 
@@ -61,7 +66,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
-                    loggingBuilder.Services.AddSingleton<ILoggerProvider, UserLogMetricsLoggerProvider>();
                     loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
@@ -70,20 +74,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
                     var environment = rootServiceProvider.GetService<IEnvironment>();
+
                     if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
                     {
                         services.AddSingleton<IHostedService, FunctionsSyncService>();
                     }
 
+                    if (!environment.IsV2CompatibilityMode())
+                    {
+                        new FunctionsMvcBuilder(services).AddNewtonsoftJson();
+                    }
+
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
-                    services.AddSingleton<IScriptJobHostEnvironment, WebScriptJobHostEnvironment>();
 
                     services.AddSingleton<DefaultScriptWebHookProvider>();
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
+                    if (environment.IsLinuxConsumption())
+                    {
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
+                    }
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
                     if (environment.IsLinuxConsumption())
@@ -93,12 +106,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
+                    if (environment.IsWindowsAzureManagedHosting() || environment.IsLinuxAzureManagedHosting())
+                    {
+                        // Enable breaking change analysis only when hosted in Azure
+                        services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
+                        services.AddSingleton<IHostedService, ChangeAnalysisService>();
+                    }
+
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
                     if (provider != null)
                     {
                         services.AddSingleton<IHostIdProvider>(provider);
                     }
+
+                    services.AddSingleton<IDelegatingHandlerProvider, DefaultDelegatingHandlerProvider>();
 
                     // Logging and diagnostics
                     services.AddSingleton<IMetricsLogger>(a => new NonDisposableMetricsLogger(metricsLogger));
@@ -125,6 +147,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 configureBuilder.Configure(builder);
             }
+        }
+
+        /// <summary>
+        /// Used internally to register Newtonsoft formatters with our ScriptHost.
+        /// </summary>
+        private class FunctionsMvcBuilder : IMvcBuilder
+        {
+            private readonly IServiceCollection _serviceCollection;
+
+            public FunctionsMvcBuilder(IServiceCollection serviceCollection)
+            {
+                _serviceCollection = serviceCollection;
+            }
+
+            public ApplicationPartManager PartManager { get; } = new ApplicationPartManager();
+
+            public IServiceCollection Services => _serviceCollection;
         }
     }
 }

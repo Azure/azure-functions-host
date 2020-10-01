@@ -3,6 +3,7 @@
 
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -11,29 +12,23 @@ namespace Microsoft.Extensions.Logging
 {
     public static class ScriptLoggingBuilderExtensions
     {
-        internal static readonly string[] AllowedCategoryPrefixes = new[]
-        {
-            "Microsoft.Azure.WebJobs",
-            "Function",
-            "Worker",
-            "Host"
-        };
-
-        public static void AddDefaultWebJobsFilters(this ILoggingBuilder builder)
+        public static ILoggingBuilder AddDefaultWebJobsFilters(this ILoggingBuilder builder)
         {
             builder.SetMinimumLevel(LogLevel.None);
             builder.AddFilter((c, l) => Filter(c, l, LogLevel.Information));
+            return builder;
         }
 
-        public static void AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
+        public static ILoggingBuilder AddDefaultWebJobsFilters<T>(this ILoggingBuilder builder, LogLevel level) where T : ILoggerProvider
         {
             builder.AddFilter<T>(null, LogLevel.None);
-            builder.AddFilter<T>((c, l) => Filter(c, l, LogLevel.Trace));
+            builder.AddFilter<T>((c, l) => Filter(c, l, level));
+            return builder;
         }
 
         private static bool Filter(string category, LogLevel actualLevel, LogLevel minLevel)
         {
-            return actualLevel >= minLevel && AllowedCategoryPrefixes.Where(p => category.StartsWith(p)).Any();
+            return actualLevel >= minLevel && ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any();
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)

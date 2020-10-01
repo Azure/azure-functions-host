@@ -137,6 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             const string actualHost = "actual-host";
             const string actualProtocol = "https";
             const string path = "api/httptrigger-scenarios";
+            var protocolHeaders = new[] { "https", "http" };
             var request = new HttpRequestMessage
             {
                 RequestUri = new Uri(string.Format($"http://localhost/{path}")),
@@ -144,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             };
 
             request.Headers.TryAddWithoutValidation("DISGUISED-HOST", actualHost);
-            request.Headers.TryAddWithoutValidation("X-Forwarded-Proto", actualProtocol);
+            request.Headers.Add("X-Forwarded-Proto", protocolHeaders);
 
             var input = new JObject
             {
@@ -339,6 +340,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_Model_Binding()
+        {
+            (JObject req, JObject res) = await MakeModelRequest(Fixture.Host.HttpClient);
+            Assert.True(JObject.DeepEquals(req, res), res.ToString());
+        }
+
+        [Fact]
+        public async Task HttpTrigger_Model_Binding_V2CompatMode()
+        {
+            // We need a custom host to set this to v2 compat mode.
+            using (var host = new TestFunctionHost(@"TestScripts\CSharp", Path.Combine(Path.GetTempPath(), "Functions"),
+                configureWebHostServices: webHostServices =>
+                {
+                    var environment = new TestEnvironment();
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
+                    webHostServices.AddSingleton<IEnvironment>(_ => environment);
+                },
+                configureScriptHostWebJobsBuilder: webJobsBuilder =>
+                {
+                    webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        // Only load the functions we care about
+                        o.Functions = new[]
+                        {
+                            "HttpTrigger-Model-v2",
+                        };
+                    });
+                }))
+            {
+
+                (JObject req, JObject res) = await MakeModelRequest(host.HttpClient, "-v2");
+
+                // in v2, we expect the response to have a null customEnumerable property.
+                req["customEnumerable"] = null;
+
+                Assert.True(JObject.DeepEquals(req, res), res.ToString());
+            }
+        }
+
+        private static async Task<(JObject requestContent, JObject responseContent)> MakeModelRequest(HttpClient httpClient, string suffix = null)
+        {
+            var payload = new
+            {
+                custom = new { customProperty = "value" },
+                customEnumerable = new[] { new { customProperty = "value1" }, new { customProperty = "value2" } }
+            };
+
+            var jObject = JObject.FromObject(payload);
+            var json = jObject.ToString();
+
+            HttpRequestMessage request = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"http://localhost/api/httptrigger-model{suffix}"),
+                Method = HttpMethod.Post,
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+
+            request.Content.Headers.ContentLength = json.Length;
+
+            HttpResponseMessage response = await httpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            return (jObject, JObject.Parse(await response.Content.ReadAsStringAsync()));
+        }
+
+        [Fact]
         public async Task HttpTriggerToBlob()
         {
             var request = new HttpRequestMessage
@@ -361,8 +428,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 { "Value", "TestInput" },
                 { "Metadata", metadata }
             };
-            request.Content = new StringContent(input.ToString());
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            string content = input.ToString();
+            request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+            request.Content.Headers.ContentLength = content.Length;
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             HttpResponseMessage response = await Fixture.Host.HttpClient.SendAsync(request);
@@ -378,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(expectedValue, Utility.RemoveUtf8ByteOrderMark(result));
         }
 
-        [Fact]
+        [Fact(Skip = "Failing due to a change in connection string validation in the WebJobs SDK. Tracking issue: https://github.com/Azure/azure-webjobs-sdk/issues/2415")]
         public async Task FunctionWithIndexingError_ReturnsError()
         {
             FunctionStatus status = await Fixture.Host.GetFunctionStatusAsync("FunctionIndexingError");
@@ -502,6 +571,7 @@ namespace SecondaryDependency
                         "AssembliesFromSharedLocation",
                         "HttpTrigger-Dynamic",
                         "HttpTrigger-Scenarios",
+                        "HttpTrigger-Model",
                         "HttpTrigger-Redirect",
                         "HttpTrigger-Routed",
                         "HttpTriggerToBlob",

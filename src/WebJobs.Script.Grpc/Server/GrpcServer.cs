@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Abstractions;
@@ -12,9 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public class GrpcServer : IRpcServer, IDisposable
     {
+        private int _shutdown = 0;
         private Server _server;
         private bool _disposed = false;
-        public const int MaxMessageLengthBytes = 128 * 1024 * 1024;
+        public const int MaxMessageLengthBytes = int.MaxValue;
 
         public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
         {
@@ -36,7 +38,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return Task.CompletedTask;
         }
 
-        public Task ShutdownAsync() => _server.ShutdownAsync();
+        public Task ShutdownAsync()
+        {
+            // The Grpc server will throw if it is shutdown multiple times.
+            if (Interlocked.CompareExchange(ref _shutdown, 1, 0) == 0)
+            {
+                return _server.ShutdownAsync();
+            }
+
+            return Task.CompletedTask;
+        }
 
         public Task KillAsync() => _server.KillAsync();
 
@@ -46,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (disposing)
                 {
-                    _server.ShutdownAsync();
+                    ShutdownAsync();
                 }
                 _disposed = true;
             }

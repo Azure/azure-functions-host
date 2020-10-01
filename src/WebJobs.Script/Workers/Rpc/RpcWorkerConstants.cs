@@ -28,21 +28,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
 
         // Rpc message length
-        public const int DefaultMaxMessageLengthBytes = 128 * 1024 * 1024;
-
-        // Rpc Http Constants
-        public const string RpcHttpBody = "body";
-        public const string RpcHttpHeaders = "headers";
-        public const string RpcHttpEnableContentNegotiation = "enableContentNegotiation";
-        public const string RpcHttpCookies = "cookies";
-        public const string RpcHttpStatusCode = "statusCode";
-        public const string RpcHttpStatus = "status";
+        public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 
         // Capabilites
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
         public const string RpcHttpTriggerMetadataRemoved = "RpcHttpTriggerMetadataRemoved";
+        public const string IgnoreEmptyValuedRpcHttpHeaders = "IgnoreEmptyValuedRpcHttpHeaders";
+        public const string WorkerStatus = "WorkerStatus";
+        public const string UseNullableValueDictionaryForHttp = "UseNullableValueDictionaryForHttp";
+
+        // Host Capabilites
+        public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components
         public const string DotNetExecutableName = "dotnet";

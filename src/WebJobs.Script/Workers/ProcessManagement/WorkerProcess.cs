@@ -7,7 +7,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -18,17 +20,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _workerProcessLogger;
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
+        private readonly IMetricsLogger _metricsLogger;
 
         private Process _process;
+        private bool _useStdErrorStreamForErrorsOnly;
+        private ProcessMonitor _processMonitor;
         private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
             _consoleLogSource = consoleLogSource;
             _eventManager = eventManager;
+            _metricsLogger = metricsLogger;
+            _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
         }
 
         public int Id => _process.Id;
@@ -39,78 +46,84 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartProcessAsync()
         {
-            _process = CreateWorkerProcess();
-            try
+            using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
-                _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-                _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-                _process.Exited += (sender, e) => OnProcessExited(sender, e);
-                _process.EnableRaisingEvents = true;
+                _process = CreateWorkerProcess();
+                try
+                {
+                    _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
+                    _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
+                    _process.Exited += (sender, e) => OnProcessExited(sender, e);
+                    _process.EnableRaisingEvents = true;
 
-                _workerProcessLogger?.LogInformation($"Starting worker process:{_process.StartInfo.FileName} {_process.StartInfo.Arguments}");
-                _process.Start();
-                _workerProcessLogger?.LogInformation($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{_process.StartInfo.FileName} WorkingDirectory:{_process.StartInfo.WorkingDirectory} Arguments:{_process.StartInfo.Arguments}");
+                    _process.Start();
+                    _workerProcessLogger?.LogDebug($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
 
-                _process.BeginErrorReadLine();
-                _process.BeginOutputReadLine();
+                    _process.BeginErrorReadLine();
+                    _process.BeginOutputReadLine();
 
-                // Register process only after it starts
-                _processRegistry?.Register(_process);
-                return Task.CompletedTask;
+                    // Register process only after it starts
+                    _processRegistry?.Register(_process);
+
+                    _processMonitor = new ProcessMonitor(_process, SystemEnvironment.Instance);
+                    _processMonitor.Start();
+
+                    return Task.CompletedTask;
+                }
+                catch (Exception ex)
+                {
+                    _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {_process.StartInfo.FileName}");
+                    return Task.FromException(ex);
+                }
             }
-            catch (Exception ex)
-            {
-                _workerProcessLogger.LogError(ex, "Failed to start Worker Channel");
-                return Task.FromException(ex);
-            }
+        }
+
+        public ProcessStats GetStats()
+        {
+            return _processMonitor.GetStats();
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
         {
-            // TODO: per language stdout/err parser?
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+                ParseErrorMessageAndLog(e.Data);
+            }
+        }
+
+        internal void ParseErrorMessageAndLog(string msg)
+        {
+            if (msg.IndexOf("warn", StringComparison.OrdinalIgnoreCase) > -1)
+            {
+                BuildAndLogConsoleLog(msg, LogLevel.Warning);
+            }
+            else
+            {
+                if (_useStdErrorStreamForErrorsOnly)
                 {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
-                    {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogWarning(msg);
-                    }
-                    else
-                    {
-                        _consoleLogSource?.Log(msg);
-                    }
-                }
-                else if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                          (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                          (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
-                {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
-                    {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogError(msg);
-                    }
-                    else
-                    {
-                        _consoleLogSource?.Log(msg);
-                    }
-                    _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
+                    LogError(msg);
                 }
                 else
                 {
-                    if (WorkerProcessUtilities.IsConsoleLog(msg))
+                    if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
                     {
-                        msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                        _workerProcessLogger?.LogInformation(msg);
+                        LogError(msg);
                     }
                     else
                     {
-                        _consoleLogSource?.Log(msg);
+                        BuildAndLogConsoleLog(msg, LogLevel.Information);
                     }
                 }
             }
+        }
+
+        private void LogError(string msg)
+        {
+            BuildAndLogConsoleLog(msg, LogLevel.Error);
+            _processStdErrDataQueue = WorkerProcessUtilities.AddStdErrMessage(_processStdErrDataQueue, Sanitizer.Sanitize(msg));
         }
 
         private void OnProcessExited(object sender, EventArgs e)
@@ -136,11 +149,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     var processExitEx = new WorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
                     processExitEx.ExitCode = _process.ExitCode;
+                    processExitEx.Pid = _process.Id;
                     HandleWorkerProcessExitError(processExitEx);
                 }
             }
-            catch (Exception)
+            catch (Exception exc)
             {
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit.");
                 // ignore process is already disposed
             }
         }
@@ -149,16 +164,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (e.Data != null)
             {
-                string msg = e.Data;
-                if (WorkerProcessUtilities.IsConsoleLog(msg))
-                {
-                    msg = WorkerProcessUtilities.RemoveLogPrefix(msg);
-                    _workerProcessLogger?.LogInformation(msg);
-                }
-                else
-                {
-                    _consoleLogSource?.Log(msg);
-                }
+                BuildAndLogConsoleLog(e.Data, LogLevel.Information);
+            }
+        }
+
+        internal void BuildAndLogConsoleLog(string msg, LogLevel level)
+        {
+            ConsoleLog consoleLog = new ConsoleLog()
+            {
+                Message = msg,
+                Level = level
+            };
+            if (WorkerProcessUtilities.IsConsoleLog(msg))
+            {
+                _workerProcessLogger?.LogDebug(WorkerProcessUtilities.RemoveLogPrefix(msg));
+            }
+            else
+            {
+                _consoleLogSource?.Log(consoleLog);
             }
         }
 
@@ -181,9 +204,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     _process.Dispose();
                 }
+                _processMonitor.Dispose();
             }
-            catch (Exception)
+            catch (Exception exc)
             {
+                _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
                 //ignore
             }
         }

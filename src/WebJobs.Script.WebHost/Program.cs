@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using System.Threading;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -44,6 +45,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .UseSetting(WebHostDefaults.EnvironmentKey, Environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey))
                 .ConfigureServices(services =>
                 {
+                    services.Configure<IISServerOptions>(o =>
+                    {
+                        o.MaxRequestBodySize = 104857600;
+                    });
                     services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                 })
                 .ConfigureAppConfiguration((builderContext, config) =>
@@ -84,20 +89,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // Linux containers always start out in placeholder mode
                 SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
             }
 
             // Some environments only set the auth key. Ensure that is used as the encryption key if that is not set
             string authEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey);
             if (authEncryptionKey != null &&
-                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) == null)
+                SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey) == null)
             {
-                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
+                SystemEnvironment.Instance.SetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey, authEncryptionKey);
             }
 
-            ConfigureMinimumThreads(SystemEnvironment.Instance.IsWindowsConsumption());
+            ConfigureMinimumThreads(SystemEnvironment.Instance);
         }
 
-        private static void ConfigureMinimumThreads(bool isDynamicSku)
+        private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            // Fallback console logs in case kusto logging fails.
+            Console.WriteLine($"{nameof(CurrentDomainOnUnhandledException)}: {e.ExceptionObject}");
+
+            LinuxContainerEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
+        }
+
+        private static void ConfigureMinimumThreads(IEnvironment environment)
         {
             // For information on MinThreads, see:
             // https://docs.microsoft.com/en-us/dotnet/api/system.threading.threadpool.setminthreads?view=netcore-2.2
@@ -106,8 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             //
             // This behavior can be overridden by using the "ComPlus_ThreadPool_ForceMinWorkerThreads" environment variable (honored by the .NET threadpool).
 
-            // The dynamic plan has some limits that mean that a given instance is using effectively a single core, so we should not use Environment.Processor count in this case.
-            var effectiveCores = isDynamicSku ? 1 : Environment.ProcessorCount;
+            var effectiveCores = environment.GetEffectiveCoresCount();
 
             // This value was derived by looking at the thread count for several function apps running load on a multicore machine and dividing by the number of cores.
             const int minThreadsPerLogicalProcessor = 6;

@@ -6,15 +6,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using Moq;
 using Xunit;
 
@@ -41,7 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             _loggerProvider = new TestLoggerProvider();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory);
+
+            // Allow for up to 30 seconds of creation retries for tests due to slow table deletes
+            _repository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(_scaleOptions), loggerFactory, 60, new DefaultDelegatingHandlerProvider(new TestEnvironment()));
 
             EmptyMetricsTableAsync().GetAwaiter().GetResult();
         }
@@ -55,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             var options = new ScaleOptions();
             ILoggerFactory loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-            var localRepository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory);
+            var localRepository = new TableStorageScaleMetricsRepository(configuration, _hostIdProviderMock.Object, new OptionsWrapper<ScaleOptions>(options), loggerFactory, new TestEnvironment());
 
             var monitor1 = new TestScaleMonitor1();
             var monitor2 = new TestScaleMonitor2();
@@ -134,6 +136,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         }
 
         [Fact]
+        public async Task ReadWriteMetrics_IntegerConversion_HandlesLongs()
+        {
+            var monitor1 = new TestScaleMonitor1();
+            var monitors = new IScaleMonitor[] { monitor1 };
+
+            // first write a couple entities manually to the table to simulate
+            // the change in entity property type (int -> long)
+            // this shows that the table can have entities of both formats with
+            // no versioning issues
+
+            // add an entity with Count property of type int
+            var entity = new DynamicTableEntity
+            {
+                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                PartitionKey = TestHostId,
+                Properties = new Dictionary<string, EntityProperty>()
+            };
+            var expectedIntCountValue = int.MaxValue;
+            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
+            entity.Properties.Add("Count", new EntityProperty(expectedIntCountValue));
+            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
+            var batch = new TableBatchOperation();
+            batch.Add(TableOperation.Insert(entity));
+
+            // add an entity with Count property of type long
+            entity = new DynamicTableEntity
+            {
+                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                PartitionKey = TestHostId,
+                Properties = new Dictionary<string, EntityProperty>()
+            };
+            var expectedLongCountValue = long.MaxValue;
+            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
+            entity.Properties.Add("Count", new EntityProperty(expectedLongCountValue));
+            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
+            batch.Add(TableOperation.Insert(entity));
+
+            await _repository.ExecuteBatchSafeAsync(batch);
+
+            // push a long max value through serialization
+            var metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
+            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = long.MaxValue });
+            await _repository.WriteMetricsAsync(metricsMap);
+
+            // add one more
+            metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
+            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = 12345 });
+            await _repository.WriteMetricsAsync(metricsMap);
+
+            // read the metrics back
+            var result = await _repository.ReadMetricsAsync(monitors);
+            Assert.Equal(1, result.Count);
+            var monitorMetricsList = result[monitor1];
+            Assert.Equal(4, monitorMetricsList.Count);
+
+            // verify the explicitly written int record was read correctly
+            var currSample = (TestScaleMetrics1)monitorMetricsList[0];
+            Assert.Equal(expectedIntCountValue, currSample.Count);
+
+            // verify the explicitly written long record was read correctly
+            currSample = (TestScaleMetrics1)monitorMetricsList[1];
+            Assert.Equal(expectedLongCountValue, currSample.Count);
+
+            // verify the final roundtripped values
+            currSample = (TestScaleMetrics1)monitorMetricsList[2];
+            Assert.Equal(long.MaxValue, currSample.Count);
+
+            currSample = (TestScaleMetrics1)monitorMetricsList[3];
+            Assert.Equal(12345, currSample.Count);
+        }
+
+        [Fact]
         public async Task ReadMetricsAsync_FiltersExpiredMetrics()
         {
             var monitor1 = new TestScaleMonitor1();
@@ -163,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             }
 
             await _repository.ExecuteBatchSafeAsync(batch);
-            
+
             var result = await _repository.ReadMetricsAsync(monitors);
 
             var resultMetrics = result[monitor1].Cast<TestScaleMetrics1>().ToArray();
@@ -327,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
         public async Task LogStorageException_LogsDetails()
         {
             StorageException ex = null;
-            var table =_repository.TableClient.GetTableReference("dne");
+            var table = _repository.TableClient.GetTableReference("dne");
             var continuationToken = new TableContinuationToken();
             try
             {

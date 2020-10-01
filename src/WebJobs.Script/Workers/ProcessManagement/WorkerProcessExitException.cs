@@ -16,5 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         internal int ExitCode { get; set; }
+
+        internal int Pid { get; set; }
     }
 }

@@ -7,37 +7,48 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class TableStorageScaleMetricsRepository : IScaleMetricsRepository
     {
         internal const string TableNamePrefix = "AzureFunctionsScaleMetrics";
-        private const string MonitorIdPropertyName = "MonitorId";
+        internal const string MonitorIdPropertyName = "MonitorId";
         private const string SampleTimestampPropertyName = "SampleTimestamp";
         private const int MetricsPurgeDelaySeconds = 30;
+        private const int DefaultTableCreationRetries = 3;
 
         private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly ScaleOptions _scaleOptions;
         private readonly ILogger _logger;
+        private readonly int _tableCreationRetries;
+        private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
         private CloudTableClient _tableClient;
 
-        public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory)
+        public TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory, IEnvironment environment)
+            : this(configuration, hostIdProvider, scaleOptions, loggerFactory, DefaultTableCreationRetries, new DefaultDelegatingHandlerProvider(environment))
+        {
+        }
+
+        internal TableStorageScaleMetricsRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptions<ScaleOptions> scaleOptions, ILoggerFactory loggerFactory,
+            int tableCreationRetries, IDelegatingHandlerProvider delegatingHandlerProvider)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _scaleOptions = scaleOptions.Value;
             _logger = loggerFactory.CreateLogger<TableStorageScaleMetricsRepository>();
+            _tableCreationRetries = tableCreationRetries;
+            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
         internal CloudTableClient TableClient
@@ -47,11 +58,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (_tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    CloudStorageAccount account = null;
                     if (!string.IsNullOrEmpty(storageConnectionString) &&
-                        CloudStorageAccount.TryParse(storageConnectionString, out account))
+                        CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
                     {
-                        _tableClient = account.CreateCloudTableClient();
+                        var restConfig = new RestExecutorConfiguration { DelegatingHandler = _delegatingHandlerProvider.Create() };
+                        var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
+
+                        _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
                     }
                     else
                     {
@@ -199,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryCount = 3, int retryDelayMS = 1000)
+        internal async Task CreateIfNotExistsAsync(CloudTable table, int retryDelayMS = 1000)
         {
             int attempt = 0;
             do
@@ -222,7 +235,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // though these should only happen in tests not production, because we only ever
                     // delete OLD tables and we'll never be attempting to recreate a table we just
                     // deleted outside of tests.
-                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict)
+                    if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.Conflict &&
+                        attempt < _tableCreationRetries)
                     {
                         // wait a bit and try again
                         await Task.Delay(retryDelayMS);
@@ -233,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 return;
             }
-            while (attempt++ < retryCount);
+            while (attempt++ < _tableCreationRetries);
         }
 
         internal async Task AccumulateMetricsBatchAsync(TableBatchOperation batch, IScaleMonitor monitor, IEnumerable<ScaleMetrics> metrics, DateTime? now = null)
@@ -258,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Use an inverted ticks rowkey to order the table in descending order, allowing us to easily
             // query for latest logs. Adding a guid as part of the key to ensure uniqueness.
-            string rowKey = string.Format("{0:D19}-{1}", DateTime.MaxValue.Ticks - now.Value.Ticks, Guid.NewGuid());
+            string rowKey = GetRowKey(now.Value);
 
             var entity = TableEntityConverter.ToEntity(metrics, hostId, rowKey, metrics.Timestamp);
             entity.Properties.Add(MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(descriptor.Id));
@@ -269,6 +283,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             entity.Properties.Add(SampleTimestampPropertyName, EntityProperty.GeneratePropertyForDateTimeOffset(metrics.Timestamp));
 
             return TableOperation.Insert(entity);
+        }
+
+        internal static string GetRowKey(DateTime now)
+        {
+            return string.Format("{0:D19}-{1}", DateTime.MaxValue.Ticks - now.Ticks, Guid.NewGuid());
         }
 
         internal async Task<IEnumerable<DynamicTableEntity>> ExecuteQuerySafeAsync(CloudTable metricsTable, TableQuery query)

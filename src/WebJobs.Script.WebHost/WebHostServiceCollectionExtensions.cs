@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
@@ -65,8 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             services.AddHttpContextAccessor();
             services.AddWebJobsScriptHostRouting();
-            services.AddMvc()
-                .AddXmlDataContractSerializerFormatters();
+
+            services.AddMvc(o =>
+            {
+                o.EnableEndpointRouting = false;
+                o.Filters.Add(new ArmExtensionResourceFilter());
+            })
+            .AddNewtonsoftJson()
+            .AddXmlDataContractSerializerFormatters();
 
             // Standby services
             services.AddStandbyServices();
@@ -91,7 +98,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (SystemEnvironment.Instance.IsLinuxAppService())
                 {
-                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory());
+                    var hostNameProvider = p.GetService<HostNameProvider>();
+                    return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider);
                 }
                 else
                 {
@@ -101,11 +109,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
-            services.AddSingleton<IMeshInitServiceClient, MeshInitServiceClient>();
             services.AddSingleton(_ => new HttpClient());
+            services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
@@ -135,6 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
+            services.ConfigureOptionsWithChangeTokenSource<HttpBodyControlOptions, HttpBodyControlOptionsSetup, SpecializationChangeTokenSource<HttpBodyControlOptions>>();
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
@@ -167,7 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     var instanceManager = s.GetService<IInstanceManager>();
                     var logger = s.GetService<ILogger<LinuxContainerInitializationHostService>>();
-                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger);
+                    var startupContextProvider = s.GetService<StartupContextProvider>();
+                    return new LinuxContainerInitializationHostService(environment, instanceManager, logger, startupContextProvider);
                 }
 
                 return NullHostedService.Instance;
@@ -184,8 +195,56 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return new LinuxContainerMetricsPublisher(environment, standbyOptions, logger, hostNameProvider);
                 }
 
-                var nullMetricsLogger = s.GetService<ILogger<NullMetricsPublisher>>();
-                return new NullMetricsPublisher(nullMetricsLogger);
+                return NullMetricsPublisher.Instance;
+            });
+
+            services.AddSingleton<IMeshServiceClient>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumption())
+                {
+                    var httpClient = s.GetService<HttpClient>();
+                    var logger = s.GetService<ILogger<MeshServiceClient>>();
+                    return new MeshServiceClient(httpClient, environment, logger);
+                }
+
+                return NullMeshServiceClient.Instance;
+            });
+
+            services.AddSingleton<LinuxContainerActivityPublisher>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumption())
+                {
+                    var logger = s.GetService<ILogger<LinuxContainerActivityPublisher>>();
+                    var meshInitServiceClient = s.GetService<IMeshServiceClient>();
+                    var standbyOptions = s.GetService<IOptionsMonitor<StandbyOptions>>();
+                    return new LinuxContainerActivityPublisher(standbyOptions, meshInitServiceClient, environment, logger);
+                }
+
+                return null;
+            });
+
+            services.AddSingleton<IHostedService>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumption())
+                {
+                    return s.GetRequiredService<LinuxContainerActivityPublisher>();
+                }
+
+                return NullHostedService.Instance;
+            });
+
+            services.AddSingleton<ILinuxContainerActivityPublisher>(s =>
+            {
+                var environment = s.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumption())
+                {
+                    return s.GetRequiredService<LinuxContainerActivityPublisher>();
+                }
+
+                return NullLinuxContainerActivityPublisher.Instance;
             });
         }
 

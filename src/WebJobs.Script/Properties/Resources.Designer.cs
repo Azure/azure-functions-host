@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "16.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -165,6 +165,20 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         internal static string ExtensionBundleTemplatesNotFound {
             get {
                 return ResourceManager.GetString("ExtensionBundleTemplatesNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {{
+        ///  Language: &quot;{0}&quot;,
+        ///  FunctionName: &quot;{1}&quot;,
+        ///  Success: {2}
+        ///  IsStopwatchHighResolution: {3}
+        ///}}.
+        /// </summary>
+        internal static string FunctionInvocationMetricsData {
+            get {
+                return ResourceManager.GetString("FunctionInvocationMetricsData", resourceCulture);
             }
         }
         

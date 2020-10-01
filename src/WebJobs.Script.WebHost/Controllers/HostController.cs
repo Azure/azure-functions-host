@@ -12,17 +12,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -40,32 +37,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     public class HostController : Controller
     {
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly ILogger _logger;
-        private readonly IAuthorizationService _authorizationService;
-        private readonly IWebFunctionsManager _functionsManager;
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly HostPerformanceManager _performanceManager;
         private static int _warmupExecuted;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
-            IOptions<JobHostOptions> hostOptions,
             ILoggerFactory loggerFactory,
-            IAuthorizationService authorizationService,
-            IWebFunctionsManager functionsManager,
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
-            IFunctionsSyncManager functionsSyncManager)
+            IFunctionsSyncManager functionsSyncManager,
+            HostPerformanceManager performanceManager)
         {
             _applicationHostOptions = applicationHostOptions;
-            _hostOptions = hostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
-            _authorizationService = authorizationService;
-            _functionsManager = functionsManager;
             _environment = environment;
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
+            _performanceManager = performanceManager;
         }
 
         [HttpGet]
@@ -79,6 +70,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 State = scriptHostManager.State.ToString(),
                 Version = ScriptHost.Version,
                 VersionDetails = Utility.GetInformationalVersion(typeof(ScriptHost)),
+                PlatformVersion = _environment.GetAntaresVersion(),
+                InstanceId = _environment.GetInstanceId(),
+                ComputerName = _environment.GetAntaresComputerName(),
                 Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None),
                 ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
             };
@@ -112,10 +106,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpGet]
         [HttpPost]
+        [Route("admin/host/drain")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
+        {
+            _logger.LogDebug("Received request for draining host");
+
+            // Stop call to some listeners get stuck, Not waiting for the stop call to complete
+            drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
+            return Ok();
+        }
+
+        [HttpGet]
+        [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public IActionResult Ping([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Ping([FromServices] IScriptHostManager scriptHostManager)
         {
+            var result = await _performanceManager.TryHandleHealthPingAsync(HttpContext.Request, _logger);
+            if (result != null)
+            {
+                return result;
+            }
+
             var pingStatus = new JObject
             {
                 { "hostState", scriptHostManager.State.ToString() }
@@ -271,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/warmup")]
         [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] WebJobsScriptHostService hostService)
+        public async Task<IActionResult> Warmup([FromServices] IScriptHostManager scriptHostManager)
         {
             // Endpoint only for Windows Elastic Premium or Linux App Service plans
             if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
@@ -284,33 +297,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return Ok();
             }
 
-            var jobHost = hostService.Services?.GetService<IScriptJobHost>();
-            if (jobHost == null)
+            if (scriptHostManager is IServiceProvider serviceProvider)
             {
-                _logger.LogError($"No active host available.");
-                return StatusCode(503);
+                IScriptJobHost jobHost = serviceProvider.GetService<IScriptJobHost>();
+
+                if (jobHost == null)
+                {
+                    _logger.LogError($"No active host available.");
+                    return StatusCode(503);
+                }
+
+                await jobHost.TryInvokeWarmupAsync();
+                return Ok();
             }
 
-            await jobHost.TryInvokeWarmupAsync();
-            return Ok();
+            return BadRequest("This API is not supported by the current hosting environment.");
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]
-        [Authorize(AuthenticationSchemes = AuthLevelAuthenticationDefaults.AuthenticationScheme)]
-        [Route("runtime/webhooks/{name}/{*extra}")]
+        [Authorize(Policy = PolicyNames.SystemKeyAuthLevel)]
+        [Route("runtime/webhooks/{extensionName}/{*extra}")]
         [RequiresRunningHost]
-        public async Task<IActionResult> ExtensionWebHookHandler(string name, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
+        public async Task<IActionResult> ExtensionWebHookHandler(string extensionName, CancellationToken token, [FromServices] IScriptWebHookProvider provider)
         {
-            if (provider.TryGetHandler(name, out HttpHandler handler))
+            if (provider.TryGetHandler(extensionName, out HttpHandler handler))
             {
-                // must either be authorized at the admin level, or system level with
-                // a matching key name
-                string keyName = DefaultScriptWebHookProvider.GetKeyName(name);
-                if (!AuthUtility.PrincipalHasAuthLevelClaim(User, AuthorizationLevel.System, keyName))
-                {
-                    return Unauthorized();
-                }
-
                 var requestMessage = new HttpRequestMessageFeature(this.HttpContext).HttpRequestMessage;
                 HttpResponseMessage response = await handler.ConvertAsync(requestMessage, token);
 

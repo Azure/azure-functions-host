@@ -3,12 +3,21 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface ISecretManager
     {
+        /// <summary>
+        /// Deterine the <see cref="AuthorizationLevel"/> for the specified key.
+        /// </summary>
+        /// <param name="key">The key to check.</param>
+        /// <param name="functionName">Optional function name, if we're authorizing a specific function.</param>
+        /// <returns>A key name, auth level pair.</returns>
+        Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null);
+
         /// <summary>
         /// Deletes a function secret.
         /// </summary>

@@ -113,11 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ReadWorkerProviderFromConfig_EmptyWorkerPath()
         {
             var configs = new List<TestRpcWorkerConfig>() { MakeTestConfig(testLanguage, new string[0], false, string.Empty, true) };
-            // Creates temp directory w/ worker.config.json and runs ReadWorkerProviderFromConfig
-            Dictionary<string, string> keyValuePairs = new Dictionary<string, string>
-            {
-                [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{testLanguage}:{WorkerConstants.WorkerDescriptionArguments}"] = "--inspect=5689  --no-deprecation"
-            };
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             var workerConfigs = TestReadWorkerProviderFromConfig(configs, new TestLogger(testLanguage), testMetricsLogger);
@@ -354,6 +349,270 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
             Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
+        }
+
+        [Theory]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", "3.7", null, "3.7/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", "3.7", null, "3.7/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "3.7", null, "3.7/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%", "~3.7", "[\\d\\.]+", "3.7")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%", " 3.7 ", "[\\d\\.]+", "3.7")]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionSet(
+            string defaultWorkerPath,
+            string environmentRuntimeVersion,
+            string sanitizeRuntimeVersionRegex,
+            string expectedPath)
+        {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, environmentRuntimeVersion);
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = defaultWorkerPath,
+                DefaultRuntimeVersion = "3.6",
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+
+            // Override file exists to return true
+            workerDescription.FileExists = path =>
+            {
+                Assert.Equal(workerDescription.DefaultWorkerPath, path);
+                return true;
+            };
+
+            Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
+
+            var expectedLogMessage = string.Format($"EnvironmentVariable FUNCTIONS_WORKER_RUNTIME_VERSION: {environmentRuntimeVersion}");
+            Assert.Collection(testLogger.GetLogMessages(), p => Assert.Equal(expectedLogMessage, p.FormattedMessage));
+        }
+
+        [Theory]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}/{architecture}", null, "3.6/LINUX/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{architecture}", null, "3.6/X64")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", null, "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "", "3.6/LINUX")]
+        [InlineData("%FUNCTIONS_WORKER_RUNTIME_VERSION%/{os}", "[\\d\\.]+", "3.6/LINUX")]
+        public void LanguageWorker_FormatWorkerPath_EnvironmentVersionNotSet(
+            string defaultWorkerPath,
+            string sanitizeRuntimeVersionRegex,
+            string expectedPath)
+        {
+            // We fall back to the default version when this is not set
+            // Environment.SetEnvironmentVariable(LanguageWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.7");
+
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                DefaultWorkerPath = defaultWorkerPath,
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.6",
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+
+            Assert.Equal(expectedPath, workerDescription.DefaultWorkerPath);
+            Assert.Equal("3.6", workerDescription.DefaultRuntimeVersion);
+        }
+
+        [Theory]
+        [InlineData(Architecture.Arm)]
+        [InlineData(Architecture.Arm64)]
+        public void LanguageWorker_FormatWorkerPath_UnsupportedArchitecture(Architecture unsupportedArch)
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{architecture}/worker.py",
+                WorkerDirectory = string.Empty,
+                SupportedArchitectures = new List<string>() { Architecture.X64.ToString(), Architecture.X86.ToString() },
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(unsupportedArch);
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(OSPlatform.Linux);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, _testEnvironment, testLogger));
+            Assert.Equal(ex.Message, $"Architecture {unsupportedArch.ToString()} is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_FormatWorkerPath_UnsupportedOS()
+        {
+            OSPlatform bogusOS = OSPlatform.Create("BogusOS");
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                DefaultWorkerPath = "{os}/worker.py",
+                SupportedOperatingSystems = new List<string>()
+                    {
+                        OSPlatform.Windows.ToString(),
+                        OSPlatform.OSX.ToString(),
+                        OSPlatform.Linux.ToString()
+                    },
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+            Mock<ISystemRuntimeInformation> mockRuntimeInfo = new Mock<ISystemRuntimeInformation>();
+            mockRuntimeInfo.Setup(r => r.GetOSArchitecture()).Returns(Architecture.X64);
+            mockRuntimeInfo.Setup(r => r.GetOSPlatform()).Returns(bogusOS);
+
+            var ex = Assert.Throws<PlatformNotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(mockRuntimeInfo.Object, _testEnvironment, testLogger));
+            Assert.Equal(ex.Message, $"OS BogusOS is not supported for language {workerDescription.Language}");
+        }
+
+        [Fact]
+        public void LanguageWorker_FormatWorkerPath_UnsupportedDefaultRuntimeVersion()
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.5"
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+
+            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
+            Assert.Equal(ex.Message, $"Version {workerDescription.DefaultRuntimeVersion} is not supported for language {workerDescription.Language}");
+        }
+
+        [Theory]
+        [InlineData(null, "Version 3.4 is not supported for language python")]
+        [InlineData("[\\d\\.]+", "Version 3.4 is not supported for language python")]
+        [InlineData("[\\d]+", "Version 3 is not supported for language python")]
+        [InlineData("[A-Z]+", "Version 3.4 for language python does not match the regular expression '[A-Z]+'")]
+        public void LanguageWorker_FormatWorkerPath_UnsupportedEnvironmentRuntimeVersion(
+            string sanitizeRuntimeVersionRegex,
+            string expectedExceptionMessage)
+        {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "3.4");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "python");
+
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex,
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
+            };
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
+                  .AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                      ["languageWorker"] = "test"
+                  });
+            var config = configBuilder.Build();
+            var scriptSettingsManager = new ScriptSettingsManager(config);
+            var testLogger = new TestLogger("test");
+
+            var ex = Assert.Throws<NotSupportedException>(() => workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger));
+            Assert.Equal(ex.Message, expectedExceptionMessage);
+        }
+
+        [Fact]
+        public void LanguageWorker_FormatWorkerPath_DefualtRuntimeVersion_WorkerRuntimeMismatch()
+        {
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "13");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "node");
+
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = new List<string>(),
+                DefaultExecutablePath = "python",
+                SupportedRuntimeVersions = new List<string>() { "3.6", "3.7" },
+                DefaultWorkerPath = $"{RpcWorkerConstants.RuntimeVersionPlaceholder}/worker.py",
+                WorkerDirectory = string.Empty,
+                Extensions = new List<string>() { ".py" },
+                Language = "python",
+                DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
+            };
+            var testLogger = new TestLogger("test");
+            workerDescription.FormatWorkerPathIfNeeded(_testSysRuntimeInfo, _testEnvironment, testLogger);
+            Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
         private IEnumerable<RpcWorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestRpcWorkerConfig> configs, ILogger testLogger, TestMetricsLogger testMetricsLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)

@@ -76,7 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables());
 
             ConfigureWebHostBuilder(webHostBuilder);
-
+            
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
             HttpServer = new TestServer(webHostBuilder);
 
             HttpClient = HttpServer.CreateClient();

@@ -9,18 +9,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public abstract class LinuxEventGenerator : IEventGenerator
     {
-        public static readonly string EventTimestampFormat = "MM/dd/yyyy hh:mm:ss.fff tt";
+        public static readonly string EventTimestampFormat = "O";
 
         // These names should match the source file names for fluentd
-        public static readonly string FunctionsLogsCategory = "functionslogs";
+        public static readonly string FunctionsLogsCategory = "functionslogsv2";
         public static readonly string FunctionsMetricsCategory = "functionsmetrics";
         public static readonly string FunctionsDetailsCategory = "functionsdetails";
         public static readonly string FunctionsExecutionEventsCategory = "functionexecutionevents";
 
         internal static string NormalizeString(string value)
         {
-            // need to remove newlines for csv output
+            // Need to remove newlines for csv output
             value = value.Replace(Environment.NewLine, " ");
+
+            // Need to replace double quotes with single quotes as
+            // our regex query looks at double quotes as delimeter for
+            // individual column
+            // TODO: Once the regex takes into account for quotes, we can
+            // safely remove this
+            value = value.Replace("\"", "'");
 
             // Wrap string literals in enclosing quotes
             // For string columns that may contain quotes and/or
@@ -58,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public abstract void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName,
             string functionName, string eventName,
             string source, string details, string summary, string exceptionType, string exceptionMessage,
-            string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName);
+            string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp);
 
         public abstract void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName,
             string eventName, long average,

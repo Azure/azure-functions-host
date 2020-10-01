@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             foreach (var function in host.Functions)
             {
-                var httpTrigger = function.GetTriggerAttributeOrNull<HttpTriggerAttribute>();
+                var httpTrigger = function.HttpTriggerAttribute;
                 if (httpTrigger != null)
                 {
                     var constraints = new RouteValueDictionary();
@@ -51,16 +51,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     string route = httpTrigger.Route;
+                    bool isProxy = function.Metadata.IsProxy();
 
-                    if (string.IsNullOrEmpty(route) && !function.Metadata.IsProxy)
+                    if (string.IsNullOrEmpty(route) && !isProxy)
                     {
                         route = function.Name;
                     }
 
-                    WebJobsRouteBuilder builder = function.Metadata.IsProxy ? proxiesRoutesBuilder : routesBuilder;
+                    WebJobsRouteBuilder builder = isProxy ? proxiesRoutesBuilder : routesBuilder;
                     builder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
 
-                    LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, function.Metadata.IsProxy, _httpOptions.Value.RoutePrefix);
+                    LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
                 }
             }
 

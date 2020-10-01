@@ -3,18 +3,19 @@
 
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest)
         {
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
+            IsWarmUpRequest = isWarmupRequest;
         }
 
         public string EnvironmentVariableName { get; set; }
@@ -22,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public string Url { get; set; }
 
         public long? PackageContentLength { get; set; }
+
+        public bool IsWarmUpRequest { get; }
 
         public bool IsScmRunFromPackage()
         {
@@ -45,6 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                     throw;
                 }
             }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
+
+            if (!exists)
+            {
+                logger.LogWarning($"{EnvironmentVariableName} points to an empty location. Function app has no content.");
+            }
 
             return exists;
         }

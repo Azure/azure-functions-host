@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.AppService.Proxy.Runtime.Configuration.Policies;
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class EnvironmentSettingNames
@@ -22,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
         public const string AzureWebJobsSecretStorageSas = "AzureWebJobsSecretStorageSas";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
+        public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string ContainerName = "CONTAINER_NAME";
@@ -32,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ConsoleLoggingDisabled = "CONSOLE_LOGGING_DISABLED";
         public const string SkipSslValidation = "SCM_SKIP_SSL_VALIDATION";
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
+        public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
         public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
         public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
@@ -41,10 +45,18 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MsiEndpoint = "MSI_ENDPOINT";
         public const string MsiSecret = "MSI_SECRET";
         public const string DotnetSkipFirstTimeExperience = "DOTNET_SKIP_FIRST_TIME_EXPERIENCE";
+        public const string DotnetAddGlobalToolsToPath = "DOTNET_ADD_GLOBAL_TOOLS_TO_PATH";
+        public const string DotnetNoLogo = "DOTNET_NOLOGO";
         public const string AzureFilesConnectionString = "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING";
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
+        public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
+        public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
+        public const string CloudName = "WEBSITE_CLOUD_NAME";
+        public const string RoleInstanceId = "RoleInstanceId";
+        public const string HealthPingEnabled = "WEBSITE_FUNCTIONS_HEALTH_PING_ENABLED";
+        public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
@@ -85,5 +97,16 @@ namespace Microsoft.Azure.WebJobs.Script
         // CORS settings
         public const string CorsAllowedOrigins = "CORS_ALLOWED_ORIGINS";
         public const string CorsSupportCredentials = "CORS_SUPPORT_CREDENTIALS";
+
+       // EasyAuth settings
+        public const string EasyAuthClientId = "WEBSITE_AUTH_CLIENT_ID";
+        public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
+
+        // Antares version settings
+        public const string AntaresPlatformVersionWindows = "WEBSITE_PLATFORM_VERSION";
+        public const string AntaresPlatformVersionLinux = "PLATFORM_VERSION";
+
+        // Machine identifier
+        public const string AntaresComputerName = "COMPUTERNAME";
     }
 }

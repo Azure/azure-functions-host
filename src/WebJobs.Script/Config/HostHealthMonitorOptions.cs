@@ -2,10 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Hosting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class HostHealthMonitorOptions
+    public class HostHealthMonitorOptions : IOptionsFormatter
     {
         internal const float DefaultCounterThreshold = 0.80F;
 
@@ -50,5 +53,18 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the counter threshold for all counters.
         /// </summary>
         public float CounterThreshold { get; set; }
+
+        public string Format()
+        {
+            var options = new JObject
+            {
+                { nameof(Enabled), Enabled },
+                { nameof(HealthCheckInterval), HealthCheckInterval },
+                { nameof(HealthCheckWindow), HealthCheckWindow },
+                { nameof(CounterThreshold), CounterThreshold }
+            };
+
+            return options.ToString(Formatting.Indented);
+        }
     }
 }

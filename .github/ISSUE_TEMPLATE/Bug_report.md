@@ -5,7 +5,7 @@ about: Create a report to help us improve
 ---
 
 #### Check for a solution in the Azure portal
-For issues in production, please check for a solution to common issues in the Azure portal before opening a bug. In the Azure portal, navigate to your function app => `Platform features` => `Diagnose and solve problems` and the relevant dashboards before opening your issue.
+For issues in production, please check for a solution to common issues in the Azure portal before opening a bug. In the Azure portal, navigate to your function app, select `Diagnose and solve problems` from the left, and view relevant dashboards before opening your issue.
 
 <!-- 
 Please provide a succinct description of the issue. Please make an effort to fill in the all the sections below or we may close your issue for being low quality. 
@@ -16,7 +16,7 @@ Please provide a succinct description of the issue. Please make an effort to fil
 Please provide the following:
 
 - Timestamp:
-- Function App version (1.0 or 2.0):
+- Function App version:
 - Function App name:
 - Function name(s) (as appropriate):
 - Invocation ID:

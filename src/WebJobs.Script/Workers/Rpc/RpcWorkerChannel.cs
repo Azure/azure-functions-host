@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -30,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
+        private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
@@ -42,19 +44,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
+        private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
         private IObservable<InboundEvent> _inboundWorkerEvents;
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
-        private IOptions<ManagedDependencyOptions> _managedDependencyOptions;
         private IEnumerable<FunctionMetadata> _functions;
         private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private IMetricsLogger _metricsLogger;
         private IWorkerProcess _rpcWorkerProcess;
-        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>();
-        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         internal RpcWorkerChannel(
            string workerId,
@@ -64,8 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
            ILogger logger,
            IMetricsLogger metricsLogger,
            int attemptCount,
-           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           IOptions<ManagedDependencyOptions> managedDependencyOptions = null)
+           IEnvironment environment,
+           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -74,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _metricsLogger = metricsLogger;
+            _environment = environment;
             _applicationHostOptions = applicationHostOptions;
 
             _workerCapabilities = new Capabilities(_workerChannelLogger);
@@ -100,8 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
+            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
+               .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
+
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
-            _managedDependencyOptions = managedDependencyOptions;
 
             _state = RpcWorkerChannelState.Default;
         }
@@ -110,9 +115,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;
 
-        public RpcWorkerChannelState State => _state;
-
         internal IWorkerProcess WorkerProcess => _rpcWorkerProcess;
+
+        internal RpcWorkerConfig Config => _workerConfig;
+
+        public bool IsChannelReadyForInvocations()
+        {
+            return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
+        }
 
         public async Task StartWorkerProcessAsync()
         {
@@ -123,8 +133,49 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
-            _state = RpcWorkerChannelState.Initializing;
+            _state = _state | RpcWorkerChannelState.Initializing;
             await _workerInitTask.Task;
+        }
+
+        public async Task<WorkerStatus> GetWorkerStatusAsync()
+        {
+            var workerStatus = new WorkerStatus();
+
+            if (!string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.WorkerStatus)))
+            {
+                // get the worker's current status
+                // this will include the OOP worker's channel latency in the request, which can be used upstream
+                // to make scale decisions
+                var message = new StreamingMessage
+                {
+                    RequestId = Guid.NewGuid().ToString(),
+                    WorkerStatusRequest = new WorkerStatusRequest()
+                };
+
+                var sw = Stopwatch.StartNew();
+                var tcs = new TaskCompletionSource<bool>();
+                if (_workerStatusRequests.TryAdd(message.RequestId, tcs))
+                {
+                    SendStreamingMessage(message);
+                    await tcs.Task;
+                    sw.Stop();
+                    workerStatus.Latency = sw.Elapsed;
+                    _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {sw.ElapsedMilliseconds}ms");
+                }
+            }
+
+            // get the process stats for the worker
+            var workerProcessStats = _rpcWorkerProcess.GetStats();
+            workerStatus.ProcessStats = workerProcessStats;
+
+            if (workerProcessStats.CpuLoadHistory.Any())
+            {
+                string formattedLoadHistory = string.Join(",", workerProcessStats.CpuLoadHistory);
+                int executingFunctionCount = FunctionInputBuffers.Sum(p => p.Value.Count);
+                _workerChannelLogger.LogDebug($"[HostMonitor] Worker process stats: EffectiveCores={_environment.GetEffectiveCoresCount()}, ProcessId={_rpcWorkerProcess.Id}, ExecutingFunctions={executingFunctionCount}, CpuLoadHistory=({formattedLoadHistory}), AvgLoad={workerProcessStats.CpuLoadHistory.Average()}, MaxLoad={workerProcessStats.CpuLoadHistory.Max()}");
+            }
+
+            return workerStatus;
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
@@ -136,13 +187,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
+            WorkerInitRequest initRequest = GetWorkerInitRequest();
+
+            // Run as Functions Host V2 compatible
+            if (_environment.IsV2CompatibilityMode())
+            {
+                _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
+                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
+            }
+
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerInitRequest = new WorkerInitRequest()
-                {
-                    HostVersion = ScriptHost.Version
-                }
+                WorkerInitRequest = initRequest
             });
+        }
+
+        internal WorkerInitRequest GetWorkerInitRequest()
+        {
+            return new WorkerInitRequest()
+            {
+                HostVersion = ScriptHost.Version,
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory
+            };
         }
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
@@ -151,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
-                _reloadTask.SetResult(false);
+                _reloadTask.SetException(reloadEnvironmentVariablesException);
             }
             _reloadTask.SetResult(true);
             latencyEvent.Dispose();
@@ -164,13 +230,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
                 _workerInitTask.SetResult(false);
                 return;
             }
-            _state = RpcWorkerChannelState.Initialized;
+            _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _workerInitTask.SetResult(true);
         }
@@ -180,18 +247,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functions = functions;
             foreach (FunctionMetadata metadata in functions)
             {
-                _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
-                _functionInputBuffers[metadata.FunctionId] = new BufferBlock<ScriptInvocationContext>();
+                _workerChannelLogger.LogDebug("Setting up FunctionInvocationBuffer for function:{functionName} with functionId:{id}", metadata.Name, metadata.GetFunctionId());
+                _functionInputBuffers[metadata.GetFunctionId()] = new BufferBlock<ScriptInvocationContext>();
             }
+            _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
         }
 
-        public void SendFunctionLoadRequests()
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
         {
             if (_functions != null)
             {
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled))
+                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
                 {
-                    SendFunctionLoadRequest(metadata);
+                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
                 }
             }
         }
@@ -230,43 +298,43 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     request.EnvironmentVariables.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
             }
-
+            request.EnvironmentVariables.Add(WorkerConstants.FunctionsWorkerDirectorySettingName, _workerConfig.Description.WorkerDirectory);
             request.FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath;
 
             return request;
         }
 
-        internal void SendFunctionLoadRequest(FunctionMetadata metadata)
+        internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
-            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.FunctionId);
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:{functionName} with functionId:{id}", metadata.Name, metadata.GetFunctionId());
 
             // send a load request for the registered function
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionLoadRequest = GetFunctionLoadRequest(metadata)
+                FunctionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions)
             });
         }
 
-        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata)
+        internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
-                FunctionId = metadata.FunctionId,
+                FunctionId = metadata.GetFunctionId(),
                 Metadata = new RpcFunctionMetadata()
                 {
                     Name = metadata.Name,
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy
+                    IsProxy = metadata.IsProxy()
                 }
             };
 
-            if (_managedDependencyOptions?.Value != null && _managedDependencyOptions.Value.Enabled)
+            if (managedDependencyOptions != null && managedDependencyOptions.Enabled)
             {
                 _workerChannelLogger?.LogDebug($"Adding dependency download request to {_workerConfig.Description.Language} language worker");
-                request.ManagedDependencyEnabled = _managedDependencyOptions.Value.Enabled;
+                request.ManagedDependencyEnabled = managedDependencyOptions.Enabled;
             }
 
             foreach (var binding in metadata.Bindings)
@@ -282,32 +350,40 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _functionLoadRequestResponseEvent?.Dispose();
             _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
-            if (loadResponse.Result.IsFailure(out Exception ex))
+            if (loadResponse.Result.IsFailure(out Exception functionLoadEx))
             {
+                if (functionLoadEx == null)
+                {
+                    _workerChannelLogger?.LogError("Worker failed to function id {functionId}. Function load exception is not set by the worker", loadResponse.FunctionId);
+                }
+                else
+                {
+                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to function id {functionId}.", loadResponse.FunctionId);
+                }
                 //Cache function load errors to replay error messages on invoking failed functions
-                _functionLoadErrors[loadResponse.FunctionId] = ex;
+                _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
             }
 
             if (loadResponse.IsDependencyDownloaded)
             {
-                _workerChannelLogger?.LogInformation($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
+                _workerChannelLogger?.LogDebug($"Managed dependency successfully downloaded by the {_workerConfig.Description.Language} language worker");
             }
 
             // link the invocation inputs to the invoke call
-            var invokeBlock = new ActionBlock<ScriptInvocationContext>(ctx => SendInvocationRequest(ctx));
+            var invokeBlock = new ActionBlock<ScriptInvocationContext>(async ctx => await SendInvocationRequest(ctx));
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
         }
 
-        internal void SendInvocationRequest(ScriptInvocationContext context)
+        internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
             try
             {
-                if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.FunctionId))
+                if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
-                    context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.FunctionId]);
+                    context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
                 else
@@ -317,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-                    InvocationRequest invocationRequest = context.ToRpcInvocationRequest(IsTriggerMetadataPopulatedByWorker(), _workerChannelLogger, _workerCapabilities);
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -335,6 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
+
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
             {
@@ -446,6 +523,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _eventManager.Publish(new OutboundEvent(_workerId, msg));
         }
 
+        internal void ReceiveWorkerStatusResponse(string requestId, WorkerStatusResponse response)
+        {
+            if (_workerStatusRequests.TryRemove(requestId, out var workerStatusTask))
+            {
+                workerStatusTask.SetResult(true);
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -478,11 +563,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             Dispose(true);
         }
 
-        private bool IsTriggerMetadataPopulatedByWorker()
-        {
-            return !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
-        }
-
         public async Task DrainInvocationsAsync()
         {
             _workerChannelLogger.LogDebug($"Count of in-buffer invocations waiting to be drained out: {_executingInvocations.Count}");
@@ -490,6 +570,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 await currContext.ResultSource.Task;
             }
+        }
+
+        public bool IsExecutingInvocation(string invocationId)
+        {
+            return _executingInvocations.ContainsKey(invocationId);
+        }
+
+        public bool TryFailExecutions(Exception workerException)
+        {
+            if (workerException == null)
+            {
+                return false;
+            }
+
+            foreach (ScriptInvocationContext currContext in _executingInvocations?.Values)
+            {
+                string invocationId = currContext?.ExecutionContext?.InvocationId.ToString();
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: {Id}", _workerId, invocationId);
+                currContext?.ResultSource?.TrySetException(workerException);
+                _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
+            }
+            return true;
         }
     }
 }

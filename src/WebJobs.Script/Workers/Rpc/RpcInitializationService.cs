@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
 
-        private Dictionary<OSPlatform, List<string>> _hostingOSToWhitelistedRuntimes = new Dictionary<OSPlatform, List<string>>()
+        private Dictionary<OSPlatform, List<string>> _hostingOSToRuntimesAllowList = new Dictionary<OSPlatform, List<string>>()
         {
             {
                 OSPlatform.Windows,
@@ -41,15 +41,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         };
 
         // _webHostLevelWhitelistedRuntimes are started at webhost level when running in Azure and locally
-        private List<string> _webHostLevelWhitelistedRuntimes = new List<string>()
+        private List<string> _webHostLeveldRuntimesAllowList = new List<string>()
         {
             RpcWorkerConstants.JavaLanguageWorkerName
         };
 
-        private List<string> _placeholderPoolWhitelistedRuntimes = new List<string>()
+        private List<string> _placeholderPoolRuntimesAllowList = new List<string>()
         {
             RpcWorkerConstants.JavaLanguageWorkerName,
-            RpcWorkerConstants.NodeLanguageWorkerName
+            RpcWorkerConstants.NodeLanguageWorkerName,
+            RpcWorkerConstants.PowerShellLanguageWorkerName
         };
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
@@ -70,10 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("App is offline. RpcInitializationService will not be started");
                 return;
             }
-            _logger.LogDebug("Starting Rpc Initialization Service.");
-            await InitializeRpcServerAsync();
-            await InitializeChannelsAsync();
-            _logger.LogDebug("Rpc Initialization Service started.");
+
+            // TODO: https://github.com/Azure/azure-functions-host/issues/4891
+            try
+            {
+                _logger.LogDebug("Starting Rpc Initialization Service.");
+                await InitializeRpcServerAsync();
+                await InitializeChannelsAsync();
+                _logger.LogDebug("Rpc Initialization Service started.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Rpc Initialization Service. Handling error and continuing.");
+            }
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -148,13 +158,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private Task InitializePlaceholderChannelsAsync(OSPlatform os)
         {
-            return Task.WhenAll(_hostingOSToWhitelistedRuntimes[os].Select(runtime =>
+            return Task.WhenAll(_hostingOSToRuntimesAllowList[os].Select(runtime =>
                 _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
         }
 
         private Task InitializeWebHostRuntimeChannelsAsync()
         {
-            if (_webHostLevelWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
+            if (_webHostLeveldRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
             {
                 return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             }
@@ -181,10 +191,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // We are in placeholder mode but a worker runtime IS set
             return _environment.IsPlaceholderModeEnabled()
                 && !string.IsNullOrEmpty(_workerRuntime)
-                && _placeholderPoolWhitelistedRuntimes.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
+                && _placeholderPoolRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
         }
 
         // To help with unit tests
-        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLevelWhitelistedRuntimes.Add(language);
+        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLeveldRuntimesAllowList.Add(language);
     }
 }

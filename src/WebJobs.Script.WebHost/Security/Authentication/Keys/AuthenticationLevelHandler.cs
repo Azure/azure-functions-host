@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
     internal class AuthenticationLevelHandler : AuthenticationHandler<AuthenticationLevelOptions>
     {
         public const string FunctionsKeyHeaderName = "x-functions-key";
+        public const string FunctionsKeyQueryParamName = "code";
         private readonly ISecretManagerProvider _secretManagerProvider;
         private readonly bool _isEasyAuthEnabled;
 
@@ -81,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             }
         }
 
-        internal static async Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
+        internal static Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
         {
             // first see if a key value is specified via headers or query string (header takes precedence)
             string keyValue = null;
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             {
                 keyValue = values.First();
             }
-            else if (request.Query.TryGetValue("code", out values))
+            else if (request.Query.TryGetValue(FunctionsKeyQueryParamName, out values))
             {
                 keyValue = values.First();
             }
@@ -97,53 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
             if (!string.IsNullOrEmpty(keyValue))
             {
                 ISecretManager secretManager = secretManagerProvider.Current;
-
-                // see if the key specified is the master key
-                HostSecretsInfo hostSecrets = await secretManager.GetHostSecretsAsync().ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(hostSecrets.MasterKey) &&
-                    Key.SecretValueEquals(keyValue, hostSecrets.MasterKey))
-                {
-                    return (ScriptConstants.DefaultMasterKeyName, AuthorizationLevel.Admin);
-                }
-
-                if (HasMatchingKey(hostSecrets.SystemKeys, keyValue, out string keyName))
-                {
-                    return (keyName, AuthorizationLevel.System);
-                }
-
-                // see if the key specified matches the host function key
-                if (HasMatchingKey(hostSecrets.FunctionKeys, keyValue, out keyName))
-                {
-                    return (keyName, AuthorizationLevel.Function);
-                }
-
-                // If there is a function specific key specified try to match against that
-                IFunctionExecutionFeature executionFeature = request.HttpContext.Features.Get<IFunctionExecutionFeature>();
-                if (executionFeature != null)
-                {
-                    IDictionary<string, string> functionSecrets = await secretManager.GetFunctionSecretsAsync(executionFeature.Descriptor.Name);
-                    if (HasMatchingKey(functionSecrets, keyValue, out keyName))
-                    {
-                        return (keyName, AuthorizationLevel.Function);
-                    }
-                }
+                var functionName = request.HttpContext.Features.Get<IFunctionExecutionFeature>()?.Descriptor.Name;
+                return secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
             }
 
-            return (null, AuthorizationLevel.Anonymous);
-        }
-
-        private static bool HasMatchingKey(IDictionary<string, string> secrets, string keyValue, out string matchedKeyName)
-        {
-            matchedKeyName = null;
-            if (secrets == null)
-            {
-                return false;
-            }
-
-            string matchedValue;
-            (matchedKeyName, matchedValue) = secrets.FirstOrDefault(s => Key.SecretValueEquals(s.Value, keyValue));
-
-            return matchedValue != null;
+            return Task.FromResult<(string, AuthorizationLevel)>((null, AuthorizationLevel.Anonymous));
         }
     }
 }

@@ -20,7 +20,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -29,11 +28,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     {
         private readonly ScriptSettingsManager _settingsManager;
         private TestFixture _fixture;
+        private string _hostName;
 
         public ProxyEndToEndTests(TestFixture fixture)
         {
             _fixture = fixture;
             _settingsManager = ScriptSettingsManager.Instance;
+            _hostName = new HostNameProvider(SystemEnvironment.Instance).Value ?? "localhost";
         }
 
         [Fact]
@@ -46,15 +47,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var response = await _fixture.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(22, metadata.Length);
+            Assert.Equal(24, metadata.Length);
             var function = metadata.Single(p => p.Name == "PingRoute");
-            Assert.Equal("https://localhost/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/myroute/mysubroute", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "Ping");
-            Assert.Equal("https://localhost/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/ping", function.InvokeUrlTemplate.AbsoluteUri);
 
             function = metadata.Single(p => p.Name == "LocalFunctionCall");
-            Assert.Equal("https://localhost/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
+            Assert.Equal($"https://{_hostName}/api/myhttptrigger", function.InvokeUrlTemplate.AbsoluteUri);
+
+            function = metadata.Single(p => p.Name == "PingMakeResponse");
+            Assert.Equal($"https://{_hostName}/api/pingmakeresponse", function.InvokeUrlTemplate.AbsoluteUri);
 
             // get functions omitting proxies
             uri = "admin/functions";
@@ -63,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             response = await _fixture.HttpClient.SendAsync(request);
             metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
             Assert.False(metadata.Any(p => p.IsProxy));
-            Assert.Equal(3, metadata.Length);
+            Assert.Equal(4, metadata.Length);
         }
 
         [Fact]
@@ -110,6 +114,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
             Assert.Equal("Pong", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionCall_ModifyResponse()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"pingMakeResponseProxy");
+            req.Headers.Add("return_test_header", "1");
+            req.Headers.Add("return_201", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("201", response.StatusCode.ToString("D"));
+            Assert.Equal("test_header_from_function_value", response.Headers.GetValues("test_header_from_function").First());
+            Assert.Equal("test_header_from_override_value", response.Headers.GetValues("test_header_from_override").First());
+            Assert.Equal(@"Pong", content);
+        }
+
+        [Fact]
+        public async Task LocalFunctionCall_Redirect()
+        {
+            HttpRequestMessage req = new HttpRequestMessage(HttpMethod.Get, $"pingMakeResponseProxy");
+            req.Headers.Add("redirect", "1");
+            HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.Equal("302", response.StatusCode.ToString("D"));
+            Assert.Equal("http://www.redirects-regardless.com/", response.Headers.Location.ToString());
+            Assert.Equal(@"Pong", content);
         }
 
         [Fact]
@@ -195,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.SendAsync(req);
             string content = await response.Content.ReadAsStringAsync();
             Assert.Equal("200", response.StatusCode.ToString("D"));
-            Assert.Equal(@"http://localhost/api/myroute/mysubroute?a=1", content);
+            Assert.Equal($"http://localhost/api/myroute/mysubroute?a=1", content);
         }
 
         [Fact]
@@ -371,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                var provider = new FunctionMetadataProvider(optionsMonitor, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+                var provider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()
@@ -383,6 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
                    });
 
+                // TODO: https://github.com/Azure/azure-functions-host/issues/4876
                 _testServer = new TestServer(builder);
                 HostOptions.RootServiceProvider = _testServer.Host.Services;
                 var scriptConfig = _testServer.Host.Services.GetService<IOptions<ScriptJobHostOptions>>().Value;

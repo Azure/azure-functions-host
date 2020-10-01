@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -19,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private ILogger _workerChannelLogger;
         private IWorkerProcess _workerProcess;
         private IHttpWorkerService _httpWorkerService;
+        private IMetricsLogger _metricsLogger;
 
         internal HttpWorkerChannel(
            string workerId,
@@ -34,35 +36,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _workerProcess = rpcWorkerProcess;
             _workerChannelLogger = logger;
             _httpWorkerService = httpWorkerService;
+            _metricsLogger = metricsLogger;
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, "HttpWorker", attemptCount));
         }
 
         public string Id { get; }
 
-        public Task InvokeFunction(ScriptInvocationContext context)
+        public Task InvokeAsync(ScriptInvocationContext context)
         {
             return _httpWorkerService.InvokeAsync(context);
         }
 
         internal async Task DelayUntilWokerInitialized(CancellationToken cancellationToken)
         {
-            _workerChannelLogger.LogDebug("Initializing HttpWorker.");
-            try
+            using (_metricsLogger.LatencyEvent(MetricEventNames.DelayUntilWorkerIsInitialized))
             {
-                bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
-                if (!isWorkerReady)
+                _workerChannelLogger.LogDebug("Initializing HttpWorker.");
+                try
                 {
-                    PublishWorkerErrorEvent(new TimeoutException("Initializing HttpWorker timed out."));
+                    bool isWorkerReady = await _httpWorkerService.IsWorkerReady(cancellationToken);
+                    if (!isWorkerReady)
+                    {
+                        throw new TimeoutException("Initializing HttpWorker timed out.");
+                    }
+                    else
+                    {
+                        _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    _workerChannelLogger.LogDebug("HttpWorker is Initialized.");
+                    // HttpFunctionInvocationDispatcher will handdle the worker error events
+                    _workerChannelLogger.LogError(ex, "Failed to start http worker process. workerId:{id}", Id);
+                    PublishWorkerErrorEvent(ex);
+                    throw;
                 }
-            }
-            catch (Exception ex)
-            {
-                // HttpFunctionInvocationDispatcher will handdle the worker error events
-                PublishWorkerErrorEvent(ex);
             }
         }
 
@@ -99,6 +107,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        public async Task<WorkerStatus> GetWorkerStatusAsync()
+        {
+            var sw = Stopwatch.StartNew();
+            await _httpWorkerService.PingAsync();
+            sw.Stop();
+            var workerStatus = new WorkerStatus
+            {
+                ProcessStats = _workerProcess.GetStats()
+            };
+            workerStatus.Latency = sw.Elapsed;
+            _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {sw.ElapsedMilliseconds}ms");
+            return workerStatus;
         }
     }
 }
