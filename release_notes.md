@@ -2,8 +2,8 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker to 1.1.5 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.5)
-- Update Python Library to 1.3.1 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.1)
+- Update Python Worker to 1.1.6 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.6)
+- Update Python Library to 1.4.0 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.4.0)
 - Update PowerShell Worker to 3.0.552 (PS6) [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.552) and 3.0.549 (PS7) [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.549)
 - Update Java Worker to 1.8.0 [Release Note](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.0)
 - Update Java Library to 1.4.0 [Release Note](https://github.com/Azure/azure-functions-java-library)
