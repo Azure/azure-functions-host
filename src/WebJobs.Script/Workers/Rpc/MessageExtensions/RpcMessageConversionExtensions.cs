@@ -163,13 +163,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 Dictionary<string, object> parameters = (Dictionary<string, object>)routeData;
                 foreach (var pair in parameters)
                 {
-                    if (ShouldUseNullableValueDictionary(capabilities))
+                    if (pair.Value != null)
                     {
-                        http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
-                    }
-                    else
-                    {
-                        if (pair.Value != null)
+                        if (ShouldUseNullableValueDictionary(capabilities))
+                        {
+                            http.NullableParams.Add(pair.Key, new NullableString { Value = pair.Value.ToString() });
+                        }
+                        else
                         {
                             http.Params.Add(pair.Key, pair.Value.ToString());
                         }
