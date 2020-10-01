@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using DryIoc;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
@@ -55,6 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
               }));
 
             var scope = new ServiceScope(resolver, scopedRoot);
+
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableEnhancedScopes))
+            {
+                scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
+            }
+
             ChildScopes.TryAdd(scope, null);
 
             scope.DisposalTask.ContinueWith(t => ChildScopes.TryRemove(scope, out object _));
