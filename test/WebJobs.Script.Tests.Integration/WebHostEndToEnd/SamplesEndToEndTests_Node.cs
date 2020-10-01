@@ -145,6 +145,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_EmptyQueryParams_Succeeds()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
+            string uri = $"api/httptrigger?code={functionKey}&empty=&name=Amy";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello Amy", body);
+        }
+
+        [Fact]
+        public async Task HttpTrigger_EmptyHeaderValues_Succeeds()
+        {
+            string functionKey = await _fixture.Host.GetFunctionSecretAsync("httptrigger");
+            string uri = $"api/httptrigger?code={functionKey}&name=Amy";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            request.Headers.Add("EmptyValue", string.Empty);
+
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello Amy", body);
+        }
+
+        [Fact]
         public async Task HttpTrigger_CustomRoute_Get_ReturnsExpectedResponse()
         {
             var id = "4e2796ae-b865-4071-8a20-2a15cbaf856c";
