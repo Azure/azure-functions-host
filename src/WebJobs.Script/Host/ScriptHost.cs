@@ -296,18 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
 
-                    try
-                    {
-                        string getAutorestGeneratedContents = Utility.ReadAutorestGeneratedJson(ScriptOptions.RootScriptPath);
-                        if (getAutorestGeneratedContents != string.Empty)
-                        {
-                            _logger.AutorestGeneratedFunctionApplication(getAutorestGeneratedContents);
-                        }
-                    }
-                    catch (FormatException e)
-                    {
-                        _logger.IncorrectAutorestGeneratedJsonFile(e.StackTrace);
-                    }
+                    Utility.LogAutorestGeneratedJson(ScriptOptions.RootScriptPath, _logger);
                 }
 
                 var directTypes = GetDirectTypes(functionMetadataList);

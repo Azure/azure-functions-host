@@ -19,6 +19,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -792,33 +793,26 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static string ReadAutorestGeneratedJson(string rootScriptPath)
+        public static void LogAutorestGeneratedJson(string rootScriptPath, ILogger logger = null)
         {
             string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
-            string autorestGeneratedJsonPathContents;
             JObject autorestGeneratedJson;
 
-            try
+            if (FileUtility.FileExists(autorestGeneratedJsonPath))
             {
-                autorestGeneratedJsonPathContents = FileUtility.ReadAllText(autorestGeneratedJsonPath);
-            }
-            catch (FileNotFoundException)
-            {
-                // If we dont find the .autorest_generated.json in the function app, we just return empty string.
-                return string.Empty;
-            }
+                string autorestGeneratedJsonPathContents = FileUtility.ReadAllText(autorestGeneratedJsonPath);
 
-            try
-            {
-                autorestGeneratedJson = JObject.Parse(autorestGeneratedJsonPathContents);
+                try
+                {
+                    autorestGeneratedJson = JObject.Parse(autorestGeneratedJsonPathContents);
+                    logger.AutorestGeneratedFunctionApplication(autorestGeneratedJson.ToString());
+                }
+                catch (JsonException ex)
+                {
+                    logger.IncorrectAutorestGeneratedJsonFile($"Unable to parse autorest configuration file '{autorestGeneratedJsonPath}' with content '{autorestGeneratedJsonPathContents}' | exception: {ex.StackTrace}");
+                }
             }
-            catch (JsonException ex)
-            {
-                // This is an error Stencil plugins should know about and not generate.
-                throw new FormatException($"Unable to parse autorest configuration file '{autorestGeneratedJsonPath}' with content '{autorestGeneratedJsonPathContents}'.", ex);
-            }
-
-            return autorestGeneratedJson.ToString();
+            // If we dont find the .autorest_generated.json in the function app, we just don't log anything.
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
