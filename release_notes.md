@@ -3,8 +3,8 @@
 - My change description (#PR)
 -->
 
-- Update Python Worker to 1.1.5 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.5)
-- Update Python Library to 1.3.1 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.3.1)
+- Update Python Worker to 1.1.6 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.6)
+- Update Python Library to 1.4.0 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.4.0)
 - Add a new host.json property "watchFiles" for restarting the Host when files are modified.
 - Update Java Worker to 1.8.0 [Release Note](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.0)
 - Update Java Library to 1.4.0 [Release Note](https://github.com/Azure/azure-functions-java-library)
