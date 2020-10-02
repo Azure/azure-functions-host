@@ -20,14 +20,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     ConstructorInfo fixedDelayRetryCtorInfo = fixedDelayRetryType.GetConstructor(new[] { typeof(int), typeof(string) });
                     CustomAttributeBuilder fixedDelayRetryBuilder = new CustomAttributeBuilder(
                     fixedDelayRetryCtorInfo,
-                    new object[] { functionRetry.MaxRetryCount, functionRetry.DelayInterval.ToString() });
+                    new object[] { functionRetry.MaxRetryCount.Value, functionRetry.DelayInterval.ToString() });
                     return fixedDelayRetryBuilder;
                 case RetryStrategy.ExponentialBackoff:
                     Type exponentialBackoffRetryType = typeof(ExponentialBackoffRetryAttribute);
                     ConstructorInfo exponentialBackoffDelayRetryCtorInfo = exponentialBackoffRetryType.GetConstructor(new[] { typeof(int), typeof(string), typeof(string) });
                     CustomAttributeBuilder exponentialBackoffRetryBuilder = new CustomAttributeBuilder(
                     exponentialBackoffDelayRetryCtorInfo,
-                    new object[] { functionRetry.MaxRetryCount, functionRetry.MinimumInterval.ToString(), functionRetry.MaximumInterval.ToString() });
+                    new object[] { functionRetry.MaxRetryCount.Value, functionRetry.MinimumInterval.ToString(), functionRetry.MaximumInterval.ToString() });
                     return exponentialBackoffRetryBuilder;
             }
             return null;

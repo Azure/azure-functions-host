@@ -53,7 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
                 .Optional<FunctionsSyncService>() // Conditionally registered.
-                .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60"); // Popularly-registered by DataProtection.
+                .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60") // Popularly-registered by DataProtection.
+                .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60"); // Popularly-registered by Health Check Monitor.
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<AzureMonitorDiagnosticLoggerProvider>()
@@ -92,12 +93,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             if (descriptor.ImplementationInstance != null)
             {
-                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance.GetType()}";
+                format += $", {nameof(descriptor.ImplementationInstance)}: {descriptor.ImplementationInstance.GetType().AssemblyQualifiedName}";
             }
 
             if (descriptor.ImplementationType != null)
             {
-                format += $", {nameof(descriptor.ImplementationType)}: {descriptor.ImplementationType}";
+                format += $", {nameof(descriptor.ImplementationType)}: {descriptor.ImplementationType.AssemblyQualifiedName}";
             }
 
             return format;

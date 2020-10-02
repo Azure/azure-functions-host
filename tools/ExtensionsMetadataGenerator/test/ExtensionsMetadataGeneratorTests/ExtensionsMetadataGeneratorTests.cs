@@ -4,8 +4,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using ExtensionsMetadataGenerator;
 using ExtensionsMetadataGenerator.Console;
+using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Azure.WebJobs.Hosting;
+using Mono.Cecil;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -13,6 +16,8 @@ namespace ExtensionsMetadataGeneratorTests
 {
     public class ExtensionsMetadataGeneratorTests
     {
+        private ConsoleLogger _logger = new ConsoleLogger();
+
         [Fact]
         public void Generator_DifferentTargetFrameworks()
         {
@@ -42,17 +47,17 @@ namespace ExtensionsMetadataGeneratorTests
                 // plus the two from the 2.1 and 2.2 test projects.
                 JToken extensions = json["extensions"];
                 int startups = extensions.Count();
-                Assert.Equal(4, startups);
+                Assert.Equal(6, startups);
 
                 Assert.Single(extensions, e => e["name"].ToString() == "Foo" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.FooWebJobsStartup, ExtensionsMetadataGeneratorTests"));
                 Assert.Single(extensions, e => e["name"].ToString() == "BarExtension" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.BarWebJobsStartup, ExtensionsMetadataGeneratorTests"));
+                Assert.Single(extensions, e => e["name"].ToString() == "TestFunctionsStartup" && e["typeName"].ToString().StartsWith("ExtensionsMetadataGeneratorTests.TestFunctionsStartup, ExtensionsMetadataGeneratorTests"));
                 Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core21.Startup"));
                 Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Core22.Startup"));
+                Assert.Single(extensions, e => e["name"].ToString() == "Startup" && e["typeName"].ToString().StartsWith("TestProject_Razor.Startup"));
 
-                // We cannot read TestProject_Razor.dll because it has a dependency we cannot find. Make sure
-                // we log correctly even though we've skipped this assembly.
-                Assert.Contains("Cannot load 'Microsoft.AspNetCore.Razor.Runtime'. Aborting assembly resolution.", log.ToString());
-                Assert.Contains("Could not evaluate 'TestProject_Razor.dll' for extension metadata. If this assembly contains a Functions extension, ensure that all dependent assemblies exist in ", log.ToString());
+                // We log a message here, but have successfully found the TestProject_Razor.Startup.
+                Assert.Contains("Could not determine whether the attribute type 'Microsoft.AspNetCore.Razor.Hosting.RazorExtensionAssemblyNameAttribute' used in the assembly 'TestProject_Razor.dll' derives from 'Microsoft.Azure.WebJobs.Hosting.WebJobsStartupAttribute'", log.ToString());
             }
             finally
             {
@@ -63,42 +68,53 @@ namespace ExtensionsMetadataGeneratorTests
         [Fact]
         public void GenerateExtensionReferences_Succeeds()
         {
-            var assembly = GetType().Assembly;
-            var references = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.GenerateExtensionReferences(assembly).ToArray();
-            Assert.Equal(2, references.Length);
+            var fileName = GetType().Assembly.Location;
+            var references = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.GenerateExtensionReferences(fileName, _logger).ToArray();
+            Assert.Equal(3, references.Length);
 
             Assert.Equal("Foo", references[0].Name);
             Assert.Equal(typeof(FooWebJobsStartup).AssemblyQualifiedName, references[0].TypeName);
 
             Assert.Equal("BarExtension", references[1].Name);
             Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, references[1].TypeName);
+
+            Assert.Equal(nameof(TestFunctionsStartup), references[2].Name);
+            Assert.Equal(typeof(TestFunctionsStartup).AssemblyQualifiedName, references[2].TypeName);
         }
 
         [Fact]
         public void GenerateExtensionsJson_Succeeds()
         {
-            var assembly = GetType().Assembly;
-            var references = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.GenerateExtensionReferences(assembly).ToArray();
+            var assembly = GetType().Assembly.Location;
+            var references = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.GenerateExtensionReferences(assembly, _logger).ToArray();
             string json = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.GenerateExtensionsJson(references);
 
             var root = JObject.Parse(json);
             var extensions = root["extensions"];
+            Assert.Equal(3, extensions.Count());
 
             Assert.Equal("Foo", extensions[0]["name"]);
             Assert.Equal(typeof(FooWebJobsStartup).AssemblyQualifiedName, extensions[0]["typeName"]);
 
             Assert.Equal("BarExtension", extensions[1]["name"]);
             Assert.Equal(typeof(BarWebJobsStartup).AssemblyQualifiedName, extensions[1]["typeName"]);
+
+            Assert.Equal(nameof(TestFunctionsStartup), extensions[2]["name"]);
+            Assert.Equal(typeof(TestFunctionsStartup).AssemblyQualifiedName, extensions[2]["typeName"]);
         }
 
         [Theory]
         [InlineData(typeof(WebJobsStartupAttribute), true)]
         [InlineData(typeof(TestStartupAttribute), true)]
+        [InlineData(typeof(FunctionsStartupAttribute), true)]
         [InlineData(typeof(CLSCompliantAttribute), false)]
         [InlineData(typeof(Attribute), false)]
         public void IsWebJobsStartupAttributeType_CorrectlyIdentifiesAttributes(Type attributeType, bool isWebJobsType)
         {
-            bool result = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.IsWebJobsStartupAttributeType(attributeType);
+            ModuleDefinition module = ModuleDefinition.ReadModule(attributeType.Assembly.Location);
+            TypeReference typeRef = module.GetTypes().Single(p => p.FullName == attributeType.FullName);
+
+            bool result = ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.IsWebJobsStartupAttributeType(typeRef, _logger);
 
             Assert.Equal(isWebJobsType, result);
         }

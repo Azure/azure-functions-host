@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -61,6 +60,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsCodeless(this FunctionMetadata metadata) =>
             GetBoolProperty(metadata.Properties, IsCodelessKey);
+
+        public static bool IsCodelessSet(this FunctionMetadata metadata) =>
+            metadata.Properties.ContainsKey(IsCodelessKey);
 
         /// <summary>
         /// Sets a property indicating whether that this function is a direct invoke.

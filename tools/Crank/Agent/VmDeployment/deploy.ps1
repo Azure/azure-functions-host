@@ -14,6 +14,9 @@ param (
     [ValidateSet('Linux', 'Windows')]
     $OsType,
 
+    [switch]
+    $Docker,
+
     [string]
     $VmSize = 'Standard_E2s_v3',
 
@@ -21,7 +24,10 @@ param (
     $OsDiskType = 'Premium_LRS',
 
     [string]
-    $Location = 'West Central US'
+    $Location = 'West Central US',
+
+    [string]
+    $UserName = 'Functions'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,22 +46,33 @@ New-AzResourceGroup -Name $resourceGroupName -Location $Location | Out-Null
 
 $vaultSubscriptionId = (Get-AzSubscription -SubscriptionName 'Antares-Demo').Id
 
+$customScriptParameters = @{
+    CrankBranch = 'master'
+    Docker = $Docker.IsPresent
+}
+
 New-AzResourceGroupDeployment `
     -ResourceGroupName $resourceGroupName `
-    -TemplateFile .\template.json `
+    -TemplateFile "$PSScriptRoot\template.json" `
     -TemplateParameterObject @{
         vmName = $vmName
         dnsLabelPrefix = $vmName
         vmSize = $VmSize
         osDiskType = $OsDiskType
-        adminUsername = 'Functions'
+        adminUsername = $UserName
         authenticationType = 'sshPublicKey'
         vaultName = 'functions-crank-kv'
         vaultResourceGroupName = 'FunctionsCrank'
         vaultSubscription = $vaultSubscriptionId
         secretName = 'LinuxCrankAgentVmSshKey-Public'
+        customScriptParameters = $customScriptParameters | ConvertTo-Json -Compress
     }
 
 Write-Verbose 'Restarting the VM...'
 Restart-AzVM -ResourceGroupName $resourceGroupName -Name $vmName | Out-Null
 Start-Sleep -Seconds 30
+
+Write-Output "The crank VM is ready: $vmName"
+
+# TODO: remove this warning when app deployment is automated
+Write-Warning "Remember to deploy the Function apps to /home/$UserName/FunctionApps"

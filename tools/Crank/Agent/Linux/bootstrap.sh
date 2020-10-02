@@ -1,13 +1,15 @@
 #!/bin/bash
 
-mkdir /home/Functions/github
-cd /home/Functions/github
+mkdir ~/github
+cd ~/github
 git clone https://github.com/Azure/azure-functions-host.git
 cd azure-functions-host
 git checkout dev
 
 cd tools/Crank/Agent
-chmod -R +x *.sh
-chmod -R +x *.ps1
+sudo find . -name "*.sh" -exec sudo chmod +xr {} \;
+sudo find . -name "*.ps1" -exec sudo chmod +xr {} \;
+
 Linux/install-powershell.sh
-sudo -H -u Functions ./setup-crank-agent.ps1 -CrankBranch master
+
+./setup-crank-agent-json.ps1 -ParametersJson $1 -Verbose

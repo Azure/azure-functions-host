@@ -214,8 +214,11 @@ namespace Microsoft.Azure.WebJobs.Script
                             throw new InvalidOperationException($"Found duplicate {nameof(FunctionMetadata)} with the name {metadata.Name}");
                         }
 
-                        // All custom provided functions are considered codeless functions
-                        metadata.SetIsCodeless(true);
+                        // If not explicitly set, consider the function codeless.
+                        if (!metadata.IsCodelessSet())
+                        {
+                            metadata.SetIsCodeless(true);
+                        }
 
                         distinctFunctionNames.Add(metadata.Name);
                         functionMetadataList.Add(metadata);

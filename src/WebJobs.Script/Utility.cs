@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // i.e.: "f-<functionname>"
         public const string AssemblyPrefix = "f-";
         public const string AssemblySeparator = "__";
-        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
@@ -768,27 +768,31 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return;
             }
+            if (!retryOptions.MaxRetryCount.HasValue)
+            {
+                throw new ArgumentNullException(nameof(retryOptions.MaxRetryCount));
+            }
             switch (retryOptions.Strategy)
             {
                 case RetryStrategy.FixedDelay:
-                    if (retryOptions.DelayInterval.Ticks <= 0)
+                    if (!retryOptions.DelayInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create FixedDelayRetryAttribute are valid
-                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount, retryOptions.DelayInterval.ToString());
+                    _ = new FixedDelayRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.DelayInterval.ToString());
                     break;
                 case RetryStrategy.ExponentialBackoff:
-                    if (retryOptions.MinimumInterval.Ticks <= 0)
+                    if (!retryOptions.MinimumInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
-                    if (retryOptions.MaximumInterval.Ticks <= 0)
+                    if (!retryOptions.MaximumInterval.HasValue)
                     {
-                        throw new ArgumentOutOfRangeException(nameof(retryOptions.DelayInterval));
+                        throw new ArgumentNullException(nameof(retryOptions.DelayInterval));
                     }
                     // ensure values specified to create ExponentialBackoffRetryAttribute are valid
-                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
+                    _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
         }

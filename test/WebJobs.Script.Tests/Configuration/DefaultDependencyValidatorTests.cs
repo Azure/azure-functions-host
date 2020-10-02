@@ -51,10 +51,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             IEnumerable<string> messageLines = invalidServicesMessage.Exception.Message.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
             Assert.Equal(5, messageLines.Count());
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyHostedService)));
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyScriptEventManager)));
-            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(nameof(MyMetricsLogger)));
-            Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(nameof(SystemLoggerProvider)));
+            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyHostedService).AssemblyQualifiedName));
+            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyScriptEventManager).AssemblyQualifiedName));
+            Assert.Contains(messageLines, p => p.StartsWith("[Invalid]") && p.EndsWith(typeof(MyMetricsLogger).AssemblyQualifiedName));
+            Assert.Contains(messageLines, p => p.StartsWith("[Missing]") && p.EndsWith(typeof(SystemLoggerProvider).AssemblyQualifiedName));
         }
 
         [Fact]
