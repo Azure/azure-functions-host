@@ -26,15 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     public class FunctionInvocationMiddleware
     {
-        private static RouteData _emptyRouteData;
-        private static ActionDescriptor _emptyActionDescriptor;
         private readonly RequestDelegate _next;
-
-        static FunctionInvocationMiddleware()
-        {
-            _emptyRouteData = new RouteData();
-            _emptyActionDescriptor = new ActionDescriptor();
-        }
 
         public FunctionInvocationMiddleware(RequestDelegate next)
         {
@@ -55,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 IActionResult result = await GetResultAsync(context, functionExecution);
                 if (nestedProxiesCount > 0)
                 {
-                    // if Proxy, the rest of the pipleline will be processed by Proxies in
+                    // if Proxy, the rest of the pipeline will be processed by Proxies in
                     // case there are response overrides and what not.
                     SetProxyResult(context, nestedProxiesCount, result);
                     return;
