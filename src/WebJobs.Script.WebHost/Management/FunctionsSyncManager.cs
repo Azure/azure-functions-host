@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string TaskHubName = "taskHubName";
         private const string Connection = "connection";
         private const string DurableTaskV1StorageConnectionName = "azureStorageConnectionStringName";
-        private const string DurableTaskV2StorageOptions = "storageOptions";
+        private const string DurableTaskV2StorageOptions = "storageProvider";
         private const string DurableTaskV2StorageConnectionName = "connectionStringName";
         private const string DurableTask = "durableTask";
 
