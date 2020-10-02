@@ -30,6 +30,7 @@
             - Metadata / Input binding data of type DateTime will not be serialzed as string
     If you are using these properties, please ensure your app is able to detect and handle the new schema.
 - Fixes [#6031](https://github.com/Azure/azure-functions-host/issues/6031), an issue where having a large number of secrets in a Key Vault Secrets Repository would cause Function and Host secrets to regenerate constantly. These secrets should no longer regenerate due to this error.
+- Fixed [bug](https://github.com/Azure/azure-functions-durable-extension/issues/1467) in sync triggers operations for Durable Functions using custom storage account connection strings.
 
 **Release sprint:** Sprint 84
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+84%22+label%3Afeature+is%3Aclosed) ]
