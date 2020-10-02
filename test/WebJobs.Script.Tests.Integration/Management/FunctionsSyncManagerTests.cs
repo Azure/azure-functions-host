@@ -538,7 +538,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 var azureStorageConfig = new JObject();
                 azureStorageConfig["connectionStringName"] = "DurableConnection";
-                durableConfig["storageOptions"] = azureStorageConfig;
+                durableConfig["storageProvider"] = azureStorageConfig;
 
                 var hostConfig = GetHostConfig(durableConfig, useBundles: false);
 
