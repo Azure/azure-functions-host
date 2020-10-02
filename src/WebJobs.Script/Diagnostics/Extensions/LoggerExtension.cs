@@ -217,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         private static readonly Action<ILogger, string, string, Exception> _incorrectAutorestGeneratedJSONFile =
             LoggerMessage.Define<string, string>(
-            LogLevel.Information,
+            LogLevel.Warning,
             new EventId(333, nameof(IncorrectAutorestGeneratedJsonFile)),
             "autorest_generated.json file found is incorrect (https://aka.ms/stencil) | exception: {newLine}{contents}");
 
