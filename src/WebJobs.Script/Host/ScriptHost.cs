@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
 
-                    Utility.LogAutorestGeneratedJson(ScriptOptions.RootScriptPath, _logger);
+                    Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
 
                 var directTypes = GetDirectTypes(functionMetadataList);

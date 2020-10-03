@@ -797,7 +797,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static void LogAutorestGeneratedJson(string rootScriptPath, ILogger logger)
+        public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
         {
             string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
             JObject autorestGeneratedJson;
