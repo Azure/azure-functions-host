@@ -146,7 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             // we need to sync triggers if config changed, or the files changed
-            await _functionsSyncManager.TrySyncTriggersAsync();
+            // we do not want to wait until TrySyncTriggersAsync is finished, there can be several function creations at once
+            _ = Task.Factory.StartNew(() => _functionsSyncManager.TrySyncTriggersAsync());
 
             (var success, var functionMetadataResult) = await TryGetFunction(name, request);
 
