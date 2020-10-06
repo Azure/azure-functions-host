@@ -18,7 +18,7 @@ param (
     $Docker,
 
     [switch]
-    $SeparateLoadVm,
+    $SingleVm,
 
     [string]
     $VmSize = 'Standard_E2s_v3',
@@ -37,9 +37,9 @@ $ErrorActionPreference = 'Stop'
 
 #region Utilities
 
-function DeployCrankVm {
-    $resourceGroupName = "FunctionsCrank-$OsType-$BaseName"
-    $vmName = "functions-crank-$OsType-$BaseName".ToLower()
+function DeployCrankVm($NamePostfix) {
+    $resourceGroupName = "FunctionsCrank-$OsType-$BaseName$NamePostfix"
+    $vmName = "functions-crank-$OsType-$BaseName$NamePostfix".ToLower()
     Write-Verbose "Creating VM '$vmName' in resource group '$resourceGroupName'"
 
     Set-AzContext -Subscription $SubscriptionName | Out-Null
@@ -68,11 +68,13 @@ function DeployCrankVm {
             vaultSubscription = $vaultSubscriptionId
             secretName = 'LinuxCrankAgentVmSshKey-Public'
             customScriptParameters = $customScriptParameters | ConvertTo-Json -Compress
-        }
+        } | Out-Null
 
     Write-Verbose 'Restarting the VM...'
     Restart-AzVM -ResourceGroupName $resourceGroupName -Name $vmName | Out-Null
     Start-Sleep -Seconds 30
+
+    Write-Host "The crank VM is ready: $vmName"
 }
 
 #endregion
@@ -83,9 +85,11 @@ if ($OsType -ne 'Linux') {
     throw 'Only Linux is supported now'
 }
 
-DeployCrankVm
-
-Write-Output "The crank VM is ready: $vmName"
+if ($SingleVm) {
+    DeployCrankVm
+} else {
+    '-app', '-load' | ForEach-Object -Parallel { using:DeployCrankVm -NamePostfix $_ }
+}
 
 # TODO: remove this warning when app deployment is automated
 Write-Warning "Remember to deploy the Function apps to /home/$UserName/FunctionApps"
