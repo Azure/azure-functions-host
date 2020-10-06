@@ -120,8 +120,7 @@ if ($Iterations -gt 1) {
 $badResponses = $crankOutput | Where-Object { $_ -match '\bBad responses\b\s*\|\s*(\S*)\s' } | ForEach-Object { $Matches[1] }
 if ($null -eq $badResponses) {
     Write-Warning "Could not detect the number of bad responses. The performance results may be unreliable."
-}
-if ($badResponses -ne 0) {
+} elseif ($badResponses -ne 0) {
     Write-Warning "Detected $badResponses bad response(s). The performance results may be unreliable."
 }
 
