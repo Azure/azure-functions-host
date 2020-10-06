@@ -258,7 +258,7 @@
                                         }
                                     },
                                     {
-                                        "name": "App-Port",
+                                        "name": "Benchmark-App",
                                         "properties": {
                                             "priority": 1012,
                                             "protocol": "*",
