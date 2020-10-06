@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
 
             if (_analysisTask != null && !_analysisTask.IsCompleted)
             {
-                _logger.LogInformation("Change analysis service stopped before analysis completion. Waiting for cancellation");
+                _logger.LogDebug("Change analysis service stopped before analysis completion. Waiting for cancellation");
                 return _analysisTask;
             }
 
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
 
                 if (!lockAcquired)
                 {
-                    _logger.LogWarning("Unable to acquire change analysis process lock. Skipping analysis.");
+                    _logger.LogDebug("Unable to acquire change analysis process lock. Skipping analysis.");
                     return;
                 }
 
@@ -94,25 +94,25 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
                 // Currently, only performing analysis if we haven't done so within the previous 7 days
                 if (analysisState.LastAnalysisTime > DateTimeOffset.UtcNow.AddDays(-7))
                 {
-                    _logger.LogInformation("Skipping breaking change analysis.");
+                    _logger.LogDebug("Skipping breaking change analysis.");
                     return;
                 }
 
-                _logger.LogInformation("Initiating breaking change analysis...");
+                _logger.LogDebug("Initiating breaking change analysis...");
 
                 LogBreakingChangeReport(cancellationToken);
 
                 await _changeAnalysisStateProvider.SetTimestampAsync(DateTimeOffset.UtcNow, analysisState.Handle, cancellationToken);
 
-                _logger.LogInformation("Breaking change analysis operation completed.");
+                _logger.LogDebug("Breaking change analysis operation completed.");
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("Breaking change analysis operation cancelled.");
+                _logger.LogDebug("Breaking change analysis operation cancelled.");
             }
             catch (Exception exc)
             {
-                _logger.LogWarning(exc, "Breaking change analysis operation failed");
+                _logger.LogDebug(exc, "Breaking change analysis operation failed");
             }
             finally
             {
