@@ -13,7 +13,6 @@ using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -44,12 +43,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestLoggerProvider _scriptHostLoggerProvider = new TestLoggerProvider();
         private readonly WebJobsScriptHostService _hostService;
 
+        public TestFunctionHost(string scriptPath,
+           Action<IServiceCollection> configureWebHostServices = null,
+           Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
+           Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
+           Action<ILoggingBuilder> configureScriptHostLogging = null,
+           Action<IServiceCollection> configureScriptHostServices = null)
+            : this(scriptPath, Path.Combine(Path.GetTempPath(), @"Functions"), configureWebHostServices, configureScriptHostWebJobsBuilder,
+                  configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices)
+        {
+        }
+
         public TestFunctionHost(string scriptPath, string logPath,
-            Action<IServiceCollection> configureWebHostServices = null,
-            Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
-            Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
-            Action<ILoggingBuilder> configureScriptHostLogging = null,
-            Action<IServiceCollection> configureScriptHostServices = null)
+        Action<IServiceCollection> configureWebHostServices = null,
+        Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
+        Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
+        Action<ILoggingBuilder> configureScriptHostLogging = null,
+        Action<IServiceCollection> configureScriptHostServices = null)
         {
             _appRoot = scriptPath;
 

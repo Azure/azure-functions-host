@@ -1,0 +1,9 @@
+﻿{
+  "bindings": [
+    {
+      "type": "customTrigger",
+      "name": "input",
+      "direction": "in"
+    }
+  ]
+}
