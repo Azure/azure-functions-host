@@ -256,6 +256,19 @@
                                             "destinationAddressPrefix": "*",
                                             "destinationPortRange": "5010"
                                         }
+                                    },
+                                    {
+                                        "name": "App-Port",
+                                        "properties": {
+                                            "priority": 1012,
+                                            "protocol": "*",
+                                            "access": "Allow",
+                                            "direction": "Inbound",
+                                            "sourceAddressPrefix": "*",
+                                            "sourcePortRange": "*",
+                                            "destinationAddressPrefix": "*",
+                                            "destinationPortRange": "5000"
+                                        }
                                     }
                                 ]
                             }
