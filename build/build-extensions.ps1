@@ -1,6 +1,7 @@
 param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "3.0.$buildNumber",
+  [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",
   [string]$suffix = "",
   [string]$commitHash = "N/A"
 )
@@ -82,6 +83,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
 
     ZipContent $symbolsTarget "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
+    Copy-Item "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.Symbols.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -147,6 +149,8 @@ function CreateSiteExtensions() {
     Write-Host "--------"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    Copy-Item "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.$$v2CompatibleExtensionVersion$runtimeSuffix.zip"
+    
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
     
@@ -159,6 +163,7 @@ function CreateSiteExtensions() {
     Write-Host ""
     
     ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
+    Copy-Item "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip" -Destination "$buildOutput\Functions.Private.$v2CompatibleExtensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
 }
