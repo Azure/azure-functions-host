@@ -639,6 +639,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();
+            if (message == null)
+            {
+                Assert.Equal(allLogs[0].ToString(), msg);
+            }
+
             Assert.NotNull(message);
             Assert.Equal(expectedLevel, message.Level);
         }
