@@ -286,8 +286,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [RequiresRunningHost]
         public async Task<IActionResult> Warmup([FromServices] IScriptHostManager scriptHostManager)
         {
-            // Endpoint only for Windows Elastic Premium or Linux App Service plans
-            if (!(_environment.IsLinuxAppService() || _environment.IsWindowsElasticPremium()))
+            // Endpoint not supported for consumption plans.
+            if (_environment.IsLinuxConsumption() || _environment.IsWindowsConsumption())
             {
                 return BadRequest("This API is not available for the current hosting plan");
             }
