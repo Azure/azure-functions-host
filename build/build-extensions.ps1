@@ -149,7 +149,7 @@ function CreateSiteExtensions() {
     Write-Host "--------"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    Copy-Item "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.$$v2CompatibleExtensionVersion$runtimeSuffix.zip"
+    Copy-Item "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
     
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
