@@ -81,8 +81,8 @@ $homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } els
 $functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
- $aspNetUrls = "http://$($CrankAgentAppVm):5000"
- $profileName = "default"
+$aspNetUrls = "http://$($CrankAgentAppVm):5000"
+$profileName = "default"
 
 $crankArgs =
     '--config', $crankConfigPath,
