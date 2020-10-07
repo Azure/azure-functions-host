@@ -1,7 +1,11 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]
-    $CrankAgentVm,
+    $CrankAgentAppVm,
+
+    [Parameter(Mandatory = $true)]
+    [string]
+    $CrankAgentLoadVm,
 
     [string]
     $BranchOrCommit = 'dev',
@@ -71,13 +75,13 @@ $crankConfigPath = Join-Path `
                     -Path (Split-Path $PSCommandPath -Parent) `
                     -ChildPath 'benchmarks.yml'
 
-$isLinuxApp = $CrankAgentVm -match '\blinux\b'
+$isLinuxApp = $CrankAgentAppVm -match '\blinux\b'
 
 $homePath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp" } else { "C:\FunctionApps\$FunctionApp" }
 $functionAppPath = if ($isLinuxApp) { "/home/$UserName/FunctionApps/$FunctionApp/site/wwwroot" } else { "C:\FunctionApps\$FunctionApp\site\wwwroot" }
 $tmpLogPath = if ($isLinuxApp) { "/tmp/functions/log" } else { 'C:\Temp\Functions\Log' }
 
- $aspNetUrls = "http://localhost:5000"
+ $aspNetUrls = "http://$($CrankAgentAppVm):5000"
  $profileName = "default"
 
 $crankArgs =
@@ -87,7 +91,8 @@ $crankArgs =
     '--chart',
     '--chart-type hex',
     '--application.collectCounters', $true,
-    '--variable', "CrankAgentVm=$CrankAgentVm",
+    '--variable', "CrankAgentAppVm=$CrankAgentAppVm",
+    '--variable', "CrankAgentLoadVm=$CrankAgentLoadVm",
     '--variable', "FunctionAppPath=`"$functionAppPath`"",
     '--variable', "HomePath=`"$homePath`"",
     '--variable', "TempLogPath=`"$tmpLogPath`"",
