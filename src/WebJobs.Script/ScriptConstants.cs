@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string DiagnosticSentinelFileName = "diagnostic_sentinel";
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
+        public const string AutorestGeenratedMetadataFileName = ".autorest_generated.json";
         public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
         public const string AppOfflineFileName = "app_offline.htm";

@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -794,6 +795,33 @@ namespace Microsoft.Azure.WebJobs.Script
                     _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
+        }
+
+        public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
+        {
+            string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
+            JObject autorestGeneratedJson;
+
+            if (FileUtility.FileExists(autorestGeneratedJsonPath))
+            {
+                string autorestGeneratedJsonPathContents = FileUtility.ReadAllText(autorestGeneratedJsonPath);
+                try
+                {
+                    autorestGeneratedJson = JObject.Parse(autorestGeneratedJsonPathContents);
+                    logger.AutorestGeneratedFunctionApplication(autorestGeneratedJson.ToString());
+                }
+                catch (JsonException ex)
+                {
+                    logger.IncorrectAutorestGeneratedJsonFile($"Unable to parse autorest configuration file '{autorestGeneratedJsonPath}'" +
+                        $" with content '{autorestGeneratedJsonPathContents}' | exception: {ex.StackTrace}");
+                }
+                catch (Exception ex)
+                {
+                    logger.IncorrectAutorestGeneratedJsonFile($"Caught exception while parsing .autorest_generated.json | " +
+                        $"exception: {ex.StackTrace}");
+                }
+            }
+            // If we dont find the .autorest_generated.json in the function app, we just don't log anything.
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
