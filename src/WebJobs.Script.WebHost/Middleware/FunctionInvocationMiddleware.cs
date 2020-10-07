@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // Add the request to the logging scope. This allows the App Insights logger to
                 // record details about the request.
                 ILoggerFactory loggerFactory = context.RequestServices.GetService<ILoggerFactory>();
-                ILogger logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory(functionExecution.Descriptor.Name));
+                ILogger logger = loggerFactory.CreateLogger(functionExecution.Descriptor.LogCategory);
                 var scopeState = new Dictionary<string, object>()
                 {
                     [ScriptConstants.LoggerHttpRequest] = context.Request,
