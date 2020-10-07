@@ -173,6 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Windows64BitRID = "win-x64";
         public const string Windows32BitRID = "win-x86";
 
+        public const string AzureMonitorTraceCategory = "FunctionAppLogs";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
