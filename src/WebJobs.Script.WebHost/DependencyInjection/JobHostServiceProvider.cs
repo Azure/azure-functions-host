@@ -105,9 +105,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             {
                 return _currentResolver.CreateChildScope(_rootScopeFactory);
             }
-            catch (ContainerException ex) when (ex.Error == 39)
+            catch (ContainerException ex) when (ex.Error == Error.ContainerIsDisposed)
             {
-                // container is disposed
                 throw new HostDisposedException(_currentResolver.GetType().FullName, ex);
             }
         }

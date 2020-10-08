@@ -55,11 +55,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public TestFunctionHost(string scriptPath, string logPath,
-        Action<IServiceCollection> configureWebHostServices = null,
-        Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
-        Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
-        Action<ILoggingBuilder> configureScriptHostLogging = null,
-        Action<IServiceCollection> configureScriptHostServices = null)
+            Action<IServiceCollection> configureWebHostServices = null,
+            Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
+            Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
+            Action<ILoggingBuilder> configureScriptHostLogging = null,
+            Action<IServiceCollection> configureScriptHostServices = null)
         {
             _appRoot = scriptPath;
 
