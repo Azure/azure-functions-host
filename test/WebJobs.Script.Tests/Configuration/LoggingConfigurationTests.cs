@@ -268,27 +268,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
         }
 
-        [Fact]
-        public void LoggerProviders_AzureMonitor()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("Foo,Bar")]
+        [InlineData("Foo,FunctionAppLogs,Bar")]
+        public void LoggerProviders_AzureMonitor(string azureMonitorEnabledValue)
         {
+            bool isAzureMonitorEnabled = false;
+
             var hostBuilder = new HostBuilder()
               .ConfigureDefaultTestWebScriptHost()
               .ConfigureServices(s =>
               {
                   TestEnvironment environment = new TestEnvironment();
                   environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "something.azurewebsites.net");
+                  environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, azureMonitorEnabledValue);
                   s.AddSingleton<IEnvironment>(environment);
+
+                  isAzureMonitorEnabled = environment.IsAzureMonitorEnabled();
               });
 
             using (IHost host = hostBuilder.Build())
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
+                int expectedCount = isAzureMonitorEnabled ? 5 : 4;
+
                 Assert.Equal(4, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
-                loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+                if (isAzureMonitorEnabled)
+                {
+                    loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+                }
             }
         }
     }

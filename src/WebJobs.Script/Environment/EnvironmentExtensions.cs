@@ -4,6 +4,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -44,6 +45,20 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             bool.TryParse(environment.GetEnvironmentVariable(EasyAuthEnabled), out bool isEasyAuthEnabled);
             return isEasyAuthEnabled;
+        }
+
+        /// <summary>
+        /// Returns true if any Functions AzureMonitor log categories are enabled.
+        /// </summary>
+        public static bool IsAzureMonitorEnabled(this IEnvironment environment)
+        {
+            string value = environment.GetEnvironmentVariable(AzureMonitorCategories);
+            if (value == null)
+            {
+                return true;
+            }
+            string[] categories = value.Split(',');
+            return categories.Contains(ScriptConstants.AzureMonitorTraceCategory);
         }
 
         public static bool IsRunningAsHostedSiteExtension(this IEnvironment environment)
