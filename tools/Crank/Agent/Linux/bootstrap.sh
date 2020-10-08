@@ -12,4 +12,4 @@ sudo find . -name "*.ps1" -exec sudo chmod +xr {} \;
 
 Linux/install-powershell.sh
 
-./setup-crank-agent-json.ps1 -ParametersJson $1 -Verbose
+./setup-crank-agent-raw.ps1 $1 -Verbose
