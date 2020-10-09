@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             {
                                 if (evt.MessageType == MsgType.InvocationRequest)
                                 {
-                                    _logger.LogTrace("Writing invocation request invocationId: {invocationId} to workerId: {workerId}", evt.Message.InvocationRequest.InvocationId, workerId);
+                                    _logger.LogDebug("Writing invocation request invocationId: {invocationId} to workerId: {workerId}", evt.Message.InvocationRequest.InvocationId, workerId);
                                 }
 
                                 try
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         var currentMessage = requestStream.Current;
                         if (currentMessage.InvocationResponse != null && !string.IsNullOrEmpty(currentMessage.InvocationResponse.InvocationId))
                         {
-                            _logger.LogTrace("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
+                            _logger.LogDebug("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
                         }
                         _eventManager.Publish(new InboundGrpcEvent(workerId, currentMessage));
                     }
