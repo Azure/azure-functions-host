@@ -1,5 +1,5 @@
 param (
-  [string]$buildNumber = "19068",
+  [string]$buildNumber = "0",
   [string]$extensionVersion = "3.0.$buildNumber",
   [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",
   [string]$suffix = "",
