@@ -1,9 +1,10 @@
 param (
-  [string]$buildNumber = "0",
+  [string]$buildNumber = "19068",
   [string]$extensionVersion = "3.0.$buildNumber",
   [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",
   [string]$suffix = "",
-  [string]$commitHash = "N/A"
+  [string]$commitHash = "N/A",
+  [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
 $rootDir = Split-Path -Parent $PSScriptRoot
@@ -83,7 +84,6 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
 
     ZipContent $symbolsTarget "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
-    Copy-Item "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.Symbols.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -121,10 +121,12 @@ function CleanOutput([string] $rootPath) {
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
+    $v2CompatibleSiteExtensionPath = "$buildOutput\temp_extension_v2"
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
+    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersion"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -141,18 +143,29 @@ function CreateSiteExtensions() {
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
     
+    
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 
-    Write-Host "Generating hashes.txt"
-    Write-Host "--------"
+    Write-Host "Generating $hashesForHardlinksFile"
+    Write-Host "======================================"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
+    Write-Host "======================================"
+
+    Write-Host "siteExtensionPath: $siteExtensionPath officialSiteExtensionPath: $officialSiteExtensionPath" 
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-    Copy-Item "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip" -Destination "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
-    
+
+    Write-Host "======================================"
+    Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
+    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersion -Force -Recurse > $null
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
+    Write-Host "officialV2CompatibleSiteExtensionPath $officialV2CompatibleSiteExtensionPath"
+    ZipContent $officialV2CompatibleSiteExtensionPath "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
+    Write-Host "======================================"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
+    Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
@@ -163,7 +176,6 @@ function CreateSiteExtensions() {
     Write-Host ""
     
     ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
-    Copy-Item "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip" -Destination "$buildOutput\Functions.Private.$v2CompatibleExtensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
 }
@@ -172,8 +184,8 @@ function WriteHashesFile([string] $directoryPath) {
   New-Item -Path "$directoryPath/../temp_hashes" -ItemType Directory | Out-Null
   $temp_current = (Get-Location)
   Set-Location $directoryPath
-  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\hashesForHardlinks.txt"
-  Move-Item -Path "$directoryPath/../temp_hashes/hashes.txt" -Destination "$directoryPath" -Force
+  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\$hashesForHardlinksFile"
+  Move-Item -Path "$directoryPath/../temp_hashes/$hashesForHardlinksFile" -Destination "$directoryPath" -Force
   Set-Location $temp_current
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
