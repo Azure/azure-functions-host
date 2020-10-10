@@ -172,7 +172,7 @@ function WriteHashesFile([string] $directoryPath) {
   New-Item -Path "$directoryPath/../temp_hashes" -ItemType Directory | Out-Null
   $temp_current = (Get-Location)
   Set-Location $directoryPath
-  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\hashes.txt"
+  Get-ChildItem -Recurse $directoryPath | where { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\hashesForHardlinks.txt"
   Move-Item -Path "$directoryPath/../temp_hashes/hashes.txt" -Destination "$directoryPath" -Force
   Set-Location $temp_current
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
