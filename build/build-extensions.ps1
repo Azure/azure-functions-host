@@ -12,7 +12,7 @@ $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
 $extensionVersionNoSuffix = $extensionVersion
-$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersionNoSuffix
+$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
 
 if ($hasSuffix) {
   $extensionVersion = "$extensionVersion-$suffix"
