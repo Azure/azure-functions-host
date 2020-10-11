@@ -12,9 +12,11 @@ $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
 $extensionVersionNoSuffix = $extensionVersion
+$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersionNoSuffix
 
 if ($hasSuffix) {
   $extensionVersion = "$extensionVersion-$suffix"
+  $v2CompatibleExtensionVersion = "$v2CompatibleExtensionVersion-$suffix"
 }
 
 function ZipContent([string] $sourceDirectory, [string] $target)
@@ -126,7 +128,7 @@ function CreateSiteExtensions() {
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
-    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersion"
+    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -151,9 +153,9 @@ function CreateSiteExtensions() {
     Write-Host "Generating $hashesForHardlinksFile"
     Write-Host "======================================"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
+    Write-Host "Done generating $hashesForHardlinksFile"
     Write-Host "======================================"
 
-    Write-Host "siteExtensionPath: $siteExtensionPath officialSiteExtensionPath: $officialSiteExtensionPath" 
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 
     Write-Host "======================================"
@@ -198,6 +200,7 @@ if (Test-Path $buildOutput) {
     Remove-Item $buildOutput -Recurse -Force
 }
 Write-Host "Extensions version: $extensionVersion"
+Write-Host "V2 compatible Extensions version: $v2CompatibleExtensionVersion"
 Write-Host ""
 
 BuildRuntime "win-x86"
