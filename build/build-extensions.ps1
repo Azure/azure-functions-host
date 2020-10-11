@@ -160,9 +160,8 @@ function CreateSiteExtensions() {
 
     Write-Host "======================================"
     Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
-    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersion -Force -Recurse > $null
+    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix -Force -Recurse > $null
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
-    Write-Host "officialV2CompatibleSiteExtensionPath $officialV2CompatibleSiteExtensionPath"
     ZipContent $officialV2CompatibleSiteExtensionPath "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
     Write-Host "======================================"
     
