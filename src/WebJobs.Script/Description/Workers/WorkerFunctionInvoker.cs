@@ -125,6 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private async Task<(string name, DataType type, object value)[]> BindInputsAsync(Binder binder)
         {
             var bindingTasks = _inputBindings
+                .AsParallel()
                 .Where(binding => !binding.Metadata.IsTrigger)
                 .Select(async (binding) =>
                 {
@@ -152,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _handleScriptReturnValue(result);
 
-            var outputBindingTasks = _outputBindings.Select(async binding =>
+            var outputBindingTasks = _outputBindings.AsParallel().Select(async binding =>
             {
                 // apply the value to the binding
                 if (result.Outputs.TryGetValue(binding.Metadata.Name, out object value) && value != null)
