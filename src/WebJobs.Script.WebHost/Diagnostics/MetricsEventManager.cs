@@ -80,8 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             SystemMetricEvent evt = eventHandle as SystemMetricEvent;
             if (evt != null)
             {
-                long latencyMS = 0;
-               
+                long latencyMS;
                 if (evt.StopWatch != null)
                 {
                     evt.StopWatch.Stop();
@@ -115,17 +114,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             Data = evt.Data
                         };
                     },
-                    (name, evtToUpdate) =>
+                    (name, existing) =>
                     {
-                        // Aggregate into the existing event
-                        // While we'll be performing an aggregation later,
-                        // we retain the count so weighted averages can be performed
-                        evtToUpdate.Maximum = Math.Max(evtToUpdate.Maximum, latencyMS);
-                        evtToUpdate.Minimum = Math.Min(evtToUpdate.Minimum, latencyMS);
-                        evtToUpdate.Average += latencyMS;  // the average is calculated later - for now we sum
-                        evtToUpdate.Count++;
-
-                        return evtToUpdate;
+                        return new SystemMetricEvent
+                        {
+                            Maximum = Math.Max(existing.Maximum, latencyMS),
+                            Minimum = Math.Min(existing.Minimum, latencyMS),
+                            Average = existing.Average + latencyMS,
+                            Count = existing.Count + 1
+                        };
                     });
             }
         }
