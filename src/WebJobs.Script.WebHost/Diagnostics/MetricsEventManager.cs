@@ -81,9 +81,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             if (evt != null)
             {
                 long latencyMS = 0;
-                evt.StopWatch.Stop();
+               
                 if (evt.StopWatch != null)
                 {
+                    evt.StopWatch.Stop();
                     evt.Duration = evt.StopWatch.Elapsed;
                     latencyMS = evt.StopWatch.ElapsedMilliseconds;
                 }
