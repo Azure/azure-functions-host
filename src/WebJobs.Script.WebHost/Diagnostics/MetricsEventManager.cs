@@ -148,12 +148,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                         Data = data
                     };
                 },
-                (name, evtToUpdate) =>
+                (name, existing) =>
                 {
-                    // update the existing event
-                    evtToUpdate.Count++;
-
-                    return evtToUpdate;
+                    return new SystemMetricEvent
+                    {
+                        Maximum = existing.Maximum,
+                        Minimum = existing.Minimum,
+                        Average = existing.Average,
+                        Count = existing.Count + 1
+                    };
                 });
         }
 
@@ -229,13 +232,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private void FlushMetrics()
         {
-            if (QueuedEvents.Count == 0)
+            if (QueuedEvents.IsEmpty)
             {
                 return;
             }
 
-            SystemMetricEvent[] eventsToFlush = QueuedEvents.Values.ToArray();
-            QueuedEvents.Clear();
+            string[] keys = QueuedEvents.Keys.ToArray();
+            SystemMetricEvent[] eventsToFlush = new SystemMetricEvent[keys.Length];
+
+            for (var i = 0; i < keys.Length; i++)
+            {
+                // atomically get&remove
+                QueuedEvents.TryRemove(keys[i], out eventsToFlush[i]);
+            }
 
             // Use the same timestamp for all events. Since these are
             // aggregated events, individual timestamps for when the events were
