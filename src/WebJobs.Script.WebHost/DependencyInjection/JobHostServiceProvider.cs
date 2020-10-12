@@ -101,7 +101,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceScope CreateScope()
         {
-            return _currentResolver.CreateChildScope(_rootScopeFactory);
+            try
+            {
+                return _currentResolver.CreateChildScope(_rootScopeFactory);
+            }
+            catch (ContainerException ex) when (ex.Error == Error.ContainerIsDisposed)
+            {
+                throw new HostDisposedException(_currentResolver.GetType().FullName, ex);
+            }
         }
 
         public void Dispose()
