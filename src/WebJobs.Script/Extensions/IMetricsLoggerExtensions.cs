@@ -16,13 +16,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private class DisposableEvent : IDisposable
         {
+            private static readonly string StopWatchResolution = $"{{\"IsStopwatchHighResolution:\" {Stopwatch.IsHighResolution}}}";
+
             private readonly object _metricEvent;
             private readonly IMetricsLogger _metricsLogger;
             private bool _disposed;
 
             public DisposableEvent(string eventName, string functionName, IMetricsLogger metricsLogger)
             {
-                _metricEvent = metricsLogger.BeginEvent(eventName, functionName, $"{{\"IsStopwatchHighResolution:\" {Stopwatch.IsHighResolution}}}");
+                _metricEvent = metricsLogger.BeginEvent(eventName, functionName, StopWatchResolution);
                 _metricsLogger = metricsLogger;
             }
 
