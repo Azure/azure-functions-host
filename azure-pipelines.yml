@@ -246,6 +246,8 @@ jobs:
       contents: '**\CodeSignSummary-*.md'
   - publish: $(Build.ArtifactStagingDirectory)\Functions.3.0.$(buildNumber)${{ variables.artifactSuffix }}.zip
     artifact: Functions.3.0.$(buildNumber)${{ variables.artifactSuffix }}
+  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.1.$(buildNumber)${{ variables.artifactSuffix }}.zip
+    artifact: Functions.2.1.$(buildNumber)${{ variables.artifactSuffix }}
   - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x32.inproc.zip
     artifact: Functions.Private.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x32.inproc
   - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x64.zip
