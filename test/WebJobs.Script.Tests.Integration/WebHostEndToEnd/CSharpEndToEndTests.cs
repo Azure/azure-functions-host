@@ -111,6 +111,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             logs.Single(p => p.EndsWith($"From TraceWriter: {guid1}"));
             logs.Single(p => p.EndsWith($"From ILogger: {guid2}"));
 
+            // Make sure we get a metric logged from both ILogger and TraceWriter
+            var key = MetricsEventManager.GetAggregateKey(MetricEventNames.FunctionUserLog, "Scenarios");
+            Assert.Equal(2, Fixture.MetricsLogger.LoggedEvents.Where(p => p == key).Count());
+
             // Make sure we've gotten a log from the aggregator
             IEnumerable<LogMessage> getAggregatorLogs() => Fixture.Host.GetScriptHostLogMessages().Where(p => p.Category == LogCategories.Aggregator);
 
@@ -167,6 +171,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             var response = await Fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(response.StatusCode, HttpStatusCode.Redirect);
+        }
+
+        [Fact]
+        public async Task VerifyAcceptResult_OtherFunctionRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=accept")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
+        }
+
+        [Fact]
+        public async Task VerifyCreateResult_OtherFunctionRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=create")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Created);
+        }
+
+        [Fact]
+        public async Task VerifyAcceptResult_BadRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=acceptBadRoute")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
+        }
+
+        [Fact]
+        public async Task VerifyCreateResult_BadRoute()
+        {
+            const string path = "api/httptrigger-routed";
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=createBadRoute")),
+                Method = HttpMethod.Get
+            };
+
+            var response = await Fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
         }
 
         [Fact]
@@ -513,6 +573,7 @@ namespace SecondaryDependency
                         "HttpTrigger-Scenarios",
                         "HttpTrigger-Model",
                         "HttpTrigger-Redirect",
+                        "HttpTrigger-Routed",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
                         "LoadScriptReference",
