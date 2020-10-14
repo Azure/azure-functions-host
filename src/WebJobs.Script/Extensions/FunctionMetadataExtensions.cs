@@ -38,10 +38,12 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!metadata.Properties.TryGetValue(FunctionIdKey, out object idObj)
                 || !(idObj is string))
             {
-                metadata.Properties[FunctionIdKey] = Guid.NewGuid().ToString();
+                string functionId = Guid.NewGuid().ToString();
+                metadata.Properties[FunctionIdKey] = functionId;
+                return functionId;
             }
 
-            return metadata.Properties[FunctionIdKey] as string;
+            return (string)idObj;
         }
 
         internal static void SetFunctionId(this FunctionMetadata metadata, string functionId)

@@ -118,10 +118,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         return new SystemMetricEvent
                         {
+                            FunctionName = existing.FunctionName,
+                            EventName = existing.EventName,
                             Maximum = Math.Max(existing.Maximum, latencyMS),
                             Minimum = Math.Min(existing.Minimum, latencyMS),
                             Average = existing.Average + latencyMS,
-                            Count = existing.Count + 1
+                            Count = existing.Count + 1,
+                            Data = existing.Data
                         };
                     });
             }
@@ -152,10 +155,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     return new SystemMetricEvent
                     {
+                        FunctionName = existing.FunctionName,
+                        EventName = existing.EventName,
                         Maximum = existing.Maximum,
                         Minimum = existing.Minimum,
                         Average = existing.Average,
-                        Count = existing.Count + 1
+                        Count = existing.Count + 1,
+                        Data = existing.Data
                     };
                 });
         }

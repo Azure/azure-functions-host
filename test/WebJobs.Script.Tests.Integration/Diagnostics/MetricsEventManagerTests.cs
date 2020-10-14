@@ -137,7 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
 
                 // verify the new event was aggregated into the existing
-                Assert.Equal(2 + i, initialEvent.Count);
+                SystemMetricEvent @event = _metricsEventManager.QueuedEvents[initialEvent.EventName];
+                Assert.Equal(2 + i, @event.Count);
             }
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
@@ -251,14 +252,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
 
+                SystemMetricEvent @event = _metricsEventManager.QueuedEvents[initialEvent.EventName];
+
                 // verify the new event was aggregated into the existing
-                Assert.Equal(2 + i, initialEvent.Count);
+                Assert.Equal(2 + i, @event.Count);
                 long latencyMS = (long)latencyEvent.Duration.TotalMilliseconds;
-                Assert.Equal(initialEvent.Average, prevAvg + latencyMS);
-                Assert.Equal(initialEvent.Minimum, Math.Min(prevMin, latencyMS));
-                Assert.Equal(initialEvent.Maximum, Math.Max(prevMax, latencyMS));
-                prevMin = initialEvent.Minimum;
-                prevMax = initialEvent.Maximum;
+                Assert.Equal(prevAvg + latencyMS, @event.Average);
+                Assert.Equal(Math.Min(prevMin, latencyMS), @event.Minimum);
+                Assert.Equal(Math.Max(prevMax, latencyMS), @event.Maximum);
+                prevMin = @event.Minimum;
+                prevMax = @event.Maximum;
                 prevAvg += latencyMS;
             }
 
