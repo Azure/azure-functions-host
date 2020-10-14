@@ -315,7 +315,16 @@ message TypedData {
     CollectionString collection_string = 9;
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
+    SharedMemoryData shared_memory_data = 12;
   }
+}
+
+// Used to provide metadata about shared memory region to read/write data
+message SharedMemoryData {
+  string memory_mapped_file_name = 1;
+  int64 offset = 2;
+  int64 count = 3;
+  string type = 4;
 }
 
 // Used to encapsulate collection string

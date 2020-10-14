@@ -59,7 +59,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (value is byte[] arr)
             {
-                typedData.Bytes = ByteString.CopyFrom(arr);
+                // TODO gochaudh: Check from config if SharedMemoryDataTransfer is enabled
+                SharedMemoryManager sharedMemoryManager = new SharedMemoryManager();
+                string mmapName = await sharedMemoryManager.TryPutAsync(arr);
+                if (!string.IsNullOrEmpty(mmapName))
+                {
+                    SharedMemoryData sharedMemoryData = new SharedMemoryData()
+                    {
+                        MemoryMappedFileName = mmapName,
+                        Offset = 0,
+                        Count = arr.Length,
+                        Type = "bytes"
+                    };
+                    typedData.SharedMemoryData = sharedMemoryData;
+                    logger.LogDebug($"Writing to Shared Memory: {sharedMemoryData}");
+                }
+                else
+                {
+                    typedData.Bytes = ByteString.CopyFrom(arr);
+                }
             }
             else if (value is JObject jobj)
             {
