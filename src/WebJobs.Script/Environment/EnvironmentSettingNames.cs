@@ -59,6 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
 
+        //Function in Kubernetes
+        public const string PodNamespace = "POD_NAMESPACE";
+        public const string KubernetesAppServiceNamespace = "k8se-apps";
+
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
         /// start specializing the host instance (e.g. file system is ready, etc.)

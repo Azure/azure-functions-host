@@ -149,6 +149,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
 
+        [Fact]
+        public void IsKubernetesAppService_NoKubernetesServiceHost_ReturnsFalse()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(PodNamespace, KubernetesAppServiceNamespace);
+            Assert.False(environment.IsKubernetesAppService());
+        }
+
+        [Fact]
+        public void IsKubernetesAppService_NoKubernetesServiceHost_NoK8seNamespace_ReturnsFalse()
+        {
+            var environment = new TestEnvironment();
+            Assert.False(environment.IsKubernetesAppService());
+        }
+
+        [Fact]
+        public void IsKubernetesAppService_KubernetesServiceHost_K8seNamespace_ReturnsTrue()
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(KubernetesServiceHost, "10.0.0.1");
+            environment.SetEnvironmentVariable(PodNamespace, KubernetesAppServiceNamespace);
+            Assert.True(environment.IsKubernetesAppService());
+        }
+
         [Theory]
         [InlineData("1", true)]
         [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
