@@ -3,19 +3,22 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled, ISharedMemoryManager sharedMemoryManager)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -30,21 +33,43 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             foreach (var input in context.Inputs)
             {
-                TypedData rpcValue = null;
-                if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                RpcSharedMemory sharedMem = null;
+                ParameterBinding parameterBinding = null;
+                if (isSharedMemoryDataTransferEnabled)
                 {
-                    rpcValue = await input.val.ToRpc(logger, capabilities);
-                    if (input.val != null)
-                    {
-                        rpcValueCache.Add(input.val, rpcValue);
-                    }
+                    // Try to transfer this data over shared memory instead of RPC
+                    sharedMem = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager);
                 }
 
-                var parameterBinding = new ParameterBinding
+                if (sharedMem != null)
                 {
-                    Name = input.name,
-                    Data = rpcValue
-                };
+                    // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        RpcSharedMemory = sharedMem
+                    };
+                }
+                else
+                {
+                    // Data was not transferred over shared memory (either disabled, type not supported or some error); resort to RPC
+                    TypedData rpcValue = null;
+                    if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                    {
+                        rpcValue = await input.val.ToRpc(logger, capabilities);
+                        if (input.val != null)
+                        {
+                            rpcValueCache.Add(input.val, rpcValue);
+                        }
+                    }
+
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        Data = rpcValue
+                    };
+                }
+
                 invocationRequest.InputData.Add(parameterBinding);
             }
 

@@ -3,6 +3,7 @@
 
 using System.IO.Abstractions;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -22,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -130,6 +132,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
+
+            // Shared memory data transfer
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
+            }
+            else
+            {
+                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorLinux>();
+            }
+            services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
 
             // Grpc
             services.AddGrpc();

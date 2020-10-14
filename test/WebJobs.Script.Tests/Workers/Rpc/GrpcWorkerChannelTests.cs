@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -14,14 +15,16 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class GrpcWorkerChannelTests
+    public class GrpcWorkerChannelTests : IDisposable
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
@@ -42,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly RpcWorkerConfig _testWorkerConfig;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
+        private readonly IMemoryMappedFileAccessor _mapAccessor;
+        private readonly ISharedMemoryManager _sharedMemoryManager;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests()
@@ -51,6 +56,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _mapAccessor = new MemoryMappedFileAccessorWindows(mmapAccessorLogger);
+            }
+            else
+            {
+                _mapAccessor = new MemoryMappedFileAccessorLinux(mmapAccessorLogger);
+            }
+            _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
 
             var hostOptions = new ScriptApplicationHostOptions
             {
@@ -71,7 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
+        }
+
+        public void Dispose()
+        {
+            _sharedMemoryManager.Dispose();
         }
 
         [Fact]
@@ -146,7 +167,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
@@ -228,6 +250,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
         }
 
+        /// <summary>
+        /// Verify that <see cref="ScriptInvocationContext"/> with <see cref="RpcSharedMemory"/> input can be sent.
+        /// </summary>
+        [Fact]
+        public async Task SendInvocationRequest_InputsTransferredOverSharedMemory()
+        {
+            EnableSharedMemoryDataTransfer();
+
+            // Send invocation which will be using RpcSharedMemory for the inputs
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContextWithSharedMemoryInputs(Guid.NewGuid(), null);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
+        }
+
         [Fact]
         public async Task Drain_Verify()
         {
@@ -242,13 +279,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
             Task result = channel.DrainInvocationsAsync();
             Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
-            channel.InvokeResponse(new InvocationResponse
+            await channel.InvokeResponse(new InvocationResponse
             {
                 InvocationId = invocationId.ToString(),
                 Result = new StatusResult
@@ -417,6 +455,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
+        /// <summary>
+        /// Verify that shared memory data transfer is enabled if all required settings are set.
+        /// </summary>
+        [Fact]
+        public void SharedMemoryDataTransferSetting_VerifyEnabled()
+        {
+            EnableSharedMemoryDataTransfer();
+
+            Assert.True(_workerChannel.IsSharedMemoryDataTransferEnabled());
+        }
+
+        /// <summary>
+        /// Verify that shared memory data transfer is disabled if none of the required settings have been set.
+        /// </summary>
+        [Fact]
+        public void SharedMemoryDataTransferSetting_VerifyDisabled()
+        {
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+        }
+
+        /// <summary>
+        /// Verify that shared memory data transfer is disabled if the worker capability is absent.
+        /// All other requirements for shared memory data transfer will be enabled.
+        /// </summary>
+        [Fact]
+        public void SharedMemoryDataTransferSetting_VerifyDisabledIfWorkerCapabilityAbsent()
+        {
+            // Enable shared memory data transfer in the environment
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName, "1");
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            // Send worker init request and enable the capabilities
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+        }
+
+        /// <summary>
+        /// Verify that shared memory data transfer is disabled if the environment variable is absent.
+        /// All other requirements for shared memory data transfer will be enabled.
+        /// </summary>
+        [Fact]
+        public void SharedMemoryDataTransferSetting_VerifyDisabledIfEnvironmentVariableAbsent()
+        {
+            // Enable shared memory data transfer capability in the worker
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SharedMemoryDataTransfer, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            // Send worker init request and enable the capabilities
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
             var metadata1 = new FunctionMetadata()
@@ -460,6 +577,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
+        /// <summary>
+        /// The <see cref="ScriptInvocationContext"/> would contain inputs that can be transferred over shared memory.
+        /// </summary>
+        /// <param name="invocationId">ID of the invocation.</param>
+        /// <param name="resultSource">Task result source.</param>
+        /// <returns>A test <see cref="ScriptInvocationContext"/></returns>
+        private ScriptInvocationContext GetTestScriptInvocationContextWithSharedMemoryInputs(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
+        {
+            const int inputStringLength = 2 * 1024 * 1024;
+            string inputString = TestUtils.GetRandomString(inputStringLength);
+
+            const int inputBytesLength = 2 * 1024 * 1024;
+            byte[] inputBytes = TestUtils.GetRandomBytesInArray(inputBytesLength);
+
+            var inputs = new List<(string name, DataType type, object val)>
+            {
+                ("fooStr", DataType.String, inputString),
+                ("fooBytes", DataType.Binary, inputBytes),
+            };
+
+            return new ScriptInvocationContext()
+            {
+                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
+                ExecutionContext = new ExecutionContext()
+                {
+                    InvocationId = invocationId,
+                    FunctionName = "js1",
+                    FunctionAppDirectory = _scriptRootPath,
+                    FunctionDirectory = _scriptRootPath
+                },
+                BindingData = new Dictionary<string, object>(),
+                Inputs = inputs,
+                ResultSource = resultSource
+            };
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList_WithDisabled(string runtime, string funcName)
         {
             var metadata = new FunctionMetadata()
@@ -482,6 +635,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private bool AreExpectedMetricsGenerated()
         {
             return _metricsLogger.EventsBegan.Contains(MetricEventNames.FunctionLoadRequestResponse);
+        }
+
+        private void EnableSharedMemoryDataTransfer()
+        {
+            // Enable shared memory data transfer in the environment
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName, "1");
+
+            // Enable shared memory data transfer capability in the worker
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SharedMemoryDataTransfer, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            // Send worker init request and enable the capabilities
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
         }
     }
 }

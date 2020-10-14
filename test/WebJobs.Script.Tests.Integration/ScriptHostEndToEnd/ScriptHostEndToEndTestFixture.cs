@@ -26,6 +26,8 @@ using Xunit;
 using CloudStorageAccount = Microsoft.Azure.Storage.CloudStorageAccount;
 using TableStorageAccount = Microsoft.Azure.Cosmos.Table.CloudStorageAccount;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -143,6 +145,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    {
                        services.AddSingleton<ProxyClientExecutor>(_proxyClient);
                    }
+
+                   // Shared memory data transfer
+                   if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                   {
+                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
+                   }
+                   else
+                   {
+                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorLinux>();
+                   }
+                   services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
 
                    ConfigureServices(services);
                })

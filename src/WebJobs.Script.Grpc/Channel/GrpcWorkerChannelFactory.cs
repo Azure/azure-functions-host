@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -21,15 +22,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IScriptEventManager _eventManager = null;
         private readonly IEnvironment _environment = null;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
+        private readonly ISharedMemoryManager _sharedMemoryManager = null;
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager)
         {
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
             _rpcWorkerProcessFactory = rpcWorkerProcessManager;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
+            _sharedMemoryManager = sharedMemoryManager;
         }
 
         public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
@@ -51,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                          metricsLogger,
                          attemptCount,
                          _environment,
-                         _applicationHostOptions);
+                         _applicationHostOptions,
+                         _sharedMemoryManager);
         }
     }
 }

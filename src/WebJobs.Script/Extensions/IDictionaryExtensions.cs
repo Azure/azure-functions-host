@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -50,6 +51,13 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
+        }
+
+        public static async Task<IDictionary<TKey, TValue>> ToDictionaryAsync<TInput, TKey, TValue>(this IEnumerable<TInput> enumerable, Func<TInput, TKey> syncKeySelector, Func<TInput, Task<TValue>> asyncValueSelector)
+        {
+            IEnumerable<Task<KeyValuePair<TKey, TValue>>> tasks = enumerable.Select(async input => new KeyValuePair<TKey, TValue>(syncKeySelector(input), await asyncValueSelector(input)));
+            KeyValuePair<TKey, TValue>[] keyValuePairs = await Task.WhenAll(tasks);
+            return keyValuePairs.ToDictionary(pair => pair.Key, pair => pair.Value);
         }
     }
 }
