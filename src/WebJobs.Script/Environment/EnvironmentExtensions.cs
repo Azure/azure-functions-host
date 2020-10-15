@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Kubernetes App Service enviornment(K8SE)
+        /// Gets a value indicating whether the application is running in Kubernetes App Service environment(K8SE)
         /// </summary>
         /// <param name="environment">The environment to verify</param>
         /// <returns><see cref="true"/> If running in a Kubernetes Azure App Service; otherwise, false.</returns>
