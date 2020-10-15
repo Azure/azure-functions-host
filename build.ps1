@@ -255,9 +255,12 @@ function CreateZips([string] $runtimeSuffix) {
     Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion"
     Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
 
-    Write-Host "Generating hashes.txt"
-    Write-Host "--------"
+    Write-Host "Generating $hashesForHardlinksFile"
+    Write-Host "---------------------------------------------------"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
+    Write-Host "Generated $hashesForHardlinksFile"
+    Write-Host "---------------------------------------------------"
+   
 
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 }
