@@ -3,6 +3,7 @@
 
 using System;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
@@ -160,6 +161,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             }
 
             Assert.Equal(expected, EnvironmentExtensions.IsV2CompatibilityMode(env));
+        }
+
+        [Theory]
+        [InlineData(KubernetesAppServiceNamespace, "10.0.0.1", true)]
+        [InlineData("non-k8se-apps", "10.0.0.1", false)]
+        [InlineData("k8se-apps", null, false)]
+        [InlineData(null, "10.0.0.1", false)]
+        [InlineData(null, null, false)]
+        public void IsKubernetesManagedHosting_ReturnsExpectedResult(string podNamespace, string kubernetesServiceHost, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(KubernetesServiceHost, kubernetesServiceHost);
+            environment.SetEnvironmentVariable(PodNamespace, podNamespace);
+            Assert.Equal(expected, environment.IsKubernetesManagedHosting());
         }
     }
 }

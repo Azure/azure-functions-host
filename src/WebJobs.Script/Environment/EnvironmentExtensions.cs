@@ -285,11 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets a value indicating whether the application is running in Kuberneted App Service
+        /// Gets a value indicating whether the application is running in Kubernetes App Service enviornment(K8SE)
         /// </summary>
         /// <param name="environment">The environment to verify</param>
         /// <returns><see cref="true"/> If running in a Kubernetes Azure App Service; otherwise, false.</returns>
-        public static bool IsKubernetesAppService(this IEnvironment environment)
+        public static bool IsKubernetesManagedHosting(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost))
                 && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(PodNamespace))
