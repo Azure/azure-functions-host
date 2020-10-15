@@ -1,7 +1,8 @@
 ﻿param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "2.0.$buildNumber",
-  [string]$suffix
+  [string]$suffix,
+  [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
 $extensionVersion += $suffix
@@ -24,6 +25,16 @@ function ZipContent([string] $sourceDirectory, [string] $target)
   Add-Type -assembly "system.io.compression.filesystem"
   [IO.Compression.ZipFile]::CreateFromDirectory($sourceDirectory, $target)
 }
+
+function WriteHashesFile([string] $directoryPath) {
+    New-Item -Path "$directoryPath/../temp_hashes" -ItemType Directory | Out-Null
+    $temp_current = (Get-Location)
+    Set-Location $directoryPath
+    Get-ChildItem -Recurse $directoryPath | Where-Object { $_.PsIsContainer -eq $false } | Foreach-Object { "Hash:" + [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-FileHash -Algorithm MD5 $_.FullName).Hash)) + " FileName:" + (Resolve-Path -Relative -Path $_.FullName) } | Out-File -FilePath "$directoryPath\..\temp_hashes\$hashesForHardlinksFile"
+    Move-Item -Path "$directoryPath/../temp_hashes/$hashesForHardlinksFile" -Destination "$directoryPath" -Force
+    Set-Location $temp_current
+    Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
+  }
 
 function CrossGen([string] $runtime, [string] $publishTarget, [string] $privateSiteExtensionPath)
 {
@@ -243,6 +254,14 @@ function CreateZips([string] $runtimeSuffix) {
     Write-Host "privateSiteExtensionPath: " $privateSiteExtensionPath
     Rename-Item "$privateSiteExtensionPath" "$siteExtensionPath\$extensionVersion"
     Copy-Item .\src\WebJobs.Script.WebHost\extension.xml "$siteExtensionPath"
+
+    Write-Host "Generating $hashesForHardlinksFile"
+    Write-Host "---------------------------------------------------"
+    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
+    Write-Host "Generated $hashesForHardlinksFile"
+    Write-Host "---------------------------------------------------"
+   
+
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 }
 
