@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Traceparent = Activity.Current?.Id,
                 Tracestate = Activity.Current?.TraceStateString,
                 Attributes = Activity.Current?.Tags,
+                SharedMemoryResources = new List<string>(),
 
                 // TODO: link up cancellation token to parameter descriptors
                 CancellationToken = CancellationToken.None,

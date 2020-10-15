@@ -442,7 +442,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string name, DataType type, object val)>(),
-                ResultSource = resultSource
+                ResultSource = resultSource,
+                SharedMemoryResources = new List<string>()
             };
         }
 

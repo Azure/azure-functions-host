@@ -24,6 +24,7 @@ using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
+using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly string _runtime;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
+        private readonly SharedMemoryManager _sharedMemoryManager;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -80,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _metricsLogger = metricsLogger;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
+            _sharedMemoryManager = new SharedMemoryManager(_workerChannelLogger);
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -395,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities);
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _sharedMemoryManager);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -420,14 +423,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 try
                 {
                     IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
-                        .ToDictionary(binding => binding.Name, binding => binding.Data.ToObject());
+                        .ToDictionary(binding => binding.Name, binding => binding.Data.ToObject(_sharedMemoryManager));
 
                     var result = new ScriptInvocationResult()
                     {
                         Outputs = bindingsDictionary,
-                        Return = invokeResponse?.ReturnValue?.ToObject()
+                        Return = invokeResponse?.ReturnValue?.ToObject(_sharedMemoryManager)
                     };
                     context.ResultSource.SetResult(result);
+
+                    if (!context.FreeSharedMemoryResources(_sharedMemoryManager))
+                    {
+                        _workerChannelLogger.LogError($"Cannot free Shared Memory resources for invocation: {invokeResponse.InvocationId}");
+                    }
+
+                    // TODO gochaudh: Send a message to the worker to free the shared memory resources it allocated for writing any responses for this request.
                 }
                 catch (Exception responseEx)
                 {

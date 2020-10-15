@@ -105,7 +105,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 Logger = logger,
-                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                SharedMemoryResources = new List<string>()
             };
 
             var functionMetadata = new FunctionMetadata
@@ -190,7 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Inputs = inputs,
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 Logger = logger,
-                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                SharedMemoryResources = new List<string>()
             };
 
             var functionMetadata = new FunctionMetadata

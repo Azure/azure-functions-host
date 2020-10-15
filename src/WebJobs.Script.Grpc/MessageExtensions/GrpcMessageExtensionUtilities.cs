@@ -7,12 +7,13 @@ using System.Dynamic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageExtensionUtilities
     {
-        public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
+        public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage, SharedMemoryManager sharedMemoryManager)
         {
             if (inputMessage == null)
             {
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (inputMessage.Body != null)
             {
-                expando.body = inputMessage.Body.ToObject();
+                expando.body = inputMessage.Body.ToObject(sharedMemoryManager);
             }
             return expando;
         }

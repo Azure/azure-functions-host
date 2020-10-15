@@ -10,12 +10,13 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -33,9 +34,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 TypedData rpcValue = null;
                 if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
                 {
-                    rpcValue = await input.val.ToRpc(logger, capabilities);
+                    rpcValue = await input.val.ToRpc(logger, capabilities, sharedMemoryManager);
                     if (input.val != null)
                     {
+                        if (rpcValue.DataCase == RpcDataType.SharedMemoryData)
+                        {
+                            // Add the name of the MemoryMappedFile created for this input to the list of
+                            // SharedMemoryResources used for this invocation
+                            context.SharedMemoryResources.Add(rpcValue.SharedMemoryData.MemoryMappedFileName);
+                        }
                         rpcValueCache.Add(input.val, rpcValue);
                     }
                 }
@@ -57,14 +64,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (!rpcValueCache.TryGetValue(pair.Value, out TypedData rpcValue))
                 {
-                    rpcValue = await pair.Value.ToRpc(logger, capabilities);
+                    rpcValue = await pair.Value.ToRpc(logger, capabilities, sharedMemoryManager);
                     rpcValueCache.Add(pair.Value, rpcValue);
                 }
 
+                if (rpcValue.DataCase == RpcDataType.SharedMemoryData)
+                {
+                    // Add the name of the MemoryMappedFile created for this input to the list of
+                    // SharedMemoryResources used for this invocation
+                    context.SharedMemoryResources.Add(rpcValue.SharedMemoryData.MemoryMappedFileName);
+                }
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
             }
 
             return invocationRequest;
+        }
+
+        public static bool FreeSharedMemoryResources(this ScriptInvocationContext context, SharedMemoryManager sharedMemoryManager)
+        {
+            foreach (string mapName in context.SharedMemoryResources)
+            {
+                if (!sharedMemoryManager.TryFree(mapName))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

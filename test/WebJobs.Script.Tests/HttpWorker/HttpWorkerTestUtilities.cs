@@ -206,7 +206,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Inputs = GetScriptInvocationInputs(),
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 Logger = testLogger,
-                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                SharedMemoryResources = new List<string>()
             };
             var functionMetadata = new FunctionMetadata
             {
@@ -297,7 +298,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.HttpWorker
                 Inputs = GetSimpleHttpTriggerScriptInvocationInputs(),
                 ResultSource = new TaskCompletionSource<ScriptInvocationResult>(),
                 Logger = testLogger,
-                AsyncExecutionContext = System.Threading.ExecutionContext.Capture()
+                AsyncExecutionContext = System.Threading.ExecutionContext.Capture(),
+                SharedMemoryResources = new List<string>()
             };
             var functionMetadata = new FunctionMetadata
             {

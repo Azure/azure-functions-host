@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -24,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
     {
         private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
-        public static object ToObject(this TypedData typedData)
+        public static object ToObject(this TypedData typedData, SharedMemoryManager sharedMemoryManager)
         {
             switch (typedData.DataCase)
             {
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
                 case RpcDataType.Http:
-                    return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
+                    return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http, sharedMemoryManager);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
@@ -47,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     long offset = sharedMemData.Offset;
                     long count = sharedMemData.Count;
                     string type = sharedMemData.Type;
-                    SharedMemoryManager sharedMemoryManager = new SharedMemoryManager();
                     return sharedMemoryManager.TryGet(mmfName, offset, count);
                 case RpcDataType.None:
                     return null;
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities)
+        public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager)
         {
             TypedData typedData = new TypedData();
             if (value == null)
@@ -67,20 +67,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (value is byte[] arr)
             {
-                // TODO gochaudh: Check from config if SharedMemoryDataTransfer is enabled
-                SharedMemoryManager sharedMemoryManager = new SharedMemoryManager();
-                string mmapName = await sharedMemoryManager.TryPutAsync(arr);
-                if (!string.IsNullOrEmpty(mmapName))
+                // If SharedMemoryManager is not null, then try to use that for data transfer
+                if (sharedMemoryManager != null)
                 {
-                    SharedMemoryData sharedMemoryData = new SharedMemoryData()
+                    string mmapName = await sharedMemoryManager.TryPutAsync(arr);
+                    if (!string.IsNullOrEmpty(mmapName))
                     {
-                        MemoryMappedFileName = mmapName,
-                        Offset = 0,
-                        Count = arr.Length,
-                        Type = "bytes"
-                    };
-                    typedData.SharedMemoryData = sharedMemoryData;
-                    logger.LogDebug($"Writing to Shared Memory: {sharedMemoryData}");
+                        SharedMemoryData sharedMemoryData = new SharedMemoryData()
+                        {
+                            MemoryMappedFileName = mmapName,
+                            Offset = 0,
+                            Count = arr.Length,
+                            Type = "bytes"
+                        };
+                        typedData.SharedMemoryData = sharedMemoryData;
+                    }
+                    else
+                    {
+                        throw new Exception("Cannot write to Shared Memory");
+                    }
                 }
                 else
                 {
@@ -264,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 body = await request.ReadAsStringAsync();
             }
-            http.Body = await body.ToRpc(logger, capabilities);
+            http.Body = await body.ToRpc(logger, capabilities, null);
         }
 
         private static async Task PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
@@ -305,15 +310,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 body = rawBodyString = await request.ReadAsStringAsync();
             }
 
-            http.Body = await body.ToRpc(logger, capabilities);
+            http.Body = await body.ToRpc(logger, capabilities, null);
             if (IsRawBodyBytesRequested(capabilities))
             {
                 byte[] bytes = await request.GetRequestBodyAsBytesAsync();
-                http.RawBody = await bytes.ToRpc(logger, capabilities);
+                http.RawBody = await bytes.ToRpc(logger, capabilities, null);
             }
             else
             {
-                http.RawBody = await rawBodyString.ToRpc(logger, capabilities);
+                http.RawBody = await rawBodyString.ToRpc(logger, capabilities, null);
             }
         }
 
