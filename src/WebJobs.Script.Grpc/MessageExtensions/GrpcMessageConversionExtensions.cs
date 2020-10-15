@@ -41,6 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return typedData.Int;
                 case RpcDataType.Double:
                     return typedData.Double;
+                case RpcDataType.SharedMemoryData:
+                    var sharedMemData = typedData.SharedMemoryData;
+                    string mmfName = sharedMemData.MemoryMappedFileName;
+                    long offset = sharedMemData.Offset;
+                    long count = sharedMemData.Count;
+                    string type = sharedMemData.Type;
+                    SharedMemoryManager sharedMemoryManager = new SharedMemoryManager();
+                    return sharedMemoryManager.TryGet(mmfName, offset, count);
                 case RpcDataType.None:
                     return null;
                 default:
