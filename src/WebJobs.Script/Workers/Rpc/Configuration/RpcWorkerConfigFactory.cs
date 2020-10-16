@@ -4,9 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
+using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
 
-        private Dictionary<string, RpcWorkerDescription> _workerDescripionDictionary = new Dictionary<string, RpcWorkerDescription>();
+        private Dictionary<string, RpcWorkerConfig> _workerDescripionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
         {
@@ -48,28 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
             {
                 BuildWorkerProviderDictionary();
-                var result = new List<RpcWorkerConfig>();
-
-                foreach (var description in _workerDescripionDictionary.Values)
-                {
-                    _logger.LogDebug($"Worker path for language worker {description.Language}: {description.WorkerDirectory}");
-
-                    var arguments = new WorkerProcessArguments()
-                    {
-                        ExecutablePath = description.DefaultExecutablePath,
-                        WorkerPath = description.DefaultWorkerPath
-                    };
-
-                    arguments.ExecutableArguments.AddRange(description.Arguments);
-                    var config = new RpcWorkerConfig()
-                    {
-                        Description = description,
-                        Arguments = arguments
-                    };
-                    result.Add(config);
-                }
-
-                return result;
+                return _workerDescripionDictionary.Values.ToList();
             }
         }
 
@@ -151,8 +129,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         workerDescription.FormatWorkerPathIfNeeded(_systemRuntimeInformation, _environment, _logger);
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
-                        _workerDescripionDictionary[workerDescription.Language] = workerDescription;
                         workerDescription.ExpandEnvironmentVariables();
+
+                        WorkerProcessCount workerProcessCount = GetWorkerProcessCount(workerConfig);
+
+                        var arguments = new WorkerProcessArguments()
+                        {
+                            ExecutablePath = workerDescription.DefaultExecutablePath,
+                            WorkerPath = workerDescription.DefaultWorkerPath
+                        };
+                        arguments.ExecutableArguments.AddRange(workerDescription.Arguments);
+                        var config = new RpcWorkerConfig()
+                        {
+                            Description = workerDescription,
+                            Arguments = arguments
+                        };
+                        var rpcWorkerconfig = new RpcWorkerConfig()
+                        {
+                            Description = workerDescription,
+                            Arguments = arguments,
+                            Count = workerProcessCount
+                        };
+                        _workerDescripionDictionary[workerDescription.Language] = rpcWorkerconfig;
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
                 }
@@ -163,21 +161,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private static Dictionary<string, WorkerDescription> GetWorkerDescriptionProfiles(JObject workerConfig)
+        internal WorkerProcessCount GetWorkerProcessCount(JObject workerConfig)
         {
-            Dictionary<string, WorkerDescription> descriptionProfiles = new Dictionary<string, WorkerDescription>();
-            var profiles = workerConfig.Property("profiles")?.Value.ToObject<JObject>();
-            if (profiles != null)
+            WorkerProcessCount workerProcessCount = workerConfig.Property(WorkerConstants.ProcessCount)?.Value.ToObject<WorkerProcessCount>();
+
+            workerProcessCount = workerProcessCount ?? new WorkerProcessCount();
+
+            if (workerProcessCount.SetWorkerCountToNumberOfCpuCores)
             {
-                foreach (var profile in profiles)
-                {
-                    string name = profile.Key;
-                    JToken value = profile.Value;
-                    WorkerDescription description = profile.Value.ToObject<WorkerDescription>();
-                    descriptionProfiles.Add(name, description);
-                }
+                workerProcessCount.ProcessCount = _environment.GetEffectiveCoresCount();
+                // set Max worker process count to Number of effective cores if MaxProcessCount is less than MinProcessCount
+                workerProcessCount.MaxProcessCount = workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount ? workerProcessCount.ProcessCount : workerProcessCount.MaxProcessCount;
             }
-            return descriptionProfiles;
+
+            // Env variable takes precedence over worker.config
+            string processCountEnvSetting = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName);
+            if (!string.IsNullOrEmpty(processCountEnvSetting))
+            {
+                workerProcessCount.ProcessCount = int.Parse(processCountEnvSetting) > 1 ? int.Parse(processCountEnvSetting) : 1;
+            }
+            // Validate
+            if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
+            {
+                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} is greater than {nameof(workerProcessCount.MaxProcessCount)}");
+            }
+            return workerProcessCount;
         }
 
         private static void GetWorkerDescriptionFromAppSettings(RpcWorkerDescription workerDescription, IConfigurationSection languageSection)

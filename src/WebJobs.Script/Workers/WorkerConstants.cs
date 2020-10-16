@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string WorkerDescriptionDefaultExecutablePath = "defaultExecutablePath";
         public const string WorkerDescriptionDefaultWorkerPath = "defaultWorkerPath";
         public const string WorkerDescription = "description";
+        public const string ProcessCount = "processOptions";
         public const string WorkerDescriptionArguments = "arguments";
         public const string WorkerDescriptionDefaultRuntimeVersion = "defaultRuntimeVersion";
 

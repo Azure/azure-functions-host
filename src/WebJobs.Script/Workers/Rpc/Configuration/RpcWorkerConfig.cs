@@ -8,5 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public RpcWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
+
+        public WorkerProcessCount Count { get; set; }
     }
 }
