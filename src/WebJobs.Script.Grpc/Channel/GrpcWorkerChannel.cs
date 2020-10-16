@@ -438,6 +438,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     }
 
                     // TODO gochaudh: Send a message to the worker to free the shared memory resources it allocated for writing any responses for this request.
+                    CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest()
+                    {
+                        InvocationId = invokeResponse.InvocationId
+                    };
+
+                    SendStreamingMessage(new StreamingMessage()
+                    {
+                        CloseSharedMemoryResourcesRequest = closeSharedMemoryResourcesRequest
+                    });
                 }
                 catch (Exception responseEx)
                 {

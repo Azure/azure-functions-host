@@ -62,13 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <summary>
         /// Read the content contained in the <see cref="MemoryMappedFile"/> as bytes.
         /// </summary>
+        /// <param name="mmf"><see cref="MemoryMappedFile"/> to read the content from.</param>
         /// <param name="offset">Offset in the <see cref="MemoryMappedFile"/> to start
         /// reading the content from.</param>
         /// <param name="count">Number of bytes to read. -1 means read to completion.</param>
-        /// <param name="mmf"><see cref="MemoryMappedFile"/> to read the content from.</param>
         /// <returns>Response containing a <see cref="byte[]"/> of content if successful, failure
         /// response otherwise.</returns>
-        public async Task<ResponseByteArray> TryReadAsBytesAsync(long offset, long count, MemoryMappedFile mmf)
+        public async Task<ResponseByteArray> TryReadAsBytesAsync(MemoryMappedFile mmf, long offset, long count)
         {
             using (MemoryStream contentStream = new MemoryStream())
             {
@@ -90,19 +90,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// response otherwise.</returns>
         public async Task<ResponseByteArray> TryReadAsBytesAsync(MemoryMappedFile mmf)
         {
-            return await TryReadAsBytesAsync(0, -1, mmf);
+            return await TryReadAsBytesAsync(mmf, 0, -1);
         }
 
         /// <summary>
         /// Read the content contained in the <see cref="MemoryMappedFile"/> as a string.
         /// </summary>
+        /// <param name="mmf"><see cref="MemoryMappedFile"/> to read the content from.</param>
         /// <param name="offset">Offset in the <see cref="MemoryMappedFile"/> to start
         /// reading the content from.</param>
         /// <param name="count">Number of bytes to read. -1 means read to completion.</param>
-        /// <param name="mmf"><see cref="MemoryMappedFile"/> to read the content from.</param>
         /// <returns>Response containing a <see cref="string"/> of content if successful, failure
         /// response otherwise.</returns>
-        public async Task<ResponseString> TryReadAsStringAsync(long offset, long count, MemoryMappedFile mmf)
+        public async Task<ResponseString> TryReadAsStringAsync(MemoryMappedFile mmf, long offset, long count)
         {
             using (MemoryStream contentStream = new MemoryStream())
             {
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// response otherwise.</returns>
         public async Task<ResponseString> TryReadAsStringAsync(MemoryMappedFile mmf)
         {
-            return await TryReadAsStringAsync(0, -1, mmf);
+            return await TryReadAsStringAsync(mmf, 0, -1);
         }
 
         /// <summary>

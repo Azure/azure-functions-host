@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager = null)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -34,10 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 TypedData rpcValue = null;
                 if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
                 {
+                    // TODO gochaudh: Check config before using SharedMemoryManager
                     rpcValue = await input.val.ToRpc(logger, capabilities, sharedMemoryManager);
                     if (input.val != null)
                     {
-                        if (rpcValue.DataCase == RpcDataType.SharedMemoryData)
+                        if (rpcValue.DataCase == RpcDataType.SharedMemoryData && sharedMemoryManager != null)
                         {
                             // Add the name of the MemoryMappedFile created for this input to the list of
                             // SharedMemoryResources used for this invocation
@@ -64,11 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (!rpcValueCache.TryGetValue(pair.Value, out TypedData rpcValue))
                 {
+                    // TODO gochaudh: Check config before using SharedMemoryManager
                     rpcValue = await pair.Value.ToRpc(logger, capabilities, sharedMemoryManager);
                     rpcValueCache.Add(pair.Value, rpcValue);
                 }
 
-                if (rpcValue.DataCase == RpcDataType.SharedMemoryData)
+                if (rpcValue.DataCase == RpcDataType.SharedMemoryData && sharedMemoryManager != null)
                 {
                     // Add the name of the MemoryMappedFile created for this input to the list of
                     // SharedMemoryResources used for this invocation

@@ -51,14 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else
                 {
-                    _logger.LogError($"Unable to track allocated MemoryMappedFile: {mapName}");
-                    return null;
+                    // The MemoryMappedFile was created but could not be tracked, so delete it to
+                    // free up the resources it used.
+                    _fileAccessor.Delete(mapName);
                 }
             }
-            else
-            {
-                return null;
-            }
+
+            _logger.LogError($"Cannot write content into MemoryMappedFile");
+            return null;
         }
 
         /// <summary>
@@ -71,9 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <see cref="MemoryMappedFile"/>.</param>
         /// <returns>Data read as <see cref="byte[]"/> if successful, <see cref="null"/> otherwise.
         /// </returns>
-        public byte[] TryGet(string mapName, long offset, long count)
+        public async Task<byte[]> TryGetAsync(string mapName, long offset, long count)
         {
-            return new byte[1];
+            if (_fileAccessor.TryOpen(mapName, out MemoryMappedFile mmf))
+            {
+                var readResposne = await _fileReader.TryReadAsBytesAsync(mmf, offset, count);
+                if (readResposne.Success)
+                {
+                    return readResposne.Value;
+                }
+            }
+
+            _logger.LogError($"Cannot read content from MemoryMappedFile: {mapName}");
+            return null;
         }
 
         public bool TryFree(string mapName)
@@ -83,11 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _fileAccessor.Delete(mapName, mmf);
                 return true;
             }
-            else
-            {
-                _logger.LogError($"Cannot free allocated MemoryMappedFile: {mapName}");
-                return false;
-            }
+
+            _logger.LogError($"Cannot free allocated MemoryMappedFile: {mapName}");
+            return false;
         }
     }
 }

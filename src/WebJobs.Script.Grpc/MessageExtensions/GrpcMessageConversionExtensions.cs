@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     long offset = sharedMemData.Offset;
                     long count = sharedMemData.Count;
                     string type = sharedMemData.Type;
-                    return sharedMemoryManager.TryGet(mmfName, offset, count);
+                    return sharedMemoryManager.TryGetAsync(mmfName, offset, count).GetAwaiter().GetResult();
                 case RpcDataType.None:
                     return null;
                 default:
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager)
+        public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager = null)
         {
             TypedData typedData = new TypedData();
             if (value == null)
@@ -67,7 +67,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (value is byte[] arr)
             {
-                // If SharedMemoryManager is not null, then try to use that for data transfer
                 if (sharedMemoryManager != null)
                 {
                     string mmapName = await sharedMemoryManager.TryPutAsync(arr);
@@ -269,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 body = await request.ReadAsStringAsync();
             }
-            http.Body = await body.ToRpc(logger, capabilities, null);
+            http.Body = await body.ToRpc(logger, capabilities);
         }
 
         private static async Task PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
@@ -310,15 +309,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 body = rawBodyString = await request.ReadAsStringAsync();
             }
 
-            http.Body = await body.ToRpc(logger, capabilities, null);
+            http.Body = await body.ToRpc(logger, capabilities);
             if (IsRawBodyBytesRequested(capabilities))
             {
                 byte[] bytes = await request.GetRequestBodyAsBytesAsync();
-                http.RawBody = await bytes.ToRpc(logger, capabilities, null);
+                http.RawBody = await bytes.ToRpc(logger, capabilities);
             }
             else
             {
-                http.RawBody = await rawBodyString.ToRpc(logger, capabilities, null);
+                http.RawBody = await rawBodyString.ToRpc(logger, capabilities);
             }
         }
 

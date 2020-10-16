@@ -71,6 +71,10 @@ message StreamingMessage {
     FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
     FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
+
+    // Ask the worker to close any open shared memory resources for a given invocation
+    CloseSharedMemoryResourcesRequest close_shared_memory_resources_request = 27;
+    CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
   }
 }
 
@@ -199,6 +203,14 @@ message FunctionEnvironmentReloadRequest {
 message FunctionEnvironmentReloadResponse {
   // Status of the response
   StatusResult result = 3;
+}
+
+message CloseSharedMemoryResourcesRequest {
+  string invocation_id = 1;
+}
+
+message CloseSharedMemoryResourcesResponse {
+  StatusResult result = 1;
 }
 
 // Host tells the worker to load a Function
