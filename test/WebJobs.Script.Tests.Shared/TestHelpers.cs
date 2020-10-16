@@ -260,8 +260,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js") },
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar") }
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js"), CountOptions = new Script.Workers.WorkerProcessCountOptions() },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar"), CountOptions = new Script.Workers.WorkerProcessCountOptions() }
             };
 
             // Allow tests to have a worker that claims the .dll extension.

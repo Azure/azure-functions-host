@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         workerDescription.ThrowIfFileNotExists(workerDescription.DefaultWorkerPath, nameof(workerDescription.DefaultWorkerPath));
                         workerDescription.ExpandEnvironmentVariables();
 
-                        WorkerProcessCount workerProcessCount = GetWorkerProcessCount(workerConfig);
+                        WorkerProcessCountOptions workerProcessCount = GetWorkerProcessCount(workerConfig);
 
                         var arguments = new WorkerProcessArguments()
                         {
@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         {
                             Description = workerDescription,
                             Arguments = arguments,
-                            Count = workerProcessCount
+                            CountOptions = workerProcessCount
                         };
                         _workerDescripionDictionary[workerDescription.Language] = rpcWorkerconfig;
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
@@ -161,11 +161,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal WorkerProcessCount GetWorkerProcessCount(JObject workerConfig)
+        internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
         {
-            WorkerProcessCount workerProcessCount = workerConfig.Property(WorkerConstants.ProcessCount)?.Value.ToObject<WorkerProcessCount>();
+            WorkerProcessCountOptions workerProcessCount = workerConfig.Property(WorkerConstants.ProcessCount)?.Value.ToObject<WorkerProcessCountOptions>();
 
-            workerProcessCount = workerProcessCount ?? new WorkerProcessCount();
+            workerProcessCount = workerProcessCount ?? new WorkerProcessCountOptions();
 
             if (workerProcessCount.SetWorkerCountToNumberOfCpuCores)
             {

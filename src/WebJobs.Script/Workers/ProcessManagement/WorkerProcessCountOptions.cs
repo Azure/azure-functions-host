@@ -5,7 +5,7 @@ using System;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public class WorkerProcessCount
+    public class WorkerProcessCountOptions
     {
         /// <summary>
         /// Gets or sets a value indicating whether to set FUNCTIONS_WORKER_PROCESS_COUNT to number of cpu cores on the host machine

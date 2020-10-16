@@ -173,8 +173,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
             }
-            _maxProcessCount = workerConfig.Count.ProcessCount;
-            _debouceMilliSeconds = (int)workerConfig.Count.ProcessStartupInterval.TotalMilliseconds;
+            _maxProcessCount = workerConfig.CountOptions.ProcessCount;
+            _debouceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
             ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (functions == null || functions.Count() == 0)
