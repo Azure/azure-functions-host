@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
-        private int _debouceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
+        private int _debounceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             for (var count = startIndex; count < _maxProcessCount; count++)
             {
-                startAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debouceMilliSeconds);
+                startAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debounceMilliSeconds);
                 startAction();
             }
         }
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
             }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
-            _debouceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            _debounceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
             ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (functions == null || functions.Count() == 0)
