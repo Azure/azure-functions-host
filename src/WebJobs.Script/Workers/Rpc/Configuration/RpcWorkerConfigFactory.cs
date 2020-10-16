@@ -180,6 +180,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 workerProcessCount.ProcessCount = int.Parse(processCountEnvSetting) > 1 ? int.Parse(processCountEnvSetting) : 1;
             }
+
+            // Validate
+            if (workerProcessCount.ProcessCount >= 0)
+            {
+                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} should be greater than 0 and less than {nameof(workerProcessCount.MaxProcessCount)} : workerProcessCount.MaxProcessCount");
+            }
+
             // Validate
             if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
             {
