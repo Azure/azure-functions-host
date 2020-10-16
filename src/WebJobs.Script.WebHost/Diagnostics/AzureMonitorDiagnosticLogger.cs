@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            var scopeProps = _scopeProvider.GetScopeDictionary();
+            var scopeProps = _scopeProvider.GetScopeDictionaryOrNull();
             string functionName = stateFunctionName;
             if (string.IsNullOrEmpty(functionName))
             {

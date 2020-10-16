@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly ILogWriter _writer;
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
+        private ConcurrentDictionary<BindingMetadata, string> _bindingMetricEventNames = new ConcurrentDictionary<BindingMetadata, string>();
 
         public FunctionInstanceLogger(
             IFunctionMetadataManager metadataManager,
@@ -114,13 +116,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var startedEvent = new FunctionStartedEvent(item.FunctionInstanceId, function);
                 _metrics.BeginEvent(startedEvent);
 
-                var invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(_metrics, function);
+                var invokeLatencyEvent = LogInvocationMetrics(function);
                 item.Properties[Key] = (startedEvent, invokeLatencyEvent);
             }
             else
             {
                 throw new InvalidOperationException($"Unable to load metadata for function '{item.LogName}'.");
             }
+        }
+
+        internal object LogInvocationMetrics(FunctionMetadata metadata)
+        {
+            // log events for each of the binding types used
+            foreach (var binding in metadata.Bindings)
+            {
+                string eventName = _bindingMetricEventNames.GetOrAdd(binding, (existing) =>
+                {
+                    return binding.IsTrigger ?
+                        string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
+                        string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
+                });
+                _metrics.LogEvent(eventName, metadata.Name);
+            }
+
+            return _metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
         private void EndFunction(FunctionInstanceLogEntry item)

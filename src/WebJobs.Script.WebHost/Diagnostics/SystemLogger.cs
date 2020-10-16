@@ -112,9 +112,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            var scopeProps = _scopeProvider.GetScopeDictionary();
+            var scopeProps = _scopeProvider.GetScopeDictionaryOrNull();
             string functionName = _functionName ?? stateFunctionName ?? string.Empty;
-            if (string.IsNullOrEmpty(functionName))
+            if (string.IsNullOrEmpty(functionName) && scopeProps?.Count > 0)
             {
                 if (Utility.TryGetFunctionName(scopeProps, out string scopeFunctionName))
                 {
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             string invocationId = string.Empty;
             object scopeValue = null;
-            if (scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
+            if (scopeProps != null && scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
             {
                 invocationId = scopeValue.ToString();
             }
