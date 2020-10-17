@@ -164,8 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(KubernetesAppServiceNamespace, "10.0.0.1", true)]
-        [InlineData("non-k8se-apps", "10.0.0.1", false)]
+        [InlineData("k8se-apps-ns", "10.0.0.1", true)]
         [InlineData("k8se-apps", null, false)]
         [InlineData(null, "10.0.0.1", false)]
         [InlineData(null, null, false)]

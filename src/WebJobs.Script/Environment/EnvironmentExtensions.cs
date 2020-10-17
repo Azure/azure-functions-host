@@ -292,8 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsKubernetesManagedHosting(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost))
-                && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(PodNamespace))
-                && string.Equals(environment.GetEnvironmentVariable(PodNamespace).Trim(), KubernetesAppServiceNamespace, StringComparison.OrdinalIgnoreCase);
+                && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(PodNamespace));
         }
 
         /// <summary>
