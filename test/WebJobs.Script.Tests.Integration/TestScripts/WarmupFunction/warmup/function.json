@@ -1,0 +1,9 @@
+﻿{
+    "bindings": [
+        {
+            "type": "warmupTrigger",
+            "direction": "in",
+            "name": "warmupContext"
+        }
+    ]
+}

@@ -39,6 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Proxies do not honor the route prefix defined in host.json
             WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);
 
+            WebJobsRouteBuilder warmupRouteBuilder = null;
+            if (!_environment.IsLinuxConsumption() && !_environment.IsWindowsConsumption())
+            {
+                warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isProxy: false, isWarmup: true), routePrefix: "admin");
+            }
+
             foreach (var function in host.Functions)
             {
                 var httpTrigger = function.HttpTriggerAttribute;
@@ -63,11 +69,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
                 }
+                else if (warmupRouteBuilder != null && function.IsWarmupFunction())
+                {
+                    warmupRouteBuilder.MapFunctionRoute(function.Metadata.Name, "warmup", function.Metadata.Name);
+                }
             }
 
             IRouter proxyRouter = null;
             IRouter functionRouter = null;
-
             if (routesBuilder.Count == 0 && proxiesRoutesBuilder.Count == 0)
             {
                 routesLogBuilder.AppendLine("No HTTP routes mapped");
@@ -86,6 +95,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             _router.AddFunctionRoutes(functionRouter, proxyRouter);
+
+            if (warmupRouteBuilder != null)
+            {
+                // Adding the default admin/warmup route when no warmup function is present
+                if (warmupRouteBuilder.Count == 0)
+                {
+                    warmupRouteBuilder.MapFunctionRoute(string.Empty, "warmup", string.Empty);
+                }
+                IRouter warmupRouter = warmupRouteBuilder.Build();
+                _router.AddCustomRoutes(warmupRouter);
+            }
 
             ILogger logger = _loggerFactory.CreateLogger<WebScriptHostHttpRoutesManager>();
             logger.LogInformation(routesLogBuilder.ToString());

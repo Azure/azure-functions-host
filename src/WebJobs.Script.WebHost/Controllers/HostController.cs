@@ -42,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
-        private static int _warmupExecuted;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
@@ -288,42 +287,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return Accepted();
-        }
-
-        [HttpGet]
-        [HttpPost]
-        [Route("admin/warmup")]
-        [RequiresRunningHost]
-        public async Task<IActionResult> Warmup([FromServices] IScriptHostManager scriptHostManager)
-        {
-            // Endpoint not supported for consumption plans.
-            if (_environment.IsLinuxConsumption() || _environment.IsWindowsConsumption())
-            {
-                return BadRequest("This API is not available for the current hosting plan");
-            }
-
-            if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
-            {
-                return Ok();
-            }
-
-            // TEMP: Once https://github.com/Azure/azure-functions-host/issues/5161 is fixed, we can should
-            // IScriptJobHost as a parameter.
-            if (scriptHostManager is IServiceProvider serviceProvider)
-            {
-                IScriptJobHost jobHost = serviceProvider.GetService<IScriptJobHost>();
-
-                if (jobHost == null)
-                {
-                    _logger.LogError($"No active host available.");
-                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
-                }
-
-                await jobHost.TryInvokeWarmupAsync();
-                return Ok();
-            }
-
-            return BadRequest("This API is not supported by the current hosting environment.");
         }
 
         [AcceptVerbs("GET", "POST", "DELETE")]
