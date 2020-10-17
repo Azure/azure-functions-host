@@ -112,5 +112,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // Machine identifier
         public const string AntaresComputerName = "COMPUTERNAME";
+
+        public const string AppKind = "APP_KIND";
+        public const string WorkFlowAppKind = "workflowapp";
     }
 }

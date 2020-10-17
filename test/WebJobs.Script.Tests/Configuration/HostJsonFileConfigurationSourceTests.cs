@@ -48,12 +48,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void MissingHostJson_CreatesDefaultFile()
+        public void MissingHostJson_CreatesHostJson_withDefaultExtensionBundleId()
         {
             Assert.False(File.Exists(_hostJsonFile));
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             BuildHostJsonConfiguration(testMetricsLogger);
+
+            AreExpectedMetricsGenerated(testMetricsLogger);
+
+            Assert.Equal(_hostJsonWithBundles, File.ReadAllText(_hostJsonFile));
+
+            var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
+            Assert.Equal(LogLevel.Information, log.Level);
+        }
+
+        [Fact]
+        public void MissingHostJson_CreatesHostJson_withWorkFlowExtensionBundleId()
+        {
+            var environment = new TestEnvironment(new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AppKind, "workflowApp" }
+            });
+
+            Assert.False(File.Exists(_hostJsonFile));
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            BuildHostJsonConfiguration(testMetricsLogger, environment);
 
             AreExpectedMetricsGenerated(testMetricsLogger);
 
@@ -112,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, "1" }
             });
+
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
             IConfiguration config = BuildHostJsonConfiguration(testMetricsLogger, environment);
             AreExpectedMetricsGenerated(testMetricsLogger);

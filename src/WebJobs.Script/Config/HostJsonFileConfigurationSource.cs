@@ -211,9 +211,12 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigNotFound();
 
                         hostConfigObject = GetDefaultHostConfigObject();
+                        string bundleId = _configurationSource.Environment.IsLogicApp() ?
+                                            ScriptConstants.WorkFlowExtensionBundleId :
+                                            ScriptConstants.DefaultExtensionBundleId;
 
+                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId);
                         // Add bundle configuration if no file exists and file system is not read only
-                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject);
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
 
@@ -252,11 +255,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private JObject TryAddBundleConfiguration(JObject content)
+            private JObject TryAddBundleConfiguration(JObject content, string bundleId)
             {
                 if (!_configurationSource.Environment.IsFileSystemReadOnly())
                 {
-                    string bundleConfiguration = "{ 'id': 'Microsoft.Azure.Functions.ExtensionBundle', 'version': '[1.*, 2.0.0)'}";
+                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '[1.*, 2.0.0)'}";
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
                     _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                 }

@@ -8,6 +8,4 @@
 - Update Microsoft.Azure.WebJobs.Extensions.Http to 3.0.9-10815
 - Update Python Worker to 1.1.8 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.8)
 - Update Python Library to 1.5.0 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.5.0)
-
-**Release sprint:** Sprint 87
-[ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+87%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+87%22+label%3Afeature+is%3Aclosed) ]
+- Configure host.json to use workflow when creating a default host.json and app is identified as a logic app. (#6810)
