@@ -7,7 +7,7 @@ using System.Dynamic;
 using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Extensions.Logging;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc.SharedMemoryDataTransfer;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {

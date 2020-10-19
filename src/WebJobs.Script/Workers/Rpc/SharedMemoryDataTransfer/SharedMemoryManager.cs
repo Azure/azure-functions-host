@@ -8,52 +8,42 @@ using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.MemStore.MemoryMappedFileHandler.ResponseTypes;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.SharedMemoryDataTransfer
 {
-    internal class SharedMemoryManager
+    public class SharedMemoryManager
     {
         private readonly ILogger _logger;
 
-        private readonly FileAccessor _fileAccessor;
-
-        private readonly FileReader _fileReader;
-
-        private readonly FileWriter _fileWriter;
-
-        private readonly ConcurrentDictionary<string, MemoryMappedFile> _allocatedMemoryMappedFiles;
+        private readonly ConcurrentDictionary<string, SharedMemoryFile> _allocatedSharedMemoryFiles;
 
         public SharedMemoryManager(ILogger logger)
         {
             _logger = logger;
-            _fileAccessor = new FileAccessor(_logger);
-            _fileReader = new FileReader(_logger);
-            _fileWriter = new FileWriter(_logger);
-            _allocatedMemoryMappedFiles = new ConcurrentDictionary<string, MemoryMappedFile>();
+            _allocatedSharedMemoryFiles = new ConcurrentDictionary<string, SharedMemoryFile>();
         }
 
         /// <summary>
         /// Writes the given data into a <see cref="MemoryMappedFile"/>.
+        /// Note:
+        /// Tracks the reference to the <see cref="SharedMemoryFile"/> after creating it and does not close it.
         /// </summary>
-        /// <param name="data">Data to write into Shared Memory.</param>
+        /// <param name="content">Content to write into Shared Memory.</param>
         /// <returns>Name of the <see cref="MemoryMappedFile"/> into which data is written if
         /// successful, <see cref="null"/> otherwise.</returns>
-        public async Task<string> TryPutAsync(byte[] data)
+        public async Task<string> TryPutAsync(byte[] content)
         {
             string mapName = Guid.NewGuid().ToString();
-            var createResponse = await _fileWriter.TryCreateWithContentAsync(mapName, data);
-            if (createResponse.Success)
+            SharedMemoryFile sharedMemoryFile = await SharedMemoryFile.CreateWithContentAsync(_logger, mapName, content);
+            if (sharedMemoryFile != null)
             {
-                if (_allocatedMemoryMappedFiles.TryAdd(mapName, createResponse.Value))
+                if (_allocatedSharedMemoryFiles.TryAdd(mapName, sharedMemoryFile))
                 {
                     return mapName;
                 }
                 else
                 {
-                    // The MemoryMappedFile was created but could not be tracked, so delete it to
-                    // free up the resources it used.
-                    _fileAccessor.Delete(mapName);
+                    sharedMemoryFile.Dispose();
                 }
             }
 
@@ -63,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         /// <summary>
         /// Reads data from the <see cref="MemoryMappedFile"/> with the given name.
+        /// Note:
+        /// Closes the reference to the <see cref="SharedMemoryFile"/> after reading.
         /// </summary>
         /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/> to read from.</param>
         /// <param name="offset">Offset to start reading data from in the
@@ -73,24 +65,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// </returns>
         public async Task<byte[]> TryGetAsync(string mapName, long offset, long count)
         {
-            if (_fileAccessor.TryOpen(mapName, out MemoryMappedFile mmf))
+            SharedMemoryFile sharedMemoryFile = SharedMemoryFile.Open(_logger, mapName);
+
+            try
             {
-                var readResposne = await _fileReader.TryReadAsBytesAsync(mmf, offset, count);
-                if (readResposne.Success)
+                byte[] content = await sharedMemoryFile.TryReadAsBytesAsync(offset, count);
+
+                if (content != null)
                 {
-                    return readResposne.Value;
+                    return content;
+                }
+                else
+                {
+                    _logger.LogError($"Cannot read content from MemoryMappedFile: {mapName}");
+                    return null;
                 }
             }
-
-            _logger.LogError($"Cannot read content from MemoryMappedFile: {mapName}");
-            return null;
+            finally
+            {
+                sharedMemoryFile.DropReference();
+            }
         }
 
         public bool TryFree(string mapName)
         {
-            if (_allocatedMemoryMappedFiles.TryRemove(mapName, out MemoryMappedFile mmf))
+            if (_allocatedSharedMemoryFiles.TryRemove(mapName, out SharedMemoryFile sharedMemoryFile))
             {
-                _fileAccessor.Delete(mapName, mmf);
+                sharedMemoryFile.Dispose();
                 return true;
             }
 
