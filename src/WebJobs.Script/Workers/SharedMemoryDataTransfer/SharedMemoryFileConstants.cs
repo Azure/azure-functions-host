@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.SharedMemoryDataTransfer
+namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     internal class SharedMemoryFileConstants
     {

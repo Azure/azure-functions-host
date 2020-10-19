@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc.SharedMemoryDataTransfer
+namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     /// <summary>
     /// TODO:
