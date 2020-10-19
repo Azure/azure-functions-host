@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testLogger.LogInformation("SetupFunctionInvocationBuffers called");
         }
 
-        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencies)
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencies, TimeSpan? functionTimeout)
         {
             _testLogger.LogInformation("RegisterFunctions called");
         }

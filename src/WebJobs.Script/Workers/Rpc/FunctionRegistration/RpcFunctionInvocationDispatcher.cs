@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             rpcWorkerChannel.StartWorkerProcessAsync().ContinueWith(workerInitTask =>
             {
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
+                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                 SetFunctionDispatcherStateToInitializedAndLog();
             }, TaskContinuationOptions.OnlyOnRanToCompletion);
             return Task.CompletedTask;
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
             workerChannel.SetupFunctionInvocationBuffers(_functions);
-            workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
+            workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
         }
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
                                 initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value);
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                             }
                             catch (Exception ex)
                             {

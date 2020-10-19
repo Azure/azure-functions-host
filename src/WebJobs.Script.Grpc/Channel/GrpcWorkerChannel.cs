@@ -99,9 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
 
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
-
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
 
@@ -255,10 +252,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
         }
 
-        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout)
         {
             if (_functions != null)
             {
+                if (functionTimeout.HasValue)
+                {
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                    .Timeout(functionTimeout.Value)
+                    .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                }
+                else
+                {
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                    .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
+                }
                 foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
                 {
                     SendFunctionLoadRequest(metadata, managedDependencyOptions);
@@ -507,6 +515,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerInitError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Initializing worker process failed");
+            PublishWorkerErrorEvent(exc);
+        }
+
+        internal void HandleWorkerFunctionLoadError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "FunctionLoad failed.");
             PublishWorkerErrorEvent(exc);
         }
 

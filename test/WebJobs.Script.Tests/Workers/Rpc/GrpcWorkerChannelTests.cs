@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
-            _workerChannel.SendFunctionLoadRequests(null);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(functions.First().Name == funcName);
 
             _workerChannel.SetupFunctionInvocationBuffers(functions);
-            _workerChannel.SendFunctionLoadRequests(null);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage?.Contains(_expectedLoadMsgPartial) ?? false);
             var t = functionLoadLogs.Last<LogMessage>().FormattedMessage;
