@@ -1,4 +1,26 @@
     $response = $null
+
+    function WriteLog
+    {
+        param (
+            [Parameter(Mandatory=$true)]
+            [ValidateNotNullOrEmpty()]
+            [System.String]
+            $Message,
+
+            [Switch]
+            $Throw
+        )
+
+        $Message = (Get-Date -Format G)  + " -- $Message"
+
+        if ($Throw)
+        {
+            throw $Message
+        }
+
+        Write-Host $Message
+    }
     try
     {
         $url = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V3/HostBuild.json"
@@ -15,7 +37,7 @@
     $packagesToUpdate = @($response.Content | ConvertFrom-Json)
 
     # Update packages references
-    write-host "Updating Package references"
+    WriteLog "Updating Package references"
     $source = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
     
     $currentDirectory = Get-Location
@@ -36,7 +58,7 @@
                  $packageName = $packageInfo.Split()[0]
             $packageVersion = $packageInfo.Split()[1]
 
-            Write-host "Adding $packageName $packageVersion to project" -ForegroundColor Green
+            WriteLog "Adding $packageName $packageVersion to project" 
             & { dotnet add package $packageName -v $packageVersion -s $source }
         }
     }
