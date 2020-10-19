@@ -72,5 +72,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
         }
+
+        public static void LogUnhandledException(Exception e)
+        {
+            // Pipe the unhandled exception to stdout as part of docker logs.
+            Console.WriteLine($"Unhandled exception on {DateTime.UtcNow}: {e?.ToString()}");
+        }
     }
 }
