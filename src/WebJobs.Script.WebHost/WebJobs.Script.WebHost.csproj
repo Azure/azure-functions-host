@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
+    <None Remove="PreJIT\linux.coldstart.jittrace" />
     <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
     <None Remove="PreJIT\coldstart.jittrace" />
@@ -47,6 +48,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="PreJIT\coldstart.jittrace">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="PreJIT\linux.coldstart.jittrace">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
