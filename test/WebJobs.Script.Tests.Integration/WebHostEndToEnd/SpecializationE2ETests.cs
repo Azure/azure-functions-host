@@ -270,10 +270,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
-        [Fact]
-        public void ColdStart_JitFailuresTest()
+        [Theory]
+        [InlineData(WarmUpConstants.JitTraceFileName)]
+        [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
+        public void ColdStart_JitFailuresTest(string fileName)
         {
-            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, WarmUpConstants.JitTraceFileName);
+            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
             var file = new FileInfo(path);
 
@@ -284,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var failurePercentage = (double) failedPrepares / successfulPrepares * 100;
             
             // using 1% as approximate number of allowed failures before we need to regenrate a new PGO file.
-            Assert.True( failurePercentage < 1.0 , $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {WarmUpConstants.JitTraceFileName} file!");
+            Assert.True( failurePercentage < 1.0 , $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)

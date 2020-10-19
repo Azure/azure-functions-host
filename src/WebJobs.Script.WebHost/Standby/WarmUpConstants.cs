@@ -11,5 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public const string AlternateRoute = "CSharpHttpWarmup";
         public const string PreJitFolderName = "PreJIT";
         public const string JitTraceFileName = "coldstart.jittrace";
+        public const string LinuxJitTraceFileName = "linux.coldstart.jittrace";
     }
 }
