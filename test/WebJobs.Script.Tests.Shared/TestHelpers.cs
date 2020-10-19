@@ -256,12 +256,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false)
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1)
         {
             var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js") },
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar") }
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } },
+                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } }
             };
 
             // Allow tests to have a worker that claims the .dll extension.

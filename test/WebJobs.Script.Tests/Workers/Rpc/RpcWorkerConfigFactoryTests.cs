@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -158,12 +159,94 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
-            var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             Assert.Equal(expectedResult, rpcWorkerConfigFactory.ShouldAddWorkerConfig(workerLanguage));
+        }
+
+        [Theory]
+        [InlineData(true, true, false, 4, 50, "00:00:15")]
+        [InlineData(false, false, false, 4, 15, "00:00:30")]
+        [InlineData(false, true, false, 4, 15, "00:00:30")]
+        [InlineData(false, true, true, 4, 8, "00:00:05")]
+        public void GetWorkerProcessCount_Tests(bool defaultWorkerConfig, bool setWorkerCountToNumberOfCpuCores, bool setWorkerCountInEnv, int minProcessCount, int maxProcessCount, string processStartupInterval)
+        {
+            JObject processCount = new JObject();
+            processCount["ProcessCount"] = minProcessCount;
+            processCount["MaxProcessCount"] = maxProcessCount;
+            processCount["ProcessStartupInterval"] = processStartupInterval;
+            processCount["SetWorkerCountToNumberOfCpuCores"] = setWorkerCountToNumberOfCpuCores;
+
+            JObject workerConfig = new JObject();
+            if (!defaultWorkerConfig)
+            {
+                workerConfig[WorkerConstants.ProcessCount] = processCount;
+            }
+
+            if (setWorkerCountInEnv)
+            {
+                _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, "7");
+            }
+            var config = new ConfigurationBuilder().Build();
+            var testLogger = new TestLogger("test");
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            var result = rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig);
+            if (defaultWorkerConfig)
+            {
+                // Verify defaults
+                Assert.Equal(10, result.MaxProcessCount);
+                Assert.Equal(1, result.ProcessCount);
+                Assert.Equal(TimeSpan.FromSeconds(10), result.ProcessStartupInterval);
+                Assert.False(result.SetWorkerCountToNumberOfCpuCores);
+                return;
+            }
+            if (setWorkerCountInEnv)
+            {
+                Assert.Equal(7, result.ProcessCount);
+            }
+            else
+            {
+                if (setWorkerCountInEnv && setWorkerCountToNumberOfCpuCores)
+                {
+                    Assert.Equal(7, result.ProcessCount);
+                }
+                else if (setWorkerCountToNumberOfCpuCores)
+                {
+                    Assert.Equal(_testEnvironment.GetEffectiveCoresCount(), result.ProcessCount);
+                }
+            }
+            Assert.Equal(TimeSpan.Parse(processStartupInterval), result.ProcessStartupInterval);
+            Assert.Equal(maxProcessCount, result.MaxProcessCount);
+        }
+
+        [Fact]
+        public void GetWorkerProcessCount_ThrowsException_Tests()
+        {
+            JObject processCount = new JObject();
+            processCount["ProcessCount"] = -4;
+            processCount["MaxProcessCount"] = 10;
+            processCount["ProcessStartupInterval"] = "00:10:00";
+            processCount["SetWorkerCountToNumberOfCpuCores"] = false;
+
+            JObject workerConfig = new JObject();
+            workerConfig[WorkerConstants.ProcessCount] = processCount;
+
+            var config = new ConfigurationBuilder().Build();
+            var testLogger = new TestLogger("test");
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>( () => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
+
+            processCount["ProcessCount"] = 40;
+            var resultEx2 = Assert.Throws<ArgumentException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
+
+            processCount["ProcessStartupInterval"] = "-800";
+            processCount["ProcessCount"] = 10;
+            var resultEx3 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
         }
     }
 }
