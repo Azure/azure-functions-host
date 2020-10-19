@@ -182,16 +182,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             // Validate
-            if (workerProcessCount.ProcessCount >= 0)
+            if (workerProcessCount.ProcessCount <= 0)
             {
-                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} should be greater than 0 and less than {nameof(workerProcessCount.MaxProcessCount)} : workerProcessCount.MaxProcessCount");
+                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessCount)}",  "ProcessCount must be greater than 0.");
             }
-
-            // Validate
             if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
             {
-                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} is greater than {nameof(workerProcessCount.MaxProcessCount)}");
+                throw new ArgumentException($"{nameof(workerProcessCount.ProcessCount)} must not be greater than {nameof(workerProcessCount.MaxProcessCount)}");
             }
+            if (workerProcessCount.ProcessStartupInterval.Ticks < 0)
+            {
+                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessStartupInterval)}", "The TimeSpan must not be negative.");
+            }
+
             return workerProcessCount;
         }
 

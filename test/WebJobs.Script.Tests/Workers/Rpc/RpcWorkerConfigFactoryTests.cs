@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void GetWorkerProcessCount_Tests(bool defaultWorkerConfig, bool setWorkerCountToNumberOfCpuCores, bool setWorkerCountInEnv, int minProcessCount, int maxProcessCount, string processStartupInterval)
         {
             JObject processCount = new JObject();
-            processCount["MinProcessCount"] = minProcessCount;
+            processCount["ProcessCount"] = minProcessCount;
             processCount["MaxProcessCount"] = maxProcessCount;
             processCount["ProcessStartupInterval"] = processStartupInterval;
             processCount["SetWorkerCountToNumberOfCpuCores"] = setWorkerCountToNumberOfCpuCores;
@@ -219,6 +219,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             Assert.Equal(TimeSpan.Parse(processStartupInterval), result.ProcessStartupInterval);
             Assert.Equal(maxProcessCount, result.MaxProcessCount);
+        }
+
+        [Fact]
+        public void GetWorkerProcessCount_ThrowsException_Tests()
+        {
+            JObject processCount = new JObject();
+            processCount["ProcessCount"] = -4;
+            processCount["MaxProcessCount"] = 10;
+            processCount["ProcessStartupInterval"] = "00:10:00";
+            processCount["SetWorkerCountToNumberOfCpuCores"] = false;
+
+            JObject workerConfig = new JObject();
+            workerConfig[WorkerConstants.ProcessCount] = processCount;
+
+            var config = new ConfigurationBuilder().Build();
+            var testLogger = new TestLogger("test");
+            RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>( () => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
+
+            processCount["ProcessCount"] = 40;
+            var resultEx2 = Assert.Throws<ArgumentException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("ProcessCount must not be greater than MaxProcessCount", resultEx2.Message);
+
+            processCount["ProcessStartupInterval"] = "-800";
+            processCount["ProcessCount"] = 10;
+            var resultEx3 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
         }
     }
 }
