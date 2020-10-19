@@ -171,13 +171,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(false, false, false, 4, 15, "00:00:30")]
         [InlineData(false, true, false, 4, 15, "00:00:30")]
         [InlineData(false, true, true, 4, 8, "00:00:05")]
-        public void GetWorkerProcessCount_Tests(bool defaultWorkerConfig, bool setWorkerCountToNumberOfCpuCores, bool setWorkerCountInEnv, int minProcessCount, int maxProcessCount, string processStartupInterval)
+        public void GetWorkerProcessCount_Tests(bool defaultWorkerConfig, bool setProcessCountToNumberOfCpuCores, bool setWorkerCountInEnv, int minProcessCount, int maxProcessCount, string processStartupInterval)
         {
             JObject processCount = new JObject();
             processCount["ProcessCount"] = minProcessCount;
             processCount["MaxProcessCount"] = maxProcessCount;
             processCount["ProcessStartupInterval"] = processStartupInterval;
-            processCount["SetWorkerCountToNumberOfCpuCores"] = setWorkerCountToNumberOfCpuCores;
+            processCount["SetProcessCountToNumberOfCpuCores"] = setProcessCountToNumberOfCpuCores;
 
             JObject workerConfig = new JObject();
             if (!defaultWorkerConfig)
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(10, result.MaxProcessCount);
                 Assert.Equal(1, result.ProcessCount);
                 Assert.Equal(TimeSpan.FromSeconds(10), result.ProcessStartupInterval);
-                Assert.False(result.SetWorkerCountToNumberOfCpuCores);
+                Assert.False(result.SetProcessCountToNumberOfCpuCores);
                 return;
             }
             if (setWorkerCountInEnv)
@@ -208,11 +208,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             else
             {
-                if (setWorkerCountInEnv && setWorkerCountToNumberOfCpuCores)
+                if (setWorkerCountInEnv && setProcessCountToNumberOfCpuCores)
                 {
                     Assert.Equal(7, result.ProcessCount);
                 }
-                else if (setWorkerCountToNumberOfCpuCores)
+                else if (setProcessCountToNumberOfCpuCores)
                 {
                     Assert.Equal(_testEnvironment.GetEffectiveCoresCount(), result.ProcessCount);
                 }
@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             processCount["ProcessCount"] = -4;
             processCount["MaxProcessCount"] = 10;
             processCount["ProcessStartupInterval"] = "00:10:00";
-            processCount["SetWorkerCountToNumberOfCpuCores"] = false;
+            processCount["SetProcessCountToNumberOfCpuCores"] = false;
 
             JObject workerConfig = new JObject();
             workerConfig[WorkerConstants.ProcessCount] = processCount;
