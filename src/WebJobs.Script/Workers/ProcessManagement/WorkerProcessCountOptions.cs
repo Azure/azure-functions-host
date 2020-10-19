@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// <summary>
         /// Gets or sets a value indicating whether to set FUNCTIONS_WORKER_PROCESS_COUNT to number of cpu cores on the host machine
         /// </summary>
-        public bool SetWorkerCountToNumberOfCpuCores { get; set; }
+        public bool SetPorcessCountToNumberOfCpuCores { get; set; }
 
         /// <summary>
         /// Gets or sets number of worker processes to start. Default process count is 1
