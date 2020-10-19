@@ -199,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(10, result.MaxProcessCount);
                 Assert.Equal(1, result.ProcessCount);
                 Assert.Equal(TimeSpan.FromSeconds(10), result.ProcessStartupInterval);
-                Assert.False(result.SetPorcessCountToNumberOfCpuCores);
+                Assert.False(result.SetProcessCountToNumberOfCpuCores);
                 return;
             }
             if (setWorkerCountInEnv)
