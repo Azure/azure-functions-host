@@ -260,6 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                     .Timeout(functionTimeout.Value)
+                    .Take(1)
                     .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
                 else
@@ -521,7 +522,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerFunctionLoadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "FunctionLoad failed.");
-            PublishWorkerErrorEvent(exc);
+            if (_disposing)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
         private void PublishWorkerErrorEvent(Exception exc)

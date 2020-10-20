@@ -88,10 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         {
                             _logger.LogTrace("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
                         }
-                        if (currentMessage.FunctionLoadResponse != null)
-                        {
-                            await Task.Delay(TimeSpan.FromMinutes(1));
-                        }
                         _eventManager.Publish(new InboundGrpcEvent(workerId, currentMessage));
                     }
                     while (await messageAvailable());
