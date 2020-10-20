@@ -39,11 +39,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     rpcValue = await input.val.ToRpc(logger, capabilities, sharedMemoryManager);
                     if (input.val != null)
                     {
-                        if (rpcValue.DataCase == RpcDataType.SharedMemoryData && sharedMemoryManager != null)
+                        if (rpcValue.DataCase == RpcDataType.RpcSharedMemoryInfo && sharedMemoryManager != null)
                         {
                             // Add the name of the MemoryMappedFile created for this input to the list of
                             // SharedMemoryResources used for this invocation
-                            context.SharedMemoryResources.Add(rpcValue.SharedMemoryData.MemoryMappedFileName);
+                            context.SharedMemoryResources.Add(rpcValue.RpcSharedMemoryInfo.Name);
                         }
                         rpcValueCache.Add(input.val, rpcValue);
                     }
@@ -71,11 +71,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     rpcValueCache.Add(pair.Value, rpcValue);
                 }
 
-                if (rpcValue.DataCase == RpcDataType.SharedMemoryData && sharedMemoryManager != null)
+                if (rpcValue.DataCase == RpcDataType.RpcSharedMemoryInfo && sharedMemoryManager != null)
                 {
                     // Add the name of the MemoryMappedFile created for this input to the list of
                     // SharedMemoryResources used for this invocation
-                    context.SharedMemoryResources.Add(rpcValue.SharedMemoryData.MemoryMappedFileName);
+                    context.SharedMemoryResources.Add(rpcValue.RpcSharedMemoryInfo.Name);
                 }
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
             }

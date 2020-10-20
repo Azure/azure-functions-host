@@ -43,12 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return typedData.Int;
                 case RpcDataType.Double:
                     return typedData.Double;
-                case RpcDataType.SharedMemoryData:
-                    var sharedMemData = typedData.SharedMemoryData;
-                    string mmfName = sharedMemData.MemoryMappedFileName;
-                    long offset = sharedMemData.Offset;
-                    long count = sharedMemData.Count;
-                    string type = sharedMemData.Type;
+                case RpcDataType.RpcSharedMemoryInfo:
+                    var sharedMemInfo = typedData.RpcSharedMemoryInfo;
+                    string mmfName = sharedMemInfo.Name;
+                    long offset = sharedMemInfo.Offset;
+                    long count = sharedMemInfo.Count;
+                    string type = sharedMemInfo.Type;
                     return sharedMemoryManager.TryGetAsync(mmfName, offset, count).GetAwaiter().GetResult();
                 case RpcDataType.None:
                     return null;
@@ -73,14 +73,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     string mmapName = await sharedMemoryManager.TryPutAsync(arr);
                     if (!string.IsNullOrEmpty(mmapName))
                     {
-                        SharedMemoryData sharedMemoryData = new SharedMemoryData()
+                        RpcSharedMemoryInfo sharedMemInfo = new RpcSharedMemoryInfo()
                         {
-                            MemoryMappedFileName = mmapName,
+                            Name = mmapName,
                             Offset = 0,
                             Count = arr.Length,
                             Type = "bytes"
                         };
-                        typedData.SharedMemoryData = sharedMemoryData;
+                        typedData.RpcSharedMemoryInfo = sharedMemInfo;
                     }
                     else
                     {
