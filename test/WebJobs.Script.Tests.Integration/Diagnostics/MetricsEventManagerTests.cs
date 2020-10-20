@@ -15,11 +15,14 @@ using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Metrics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -33,14 +36,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly List<FunctionExecutionEventArguments> _functionExecutionEventArguments;
         private readonly List<SystemMetricEvent> _events;
         private readonly Mock<ILinuxContainerActivityPublisher> _linuxFunctionExecutionActivityPublisher;
+        private readonly Mock<IMetricsPublisher> _mockEventPublisher;
+        private readonly Mock<IEventGenerator> _mockEventGenerator;
+        private readonly Mock<IOptionsMonitor<AppServiceOptions>> _mockAppServiceOptions;
+        private readonly TestLoggerProvider _testLoggerProvider;
+        private readonly LoggerFactory _loggerFactory;
+
+        private bool _throwOnExecutionEvent;
         private readonly object _syncLock = new object();
 
         public MetricsEventManagerTests()
         {
+            _loggerFactory = new LoggerFactory();
+            _testLoggerProvider = new TestLoggerProvider();
+            _loggerFactory.AddProvider(_testLoggerProvider);
+
             _functionExecutionEventArguments = new List<FunctionExecutionEventArguments>();
 
-            var mockEventGenerator = new Mock<IEventGenerator>();
-            mockEventGenerator.Setup(e => e.LogFunctionExecutionEvent(
+            _mockEventGenerator = new Mock<IEventGenerator>();
+            _mockEventGenerator.Setup(e => e.LogFunctionExecutionEvent(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<int>(),
@@ -51,6 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     It.IsAny<bool>()))
                 .Callback((string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success) =>
                 {
+                    if (_throwOnExecutionEvent && executionStage == ExecutionStage.InProgress.ToString())
+                    {
+                        _throwOnExecutionEvent = false;
+                        throw new Exception("Kaboom!");
+                    }
+
                     lock (_syncLock)
                     {
                         _functionExecutionEventArguments.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
@@ -58,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             _events = new List<SystemMetricEvent>();
-            mockEventGenerator.Setup(p => p.LogFunctionMetricEvent(
+            _mockEventGenerator.Setup(p => p.LogFunctionMetricEvent(
                     It.IsAny<string>(),
                     It.IsAny<string>(),
                     It.IsAny<string>(),
@@ -91,11 +111,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
                 });
 
-            var mockMetricsPublisher = new Mock<IMetricsPublisher>();
-            var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
-            testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
+            _mockEventPublisher = new Mock<IMetricsPublisher>();
+            _mockAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
+            _mockAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
             _linuxFunctionExecutionActivityPublisher = new Mock<ILinuxContainerActivityPublisher>();
-            _metricsEventManager = new MetricsEventManager(testAppServiceOptions.Object, mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, mockMetricsPublisher.Object, _linuxFunctionExecutionActivityPublisher.Object, NullLogger<MetricsEventManager>.Instance);
+            var logger = _loggerFactory.CreateLogger<MetricsEventManager>();
+            _metricsEventManager = new MetricsEventManager(_mockAppServiceOptions.Object, _mockEventGenerator.Object, MinimumLongRunningDurationInMs / 1000, _mockEventPublisher.Object, _linuxFunctionExecutionActivityPublisher.Object, logger);
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
@@ -552,6 +573,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 string.Format("Each invocation should have atleast one 'InProgress' event. Invalid invocation ids:{0} List:{1}",
                     string.Join(",", invalidInvocationIds),
                     SerializeFunctionExecutionEventArguments(_functionExecutionEventArguments)));
+        }
+
+        [Fact]
+        public async Task MetricsEventManager_ActivityTimer_HandlesExceptions()
+        {
+            // create a local event manager for this test, so we can override the flush interval
+            var logger = _loggerFactory.CreateLogger<MetricsEventManager>();
+            var metricsEventManager = new MetricsEventManager(_mockAppServiceOptions.Object, _mockEventGenerator.Object, 1, _mockEventPublisher.Object, _linuxFunctionExecutionActivityPublisher.Object, logger);
+            var metricsLogger = new WebHostMetricsLogger(metricsEventManager);
+
+            // execute some functions
+            var taskList = new List<Task>();
+            for (int currentIndex = 0; currentIndex < 10; currentIndex++)
+            {
+                taskList.Add(ShortTestFunction(metricsLogger));
+            }
+            await Task.WhenAll(taskList);
+
+            // wait for a flush to occur
+            await Task.Delay(1000);
+
+            // verify events
+            Assert.Equal(10, _functionExecutionEventArguments.Count);
+            Assert.True(_functionExecutionEventArguments.All(p => p.ExecutionStage == ExecutionStage.Finished.ToString()));
+
+            // now force a logging error for an in progress function
+            // on the background timer
+            _throwOnExecutionEvent = true;
+            var id = Guid.NewGuid();
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "Test"
+            };
+            var functionEvent = new FunctionStartedEvent(id, functionMetadata);
+            metricsLogger.BeginEvent(functionEvent);
+
+            // wait for the error to be logged
+            LogMessage errorLog = null;
+            await TestHelpers.Await(() =>
+            {
+                errorLog = _testLoggerProvider.GetAllLogMessages().SingleOrDefault();
+                return errorLog != null;
+            }, timeout: 5000);
+
+            // verify error was logged
+            Assert.Equal(LogLevel.Error, errorLog.Level);
+            Assert.Equal("Error occurred when logging function activity", errorLog.FormattedMessage);
+
+            // execute some more functions, verifying that the timer is
+            // still running
+            taskList = new List<Task>();
+            for (int currentIndex = 0; currentIndex < 10; currentIndex++)
+            {
+                taskList.Add(ShortTestFunction(metricsLogger));
+            }
+            await Task.WhenAll(taskList);
+
+            await Task.Delay(1000);
+
+            // verify events
+            Assert.Equal(20, _functionExecutionEventArguments.Count(p => p.ExecutionStage == ExecutionStage.Finished.ToString()));
+            int inProgressCount = _functionExecutionEventArguments.Count(p => p.InvocationId == id.ToString() && p.ExecutionStage == ExecutionStage.InProgress.ToString());
+            Assert.True(inProgressCount > 0);
         }
 
         [Fact]

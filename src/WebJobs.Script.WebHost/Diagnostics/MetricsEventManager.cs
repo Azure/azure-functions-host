@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -45,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Initialize the periodic log flush timer
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
 
-            _functionActivityTracker = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, metricsPublisher, linuxContainerActivityPublisher, _functionActivityFlushIntervalSeconds);
+            _functionActivityTracker = new FunctionActivityTracker(_appServiceOptions, _eventGenerator, metricsPublisher, linuxContainerActivityPublisher, _functionActivityFlushIntervalSeconds, _logger);
         }
 
         /// <summary>
@@ -316,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                     if (_functionActivityTracker != null)
                     {
-                        _functionActivityTracker.StopEtwTaskAndRaiseFinishedEvent();
+                        _functionActivityTracker.StopTimerAndRaiseFinishedEvent();
                         _functionActivityTracker.Dispose();
                     }
                 }
@@ -334,24 +333,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private class FunctionActivityTracker : IDisposable
         {
+            // this interval should stay at 1 second because the timer is also
+            // used to emit events every Nth second
+            private const int _activityTimerIntervalMS = 1000;
+
             private readonly IMetricsPublisher _metricsPublisher;
             private readonly ILinuxContainerActivityPublisher _linuxContainerActivityPublisher;
             private readonly object _runningFunctionsSyncLock = new object();
+            private readonly Timer _activityTimer;
+            private readonly ILogger<MetricsEventManager> _logger;
 
             private ulong _totalExecutionCount = 0;
             private int _activeFunctionCount = 0;
             private int _functionActivityFlushInterval;
-            private CancellationTokenSource _etwTaskCancellationSource = new CancellationTokenSource();
             private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
             private List<FunctionStartedEvent> _runningFunctions = new List<FunctionStartedEvent>();
             private bool _disposed = false;
             private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
+            private int _activityFlushCounter;
 
             // This ID is just an event grouping mechanism that can be used by event consumers
             // to group events coming from the same app host.
             private string _executionId = Guid.NewGuid().ToString();
 
-            internal FunctionActivityTracker(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, int functionActivityFlushInterval)
+            internal FunctionActivityTracker(IOptionsMonitor<AppServiceOptions> appServiceOptions, IEventGenerator generator, IMetricsPublisher metricsPublisher, ILinuxContainerActivityPublisher linuxContainerActivityPublisher, int functionActivityFlushInterval, ILogger<MetricsEventManager> logger)
             {
                 MetricsEventGenerator = generator;
                 _appServiceOptions = appServiceOptions;
@@ -367,43 +372,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _metricsPublisher = metricsPublisher;
                 }
 
-                StartActivityTimer();
+                _activityFlushCounter = _functionActivityFlushInterval;
+                _activityTimer = new Timer(TimerFlush, null, _activityTimerIntervalMS, _activityTimerIntervalMS);
+
+                _logger = logger;
             }
 
             internal IEventGenerator MetricsEventGenerator { get; private set; }
 
-            private void StartActivityTimer()
+            private void TimerFlush(object state)
             {
-                Task.Run(
-                    async () =>
+                try
+                {
+                    // we raise these events every interval as needed
+                    RaiseMetricsPerFunctionEvent();
+
+                    // only raise these events every Nth interval
+                    if (_activityFlushCounter >= _functionActivityFlushInterval)
                     {
-                        try
-                        {
-                            int currentSecond = _functionActivityFlushInterval;
-                            while (!_etwTaskCancellationSource.Token.IsCancellationRequested)
-                            {
-                                RaiseMetricsPerFunctionEvent();
-
-                                if (currentSecond >= _functionActivityFlushInterval)
-                                {
-                                    RaiseFunctionMetricEvents();
-                                    currentSecond = 0;
-                                }
-                                else
-                                {
-                                    currentSecond = currentSecond + 1;
-                                }
-
-                                await Task.Delay(TimeSpan.FromSeconds(1), _etwTaskCancellationSource.Token);
-                            }
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            // This exception gets throws when cancellation request is raised via cancellation token.
-                            // Let's eat this exception and continue
-                        }
-                    },
-                    _etwTaskCancellationSource.Token);
+                        RaiseFunctionMetricEvents();
+                        _activityFlushCounter = 0;
+                    }
+                    else
+                    {
+                        _activityFlushCounter += 1;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // log error and continue
+                    _logger.LogError(ex, "Error occurred when logging function activity");
+                }
             }
 
             protected virtual void Dispose(bool disposing)
@@ -412,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     if (disposing)
                     {
-                        _etwTaskCancellationSource.Dispose();
+                        _activityTimer?.Dispose();
                     }
                     _disposed = true;
                 }
@@ -450,9 +449,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 RaiseFunctionMetricEvent(startedEvent, _activeFunctionCount, DateTime.UtcNow);
             }
 
-            internal void StopEtwTaskAndRaiseFinishedEvent()
+            internal void StopTimerAndRaiseFinishedEvent()
             {
-                _etwTaskCancellationSource.Cancel();
+                // stop the timer if it has been started
+                _activityTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+
                 RaiseMetricsPerFunctionEvent();
             }
 
@@ -474,20 +475,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 // We only need to raise events here for functions that aren't completed.
                 // Events are raised immediately for completed functions elsewhere.
-                var runningFunctions = new List<FunctionStartedEvent>();
+                FunctionStartedEvent[] runningFunctionsSnapshot = null;
                 lock (_runningFunctionsSyncLock)
                 {
                     // effectively we're pruning all the completed invocations here
-                    runningFunctions = _runningFunctions = _runningFunctions.Where(p => !p.Completed).ToList();
+                    _runningFunctions = _runningFunctions.Where(p => !p.Completed).ToList();
+
+                    // create a snapshot within the lock so we can enumerate below
+                    runningFunctionsSnapshot = _runningFunctions.ToArray();
                 }
 
                 // we calculate concurrency here based on count, since these events are raised
                 // on a background thread, so we want the actual count for this interval, not
                 // the current count.
                 var currentTime = DateTime.UtcNow;
-                foreach (var runningFunction in runningFunctions)
+                foreach (var runningFunction in runningFunctionsSnapshot)
                 {
-                    RaiseFunctionMetricEvent(runningFunction, runningFunctions.Count, currentTime);
+                    RaiseFunctionMetricEvent(runningFunction, runningFunctionsSnapshot.Length, currentTime);
                 }
             }
 
