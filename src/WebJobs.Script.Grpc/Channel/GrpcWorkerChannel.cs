@@ -522,7 +522,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void HandleWorkerFunctionLoadError(Exception exc)
         {
-            _workerChannelLogger.LogError(exc, "Did not receive function load response within functionTimeout.");
+            _workerChannelLogger.LogError(exc, "Loading function failed.");
             if (_disposing)
             {
                 return;
