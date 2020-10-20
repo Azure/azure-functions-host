@@ -308,17 +308,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendLoadRequests_Raises_WorkerErrorEvent()
+        public void SendLoadRequests_DoesNotTimeout_FunctionTimeoutNotSet()
         {
             var funcName = "ADisabledFunc";
             var functions = GetTestFunctionsList_WithDisabled("node", funcName);
             _workerChannel.SetupFunctionInvocationBuffers(functions);
-            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMilliseconds(10));
-            await Task.Delay(TimeSpan.FromMilliseconds(20));
+            _workerChannel.SendFunctionLoadRequests(null, null);
             var traces = _logger.GetLogMessages();
             var errorLogs = traces.Where(m => m.Level == LogLevel.Error);
-
-            Assert.True(errorLogs.First<LogMessage>().FormattedMessage.Contains("Did not receive function load response within functionTimeout."));
+            Assert.Empty(errorLogs);
         }
 
         [Fact]
