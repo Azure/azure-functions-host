@@ -384,7 +384,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ReceivesInboundEvent_FunctionLoadResponse()
         {
-            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             _testFunctionRpcService.PublishFunctionLoadResponseEvent("TestFunctionId1");
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js1 with functionId:TestFunctionId1")));
