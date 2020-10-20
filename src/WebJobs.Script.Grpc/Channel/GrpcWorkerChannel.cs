@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TimeSpan functionLoadTimeout = TimeSpan.FromMinutes(10);
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -258,15 +259,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (functionTimeout.HasValue)
                 {
+                    functionLoadTimeout = functionTimeout.Value > functionLoadTimeout ? functionTimeout.Value : functionLoadTimeout;
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                    .Timeout(functionTimeout.Value)
-                    .Take(1)
-                    .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                        .Timeout(functionLoadTimeout)
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
                 else
                 {
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                    .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
                 foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
                 {
