@@ -9,10 +9,10 @@ $ErrorActionPreference = 'Stop'
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-$chocoCmd = 'C:\ProgramData\chocolatey\bin\choco.exe'
+$chocoCmd = "$env:ProgramData\chocolatey\bin\choco.exe"
 
 & $chocoCmd install -y git
-$env:PATH += ";$($env:ProgramFiles)\Git\cmd"
+$env:PATH += ";$env:ProgramFiles\Git\cmd"
 
 & $chocoCmd install -y powershell-core
 $env:PATH += ";$env:ProgramFiles\PowerShell\7"
