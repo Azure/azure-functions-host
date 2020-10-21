@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     sharedMem = await SharedMemoryDataTransferAsync(logger, invocationRequest.InvocationId, input.val, sharedMemoryManager);
                 }
 
-                if (sharedMem == null)
+                if (sharedMem != null)
                 {
                     // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
                     parameterBinding = new ParameterBinding

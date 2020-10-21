@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
-    internal class SharedMemoryMapConstants
+    internal class SharedMemoryConstants
     {
         /// <summary>
         /// The length in number of bytes of a <see cref="long"/>.
@@ -18,6 +18,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// Note: Whenever the header is modified to contain more/less information, this needs to be updated.
         /// </summary>
         public const int HeaderTotalBytes = LengthNumBytes;
+
+        /// <summary>
+        /// Minimum size an object must be in order for it to be transferred over shared memory.
+        /// If the object is smaller than this, gRPC is used.
+        /// </summary>
+        public const long MinObjectSizeForSharedMemoryTransfer = 1024 * 1024; // 1 MB
 
         /// <summary>
         /// The minimum buffer size to copy from memory map 80 KB

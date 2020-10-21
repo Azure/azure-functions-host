@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly RpcWorkerConfig _testWorkerConfig;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
+        private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private GrpcWorkerChannel _workerChannel;
 
@@ -53,7 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
-            _sharedMemoryManager = new SharedMemoryManager(_logger);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _mapAccessor = new MemoryMappedFileAccessorWindows(_logger);
+            }
+            else
+            {
+                _mapAccessor = new MemoryMappedFileAccessorLinux(_logger);
+            }
+            _sharedMemoryManager = new SharedMemoryManager(_logger, _mapAccessor);
 
             var hostOptions = new ScriptApplicationHostOptions
             {

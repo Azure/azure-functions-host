@@ -32,248 +32,61 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// </summary>
         private readonly string _mapName;
 
-        public SharedMemoryMap(ILogger logger, string mapName, MemoryMappedFile mmf)
+        private readonly IMemoryMappedFileAccessor _mapAccessor;
+
+        public SharedMemoryMap(ILogger logger, IMemoryMappedFileAccessor mapAccessor, string mapName, MemoryMappedFile mmf)
         {
             _logger = logger;
             _mapName = mapName;
             _mmf = mmf;
-        }
-
-        public static SharedMemoryMap Create(ILogger logger, string mapName, long size)
-        {
-            if (TryCreate(logger, mapName, size, out MemoryMappedFile mmf))
-            {
-                return new SharedMemoryMap(logger, mapName, mmf);
-            }
-            else
-            {
-                throw new Exception($"Cannot create MemoryMappedFile {mapName} with {size} bytes");
-            }
-        }
-
-        public static SharedMemoryMap CreateOrOpen(ILogger logger, string mapName, long size)
-        {
-            if (TryCreateOrOpen(logger, mapName, size, out MemoryMappedFile mmf))
-            {
-                return new SharedMemoryMap(logger, mapName, mmf);
-            }
-            else
-            {
-                throw new Exception($"Cannot create or open MemoryMappedFile {mapName} with {size} bytes");
-            }
-        }
-
-        public static SharedMemoryMap Open(ILogger logger, string mapName)
-        {
-            if (TryOpen(logger, mapName, out MemoryMappedFile mmf))
-            {
-                return new SharedMemoryMap(logger, mapName, mmf);
-            }
-            else
-            {
-                throw new Exception($"Cannot open MemoryMappedFile {mapName}");
-            }
-        }
-
-        public static async Task<SharedMemoryMap> CreateWithContentAsync(ILogger logger, string mapName, byte[] content)
-        {
-            MemoryMappedFile mmf = await TryCreateWithContentAsync(logger, mapName, content);
-            if (mmf != null)
-            {
-                return new SharedMemoryMap(logger, mapName, mmf);
-            }
-            else
-            {
-                throw new Exception($"Cannot create MemoryMappedFile {mapName} with {content.Length} bytes content");
-            }
+            _mapAccessor = mapAccessor;
         }
 
         /// <summary>
-        /// Try to create a <see cref="MemoryMappedFile"/> with the specified name and size.
+        /// Write content from the given <see cref="Stream"/> into this <see cref="SharedMemoryMap"/>.
+        /// The number of bytes of content being written must be less than or equal to the size of the <see cref="SharedMemoryMap"/>.
         /// </summary>
-        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
-        /// <param name="size">Size of the <see cref="MemoryMappedFile"/>.</param>
-        /// <param name="mmf"><see cref="MemoryMappedFile"/> if created successfully,
-        /// <see cref="null"/> otherwise.</param>
-        /// <returns><see cref="true"/> if the <see cref="MemoryMappedFile"/> was created
-        /// successfully, <see cref="false"/> otherwise.</returns>
-        private static bool TryCreate(ILogger logger, string mapName, long size, out MemoryMappedFile mmf)
-        {
-            mmf = null;
-
-            try
-            {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    mmf = MemoryMappedFile.CreateNew(
-                        mapName, // Named maps are supported on Windows
-                        size,
-                        MemoryMappedFileAccess.ReadWrite);
-                    return true;
-                }
-                else
-                {
-                    // Ensure the file is already not present
-                    string filePath = GetPath(mapName);
-                    if (filePath != null && File.Exists(filePath))
-                    {
-                        logger.LogError($"Cannot create MemoryMappedFile: {mapName}, file already exists");
-                        return false;
-                    }
-
-                    // Get path of where to create the new file-based MemoryMappedFile
-                    filePath = CreatePath(mapName, size);
-                    if (string.IsNullOrEmpty(filePath))
-                    {
-                        logger.LogError($"Cannot create MemoryMappedFile: {mapName}, invalid file path");
-                        return false;
-                    }
-
-                    mmf = MemoryMappedFile.CreateFromFile(
-                        filePath,
-                        FileMode.OpenOrCreate,
-                        null, // Named maps are not supported on Linux
-                        size,
-                        MemoryMappedFileAccess.ReadWrite);
-                    return true;
-                }
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, $"Cannot create MemoryMappedFile {mapName} for {size} bytes");
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Try to open a <see cref="MemoryMappedFile"/>.
-        /// </summary>
-        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/> to open.</param>
-        /// <param name="mmf"><see cref="MemoryMappedFile"/> if opened successfully,
-        /// <see cref="null"/> if not found.</param>
-        /// <returns><see cref="true"/> if the <see cref="MemoryMappedFile"/> was successfully
-        /// opened, <see cref="false"/> otherwise.</returns>
-        private static bool TryOpen(ILogger logger, string mapName, out MemoryMappedFile mmf)
-        {
-            mmf = null;
-
-            try
-            {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    mmf = MemoryMappedFile.OpenExisting(
-                        mapName,
-                        MemoryMappedFileRights.ReadWrite,
-                        HandleInheritability.Inheritable);
-                    return true;
-                }
-                else
-                {
-                    string filePath = GetPath(mapName);
-                    if (filePath != null && File.Exists(filePath))
-                    {
-                        mmf = MemoryMappedFile.CreateFromFile(filePath, FileMode.Open);
-                        return true;
-                    }
-                    else
-                    {
-                        logger.LogDebug($"Cannot open file (path {filePath} not found): {mapName}");
-                        return false;
-                    }
-                }
-            }
-            catch (FileNotFoundException fne)
-            {
-                logger.LogDebug(fne, $"Cannot open file: {mapName}");
-                return false;
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, $"Cannot open file: {mapName}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Try to open (if already exists) a <see cref="MemoryMappedFile"/> with the
-        /// specified name and size, or create a new one if no existing one is found.</summary>
-        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
-        /// <param name="size">Size of the <see cref="MemoryMappedFile"/>.</param>
-        /// <param name="mmf"><see cref="MemoryMappedFile"/> if created or opened successfully,
-        /// <see cref="null"/> otherwise.</param>
-        /// <returns><see cref="true"/> if the <see cref="MemoryMappedFile"/> was created or opened
-        /// successfully, <see cref="false"/> otherwise.</returns>
-        private static bool TryCreateOrOpen(ILogger logger, string mapName, long size, out MemoryMappedFile mmf)
-        {
-            if (TryOpen(logger, mapName, out mmf))
-            {
-                return true;
-            }
-
-            if (TryCreate(logger, mapName, size, out mmf))
-            {
-                return true;
-            }
-
-            logger.LogError($"Cannot create or open: {mapName} with size {size}");
-            return false;
-        }
-
-        /// <summary>
-        /// Create a new <see cref="MemoryMappedFile"/> with the given content.
-        /// </summary>
-        /// <param name="mapName">Name of <see cref="MemoryMappedFile"/> to create.</param>
-        /// <param name="content">Content to write into the newly created
-        /// <see cref="MemoryMappedFile"/>.</param>
-        /// <returns>Response containing the newly created <see cref="MemoryMappedFile"/> if created
-        /// successfully, failure response otherwise.</returns>
-        private static async Task<MemoryMappedFile> TryCreateWithContentAsync(ILogger logger, string mapName, Stream content)
+        /// <param name="content"><see cref="Stream"/> containing the content to write.</param>
+        /// <returns>Number of bytes of content written.</returns>
+        private async Task<long> PutStreamAsync(Stream content)
         {
             long contentLength = content.Length;
             byte[] contentLengthBytes = BitConverter.GetBytes(contentLength);
-            long mmfLength = contentLength + contentLengthBytes.Length + 1;
 
-            if (TryCreate(logger, mapName, mmfLength, out MemoryMappedFile mmf))
+            try
             {
-                try
+                using (MemoryMappedViewStream mmv = _mmf.CreateViewStream())
                 {
-                    using (MemoryMappedViewStream mmv = mmf.CreateViewStream())
-                    {
-                        await mmv.WriteAsync(contentLengthBytes, 0, SharedMemoryMapConstants.LengthNumBytes);
-                        await content.CopyToAsync(mmv, SharedMemoryMapConstants.MinBufferSize);
-                        await mmv.FlushAsync();
-                    }
+                    await mmv.WriteAsync(contentLengthBytes, 0, SharedMemoryConstants.LengthNumBytes);
+                    await content.CopyToAsync(mmv, SharedMemoryConstants.MinBufferSize);
+                    await mmv.FlushAsync();
+                }
 
-                    // Do not close the MemoryMappedFile to make it available later
-                    return mmf;
-                }
-                catch
-                {
-                    // This exception can be triggered by:
-                    // 1) Size is greater than the total virtual memory.
-                    // 2) Access is invalid for the memory-mapped file.
-                    Delete(logger, mapName, mmf);
-                }
+                return contentLength;
+            }
+            catch
+            {
+                // This exception can be triggered by:
+                // 1) Size is greater than the total virtual memory.
+                // 2) Access is invalid for the memory-mapped file.
+                _mapAccessor.Delete(_mapName, _mmf);
             }
 
-            logger.LogError($"Cannot create MemoryMappedFile: {mapName}");
-            return null;
+            _logger.LogError($"Cannot put bytes: {_mapName}");
+            return 0;
         }
 
         /// <summary>
-        /// Create a new <see cref="MemoryMappedFile"/> with the given content.
+        /// Write content from the given <see cref="byte[]"/> into this <see cref="SharedMemoryMap"/>.
+        /// The number of bytes of content being written must be less than or equal to the size of the <see cref="SharedMemoryMap"/>.
         /// </summary>
-        /// <param name="mapName">Name of <see cref="MemoryMappedFile"/> to create.</param>
-        /// <param name="content">Content to write into the newly created
-        /// <see cref="MemoryMappedFile"/>.</param>
-        /// <returns>Response containing the newly created <see cref="MemoryMappedFile"/> if created
-        /// successfully, failure response otherwise.</returns>
-        public static async Task<MemoryMappedFile> TryCreateWithContentAsync(ILogger logger, string mapName, byte[] content)
+        /// <param name="content"><see cref="byte[]"/> containing the content to write.</param>
+        /// <returns>Number of bytes of content written.</returns>
+        public async Task<long> PutBytesAsync(byte[] content)
         {
             using (MemoryStream contentStream = new MemoryStream(content))
             {
-                return await TryCreateWithContentAsync(logger, mapName, contentStream);
+                return await PutStreamAsync(contentStream);
             }
         }
 
@@ -281,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// Read the content contained in this <see cref="SharedMemoryMap"/> as <see cref="byte[]"/>.
         /// </summary>
         /// <returns><see cref="byte[]"/> of content if successful, <see cref="null"/> otherwise.</returns>
-        public async Task<byte[]> TryReadAsBytesAsync()
+        public async Task<byte[]> GetBytesAsync()
         {
             using (MemoryStream contentStream = new MemoryStream())
             {
@@ -300,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <param name="offset">Offset to start reading the content from.</param>
         /// <param name="count">Number of bytes to read.</param>
         /// <returns><see cref="byte[]"/> of content if successful, <see cref="null"/> otherwise.</returns>
-        public async Task<byte[]> TryReadAsBytesAsync(long offset, long count)
+        public async Task<byte[]> GetBytesAsync(long offset, long count)
         {
             using (MemoryStream contentStream = new MemoryStream())
             {
@@ -322,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             try
             {
                 // Create a MemoryMappedViewStream over the header
-                using (MemoryMappedViewStream mmv = _mmf.CreateViewStream(0, SharedMemoryMapConstants.HeaderTotalBytes))
+                using (MemoryMappedViewStream mmv = _mmf.CreateViewStream(0, SharedMemoryConstants.HeaderTotalBytes))
                 {
                     // Reads the content length (equal to the size of one long)
                     long contentLength = await ReadLongAsync(mmv);
@@ -361,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             {
                 if (offset + count <= contentLength)
                 {
-                    return _mmf.CreateViewStream(SharedMemoryMapConstants.HeaderTotalBytes + offset, count);
+                    return _mmf.CreateViewStream(SharedMemoryConstants.HeaderTotalBytes + offset, count);
                 }
             }
 
@@ -377,46 +190,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             long contentLength = await GetContentLengthAsync();
             if (contentLength >= 0)
             {
-                return _mmf.CreateViewStream(SharedMemoryMapConstants.HeaderTotalBytes, contentLength);
+                return _mmf.CreateViewStream(SharedMemoryConstants.HeaderTotalBytes, contentLength);
             }
 
             return null;
         }
 
-        /// <summary>
-        /// Dispose the given <see cref="MemoryMappedFile"/> and the corresponding file (if any)
-        /// backing it.
-        /// Note:
-        /// The <see cref="MemoryMappedFile"/> being passed to delete must be the one created from
-        /// <see cref="MemoryMappedFile.CreateFromFile"/> and not
-        /// <see cref="MemoryMappedFile.OpenExisting"/>. Only the creator can delete the underlying
-        /// resources.
-        /// Reference: https://stackoverflow.com/a/17836555/3132415.
-        /// </summary>
-        public static void Delete(ILogger logger, string mapName, MemoryMappedFile mmf)
-        {
-            if (mmf != null)
-            {
-                mmf.Dispose();
-            }
-
-            try
-            {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    string filePath = GetPath(mapName);
-                    File.Delete(filePath);
-                }
-            }
-            catch (Exception e)
-            {
-                logger.LogWarning(e, $"Cannot delete MemoryMappedFile: {mapName}");
-            }
-        }
-
         public void Dispose()
         {
-            Delete(_logger, _mapName, _mmf);
+            _mapAccessor.Delete(_mapName, _mmf);
         }
 
         public void DropReference()
@@ -469,8 +251,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             using (contentStream)
             {
                 // Explicitly provide a maximum buffer size
-                long minSize = Math.Min(contentLength, SharedMemoryMapConstants.CopyBufferSize);
-                int bufferSize = Convert.ToInt32(Math.Max(minSize, SharedMemoryMapConstants.MinBufferSize));
+                long minSize = Math.Min(contentLength, SharedMemoryConstants.CopyBufferSize);
+                int bufferSize = Convert.ToInt32(Math.Max(minSize, SharedMemoryConstants.MinBufferSize));
                 if (!await CopyStreamAsync(contentStream, destination, (int)bytesToCopy, bufferSize))
                 {
                     _logger.LogError($"Cannot copy {bytesToCopy} to destination Stream");
@@ -509,91 +291,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
 
             return true;
-        }
-
-        /// <summary>
-        /// Get the path of the file to store a <see cref="MemoryMappedFile"/>.
-        /// We first try to mount it in memory-mounted directories (e.g. /dev/shm/).
-        /// </summary>
-        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
-        /// <returns>Path to the <see cref="MemoryMappedFile"/> if found an existing one
-        /// <see cref="null"/> otherwise.</returns>
-        private static string GetPath(string mapName)
-        {
-            // We escape the mapName to make it a valid file name
-            // Python will use urllib.parse.quote_plus(mapName)
-            string escapedMapName = Uri.EscapeDataString(mapName);
-
-            // Check if the file already exists
-            string filePath;
-            foreach (string tempDir in SharedMemoryMapConstants.TempDirs)
-            {
-                filePath = Path.Combine(tempDir, SharedMemoryMapConstants.TempDirSuffix, escapedMapName);
-                if (File.Exists(filePath))
-                {
-                    return filePath;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Create a path which will be used to create a file backing a <see cref="MemoryMappedFile"/>.
-        /// </summary>
-        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
-        /// <param name="size">Required size in the directory.</param>
-        /// <returns>Created path.</returns>
-        private static string CreatePath(string mapName, long size = 0)
-        {
-            // We escape the mapName to make it a valid file name
-            // Python will use urllib.parse.quote_plus(mapName)
-            string escapedMapName = Uri.EscapeDataString(mapName);
-
-            // Create a new file
-            string newTempDir = GetDirectory(size);
-            if (newTempDir != null)
-            {
-                DirectoryInfo newTempDirInfo = Directory.CreateDirectory(newTempDir);
-                return Path.Combine(newTempDirInfo.FullName, escapedMapName);
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Get the path of the directory to create <see cref="MemoryMappedFile"/>.
-        /// It checks which one has enough free space.
-        /// </summary>
-        /// <param name="size">Required size in the directory.</param>
-        /// <returns>Directory with enough space to create <see cref="MemoryMappedFile"/>.
-        /// If none of them has enough free space, the
-        /// <see cref="MemoryMappedFileConstants.TempDirSuffix"/> is used.</returns>
-        private static string GetDirectory(long size = 0)
-        {
-            foreach (string tempDir in SharedMemoryMapConstants.TempDirs)
-            {
-                try
-                {
-                    if (Directory.Exists(tempDir))
-                    {
-                        DriveInfo driveInfo = new DriveInfo(tempDir);
-                        long minSize = size + SharedMemoryMapConstants.TempDirMinSize;
-                        if (driveInfo.AvailableFreeSpace > minSize)
-                        {
-                            return Path.Combine(tempDir, SharedMemoryMapConstants.TempDirSuffix);
-                        }
-                    }
-                }
-                catch (ArgumentException)
-                {
-                    continue;
-                }
-            }
-
-            return null;
         }
     }
 }

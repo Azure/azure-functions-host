@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
@@ -15,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     {
         private readonly ILogger _logger;
 
+        private readonly IMemoryMappedFileAccessor _mapAccessor;
+
         /// <summary>
         /// Mapping of invocation ID to list of names of shared memory maps allocated for that invocation.
         /// </summary>
@@ -22,16 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         private readonly ConcurrentDictionary<string, SharedMemoryMap> _allocatedSharedMemoryMaps;
 
-        public SharedMemoryManager(ILogger logger)
+        public SharedMemoryManager(ILogger logger, IMemoryMappedFileAccessor mapAccessor)
         {
             _logger = logger;
+            _mapAccessor = mapAccessor;
             _allocatedSharedMemoryMaps = new ConcurrentDictionary<string, SharedMemoryMap>();
             _invocationSharedMemoryMaps = new ConcurrentDictionary<string, IList<string>>();
         }
 
-        public SharedMemoryManager(ILoggerFactory loggerFactory)
+        public SharedMemoryManager(ILoggerFactory loggerFactory, IMemoryMappedFileAccessor mapAccessor)
         {
             _logger = loggerFactory.CreateLogger("SharedMemoryManager");
+            _mapAccessor = mapAccessor;
             _allocatedSharedMemoryMaps = new ConcurrentDictionary<string, SharedMemoryMap>();
             _invocationSharedMemoryMaps = new ConcurrentDictionary<string, IList<string>>();
         }
@@ -46,26 +49,41 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// successful, <see cref="null"/> otherwise.</returns>
         public async Task<SharedMemoryMetadata> PutBytesAsync(byte[] content)
         {
+            // Generate name of shared memory map to write content into
             string mapName = Guid.NewGuid().ToString();
-            SharedMemoryMap sharedMemoryMap = await SharedMemoryMap.CreateWithContentAsync(_logger, mapName, content);
+
+            // Create shared memory map which can hold the content
+            long contentSize = content.Length;
+            SharedMemoryMap sharedMemoryMap = Create(_logger, mapName, contentSize);
+
+            // Ensure the shared memory map was created
             if (sharedMemoryMap != null)
             {
-                if (_allocatedSharedMemoryMaps.TryAdd(mapName, sharedMemoryMap))
+                // Write content into shared memory map
+                long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
+
+                // Ensure that the entire content has been written into the shared memory map
+                if (bytesWritten == contentSize)
                 {
-                    SharedMemoryMetadata response = new SharedMemoryMetadata
+                    // Track the shared memory map (to keep a reference open so that the OS does not free the memory)
+                    if (_allocatedSharedMemoryMaps.TryAdd(mapName, sharedMemoryMap))
                     {
-                        Name = mapName,
-                        Count = content.Length
-                    };
-                    return response;
-                }
-                else
-                {
-                    sharedMemoryMap.Dispose();
+                        // Respond back with metadata about the created and written shared memory map
+                        SharedMemoryMetadata response = new SharedMemoryMetadata
+                        {
+                            Name = mapName,
+                            Count = contentSize
+                        };
+                        return response;
+                    }
+                    else
+                    {
+                        sharedMemoryMap.Dispose();
+                    }
                 }
             }
 
-            _logger.LogError($"Cannot write content into MemoryMappedFile");
+            _logger.LogError($"Cannot write content into shared memory");
             return null;
         }
 
@@ -101,11 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// </returns>
         public async Task<byte[]> GetBytesAsync(string mapName, long offset, long count)
         {
-            SharedMemoryMap sharedMemoryMap = SharedMemoryMap.Open(_logger, mapName);
+            SharedMemoryMap sharedMemoryMap = Open(_logger, mapName);
 
             try
             {
-                byte[] content = await sharedMemoryMap.TryReadAsBytesAsync(offset, count);
+                byte[] content = await sharedMemoryMap.GetBytesAsync(offset, count);
 
                 if (content != null)
                 {
@@ -156,19 +174,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public bool IsSupported(object input)
         {
-            // TODO gochaudh: add size check
-            return IsDataTypeSupported(input);
+            if (input is byte[] arr)
+            {
+                if (arr.Length >= SharedMemoryConstants.MinObjectSizeForSharedMemoryTransfer)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        private bool IsDataTypeSupported(object input)
+        public SharedMemoryMap Create(ILogger logger, string mapName, long contentSize)
         {
-            if (input is byte[])
+            long size = contentSize + SharedMemoryConstants.HeaderTotalBytes;
+            if (_mapAccessor.TryCreate(mapName, size, out MemoryMappedFile mmf))
             {
-                return true;
+                return new SharedMemoryMap(logger, _mapAccessor, mapName, mmf);
             }
             else
             {
-                return false;
+                return null;
+            }
+        }
+
+        public SharedMemoryMap Open(ILogger logger, string mapName)
+        {
+            if (_mapAccessor.TryOpen(mapName, out MemoryMappedFile mmf))
+            {
+                return new SharedMemoryMap(logger, _mapAccessor, mapName, mmf);
+            }
+            else
+            {
+                return null;
             }
         }
     }

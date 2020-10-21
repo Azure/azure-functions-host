@@ -3,6 +3,7 @@
 
 using System.IO.Abstractions;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -129,6 +130,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
             // Shared memory data transfer
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
+            }
+            else
+            {
+                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorLinux>();
+            }
             services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
 
             // Grpc
