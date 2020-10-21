@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 Errors = _functionErrors.Where(kvp => functionsAllowList.Any(functionName => functionName.Equals(kvp.Key, StringComparison.CurrentCultureIgnoreCase))).ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             }
 
-            return functionMetadataList.ToImmutableArray();
+            return functionMetadataList.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
         }
 
         internal bool IsScriptFileDetermined(FunctionMetadata functionMetadata)
