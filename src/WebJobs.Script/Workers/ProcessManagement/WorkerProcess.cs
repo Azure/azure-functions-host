@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly int processExitTimeoutInMilliseconds = 60000;
 
         private Process _process;
         private bool _useStdErrorStreamForErrorsOnly;
@@ -200,7 +201,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     if (!_process.HasExited)
                     {
                         _process.Kill();
-                        _process.WaitForExit();
+                        _process.WaitForExit(processExitTimeoutInMilliseconds);
+
+                        if (!_process.HasExited)
+                        {
+                            throw new TimeoutException($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
+                        }
                     }
                     _process.Dispose();
                 }
