@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly RpcWorkerConfig _testWorkerConfig;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
+        private readonly ISharedMemoryManager _sharedMemoryManager;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests()
@@ -51,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
+            _sharedMemoryManager = new SharedMemoryManager(_logger);
 
             var hostOptions = new ScriptApplicationHostOptions
             {
@@ -71,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
         }
 
         [Fact]
@@ -146,7 +150,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
@@ -242,7 +247,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _metricsLogger,
                0,
                _testEnvironment,
-               _hostOptionsMonitor);
+               _hostOptionsMonitor,
+               _sharedMemoryManager);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -442,8 +448,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 },
                 BindingData = new Dictionary<string, object>(),
                 Inputs = new List<(string name, DataType type, object val)>(),
-                ResultSource = resultSource,
-                SharedMemoryResources = new List<string>()
+                ResultSource = resultSource
             };
         }
 

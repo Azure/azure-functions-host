@@ -25,7 +25,6 @@ using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
-using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -37,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly string _runtime;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly SharedMemoryManager _sharedMemoryManager;
+        private readonly ISharedMemoryManager _sharedMemoryManager;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -62,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private bool _isSharedMemoryDataTransferEnabled;
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -72,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
            IMetricsLogger metricsLogger,
            int attemptCount,
            IEnvironment environment,
-           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+           ISharedMemoryManager sharedMemoryManager)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _metricsLogger = metricsLogger;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
-            _sharedMemoryManager = new SharedMemoryManager(_workerChannelLogger);
+            _sharedMemoryManager = sharedMemoryManager;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -245,6 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
+            _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled(_workerChannelLogger, _environment, _workerCapabilities);
             _workerInitTask.SetResult(true);
         }
 
@@ -399,7 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _sharedMemoryManager);
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -414,6 +416,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        private object GetBindingData(ParameterBinding binding)
+        {
+            if (binding.RpcSharedMemory != null)
+            {
+                // Data was transferred by the worker using shared memory
+                string mapName = binding.RpcSharedMemory.Name;
+                long offset = binding.RpcSharedMemory.Offset;
+                long count = binding.RpcSharedMemory.Count;
+                // TODO gochaudh: InvokeResponse (caller of this method) seems like it can't be made async - confirm?
+                return _sharedMemoryManager.GetBytesAsync(mapName, offset, count).GetAwaiter().GetResult();
+            }
+            else
+            {
+                // Data was transferred by the worker using RPC
+                return binding.Data.ToObject();
+            }
+        }
+
         internal void InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
@@ -424,18 +444,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 try
                 {
                     IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
-                        .ToDictionary(binding => binding.Name, binding => binding.Data.ToObject(_sharedMemoryManager));
+                        .ToDictionary(binding => binding.Name, binding => GetBindingData(binding));
 
                     var result = new ScriptInvocationResult()
                     {
                         Outputs = bindingsDictionary,
-                        Return = invokeResponse?.ReturnValue?.ToObject(_sharedMemoryManager)
+                        Return = invokeResponse?.ReturnValue?.ToObject()
                     };
                     context.ResultSource.SetResult(result);
 
-                    if (!context.FreeSharedMemoryResources(_sharedMemoryManager))
+                    if (!_sharedMemoryManager.TryFreeAllResourcesForInvocation(invokeResponse.InvocationId))
                     {
-                        _workerChannelLogger.LogError($"Cannot free Shared Memory resources for invocation: {invokeResponse.InvocationId}");
+                        _workerChannelLogger.LogError($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
                     }
 
                     CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest()
@@ -613,6 +633,41 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
             }
             return true;
+        }
+
+        private static bool IsSharedMemoryDataTransferEnabled(ILogger logger, IEnvironment environment, GrpcCapabilities capabilities)
+        {
+            // 1) Check if the environment variable (AppSetting) has this feature enabled
+            string envVal = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName);
+            bool envValEnabled = false;
+            if (bool.TryParse(envVal, out bool boolResult))
+            {
+                // Check if value was specified as a bool (true/false)
+                envValEnabled = boolResult;
+            }
+            else if (int.TryParse(envVal, out int intResult))
+            {
+                // Check if value was specified as an int (1/0)
+                envValEnabled = intResult == 1;
+            }
+
+            bool isEnabled;
+            if (envValEnabled)
+            {
+                // 2) Check if the worker supports this feature.
+                bool capabilityEnabled = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.SharedMemoryDataTransfer));
+
+                // 3) It will only be used if both environment variable and worker capability have this feature enabled
+                isEnabled = envValEnabled && capabilityEnabled;
+            }
+            else
+            {
+                // Environment variable has this feature disabled so no point checking worker capability
+                isEnabled = false;
+            }
+
+            logger.LogTrace($"IsSharedMemoryDataTransferEnabled: {isEnabled}");
+            return isEnabled;
         }
     }
 }

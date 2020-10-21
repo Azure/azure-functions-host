@@ -11,13 +11,59 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
-using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, SharedMemoryManager sharedMemoryManager = null)
+        private static async Task<RpcSharedMemory> SharedMemoryDataTransferAsync(ILogger logger, string invocationId, object value, ISharedMemoryManager sharedMemoryManager)
+        {
+            if (sharedMemoryManager.IsSupported(value))
+            {
+                // Put the content into shared memory and get the name of the shared memory map written to
+                SharedMemoryMetadata putResponse = await sharedMemoryManager.PutObjectAsync(value);
+                if (putResponse != null)
+                {
+                    // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
+                    sharedMemoryManager.TrackSharedMemoryMapForInvocation(invocationId, putResponse.Name);
+
+                    RpcSharedMemoryDataType? dataType = GetRpcSharedMemoryDataType(value);
+                    if (dataType.HasValue)
+                    {
+                        // Generate a response
+                        RpcSharedMemory sharedMem = new RpcSharedMemory()
+                        {
+                            Name = putResponse.Name,
+                            Offset = 0,
+                            Count = putResponse.Count,
+                            Type = dataType.Value
+                        };
+
+                        return sharedMem;
+                    }
+                }
+                else
+                {
+                    logger.LogError($"Cannot write to shared memory for invocation: {invocationId}");
+                }
+            }
+
+            return null;
+        }
+
+        private static RpcSharedMemoryDataType? GetRpcSharedMemoryDataType(object value)
+        {
+            if (value is byte[])
+            {
+                return RpcSharedMemoryDataType.Bytes;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled = false, ISharedMemoryManager sharedMemoryManager = null)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -32,28 +78,43 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             foreach (var input in context.Inputs)
             {
-                TypedData rpcValue = null;
-                if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                RpcSharedMemory sharedMem = null;
+                ParameterBinding parameterBinding = null;
+                if (isSharedMemoryDataTransferEnabled)
                 {
-                    // TODO gochaudh: Check config before using SharedMemoryManager
-                    rpcValue = await input.val.ToRpc(logger, capabilities, sharedMemoryManager);
-                    if (input.val != null)
-                    {
-                        if (rpcValue.DataCase == RpcDataType.RpcSharedMemoryInfo && sharedMemoryManager != null)
-                        {
-                            // Add the name of the MemoryMappedFile created for this input to the list of
-                            // SharedMemoryResources used for this invocation
-                            context.SharedMemoryResources.Add(rpcValue.RpcSharedMemoryInfo.Name);
-                        }
-                        rpcValueCache.Add(input.val, rpcValue);
-                    }
+                    // Try to transfer this data over shared memory instead of RPC
+                    sharedMem = await SharedMemoryDataTransferAsync(logger, invocationRequest.InvocationId, input.val, sharedMemoryManager);
                 }
 
-                var parameterBinding = new ParameterBinding
+                if (sharedMem == null)
                 {
-                    Name = input.name,
-                    Data = rpcValue
-                };
+                    // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        RpcSharedMemory = sharedMem
+                    };
+                }
+                else
+                {
+                    // Check if data was transferred over shared memory; if not (either disabled, type not supported or some error), resort to RPC
+                    TypedData rpcValue = null;
+                    if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                    {
+                        rpcValue = await input.val.ToRpc(logger, capabilities);
+                        if (input.val != null)
+                        {
+                            rpcValueCache.Add(input.val, rpcValue);
+                        }
+                    }
+
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        Data = rpcValue
+                    };
+                }
+
                 invocationRequest.InputData.Add(parameterBinding);
             }
 
@@ -66,34 +127,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 if (!rpcValueCache.TryGetValue(pair.Value, out TypedData rpcValue))
                 {
-                    // TODO gochaudh: Check config before using SharedMemoryManager
-                    rpcValue = await pair.Value.ToRpc(logger, capabilities, sharedMemoryManager);
+                    rpcValue = await pair.Value.ToRpc(logger, capabilities);
                     rpcValueCache.Add(pair.Value, rpcValue);
                 }
 
-                if (rpcValue.DataCase == RpcDataType.RpcSharedMemoryInfo && sharedMemoryManager != null)
-                {
-                    // Add the name of the MemoryMappedFile created for this input to the list of
-                    // SharedMemoryResources used for this invocation
-                    context.SharedMemoryResources.Add(rpcValue.RpcSharedMemoryInfo.Name);
-                }
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
             }
 
             return invocationRequest;
-        }
-
-        public static bool FreeSharedMemoryResources(this ScriptInvocationContext context, SharedMemoryManager sharedMemoryManager)
-        {
-            foreach (string mapName in context.SharedMemoryResources)
-            {
-                if (!sharedMemoryManager.TryFree(mapName))
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         /// <summary>

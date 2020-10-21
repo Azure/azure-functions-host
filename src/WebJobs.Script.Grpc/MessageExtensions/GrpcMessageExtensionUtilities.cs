@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class GrpcMessageExtensionUtilities
     {
-        public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage, SharedMemoryManager sharedMemoryManager)
+        public static object ConvertFromHttpMessageToExpando(RpcHttp inputMessage)
         {
             if (inputMessage == null)
             {
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (inputMessage.Body != null)
             {
-                expando.body = inputMessage.Body.ToObject(sharedMemoryManager);
+                expando.body = inputMessage.Body.ToObject();
             }
             return expando;
         }

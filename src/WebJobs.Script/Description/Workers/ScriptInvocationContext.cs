@@ -32,13 +32,5 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public ILogger Logger { get; set; }
 
         public System.Threading.ExecutionContext AsyncExecutionContext { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of names of <see cref="MemoryMappedFile"/> that were allocated to
-        /// transfer data to the worker process for this invcation.
-        /// These are tracked here so that once the invocation is complete, the resources can be
-        /// freed.
-        /// </summary>
-        public IList<string> SharedMemoryResources { get; set; }
     }
 }

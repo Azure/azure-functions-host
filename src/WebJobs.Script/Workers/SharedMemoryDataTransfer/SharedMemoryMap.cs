@@ -18,32 +18,32 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     /// 4) long and int consistency - ensure > 2GB mmaps are handled.
     /// 5) put all private methods at the end.
     /// </summary>
-    public class SharedMemoryFile : IDisposable
+    public class SharedMemoryMap : IDisposable
     {
         private readonly ILogger _logger;
 
         /// <summary>
-        /// <see cref="MemoryMappedFile"/> containg the header + content of this <see cref="SharedMemoryFile"/>.
+        /// <see cref="MemoryMappedFile"/> containg the header + content of this <see cref="SharedMemoryMap"/>.
         /// </summary>
         private readonly MemoryMappedFile _mmf;
 
         /// <summary>
-        /// Name of the <see cref="MemoryMappedFile"/> backing this <see cref="SharedMemoryFile"/>.
+        /// Name of the <see cref="MemoryMappedFile"/> backing this <see cref="SharedMemoryMap"/>.
         /// </summary>
         private readonly string _mapName;
 
-        public SharedMemoryFile(ILogger logger, string mapName, MemoryMappedFile mmf)
+        public SharedMemoryMap(ILogger logger, string mapName, MemoryMappedFile mmf)
         {
             _logger = logger;
             _mapName = mapName;
             _mmf = mmf;
         }
 
-        public static SharedMemoryFile Create(ILogger logger, string mapName, long size)
+        public static SharedMemoryMap Create(ILogger logger, string mapName, long size)
         {
             if (TryCreate(logger, mapName, size, out MemoryMappedFile mmf))
             {
-                return new SharedMemoryFile(logger, mapName, mmf);
+                return new SharedMemoryMap(logger, mapName, mmf);
             }
             else
             {
@@ -51,11 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
-        public static SharedMemoryFile CreateOrOpen(ILogger logger, string mapName, long size)
+        public static SharedMemoryMap CreateOrOpen(ILogger logger, string mapName, long size)
         {
             if (TryCreateOrOpen(logger, mapName, size, out MemoryMappedFile mmf))
             {
-                return new SharedMemoryFile(logger, mapName, mmf);
+                return new SharedMemoryMap(logger, mapName, mmf);
             }
             else
             {
@@ -63,11 +63,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
-        public static SharedMemoryFile Open(ILogger logger, string mapName)
+        public static SharedMemoryMap Open(ILogger logger, string mapName)
         {
             if (TryOpen(logger, mapName, out MemoryMappedFile mmf))
             {
-                return new SharedMemoryFile(logger, mapName, mmf);
+                return new SharedMemoryMap(logger, mapName, mmf);
             }
             else
             {
@@ -75,12 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
-        public static async Task<SharedMemoryFile> CreateWithContentAsync(ILogger logger, string mapName, byte[] content)
+        public static async Task<SharedMemoryMap> CreateWithContentAsync(ILogger logger, string mapName, byte[] content)
         {
             MemoryMappedFile mmf = await TryCreateWithContentAsync(logger, mapName, content);
             if (mmf != null)
             {
-                return new SharedMemoryFile(logger, mapName, mmf);
+                return new SharedMemoryMap(logger, mapName, mmf);
             }
             else
             {
@@ -240,8 +240,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 {
                     using (MemoryMappedViewStream mmv = mmf.CreateViewStream())
                     {
-                        await mmv.WriteAsync(contentLengthBytes, 0, SharedMemoryFileConstants.LengthNumBytes);
-                        await content.CopyToAsync(mmv, SharedMemoryFileConstants.MinBufferSize);
+                        await mmv.WriteAsync(contentLengthBytes, 0, SharedMemoryMapConstants.LengthNumBytes);
+                        await content.CopyToAsync(mmv, SharedMemoryMapConstants.MinBufferSize);
                         await mmv.FlushAsync();
                     }
 
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Read the content contained in this <see cref="SharedMemoryFile"/> as <see cref="byte[]"/>.
+        /// Read the content contained in this <see cref="SharedMemoryMap"/> as <see cref="byte[]"/>.
         /// </summary>
         /// <returns><see cref="byte[]"/> of content if successful, <see cref="null"/> otherwise.</returns>
         public async Task<byte[]> TryReadAsBytesAsync()
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Read the content contained in this <see cref="SharedMemoryFile"/> as <see cref="byte[]"/>.
+        /// Read the content contained in this <see cref="SharedMemoryMap"/> as <see cref="byte[]"/>.
         /// </summary>
         /// <param name="offset">Offset to start reading the content from.</param>
         /// <param name="count">Number of bytes to read.</param>
@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Read the length of content present in this <see cref="SharedMemoryFile"/>.
+        /// Read the length of content present in this <see cref="SharedMemoryMap"/>.
         /// </summary>
         /// <returns><see cref="long"/> containing length of content if successful, -1 otherwise.</returns>
         public async Task<long> GetContentLengthAsync()
@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             try
             {
                 // Create a MemoryMappedViewStream over the header
-                using (MemoryMappedViewStream mmv = _mmf.CreateViewStream(0, SharedMemoryFileConstants.HeaderTotalBytes))
+                using (MemoryMappedViewStream mmv = _mmf.CreateViewStream(0, SharedMemoryMapConstants.HeaderTotalBytes))
                 {
                     // Reads the content length (equal to the size of one long)
                     long contentLength = await ReadLongAsync(mmv);
@@ -345,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Get a <see cref="Stream"/> over the content stored in this <see cref="SharedMemoryFile"/> starting from
+        /// Get a <see cref="Stream"/> over the content stored in this <see cref="SharedMemoryMap"/> starting from
         /// the given offset until offset + count bytes.
         /// </summary>
         /// <returns><see cref="Stream"/> over the content if successful, <see cref="null"/> otherwise.</returns>
@@ -361,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             {
                 if (offset + count <= contentLength)
                 {
-                    return _mmf.CreateViewStream(SharedMemoryFileConstants.HeaderTotalBytes + offset, count);
+                    return _mmf.CreateViewStream(SharedMemoryMapConstants.HeaderTotalBytes + offset, count);
                 }
             }
 
@@ -369,7 +369,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Get a <see cref="Stream"/> over the entire content stored in this <see cref="SharedMemoryFile"/>.
+        /// Get a <see cref="Stream"/> over the entire content stored in this <see cref="SharedMemoryMap"/>.
         /// </summary>
         /// <returns><see cref="Stream"/> over the content if successful, <see cref="null"/> otherwise.</returns>
         public async Task<Stream> GetContentStreamAsync()
@@ -377,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             long contentLength = await GetContentLengthAsync();
             if (contentLength >= 0)
             {
-                return _mmf.CreateViewStream(SharedMemoryFileConstants.HeaderTotalBytes, contentLength);
+                return _mmf.CreateViewStream(SharedMemoryMapConstants.HeaderTotalBytes, contentLength);
             }
 
             return null;
@@ -442,7 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Copy content from this <see cref="SharedMemoryFile"/> into a given <see cref="Stream"/>.
+        /// Copy content from this <see cref="SharedMemoryMap"/> into a given <see cref="Stream"/>.
         /// </summary>
         /// <param name="offset">Offset to start reading the content from.</param>
         /// <param name="count">Number of bytes to read. -1 means read to completion.</param>
@@ -469,8 +469,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             using (contentStream)
             {
                 // Explicitly provide a maximum buffer size
-                long minSize = Math.Min(contentLength, SharedMemoryFileConstants.CopyBufferSize);
-                int bufferSize = Convert.ToInt32(Math.Max(minSize, SharedMemoryFileConstants.MinBufferSize));
+                long minSize = Math.Min(contentLength, SharedMemoryMapConstants.CopyBufferSize);
+                int bufferSize = Convert.ToInt32(Math.Max(minSize, SharedMemoryMapConstants.MinBufferSize));
                 if (!await CopyStreamAsync(contentStream, destination, (int)bytesToCopy, bufferSize))
                 {
                     _logger.LogError($"Cannot copy {bytesToCopy} to destination Stream");
@@ -526,9 +526,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
             // Check if the file already exists
             string filePath;
-            foreach (string tempDir in SharedMemoryFileConstants.TempDirs)
+            foreach (string tempDir in SharedMemoryMapConstants.TempDirs)
             {
-                filePath = Path.Combine(tempDir, SharedMemoryFileConstants.TempDirSuffix, escapedMapName);
+                filePath = Path.Combine(tempDir, SharedMemoryMapConstants.TempDirSuffix, escapedMapName);
                 if (File.Exists(filePath))
                 {
                     return filePath;
@@ -573,17 +573,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <see cref="MemoryMappedFileConstants.TempDirSuffix"/> is used.</returns>
         private static string GetDirectory(long size = 0)
         {
-            foreach (string tempDir in SharedMemoryFileConstants.TempDirs)
+            foreach (string tempDir in SharedMemoryMapConstants.TempDirs)
             {
                 try
                 {
                     if (Directory.Exists(tempDir))
                     {
                         DriveInfo driveInfo = new DriveInfo(tempDir);
-                        long minSize = size + SharedMemoryFileConstants.TempDirMinSize;
+                        long minSize = size + SharedMemoryMapConstants.TempDirMinSize;
                         if (driveInfo.AvailableFreeSpace > minSize)
                         {
-                            return Path.Combine(tempDir, SharedMemoryFileConstants.TempDirSuffix);
+                            return Path.Combine(tempDir, SharedMemoryMapConstants.TempDirSuffix);
                         }
                     }
                 }

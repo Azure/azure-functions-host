@@ -329,12 +329,26 @@ message TypedData {
     CollectionString collection_string = 9;
     CollectionDouble collection_double = 10;
     CollectionSInt64 collection_sint64 = 11;
-    RpcSharedMemoryInfo rpc_shared_memory_info = 12;
   }
 }
 
+// Specify which type of data is contained in the shared memory region being read
+enum RpcSharedMemoryDataType {
+    string = 0;
+    json = 2;
+    bytes = 3;
+    stream = 4;
+    http = 5;
+    int = 6;
+    double = 7;
+    collection_bytes = 8;
+    collection_string = 9;
+    collection_double = 10;
+    collection_sing64 = 11;
+}
+
 // Used to provide metadata about shared memory region to read data from
-message RpcSharedMemoryInfo {
+message RpcSharedMemory {
   // Name of the shared memory map containing data
   string name = 1;
   // Offset in the shared memory map to start reading data from
@@ -342,7 +356,7 @@ message RpcSharedMemoryInfo {
   // Number of bytes to read (starting from the offset)
   int64 count = 3;
   // Final type to which the read data (in bytes) is to be interpreted as
-  string type = 4;
+  RpcSharedMemoryDataType type = 4;
 }
 
 // Used to encapsulate collection string
@@ -370,8 +384,13 @@ message ParameterBinding {
   // Name for the binding
   string name = 1;
 
+  // Note: Either *data* or *rpc_shared_memory* field will be populated
+
   // Data for the binding
   TypedData data = 2;
+
+  // Metadata about the shared memory region to read data from
+  RpcSharedMemory rpc_shared_memory = 3;
 }
 
 // Used to describe a given binding on load
