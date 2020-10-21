@@ -160,6 +160,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_SortsMetadata_FromFunctionProviders()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            const string aFunction = "aFunction";
+            const string bFunction = "bFunction";
+            const string cFunction = "cFunction";
+
+            // Add in unsorted order
+            functionMetadataCollection.Add(GetTestFunctionMetadata("b.dll", name: bFunction));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("a.dll", name: aFunction));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("c.dll", name: cFunction));
+            functionMetadataCollection.Add(GetTestFunctionMetadata("null.dll", name: null));
+
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+            var functionMetadata = testFunctionMetadataManager.LoadFunctionMetadata();
+
+            Assert.Equal(4, functionMetadata.Length);
+
+            Assert.Null(functionMetadata[0].Name);
+            Assert.True(string.Equals(aFunction, functionMetadata[1].Name));
+            Assert.True(string.Equals(bFunction, functionMetadata[2].Name));
+            Assert.True(string.Equals(cFunction, functionMetadata[3].Name));
+        }
+
+        [Fact]
         public void FunctionMetadataManager_ThrowsError_DuplicateFunctions_FromFunctionProviders()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();
