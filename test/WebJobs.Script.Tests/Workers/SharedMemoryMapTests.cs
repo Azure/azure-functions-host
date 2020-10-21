@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
-    public class SharedMemoryFileTests
+    public class SharedMemoryMapTests
     {
         [Fact(Skip = "NotImplemented")]
         public void Create_VerifyCreated()

@@ -99,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
-        public void TrackSharedMemoryMapForInvocation(string invocationId, string mapName)
+        public void AddSharedMemoryMapForInvocation(string invocationId, string mapName)
         {
             IList<string> sharedMemoryMaps = _invocationSharedMemoryMaps.GetOrAdd(invocationId, new List<string>());
             sharedMemoryMaps.Add(mapName);
@@ -141,14 +141,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
-        public bool TryFreeAllResourcesForInvocation(string invocationId)
+        public bool TryFreeSharedMemoryMapsForInvocation(string invocationId)
         {
             bool freedAll = true;
             if (_invocationSharedMemoryMaps.TryRemove(invocationId, out IList<string> mapNames))
             {
                 foreach (string mapName in mapNames)
                 {
-                    if (!TryFree(mapName))
+                    if (!TryFreeSharedMemoryMap(mapName))
                     {
                         freedAll = false;
                     }
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             return freedAll;
         }
 
-        public bool TryFree(string mapName)
+        public bool TryFreeSharedMemoryMap(string mapName)
         {
             if (_allocatedSharedMemoryMaps.TryRemove(mapName, out SharedMemoryMap sharedMemoryMap))
             {

@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (putResponse != null)
                 {
                     // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
-                    sharedMemoryManager.TrackSharedMemoryMapForInvocation(invocationId, putResponse.Name);
+                    sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, putResponse.Name);
 
                     RpcSharedMemoryDataType? dataType = GetRpcSharedMemoryDataType(value);
                     if (dataType.HasValue)

@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.IO.MemoryMappedFiles;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;

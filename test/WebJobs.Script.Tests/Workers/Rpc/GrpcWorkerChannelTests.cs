@@ -419,6 +419,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
+        [Fact(Skip = "NotImplemented")]
+        public void SharedMemoryDataTransferSetting_VerifyEnabled()
+        {
+        }
+
+        [Fact(Skip = "NotImplemented")]
+        public void SharedMemoryDataTransferSetting_VerifyDisabled()
+        {
+        }
+
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
         {
             var metadata1 = new FunctionMetadata()

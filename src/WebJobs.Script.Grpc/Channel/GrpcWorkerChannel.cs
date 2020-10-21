@@ -453,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
                     context.ResultSource.SetResult(result);
 
-                    if (!_sharedMemoryManager.TryFreeAllResourcesForInvocation(invokeResponse.InvocationId))
+                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
                     {
                         _workerChannelLogger.LogError($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
                     }
@@ -635,10 +635,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return true;
         }
 
-        private static bool IsSharedMemoryDataTransferEnabled(ILogger logger, IEnvironment environment, GrpcCapabilities capabilities)
+        internal static bool IsSharedMemoryDataTransferEnabled(ILogger logger, IEnvironment environment, GrpcCapabilities capabilities)
         {
-            // 1) Check if the environment variable (AppSetting) has this feature enabled
+            // Check if the environment variable (AppSetting) has this feature enabled
             string envVal = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName);
+            if (string.IsNullOrEmpty(envVal))
+            {
+                return false;
+            }
+
             bool envValEnabled = false;
             if (bool.TryParse(envVal, out bool boolResult))
             {
@@ -650,24 +655,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // Check if value was specified as an int (1/0)
                 envValEnabled = intResult == 1;
             }
-
-            bool isEnabled;
-            if (envValEnabled)
+            if (!envValEnabled)
             {
-                // 2) Check if the worker supports this feature.
-                bool capabilityEnabled = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.SharedMemoryDataTransfer));
-
-                // 3) It will only be used if both environment variable and worker capability have this feature enabled
-                isEnabled = envValEnabled && capabilityEnabled;
-            }
-            else
-            {
-                // Environment variable has this feature disabled so no point checking worker capability
-                isEnabled = false;
+                return false;
             }
 
-            logger.LogTrace($"IsSharedMemoryDataTransferEnabled: {isEnabled}");
-            return isEnabled;
+            // Check if the worker supports this feature
+            bool capabilityEnabled = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.SharedMemoryDataTransfer));
+            logger.LogTrace($"IsSharedMemoryDataTransferEnabled: {capabilityEnabled}");
+            return capabilityEnabled;
         }
     }
 }

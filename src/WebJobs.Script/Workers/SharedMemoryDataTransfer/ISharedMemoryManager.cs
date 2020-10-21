@@ -15,10 +15,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         bool IsSupported(object input);
 
-        void TrackSharedMemoryMapForInvocation(string invocationId, string mapName);
+        void AddSharedMemoryMapForInvocation(string invocationId, string mapName);
 
-        bool TryFreeAllResourcesForInvocation(string invocationId);
+        bool TryFreeSharedMemoryMapsForInvocation(string invocationId);
 
-        bool TryFree(string mapName);
+        bool TryFreeSharedMemoryMap(string mapName);
     }
 }
