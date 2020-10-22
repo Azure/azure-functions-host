@@ -715,8 +715,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                         return new[]
                         {
                             Path.Combine(rootPath, "bin"),
-                            Path.Combine(rootPath, "function1"),
                             Path.Combine(rootPath, "function2"),
+                            Path.Combine(rootPath, "function1"),
                             Path.Combine(rootPath, "function3")
                         };
                     }
