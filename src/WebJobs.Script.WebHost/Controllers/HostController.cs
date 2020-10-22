@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [RequiresRunningHost]
-        public async Task<IActionResult> GetScaleStatus([FromBody] ScaleStatusContext context, [FromServices] FunctionsScaleManager scaleManager)
+        public async Task<IActionResult> GetScaleStatus([FromBody] ScaleStatusContext context, [FromServices] IScriptHostManager scriptHostManager)
         {
             // if runtime scale isn't enabled return error
             if (!_environment.IsRuntimeScaleMonitoringEnabled())
@@ -153,6 +153,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return BadRequest("Runtime scale monitoring is not enabled.");
             }
 
+            // TEMP: Once https://github.com/Azure/azure-functions-host/issues/5161 is fixed, we should take
+            // FunctionsScaleManager as a parameter.
+            var scaleManager = (scriptHostManager as IServiceProvider)?.GetService<FunctionsScaleManager>();
+            if (scaleManager == null)
+            {
+                // This case should never happen. Because this action is marked RequiresRunningHost,
+                // it's only invoked when the host is running, and if it's running, we'll have access
+                // to the FunctionsScaleManager.
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
             var scaleStatus = await scaleManager.GetScaleStatusAsync(context);
 
             return new ObjectResult(scaleStatus);
@@ -297,6 +307,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return Ok();
             }
 
+            // TEMP: Once https://github.com/Azure/azure-functions-host/issues/5161 is fixed, we can should
+            // IScriptJobHost as a parameter.
             if (scriptHostManager is IServiceProvider serviceProvider)
             {
                 IScriptJobHost jobHost = serviceProvider.GetService<IScriptJobHost>();
@@ -304,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 if (jobHost == null)
                 {
                     _logger.LogError($"No active host available.");
-                    return StatusCode(503);
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
                 }
 
                 await jobHost.TryInvokeWarmupAsync();
