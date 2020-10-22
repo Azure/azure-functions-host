@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -108,7 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
+                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse)));
 
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
                .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
@@ -416,7 +417,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private object GetBindingData(ParameterBinding binding)
+        private async Task<object> GetBindingDataAsync(ParameterBinding binding)
         {
             if (binding.RpcSharedMemory != null)
             {
@@ -424,8 +425,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 string mapName = binding.RpcSharedMemory.Name;
                 long offset = binding.RpcSharedMemory.Offset;
                 long count = binding.RpcSharedMemory.Count;
-                // TODO gochaudh: InvokeResponse (caller of this method) seems like it can't be made async - confirm?
-                return _sharedMemoryManager.GetBytesAsync(mapName, offset, count).GetAwaiter().GetResult();
+                return await _sharedMemoryManager.GetBytesAsync(mapName, offset, count);
             }
             else
             {
@@ -434,7 +434,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void InvokeResponse(InvocationResponse invokeResponse)
+        /// <summary>
+        /// From the output data produced by the worker, get a list of the shared memory maps that were created for this invocation.
+        /// </summary>
+        /// <param name="bindings">List of <see cref="ParameterBinding"/> produced by the worker as output.</param>
+        /// <returns>List of names of shared memory maps produced by the worker.</returns>
+        private IList<string> GetOutputMaps(IList<ParameterBinding> bindings)
+        {
+            IList<string> outputMaps = new List<string>();
+            foreach (ParameterBinding binding in bindings)
+            {
+                if (binding.RpcSharedMemory != null)
+                {
+                    outputMaps.Add(binding.RpcSharedMemory.Name);
+                }
+            }
+
+            return outputMaps;
+        }
+
+        internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
 
@@ -443,8 +462,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 try
                 {
-                    IDictionary<string, object> bindingsDictionary = invokeResponse.OutputData
-                        .ToDictionary(binding => binding.Name, binding => GetBindingData(binding));
+                    IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
+                        .ToDictionaryAsync(binding => binding.Name, binding => GetBindingDataAsync(binding));
 
                     var result = new ScriptInvocationResult()
                     {
@@ -453,26 +472,35 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
                     context.ResultSource.SetResult(result);
 
-                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
-                    {
-                        _workerChannelLogger.LogError($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
-                    }
+                    // List of shared memory maps that were produced by the worker (for output bindings)
+                    IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
 
-                    CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest()
-                    {
-                        InvocationId = invokeResponse.InvocationId
-                    };
-
-                    SendStreamingMessage(new StreamingMessage()
-                    {
-                        CloseSharedMemoryResourcesRequest = closeSharedMemoryResourcesRequest
-                    });
+                    // If this invocation was using any shared memory maps, close them to free memory
+                    CloseSharedMemoryResourcesForInvocation(invokeResponse.InvocationId, outputMaps);
                 }
                 catch (Exception responseEx)
                 {
                     context.ResultSource.TrySetException(responseEx);
                 }
             }
+        }
+
+        internal void CloseSharedMemoryResourcesForInvocation(string invocationId, IList<string> outputMaps)
+        {
+            // Free memory allocated by the host (for input bindings)
+            if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invocationId))
+            {
+                _workerChannelLogger.LogError($"Cannot free all shared memory resources for invocation: {invocationId}");
+            }
+
+            // Request to free memory allocated by the worker (for output bindings)
+            CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest();
+            closeSharedMemoryResourcesRequest.MapNames.AddRange(outputMaps);
+
+            SendStreamingMessage(new StreamingMessage()
+            {
+                CloseSharedMemoryResourcesRequest = closeSharedMemoryResourcesRequest
+            });
         }
 
         internal void Log(GrpcEvent msg)

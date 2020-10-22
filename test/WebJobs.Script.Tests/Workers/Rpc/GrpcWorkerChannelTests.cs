@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await channel.SendInvocationRequest(scriptInvocationContext);
             Task result = channel.DrainInvocationsAsync();
             Assert.NotEqual(result.Status, TaskStatus.RanToCompletion);
-            channel.InvokeResponse(new InvocationResponse
+            await channel.InvokeResponse(new InvocationResponse
             {
                 InvocationId = invocationId.ToString(),
                 Result = new StatusResult

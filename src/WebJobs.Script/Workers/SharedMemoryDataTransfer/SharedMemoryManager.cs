@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <param name="content">Content to write into shared memory.</param>
         /// <returns>Name of the <see cref="MemoryMappedFile"/> into which data is written if
         /// successful, <see cref="null"/> otherwise.</returns>
-        public async Task<SharedMemoryMetadata> PutBytesAsync(byte[] content)
+        private async Task<SharedMemoryMetadata> PutBytesAsync(byte[] content)
         {
             // Generate name of shared memory map to write content into
             string mapName = Guid.NewGuid().ToString();

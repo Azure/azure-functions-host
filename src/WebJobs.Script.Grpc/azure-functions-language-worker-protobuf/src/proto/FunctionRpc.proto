@@ -207,7 +207,7 @@ message FunctionEnvironmentReloadResponse {
 
 // Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
 message CloseSharedMemoryResourcesRequest {
-  string invocation_id = 1;
+  repeated string map_names = 1;
 }
 
 // Response from the worker indicating whether the shared memory maps it had allocated have been successfully closed
@@ -334,18 +334,18 @@ message TypedData {
 
 // Specify which type of data is contained in the shared memory region being read
 enum RpcSharedMemoryDataType {
-    unknown = 0;
-    string = 1;
-    json = 2;
-    bytes = 3;
-    stream = 4;
-    http = 5;
-    int = 6;
-    double = 7;
-    collection_bytes = 8;
-    collection_string = 9;
-    collection_double = 10;
-    collection_sint64 = 11;
+  unknown = 0;
+  string = 1;
+  json = 2;
+  bytes = 3;
+  stream = 4;
+  http = 5;
+  int = 6;
+  double = 7;
+  collection_bytes = 8;
+  collection_string = 9;
+  collection_double = 10;
+  collection_sint64 = 11;
 }
 
 // Used to provide metadata about shared memory region to read data from

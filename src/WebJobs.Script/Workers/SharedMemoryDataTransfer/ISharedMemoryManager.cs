@@ -7,8 +7,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     public interface ISharedMemoryManager
     {
-        Task<SharedMemoryMetadata> PutBytesAsync(byte[] content);
-
         Task<SharedMemoryMetadata> PutObjectAsync(object input);
 
         Task<byte[]> GetBytesAsync(string mapName, long offset, long count);

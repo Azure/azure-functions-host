@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -16,53 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        private static async Task<RpcSharedMemory> SharedMemoryDataTransferAsync(ILogger logger, string invocationId, object value, ISharedMemoryManager sharedMemoryManager)
-        {
-            if (sharedMemoryManager.IsSupported(value))
-            {
-                // Put the content into shared memory and get the name of the shared memory map written to
-                SharedMemoryMetadata putResponse = await sharedMemoryManager.PutObjectAsync(value);
-                if (putResponse != null)
-                {
-                    // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
-                    sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, putResponse.Name);
-
-                    RpcSharedMemoryDataType? dataType = GetRpcSharedMemoryDataType(value);
-                    if (dataType.HasValue)
-                    {
-                        // Generate a response
-                        RpcSharedMemory sharedMem = new RpcSharedMemory()
-                        {
-                            Name = putResponse.Name,
-                            Offset = 0,
-                            Count = putResponse.Count,
-                            Type = dataType.Value
-                        };
-
-                        return sharedMem;
-                    }
-                }
-                else
-                {
-                    logger.LogError($"Cannot write to shared memory for invocation: {invocationId}");
-                }
-            }
-
-            return null;
-        }
-
-        private static RpcSharedMemoryDataType? GetRpcSharedMemoryDataType(object value)
-        {
-            if (value is byte[])
-            {
-                return RpcSharedMemoryDataType.Bytes;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
         public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled = false, ISharedMemoryManager sharedMemoryManager = null)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
@@ -83,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (isSharedMemoryDataTransferEnabled)
                 {
                     // Try to transfer this data over shared memory instead of RPC
-                    sharedMem = await SharedMemoryDataTransferAsync(logger, invocationRequest.InvocationId, input.val, sharedMemoryManager);
+                    sharedMem = await input.val.ToRpcSharedMemory(logger, invocationRequest.InvocationId, sharedMemoryManager);
                 }
 
                 if (sharedMem != null)

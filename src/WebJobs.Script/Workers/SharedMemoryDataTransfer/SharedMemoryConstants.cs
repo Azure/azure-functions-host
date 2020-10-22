@@ -23,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// Minimum size an object must be in order for it to be transferred over shared memory.
         /// If the object is smaller than this, gRPC is used.
         /// </summary>
-        public const long MinObjectSizeForSharedMemoryTransfer = 1024 * 1024; // 1 MB
+        //public const long MinObjectSizeForSharedMemoryTransfer = 1024 * 1024; // 1 MB
+        public const long MinObjectSizeForSharedMemoryTransfer = 1; // TODO gochaudh: RESTORE PREVIOUS LINE!
 
         /// <summary>
         /// The minimum buffer size to copy from memory map 80 KB
