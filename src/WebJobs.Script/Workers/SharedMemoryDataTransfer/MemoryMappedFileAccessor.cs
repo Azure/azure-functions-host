@@ -19,6 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             Logger = logger;
         }
 
+        public MemoryMappedFileAccessor(ILoggerFactory loggerFactory)
+        {
+            Logger = loggerFactory.CreateLogger("MemoryMappedFileAccessor");
+        }
+
         protected ILogger Logger { get; }
 
         public abstract bool TryCreate(string mapName, long size, out MemoryMappedFile mmf);

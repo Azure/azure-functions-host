@@ -334,7 +334,8 @@ message TypedData {
 
 // Specify which type of data is contained in the shared memory region being read
 enum RpcSharedMemoryDataType {
-    string = 0;
+    unknown = 0;
+    string = 1;
     json = 2;
     bytes = 3;
     stream = 4;
@@ -344,7 +345,7 @@ enum RpcSharedMemoryDataType {
     collection_bytes = 8;
     collection_string = 9;
     collection_double = 10;
-    collection_sing64 = 11;
+    collection_sint64 = 11;
 }
 
 // Used to provide metadata about shared memory region to read data from

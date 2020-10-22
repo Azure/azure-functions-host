@@ -19,6 +19,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
         }
 
+        public MemoryMappedFileAccessorLinux(ILoggerFactory loggerFactory) : base(loggerFactory)
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                throw new Exception($"Cannot instantiate on this platform");
+            }
+        }
+
         public override bool TryCreate(string mapName, long size, out MemoryMappedFile mmf)
         {
             mmf = null;
