@@ -1,17 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System;
 using System.IO;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
@@ -113,8 +110,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scaleManagerMock = new Mock<FunctionsScaleManager>(MockBehavior.Strict);
             var scaleStatusResult = new ScaleStatusResult { Vote = ScaleVote.ScaleOut };
             scaleManagerMock.Setup(p => p.GetScaleStatusAsync(context)).ReturnsAsync(scaleStatusResult);
-            var result = (ObjectResult)(await _hostController.GetScaleStatus(context, scaleManagerMock.Object));
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(p => p.GetService(typeof(FunctionsScaleManager))).Returns(scaleManagerMock.Object);
+            var result = (ObjectResult)(await _hostController.GetScaleStatus(context, scriptHostManagerMock.Object));
             Assert.Same(result.Value, scaleStatusResult);
+        }
+
+        [Fact]
+        public async Task GetScaleStatus_FunctionsScaleManager_Null_ReturnsServiceUnavailable()
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeScaleMonitoringEnabled)).Returns("1");
+
+            var context = new ScaleStatusContext
+            {
+                WorkerCount = 5
+            };
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(p => p.GetService(typeof(FunctionsScaleManager))).Returns(null);
+            var result = (StatusCodeResult)(await _hostController.GetScaleStatus(context, scriptHostManagerMock.Object));
+
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
         }
 
         [Fact]
@@ -125,7 +142,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 WorkerCount = 5
             };
             var scaleManagerMock = new Mock<FunctionsScaleManager>(MockBehavior.Strict);
-            var result = (BadRequestObjectResult)(await _hostController.GetScaleStatus(context, scaleManagerMock.Object));
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(p => p.GetService(typeof(FunctionsScaleManager))).Returns(scaleManagerMock.Object);
+            var result = (BadRequestObjectResult)(await _hostController.GetScaleStatus(context, scriptHostManagerMock.Object));
             Assert.Equal(HttpStatusCode.BadRequest, (HttpStatusCode)result.StatusCode);
             Assert.Equal("Runtime scale monitoring is not enabled.", result.Value);
         }
