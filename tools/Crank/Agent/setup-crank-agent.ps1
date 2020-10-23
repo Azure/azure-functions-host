@@ -5,7 +5,8 @@ param (
     [bool]$InstallDotNet = $true,
     [bool]$InstallCrankAgent = $true,
     [string]$CrankBranch,
-    [bool]$Docker = $false
+    [bool]$Docker = $false,
+    [pscredential]$WindowsLocalAdmin
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,7 +17,9 @@ function InstallDotNet {
     Write-Verbose 'Installing dotnet...'
     if ($IsWindows) {
         Invoke-WebRequest 'https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
-        ./dotnet-install.ps1
+        $dotnetInstallDir = "$env:ProgramFiles\dotnet"
+        ./dotnet-install.ps1 -InstallDir $dotnetInstallDir
+        [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$dotnetInstallDir\;", 'Machine')
     } else {
         # From https://docs.microsoft.com/dotnet/core/install/linux-ubuntu#install-the-sdk
         sudo apt-get update
@@ -33,6 +36,9 @@ function BuildCrankAgent($CrankRepoPath) {
         Write-Verbose "Building crank (see $(Join-Path -Path $PWD -ChildPath $logFileName))..."
         $buildCommand = $IsWindows ? '.\build.cmd' : './build.sh'
         & $buildCommand -configuration Release -pack > $logFileName
+        if (-not $?) {
+            throw "Crank build failed, exit code: $LASTEXITCODE"
+        }
 
         Join-Path -Path $PWD -ChildPath "artifacts/packages/Release/Shipping"
     } finally {
@@ -82,7 +88,8 @@ function EnsureDirectoryExists($Path) {
 
 function CloneCrankRepo {
     Write-Verbose "Cloning crank repo..."
-    $githubPath = Join-Path -Path '~' -ChildPath 'github'
+    $githubParent = $IsLinux ? '~' : 'C:\'
+    $githubPath = Join-Path -Path $githubParent -ChildPath 'github'
     EnsureDirectoryExists $githubPath
     Push-Location -Path $githubPath
     try {
@@ -120,12 +127,18 @@ function InstallCrankAgent {
             InstallCrankAgentTool
         }
     }
+
+    if ($IsWindows) {
+        New-NetFirewallRule -DisplayName 'Crank Agent' -Group 'Crank' -LocalPort 5010 -Protocol TCP -Direction Inbound -Action Allow | Out-Null
+        New-NetFirewallRule -DisplayName 'Crank App & Load (inbound)' -Group 'Crank' -LocalPort 5000 -Protocol TCP -Direction Inbound -Action Allow | Out-Null
+        New-NetFirewallRule -DisplayName 'Crank App & Load (outbound)' -Group 'Crank' -LocalPort 5000 -Protocol TCP -Direction Outbound -Action Allow | Out-Null
+    }
 }
 
 function ScheduleCrankAgentStartWindows($RunScriptPath, [pscredential]$Credential) {
     $taskName = 'CrankAgent'
 
-    if (Get-ScheduledTask -TaskName $taskName) {
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
         Write-Warning "Task '$taskName' already exists, no changes performed"
     } else {
         $action = New-ScheduledTaskAction -Execute 'pwsh.exe' `
@@ -178,7 +191,7 @@ function ScheduleCrankAgentStart {
         $scriptPath = Join-Path -Path (Split-Path $PSCommandPath -Parent) -ChildPath 'run-crank-agent.ps1'
 
         if ($IsWindows) {
-            ScheduleCrankAgentStartWindows -RunScriptPath $scriptPath -Credential (Get-Credential)
+            ScheduleCrankAgentStartWindows -RunScriptPath $scriptPath -Credential $WindowsLocalAdmin
         } else {
             ScheduleCrankAgentStartLinux -RunScriptPath $scriptPath
         }
@@ -199,6 +212,8 @@ function InstallDocker {
 #endregion
 
 #region Main
+
+Write-Verbose "WindowsLocalAdmin: '$($WindowsLocalAdmin.UserName)'"
 
 if ($Docker) { InstallDocker }
 if ($InstallDotNet) { InstallDotNet }

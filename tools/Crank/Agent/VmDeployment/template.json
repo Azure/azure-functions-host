@@ -8,6 +8,16 @@
                 "description": "The name of you Virtual Machine."
             }
         },
+        "osType": {
+            "type": "string",
+            "allowedValues": [
+                "Linux",
+                "Windows"
+            ],
+            "metadata": {
+                "description": "OS type."
+            }
+        },
         "adminUsername": {
             "type": "string",
             "metadata": {
@@ -93,6 +103,16 @@
                                 "description": "The name of you Virtual Machine."
                             }
                         },
+                        "osType": {
+                            "type": "string",
+                            "allowedValues": [
+                                "Linux",
+                                "Windows"
+                            ],
+                            "metadata": {
+                                "description": "OS type."
+                            }
+                        },
                         "adminUsername": {
                             "type": "string",
                             "metadata": {
@@ -119,13 +139,6 @@
                             "type": "string",
                             "metadata": {
                                 "description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
-                            }
-                        },
-                        "ubuntuOSVersion": {
-                            "type": "string",
-                            "defaultValue": "18.04-LTS",
-                            "metadata": {
-                                "description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version."
                             }
                         },
                         "location": {
@@ -245,6 +258,19 @@
                                         }
                                     },
                                     {
+                                        "name": "RDP",
+                                        "properties": {
+                                            "priority": 1001,
+                                            "protocol": "TCP",
+                                            "access": "Allow",
+                                            "direction": "Inbound",
+                                            "sourceAddressPrefix": "*",
+                                            "sourcePortRange": "*",
+                                            "destinationAddressPrefix": "*",
+                                            "destinationPortRange": "3389"
+                                        }
+                                    },
+                                    {
                                         "name": "DotNet-Crank",
                                         "properties": {
                                             "priority": 1011,
@@ -335,9 +361,9 @@
                                         "diskSizeGB": 127
                                     },
                                     "imageReference": {
-                                        "publisher": "Canonical",
-                                        "offer": "UbuntuServer",
-                                        "sku": "[parameters('ubuntuOSVersion')]",
+                                        "publisher": "[if(equals(parameters('osType'), 'Linux'), 'Canonical', 'MicrosoftWindowsServer')]",
+                                        "offer": "[if(equals(parameters('osType'), 'Linux'), 'UbuntuServer', 'WindowsServer')]",
+                                        "sku": "[if(equals(parameters('osType'), 'Linux'), '18.04-LTS', '2016-Datacenter')]",
                                         "version": "latest"
                                     }
                                 },
@@ -349,7 +375,7 @@
                                     ]
                                 },
                                 "osProfile": {
-                                    "computerName": "[parameters('vmName')]",
+                                    "computerName": "crank",
                                     "adminUsername": "[parameters('adminUsername')]",
                                     "adminPassword": "[parameters('adminPasswordOrKey')]",
                                     "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
@@ -357,26 +383,50 @@
                             }
                         },
                         {
+                            "condition": "[equals(parameters('osType'), 'Linux')]",
+                            "type": "Microsoft.Compute/virtualMachines/extensions",
                             "apiVersion": "2019-12-01",
+                            "name": "[concat(parameters('vmName'), '/custom-script-linux')]",
                             "dependsOn": [
                                 "[parameters('vmName')]"
                             ],
                             "location": "[parameters('location')]",
-                            "name": "[concat(parameters('vmName'), '/custom-script')]",
                             "properties": {
                                 "autoUpgradeMinorVersion": true,
                                 "protectedSettings": {
                                     "fileUris": [
                                         "https://raw.githubusercontent.com/Azure/azure-functions-host/dev/tools/Crank/Agent/Linux/bootstrap.sh"
                                     ],
-                                    "commandToExecute": "[concat('mv bootstrap.sh /home/Functions/ && cd /home/Functions && chmod +xr bootstrap.sh && sudo -H -u Functions ./bootstrap.sh \"', replace(parameters('customScriptParameters'), '\"', '\\\"'), '\"')]"
+                                    "commandToExecute": "[concat('mv bootstrap.sh /home/Functions/ && cd /home/Functions && chmod +xr bootstrap.sh && sudo -H -u Functions ./bootstrap.sh ', base64(parameters('customScriptParameters')))]"
                                 },
                                 "publisher": "Microsoft.Azure.Extensions",
                                 "type": "CustomScript",
                                 "typeHandlerVersion": "2.1"
                             },
-                            "tags": {},
-                            "type": "Microsoft.Compute/virtualMachines/extensions"
+                            "tags": {}
+                        },
+                        {
+                            "condition": "[equals(parameters('osType'), 'Windows')]",
+                            "type": "Microsoft.Compute/virtualMachines/extensions",
+                            "apiVersion": "2019-12-01",
+                            "name": "[concat(parameters('vmName'), '/custom-script-windows')]",
+                            "dependsOn": [
+                                "[parameters('vmName')]"
+                            ],
+                            "location": "[parameters('location')]",
+                            "properties": {
+                                "autoUpgradeMinorVersion": true,
+                                "protectedSettings": {
+                                    "fileUris": [
+                                        "https://raw.githubusercontent.com/Azure/azure-functions-host/dev/tools/Crank/Agent/Windows/bootstrap.ps1"
+                                    ],
+                                    "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -NoProfile -NonInteractive -File .\\bootstrap.ps1 ', base64(parameters('customScriptParameters')), ' ', parameters('adminUsername'), ' ', base64(parameters('adminPasswordOrKey')))]"
+                                },
+                                "publisher": "Microsoft.Compute",
+                                "type": "CustomScriptExtension",
+                                "typeHandlerVersion": "1.10"
+                            },
+                            "tags": {}
                         }
                     ],
                     "outputs": {
@@ -397,6 +447,9 @@
                 "parameters": {
                     "vmName": {
                         "value": "[parameters('vmName')]"
+                    },
+                    "osType": {
+                        "value": "[parameters('osType')]"
                     },
                     "adminUsername": {
                         "value": "[parameters('adminUsername')]"
