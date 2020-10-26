@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             string binPath;
             FunctionAssemblyLoadContext.ResetSharedContext();
-            var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true);
+            var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
             bool isPrecompiledFunctionApp = false;
