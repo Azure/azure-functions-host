@@ -160,6 +160,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void FunctionMetadataManager_IgnoresMetadata_FromFunctionProviders()
+        {
+            var functionMetadataCollection = new Collection<FunctionMetadata>();
+            var mockFunctionErrors = new Dictionary<string, ImmutableArray<string>>();
+
+            var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var mockFunctionProvider = new Mock<IFunctionProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
+
+            functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "anotherFunction"));
+
+            mockFunctionProvider.Setup(m => m.GetFunctionMetadataAsync()).ReturnsAsync(functionMetadataCollection.ToImmutableArray());
+            mockFunctionProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors.ToImmutableDictionary());
+
+            FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
+                mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object }, new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+
+            Assert.Equal(0, testFunctionMetadataManager.GetFunctionMetadata(true, includeCustomProviders: false).Length);
+            Assert.Equal(0, testFunctionMetadataManager.Errors.Count);
+        }
+
+        [Fact]
         public void FunctionMetadataManager_SortsMetadata_FromFunctionProviders()
         {
             var functionMetadataCollection = new Collection<FunctionMetadata>();

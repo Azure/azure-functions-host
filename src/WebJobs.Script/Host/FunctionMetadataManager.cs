@@ -74,12 +74,13 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="forceRefresh">Forces reload from all providers.</param>
         /// <param name="applyAllowList">Apply functions allow list filter.</param>
+        /// <param name="includeCustomProviders">Include any metadata provided by IFunctionProvider when loading the metadata</param>
         /// <returns> An Immmutable array of FunctionMetadata.</returns>
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh, bool applyAllowList = true, bool includeCustomProviders = true)
         {
             if (forceRefresh || _servicesReset || _functionMetadataArray.IsDefaultOrEmpty)
             {
-                _functionMetadataArray = LoadFunctionMetadata(forceRefresh);
+                _functionMetadataArray = LoadFunctionMetadata(forceRefresh, includeCustomProviders);
                 _logger.FunctionMetadataManagerFunctionsLoaded(ApplyAllowList(_functionMetadataArray).Count());
                 _servicesReset = false;
             }
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Read all functions and populate function metadata.
         /// </summary>
-        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false)
+        internal ImmutableArray<FunctionMetadata> LoadFunctionMetadata(bool forceRefresh = false, bool includeCustomProviders = true)
         {
             _functionMetadataMap.Clear();
 
@@ -138,7 +139,10 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             // Add metadata and errors from any additional function providers
-            LoadCustomProviderFunctions(functionMetadataList);
+            if (includeCustomProviders)
+            {
+                LoadCustomProviderFunctions(functionMetadataList);
+            }
 
             // Validate
             foreach (FunctionMetadata functionMetadata in functionMetadataList.ToList())
