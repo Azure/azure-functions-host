@@ -6,14 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 {
-    public class WarmupScenarios
+    public class WarmupScenarios : IDisposable
     {
         private static readonly TimeSpan SemaphoreWaitTimeout = TimeSpan.FromSeconds(30);
 
@@ -85,6 +84,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
             // Better be successful
             Assert.True(response.IsSuccessStatusCode, "Warmup endpoint did not return a success status. " +
                 $"Instead found {response.StatusCode}");
+        }
+
+        public void Dispose()
+        {
+            _testHost.Dispose();
         }
 
         private class PausingScriptHostBuilder : IScriptHostBuilder
