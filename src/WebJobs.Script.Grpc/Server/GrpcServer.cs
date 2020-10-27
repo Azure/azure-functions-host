@@ -2,70 +2,61 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using Grpc.Core;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
-    public class GrpcServer : IRpcServer, IDisposable
+    public class GrpcServer : IRpcServer, IDisposable, IAsyncDisposable
     {
-        private int _shutdown = 0;
-        private Server _server;
+        private readonly IHostBuilder _grpcHostBuilder;
+        private readonly int _port;
         private bool _disposed = false;
-        public const int MaxMessageLengthBytes = int.MaxValue;
+        private IHost _grpcHost;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
+        public GrpcServer(IScriptEventManager scriptEventManager)
         {
-            ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, MaxMessageLengthBytes);
-            ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, MaxMessageLengthBytes);
-            ChannelOption[] grpcChannelOptions = { maxReceiveMessageLength, maxSendMessageLength };
-            _server = new Server(grpcChannelOptions)
-            {
-                Services = { FunctionRpc.BindService(serviceImpl) },
-                Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
-            };
+            _port = WorkerUtilities.GetUnusedTcpPort();
+            _grpcHostBuilder = GrpcHostBuilder.CreateHostBuilder(scriptEventManager, _port);
         }
 
-        public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
+        public Uri Uri => new Uri($"http://{WorkerConstants.HostName}:{_port}");
 
         public Task StartAsync()
         {
-            _server.Start();
+            _grpcHost = _grpcHostBuilder.Build();
+            _grpcHost.Start();
             return Task.CompletedTask;
         }
 
-        public Task ShutdownAsync()
-        {
-            // The Grpc server will throw if it is shutdown multiple times.
-            if (Interlocked.CompareExchange(ref _shutdown, 1, 0) == 0)
-            {
-                return _server.ShutdownAsync();
-            }
+        public Task ShutdownAsync() => _grpcHost.StopAsync();
 
-            return Task.CompletedTask;
-        }
+        public Task KillAsync() => _grpcHost.StopAsync();
 
-        public Task KillAsync() => _server.KillAsync();
-
-        protected virtual void Dispose(bool disposing)
+        protected async ValueTask Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    ShutdownAsync();
+                    await _grpcHost.StopAsync();
+                    _grpcHost.Dispose();
                 }
                 _disposed = true;
             }
         }
 
+        public ValueTask DisposeAsync()
+        {
+            return Dispose(true);
+        }
+
         public void Dispose()
         {
-            Dispose(true);
+            Dispose(true).GetAwaiter().GetResult();
         }
     }
 }

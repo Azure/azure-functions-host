@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public static class GrpcServiceCollectionsExtensions
     {
-        public static IServiceCollection AddGrpc(this IServiceCollection services)
+        public static IServiceCollection AddScriptGrpc(this IServiceCollection services)
         {
             services.AddSingleton<IRpcWorkerChannelFactory, GrpcWorkerChannelFactory>();
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
