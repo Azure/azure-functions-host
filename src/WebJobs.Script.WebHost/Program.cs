@@ -89,7 +89,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 // Linux containers always start out in placeholder mode
                 SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
+            }
+            else if (SystemEnvironment.Instance.IsLinuxAppService())
+            {
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxAppService;
             }
 
             // Some environments only set the auth key. Ensure that is used as the encryption key if that is not set
@@ -103,12 +107,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ConfigureMinimumThreads(SystemEnvironment.Instance);
         }
 
-        private static void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        private static void CurrentDomainOnUnhandledExceptionInLinuxConsumption(object sender, UnhandledExceptionEventArgs e)
         {
             // Fallback console logs in case kusto logging fails.
-            Console.WriteLine($"{nameof(CurrentDomainOnUnhandledException)}: {e.ExceptionObject}");
+            Console.WriteLine($"{nameof(CurrentDomainOnUnhandledExceptionInLinuxConsumption)}: {e.ExceptionObject}");
 
             LinuxContainerEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
+        }
+
+        private static void CurrentDomainOnUnhandledExceptionInLinuxAppService(object sender, UnhandledExceptionEventArgs e)
+        {
+            LinuxAppServiceEventGenerator.LogUnhandledException((Exception)e.ExceptionObject);
         }
 
         private static void ConfigureMinimumThreads(IEnvironment environment)
