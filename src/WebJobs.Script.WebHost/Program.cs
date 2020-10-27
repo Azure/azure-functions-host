@@ -87,8 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (SystemEnvironment.Instance.IsLinuxConsumption())
             {
-                // Linux containers always start out in placeholder mode
-                SystemEnvironment.Instance.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
             }
 
