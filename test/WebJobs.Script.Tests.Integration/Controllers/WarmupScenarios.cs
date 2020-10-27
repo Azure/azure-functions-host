@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
 
         public void Dispose()
         {
-            _testHost.Dispose();
+            _testHost?.Dispose();
         }
 
         private class PausingScriptHostBuilder : IScriptHostBuilder
