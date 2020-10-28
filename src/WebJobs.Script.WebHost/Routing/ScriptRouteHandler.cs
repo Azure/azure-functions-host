@@ -49,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 // warmup function will get executed just once for the process.
                 if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
                 {
-                    await Task.CompletedTask;
-                    return;
+                    return Task.CompletedTask;
                 }
             }
 
@@ -62,8 +61,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             if (_isWarmup && descriptor == null)
             {
                 // TODO: further optimization, If there is no warmup trigger provided we should call a simple warmup function for the given language of the function app.
-                await Task.CompletedTask;
-                return;
+                return Task.CompletedTask;
             }
 
             var executionFeature = new FunctionExecutionFeature(_scriptHost, descriptor, _environment, _loggerFactory);
