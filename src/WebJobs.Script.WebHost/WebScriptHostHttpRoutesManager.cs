@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     warmupRouteBuilder.MapFunctionRoute(string.Empty, "warmup", string.Empty);
                 }
                 IRouter warmupRouter = warmupRouteBuilder.Build();
-                _router.AddCustomRoutes(warmupRouter);
+                _router.AddFunctionRoutes(warmupRouter, null);
             }
 
             ILogger logger = _loggerFactory.CreateLogger<WebScriptHostHttpRoutesManager>();
