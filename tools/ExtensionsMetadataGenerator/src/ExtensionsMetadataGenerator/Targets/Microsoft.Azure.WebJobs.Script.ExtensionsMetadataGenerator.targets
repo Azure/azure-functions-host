@@ -21,11 +21,11 @@
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
   
   <Target Name="_FunctionsBuildCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostBuild" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
-    <RemoveRuntimeDependencies OutputPath="$(TargetDir)bin"/>
+    <RemoveRuntimeDependencies OutputPath="$(TargetDir)bin" IgnoreFiles="@(FunctionsPreservedDependencies)"/>
   </Target>
 
   <Target Name="_FunctionsPublishCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostPublish" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
-    <RemoveRuntimeDependencies OutputPath="$(PublishDir)bin"/>
+    <RemoveRuntimeDependencies OutputPath="$(PublishDir)bin" IgnoreFiles="@(FunctionsPreservedDependencies)"/>
   </Target>
   
   <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
