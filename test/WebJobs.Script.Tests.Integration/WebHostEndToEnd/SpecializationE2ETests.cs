@@ -29,6 +29,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
+using Xunit.Abstractions;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -45,7 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
 
-        public SpecializationE2ETests()
+        private readonly ITestOutputHelper _testOutputHelper;
+
+        public SpecializationE2ETests(ITestOutputHelper testOutputHelper)
         {
             StandbyManager.ResetChangeToken();
 
@@ -61,6 +64,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _pauseBeforeHostBuild = new SemaphoreSlim(1, 1);
             _pauseAfterStandbyHostBuild = new SemaphoreSlim(1, 1);
             _buildCount = new SemaphoreSlim(2, 2);
+
+            _testOutputHelper = testOutputHelper;
         }
 
         [Fact]
@@ -191,7 +196,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 void ValidateStatusCode(HttpStatusCode statusCode) => Assert.Equal(HttpStatusCode.OK, statusCode);
                 var validateStatusCodes = Enumerable.Repeat<Action<HttpStatusCode>>(ValidateStatusCode, 100).ToArray();
                 var actualStatusCodes = requestTasks.Select(t => t.Result.StatusCode);
-                Assert.Collection(actualStatusCodes, validateStatusCodes);
+
+                try
+                {
+                    Assert.Collection(actualStatusCodes, validateStatusCodes);
+                }
+                catch
+                {
+                    foreach (var message in _loggerProvider.GetAllLogMessages())
+                    {
+                        _testOutputHelper.WriteLine(message.FormattedMessage);
+                    }
+
+                    throw;
+                }
             }
         }
 
