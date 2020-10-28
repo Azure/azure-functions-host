@@ -15,7 +15,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -82,31 +81,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Verify that the correct property is attached to the message. It's up to a Logger whether
             // they log messages with this value or not.
             Assert.Contains(logMessage.State, s => s.Key == ScriptConstants.LogPropertyPrimaryHostKey && (bool)s.Value == true);
-        }
-
-        [Fact]
-        public void LogInvocationMetrics_EmitsExpectedEvents()
-        {
-            var metrics = new TestMetricsLogger();
-            var metadata = new FunctionMetadata
-            {
-                Name = "TestFunction"
-            };
-            metadata.Bindings.Add(new BindingMetadata { Type = "httpTrigger" });
-            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.In });
-            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.Out });
-            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
-            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
-            var invokeLatencyEvent = FunctionInvokerBase.LogInvocationMetrics(metrics, metadata);
-
-            Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
-
-            Assert.Equal(5, metrics.LoggedEvents.Count());
-            Assert.Contains("function.binding.httptrigger_testfunction", metrics.LoggedEvents);
-            Assert.Contains("function.binding.blob.in_testfunction", metrics.LoggedEvents);
-            Assert.Contains("function.binding.blob.out_testfunction", metrics.LoggedEvents);
-            Assert.Contains("function.binding.table.in_testfunction", metrics.LoggedEvents);
-            Assert.Contains("function.binding.table.in_testfunction", metrics.LoggedEvents);
         }
 
         [Fact]

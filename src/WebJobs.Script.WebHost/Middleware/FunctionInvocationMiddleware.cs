@@ -125,6 +125,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
                     CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
+
+                    if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
+                    {
+                        logger.LogDebug($"Duplicate HTTP header from function invocation removed. Duplicate key(s): {value?.ToString()}.");
+                    }
                 }
             }
 

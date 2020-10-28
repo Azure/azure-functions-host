@@ -10,7 +10,6 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
@@ -102,20 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             };
 
             return context;
-        }
-
-        internal static object LogInvocationMetrics(IMetricsLogger metrics, FunctionMetadata metadata)
-        {
-            // log events for each of the binding types used
-            foreach (var binding in metadata.Bindings)
-            {
-                string eventName = binding.IsTrigger ?
-                    string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
-                    string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
-                metrics.LogEvent(eventName, metadata.Name);
-            }
-
-            return metrics.BeginEvent(MetricEventNames.FunctionInvokeLatency, metadata.Name);
         }
 
         protected abstract Task<object> InvokeCore(object[] parameters, FunctionInvocationContext context);
