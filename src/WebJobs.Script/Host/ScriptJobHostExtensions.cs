@@ -30,41 +30,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Lookup a warmup function
+        /// Checks if a function is a warmup function
         /// </summary>
-        /// <returns>Warmup function or null if not found</returns>
-        public static FunctionDescriptor GetWarmupFunctionOrNull(this IScriptJobHost scriptJobHost)
+        /// <returns>true if a warmup function or else false</returns>
+        public static bool IsWarmupFunction(this FunctionDescriptor function)
         {
-            return scriptJobHost.Functions.FirstOrDefault(f =>
+            if (IsFunctionNameMatch(function.Name, WarmupFunctionName))
             {
-                return IsFunctionNameMatch(f.Name, WarmupFunctionName)
-                && f.Metadata
+                return function.Metadata
                     .InputBindings
                     .Any(b => b.IsTrigger && b.Type.Equals(WarmupTriggerName, StringComparison.OrdinalIgnoreCase));
-            });
-        }
-
-        /// <summary>
-        /// Try to invoke a warmup function if available
-        /// </summary>
-        /// <returns>
-        /// A task that represents the asynchronous operation.
-        /// The task results true if a warmup function was invoked, false otherwise.
-        /// </returns>
-        public static async Task<bool> TryInvokeWarmupAsync(this IScriptJobHost scriptJobHost)
-        {
-            var warmupFunction = scriptJobHost.GetWarmupFunctionOrNull();
-            if (warmupFunction != null)
-            {
-                ParameterDescriptor inputParameter = warmupFunction.Parameters.First(p => p.IsTrigger);
-
-                var arguments = new Dictionary<string, object>()
-                {
-                    { inputParameter.Name, new WarmupContext() }
-                };
-
-                await scriptJobHost.CallAsync(warmupFunction.Name, arguments);
-                return true;
             }
 
             return false;

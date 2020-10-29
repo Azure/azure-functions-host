@@ -62,10 +62,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
             }
 
             var sw = Stopwatch.StartNew();
-            var arguments = new Dictionary<string, object>()
+
+            var arguments = new Dictionary<string, object>();
+            if (_descriptor.IsWarmupFunction())
             {
-                { _descriptor.TriggerParameter.Name, request }
-            };
+                arguments.Add(_descriptor.TriggerParameter.Name, new WarmupContext());
+            }
+            else
+            {
+                arguments.Add(_descriptor.TriggerParameter.Name, request);
+            }
+
             await _host.CallAsync(_descriptor.Name, arguments, cancellationToken);
             sw.Stop();
 

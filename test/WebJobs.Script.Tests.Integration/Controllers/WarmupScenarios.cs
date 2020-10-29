@@ -53,33 +53,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Controllers
             // by inital start
             Assert.True(_hostBuild.Wait(SemaphoreWaitTimeout), "Host failed to start");
 
-            // Restart needs to be a separate thread as we need to pause the restart
-            // and make the warmup call during the build step.
-            // The IScriptHostBuilder.BuildHost is synchronous, so creating another thread
-            // ensures that we can continue other tasks
-            Thread hostRestart = new Thread(async () =>
-            {
-                await _testHost.RestartAsync(CancellationToken.None);
-            });
-            hostRestart.Start();
-
-            // Wait for restart to hit the build
-            Assert.True(_hostBuild.Wait(SemaphoreWaitTimeout), "Host failed to start");
-
-            // Let's make the warmup request and not wait for it to finish,
-            // as warmup call needs the host to be running while the host is currently paused
             string uri = "admin/warmup";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            Task<HttpResponseMessage> responseTask = _testHost.HttpClient.SendAsync(request);
-
-            // We wait for 5 seconds just to make sure warmup call was invoked properly
-            await Task.Delay(TimeSpan.FromSeconds(5));
-
-            // We let the host continue to make sure it starts back up properly
-            _hostSetup.Release();
-
-            // Now we can wait for the warmup call to complete
-            var response = await responseTask;
+            HttpResponseMessage response = await _testHost.HttpClient.SendAsync(request);
 
             // Better be successful
             Assert.True(response.IsSuccessStatusCode, "Warmup endpoint did not return a success status. " +
