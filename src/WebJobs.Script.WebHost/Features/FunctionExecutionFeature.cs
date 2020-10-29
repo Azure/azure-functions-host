@@ -66,8 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
             var arguments = new Dictionary<string, object>();
             if (_descriptor.IsWarmupFunction())
             {
-                ParameterDescriptor inputParameter = _descriptor.Parameters.First(p => p.IsTrigger);
-                arguments.Add(inputParameter.Name, new WarmupContext());
+                arguments.Add(_descriptor.TriggerParameter.Name, new WarmupContext());
             }
             else
             {
