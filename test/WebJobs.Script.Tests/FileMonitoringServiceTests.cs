@@ -104,6 +104,136 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public static async Task SuspendRestart_Restart()
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "host.json" }
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
+
+                var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "host.json");
+                FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
+
+                EventWaitHandle e1 = new ManualResetEvent(false);
+                EventWaitHandle e2 = new ManualResetEvent(false);
+
+                _ = Task.Run(async () =>
+                {
+                    using (fileMonitoringService.SuspendRestart())
+                    {
+                        mockEventManager.Publish(randomFileEvent);
+                        await Task.Delay(1000);
+                    }
+                    await fileMonitoringService.ScheduleRestartAsync(false);
+                    e1.Set();
+                });
+
+                _ = Task.Run(async () =>
+                {
+                    using (fileMonitoringService.SuspendRestart())
+                    {
+                        await Task.Delay(2000);
+                    }
+                    await fileMonitoringService.ScheduleRestartAsync(false);
+                    e2.Set();
+                });
+
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                e1.WaitOne(5000);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                e2.WaitOne(5000);
+
+                // wait for restart
+                await Task.Delay(1000);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+            }
+        }
+
+        [Fact]
+        public static async Task SuspendRestart_Shutdown()
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "test.dll" }
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
+
+                var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "test.dll");
+                FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
+
+                EventWaitHandle e1 = new ManualResetEvent(false);
+                EventWaitHandle e2 = new ManualResetEvent(false);
+
+                _ = Task.Run(async () =>
+                {
+                    using (fileMonitoringService.SuspendRestart())
+                    {
+                        mockEventManager.Publish(randomFileEvent);
+                        await Task.Delay(1000);
+                    }
+                    await fileMonitoringService.ScheduleRestartAsync(true);
+                    e1.Set();
+                });
+
+                _ = Task.Run(async () =>
+                {
+                    using (fileMonitoringService.SuspendRestart())
+                    {
+                        await Task.Delay(2000);
+                    }
+                    await fileMonitoringService.ScheduleRestartAsync(true);
+                    e2.Set();
+                });
+
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
+                e1.WaitOne(5000);
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Never);
+                e2.WaitOne(5000);
+
+                // wait for restart
+                await Task.Delay(1000);
+                mockApplicationLifetime.Verify(m => m.StopApplication());
+            }
+        }
+
         [Theory]
         [InlineData("app_offline.htm", 150, true, false)]
         [InlineData("app_offline.htm", 10, true, false)]
