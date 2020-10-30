@@ -65,14 +65,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPut]
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> CreateOrUpdate(string name, [FromBody] FunctionMetadataResponse functionMetadata)
+        public async Task<IActionResult> CreateOrUpdate(string name, [FromBody] FunctionMetadataResponse functionMetadata, [FromServices] IFileMonitoringService fileMonitoringService)
         {
             if (!Utility.IsValidFunctionName(name))
             {
                 return BadRequest($"{name} is not a valid function name");
             }
 
-            (var success, var configChanged, var functionMetadataResponse) = await _functionsManager.CreateOrUpdate(name, functionMetadata, Request);
+            bool success, configChanged;
+            FunctionMetadataResponse functionMetadataResponse;
+            using (fileMonitoringService.SuspendRestart())
+            {
+                (success, configChanged, functionMetadataResponse) = await _functionsManager.CreateOrUpdate(name, functionMetadata, Request);
+            }
+            await fileMonitoringService.ScheduleRestartAsync(false);
 
             if (success)
             {
@@ -159,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpDelete]
         [Route("admin/functions/{name}")]
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
-        public async Task<IActionResult> Delete(string name)
+        public async Task<IActionResult> Delete(string name, [FromServices] IFileMonitoringService fileMonitoringService)
         {
             (var found, var function) = await _functionsManager.TryGetFunction(name, Request);
             if (!found)
@@ -167,7 +173,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 return NotFound();
             }
 
-            (var deleted, var error) = await _functionsManager.TryDeleteFunction(function);
+            bool deleted;
+            string error;
+            using (fileMonitoringService?.SuspendRestart())
+            {
+                (deleted, error) = await _functionsManager.TryDeleteFunction(function);
+            }
+            await fileMonitoringService?.ScheduleRestartAsync(false);
 
             if (deleted)
             {
