@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TimeSpan functionLoadTimeout = TimeSpan.FromMinutes(10);
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -98,9 +99,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Where(msg => _workerConfig.Description.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse)));
 
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
                 .Subscribe((msg) => InvokeResponse(msg.Message.InvocationResponse)));
@@ -255,10 +253,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.InvocationBuffersInitialized;
         }
 
-        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions)
+        public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout)
         {
             if (_functions != null)
             {
+                if (functionTimeout.HasValue)
+                {
+                    functionLoadTimeout = functionTimeout.Value > functionLoadTimeout ? functionTimeout.Value : functionLoadTimeout;
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                        .Timeout(functionLoadTimeout)
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                }
+                else
+                {
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                }
                 foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
                 {
                     SendFunctionLoadRequest(metadata, managedDependencyOptions);
@@ -508,6 +518,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogError(exc, "Initializing worker process failed");
             PublishWorkerErrorEvent(exc);
+        }
+
+        internal void HandleWorkerFunctionLoadError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Loading function failed.");
+            if (_disposing)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
         private void PublishWorkerErrorEvent(Exception exc)
