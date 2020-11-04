@@ -16,11 +16,11 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -43,6 +43,22 @@ namespace Microsoft.Azure.WebJobs.Script
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
         public static int ColdStartDelayMS { get; set; } = 5000;
+
+        internal static bool TryGetHostService<TService>(IScriptHostManager scriptHostManager, out TService service) where TService : class
+        {
+            service = null;
+
+            try
+            {
+                service = (scriptHostManager as IServiceProvider)?.GetService<TService>();
+            }
+            catch
+            {
+                // can get exceptions if the host is being disposed
+            }
+
+            return service != null;
+        }
 
         /// <summary>
         /// Walk from the method up to the containing type, looking for an instance

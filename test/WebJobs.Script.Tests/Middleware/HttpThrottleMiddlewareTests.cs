@@ -64,6 +64,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ShouldEnable_ReturnsExpectedValue()
+        {
+            IOptions<HttpOptions> optionsWrapper = null;
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var hostServiceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            hostServiceProviderMock.Setup(p => p.GetService(typeof(IOptions<HttpOptions>))).Returns(() => optionsWrapper);
+            var rootServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            rootServiceProvider.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
+
+            Assert.False(HttpThrottleMiddleware.ShouldEnable(null));
+            Assert.False(HttpThrottleMiddleware.ShouldEnable(rootServiceProvider.Object));
+
+            var httpOptions = new HttpOptions();
+            optionsWrapper = new OptionsWrapper<HttpOptions>(httpOptions);
+            Assert.False(HttpThrottleMiddleware.ShouldEnable(rootServiceProvider.Object));
+
+            httpOptions.MaxConcurrentRequests = 5;
+            Assert.True(HttpThrottleMiddleware.ShouldEnable(rootServiceProvider.Object));
+
+            httpOptions.MaxConcurrentRequests = -1;
+            httpOptions.DynamicThrottlesEnabled = true;
+            Assert.True(HttpThrottleMiddleware.ShouldEnable(rootServiceProvider.Object));
+        }
+
+        [Fact]
         public async Task Invoke_PropagatesExceptions()
         {
             var ex = new Exception("Kaboom!");
@@ -108,10 +133,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(HttpStatusCode.Accepted, (HttpStatusCode)httpContext.Response.StatusCode);
         }
 
-        [Fact]
-        public async Task Invoke_MaxParallelism_RequestsAreThrottled()
+        [Theory]
+        [InlineData(3)]
+        [InlineData(1)]
+        public async Task Invoke_MaxParallelism_RequestsAreThrottled(int maxParallelism)
         {
-            int maxParallelism = 3;
             _httpOptions = new HttpOptions
             {
                 MaxConcurrentRequests = maxParallelism
