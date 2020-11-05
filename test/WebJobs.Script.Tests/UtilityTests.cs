@@ -33,6 +33,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string Location { get; set; }
     }
 
+    public class TestClass : ITestInterface
+    {
+    }
+
     public class TestPoco
     {
         public string Name { get; set; }
@@ -54,6 +58,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class UtilityTests
     {
         private TestLogger _testLogger = new TestLogger("test");
+
+        [Fact]
+        public void TryGetHostService_ReturnsExpectedResult()
+        {
+            ITestInterface test = new TestClass();
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(p => p.GetService(typeof(ITestInterface))).Returns(() => test);
+
+            Assert.True(Utility.TryGetHostService(scriptHostManagerMock.Object, out ITestInterface result));
+            Assert.Same(test, result);
+
+            test = null;
+            Assert.False(Utility.TryGetHostService(scriptHostManagerMock.Object, out result));
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void TryGetHostService_ObjectDisposed_ReturnsFalse()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(p => p.GetService(typeof(ITestInterface))).Throws(new ObjectDisposedException("Test"));
+
+            Assert.False(Utility.TryGetHostService(scriptHostManagerMock.Object, out ITestInterface result));
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void TryGetHostService_NotServiceProvider_ReturnsFalse()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+
+            Assert.False(Utility.TryGetHostService(scriptHostManagerMock.Object, out ITestInterface result));
+            Assert.Null(result);
+        }
 
         [Fact]
         public async Task InvokeWithRetriesAsync_Throws_WhenRetryCountExceeded()

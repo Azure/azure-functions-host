@@ -234,8 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
         private IFunctionInvocationDispatcher GetDispatcherAsync()
         {
             var hostManager = _serviceProvider.GetService<IScriptHostManager>();
-            var dispatcherFactory = (hostManager as IServiceProvider)?.GetService<IFunctionInvocationDispatcherFactory>();
-            if (dispatcherFactory != null)
+            if (Utility.TryGetHostService(hostManager, out IFunctionInvocationDispatcherFactory dispatcherFactory))
             {
                 var dispatcher = dispatcherFactory.GetFunctionDispatcher();
                 if (dispatcher.State == FunctionInvocationDispatcherState.Initialized)

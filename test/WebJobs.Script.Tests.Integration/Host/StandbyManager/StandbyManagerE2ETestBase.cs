@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -98,6 +99,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureScriptHostLogging(b =>
                 {
                     b.AddProvider(_loggerProvider);
+                })
+                .ConfigureScriptHostServices(s =>
+                {
+                    s.PostConfigure<HttpOptions>(o =>
+                    {
+                        // disabling dynamic throttles since they can cause sporadic failures for
+                        // tests based on CPU limits being hit resulting in 429 responses
+                        o.DynamicThrottlesEnabled = false;
+                    });
                 });
 
             return webHostBuilder;

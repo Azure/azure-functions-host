@@ -154,17 +154,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             // TEMP: Once https://github.com/Azure/azure-functions-host/issues/5161 is fixed, we should take
             // FunctionsScaleManager as a parameter.
-            var scaleManager = (scriptHostManager as IServiceProvider)?.GetService<FunctionsScaleManager>();
-            if (scaleManager == null)
+            if (Utility.TryGetHostService(scriptHostManager, out FunctionsScaleManager scaleManager))
+            {
+                var scaleStatus = await scaleManager.GetScaleStatusAsync(context);
+                return new ObjectResult(scaleStatus);
+            }
+            else
             {
                 // This case should never happen. Because this action is marked RequiresRunningHost,
                 // it's only invoked when the host is running, and if it's running, we'll have access
                 // to the FunctionsScaleManager.
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
-            var scaleStatus = await scaleManager.GetScaleStatusAsync(context);
-
-            return new ObjectResult(scaleStatus);
         }
 
         [HttpPost]
