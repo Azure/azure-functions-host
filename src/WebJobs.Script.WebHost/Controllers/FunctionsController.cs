@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 (success, configChanged, functionMetadataResponse) = await _functionsManager.CreateOrUpdate(name, functionMetadata, Request);
             }
-            await fileMonitoringService.ScheduleRestartAsync(false);
+            await ScheduleRestartAsync(fileMonitoringService);
 
             if (success)
             {
@@ -175,11 +175,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             bool deleted;
             string error;
-            using (fileMonitoringService?.SuspendRestart())
+            using (fileMonitoringService.SuspendRestart())
             {
                 (deleted, error) = await _functionsManager.TryDeleteFunction(function);
             }
-            await fileMonitoringService?.ScheduleRestartAsync(false);
+            await ScheduleRestartAsync(fileMonitoringService);
 
             if (deleted)
             {
@@ -219,6 +219,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 FileDownloadName = (System.Environment.GetEnvironmentVariable("WEBSITE_SITE_NAME") ?? "functions") + ".zip"
             };
+        }
+
+        private async Task ScheduleRestartAsync(IFileMonitoringService fileMonitoringService)
+        {
+            Task restartTask = null;
+            using (System.Threading.ExecutionContext.SuppressFlow())
+            {
+                restartTask = fileMonitoringService.ScheduleRestartAsync(false);
+            }
+            await restartTask;
         }
     }
 }
