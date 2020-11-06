@@ -166,6 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // wait for restart
                 await Task.Delay(1000);
                 mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
 
@@ -231,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 // wait for restart
                 await Task.Delay(1000);
                 mockApplicationLifetime.Verify(m => m.StopApplication());
+                await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
 
