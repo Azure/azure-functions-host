@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                 // Dispatcher not needed for non-proxy codeless function.
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !m.IsCodeless());
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                await _functionDispatcher.InitializeAsync(functionMetadataList, cancellationToken);
 
                 GenerateFunctions(directTypes);
 
@@ -499,14 +499,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForHttpWorker();
                 _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
             }
-            else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(_workerRuntime, RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
-            }
-            else
-            {
-                _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
+                _logger.AddingDescriptorProviderForLanguage("node");
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
             }
 
@@ -713,6 +710,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     catch (Exception ex)
                     {
                         // log any unhandled exceptions and continue
+                        _logger.LogError(ex, "FunctionError");
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                     }
                 }
@@ -809,6 +807,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else if (exception is FunctionIndexingException || exception is FunctionListenerException)
             {
+                _logger.LogError(exception, "FunctionIndexError");
                 // For all startup time indexing/listener errors, we accumulate them per function
                 FunctionException functionException = exception as FunctionException;
                 string formattedError = Utility.FlattenException(functionException);
