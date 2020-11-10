@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
     public class HostJsonFileConfigurationSourceTests
     {
         private readonly string _hostJsonWithBundles = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle\",\r\n    \"version\": \"[1.*, 2.0.0)\"\r\n  }\r\n}";
+        private readonly string _hostJsonWithWorkFlowBundle = "{\r\n  \"version\": \"2.0\",\r\n  \"extensionBundle\": {\r\n    \"id\": \"Microsoft.Azure.Functions.ExtensionBundle.Workflows\",\r\n    \"version\": \"[1.*, 2.0.0)\"\r\n  }\r\n}";
         private readonly string _defaultHostJson = "{\r\n  \"version\": \"2.0\"\r\n}";
         private readonly ScriptApplicationHostOptions _options;
         private readonly string _hostJsonFile;
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             AreExpectedMetricsGenerated(testMetricsLogger);
 
-            Assert.Equal(_hostJsonWithBundles, File.ReadAllText(_hostJsonFile));
+            Assert.Equal(_hostJsonWithWorkFlowBundle, File.ReadAllText(_hostJsonFile));
 
             var log = _loggerProvider.GetAllLogMessages().Single(l => l.FormattedMessage == "No host configuration file found. Creating a default host.json file.");
             Assert.Equal(LogLevel.Information, log.Level);
