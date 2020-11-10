@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly string _createdStack;
         private readonly string _id = Guid.NewGuid().ToString();
         private bool _timerFired = false;
+        private bool _isDisposed = false;
 
         public TestFunctionHost(string scriptPath,
            Action<IServiceCollection> configureWebHostServices = null,
@@ -333,15 +334,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void Dispose()
         {
-            HttpClient.Dispose();
-            _testServer.Dispose();
-
-            _stillRunningTimer.Change(-1, -1);
-            _stillRunningTimer?.Dispose();
-
-            if (_timerFired)
+            if (!_isDisposed)
             {
-                Console.WriteLine($"The test host with id {_id} is now disposed.");
+                HttpClient.Dispose();
+                _testServer.Dispose();
+
+                _stillRunningTimer?.Change(-1, -1);
+                _stillRunningTimer?.Dispose();
+
+                if (_timerFired)
+                {
+                    Console.WriteLine($"The test host with id {_id} is now disposed.");
+                }
+
+                _isDisposed = true;
             }
         }
 
