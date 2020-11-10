@@ -326,7 +326,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsLogicApp(this IEnvironment environment)
         {
             string appKind = environment.GetEnvironmentVariable(AppKind)?.ToLower();
-            return !string.IsNullOrEmpty(appKind) && appKind.Contains(WorkFlowAppKind);
+            return !string.IsNullOrEmpty(appKind) && appKind.Contains(ScriptConstants.WorkFlowAppKind);
         }
 
         /// <summary>
