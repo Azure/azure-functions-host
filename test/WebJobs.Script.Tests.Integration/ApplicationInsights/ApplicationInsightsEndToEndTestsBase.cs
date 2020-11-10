@@ -13,8 +13,6 @@ using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -235,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             ValidateTelemetry(telemetry, expectedInvocationId, expectedOperationName, expectedCategory, SeverityLevel.Error);
         }
 
-        [Fact(Skip = "Disabled due to https://github.com/Azure/azure-functions-host/issues/6521")]
+        [Fact]
         public async Task Validate_HostLogs()
         {
             // Validate the host startup traces. Order by message string as the requests may come in

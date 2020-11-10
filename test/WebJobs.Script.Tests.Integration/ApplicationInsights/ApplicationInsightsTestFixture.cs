@@ -78,16 +78,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             // everything is flushed and can't affect subsequent tests.
             Thread.Sleep(2000);
         }
-
-        private class ScriptHostBuilder : IConfigureBuilder<IWebJobsBuilder>
-        {
-            public void Configure(IWebJobsBuilder builder)
-            {
-                builder.Services.Configure<ScriptJobHostOptions>(o =>
-                {
-                    o.Functions = new[] { "Scenarios", "HttpTrigger-Scenarios" };
-                });
-            }
-        }
     }
 }
