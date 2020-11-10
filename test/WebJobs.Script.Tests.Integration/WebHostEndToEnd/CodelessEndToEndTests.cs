@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
@@ -41,28 +40,30 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment);
-
-                // Make sure unauthorized does not work
-                var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn?name=Ankit");
-                Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
-
-                var testFnKey = await host.GetFunctionSecretAsync("testFn");
-                var responseName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}&name=Ankit");
-                var responseNoName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}");
-
-                Assert.Equal(HttpStatusCode.OK, responseName.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, responseNoName.StatusCode);
-
-                Assert.Equal("Codeless Provider ran a function successfully with no name parameter.", await responseNoName.Content.ReadAsStringAsync());
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await responseName.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+
+                    // Make sure unauthorized does not work
+                    var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn?name=Ankit");
+                    Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
+
+                    var testFnKey = await host.GetFunctionSecretAsync("testFn");
+                    var responseName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}&name=Ankit");
+                    var responseNoName = await host.HttpClient.GetAsync($"http://localhost/api/testFn?code={testFnKey}");
+
+                    Assert.Equal(HttpStatusCode.OK, responseName.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, responseNoName.StatusCode);
+
+                    Assert.Equal("Codeless Provider ran a function successfully with no name parameter.", await responseNoName.Content.ReadAsStringAsync());
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await responseName.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
             }
         }
@@ -87,28 +88,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var provider = new TestCodelessFunctionProvider(metadata, null);
 
                 var functions = allowedList != null ? new[] { "testFn2", allowedList } : new[] { "testFn2" };
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment);
-
-                // Make sure unauthorized does not work
-                var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn2?name=Ankit");
-                Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
-
-                var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
-                var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
-                var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
-                var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
-
-                Assert.Equal(HttpStatusCode.NotFound, test1.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
-
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { provider }, testEnvironment))
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    // Make sure unauthorized does not work
+                    var unauthResponse = await host.HttpClient.GetAsync("http://localhost/api/testFn2?name=Ankit");
+                    Assert.Equal(HttpStatusCode.Unauthorized, unauthResponse.StatusCode);
+
+                    var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
+                    var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
+                    var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
+                    var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
+
+                    Assert.Equal(HttpStatusCode.NotFound, test1.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
+
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
             }
         }
@@ -136,25 +138,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
-
-                var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
-                var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
-                var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
-                var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
-
-                Assert.Equal(HttpStatusCode.OK, test1.StatusCode);
-                Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
-
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test1.Content.ReadAsStringAsync());
-                Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
-
-                // Regular functions should work as expected
-                if (allowedList != null)
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
                 {
-                    string key = await host.GetFunctionSecretAsync(allowedList);
-                    var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
-                    Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    var testFn1Key = await host.GetFunctionSecretAsync("testFn1");
+                    var testFn2Key = await host.GetFunctionSecretAsync("testFn2");
+                    var test1 = await host.HttpClient.GetAsync($"http://localhost/api/testFn1?name=Ankit&code={testFn1Key}");
+                    var test2 = await host.HttpClient.GetAsync($"http://localhost/api/testFn2?name=Ankit&code={testFn2Key}");
+
+                    Assert.Equal(HttpStatusCode.OK, test1.StatusCode);
+                    Assert.Equal(HttpStatusCode.OK, test2.StatusCode);
+
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test1.Content.ReadAsStringAsync());
+                    Assert.Equal("Hello, Ankit! Codeless Provider ran a function successfully.", await test2.Content.ReadAsStringAsync());
+
+                    // Regular functions should work as expected
+                    if (allowedList != null)
+                    {
+                        string key = await host.GetFunctionSecretAsync(allowedList);
+                        var notCodeless = await host.HttpClient.GetAsync($"http://localhost/api/{allowedList}?code={key}");
+                        Assert.Equal(HttpStatusCode.OK, notCodeless.StatusCode);
+                    }
                 }
             }
         }
@@ -183,19 +186,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
+                {
+                    var masterKey = await host.GetMasterKeyAsync();
+                    var listFunctionsResponse = await host.HttpClient.GetAsync($"http://localhost/admin/functions?code={masterKey}");
 
-                var masterKey = await host.GetMasterKeyAsync();
-                var listFunctionsResponse = await host.HttpClient.GetAsync($"http://localhost/admin/functions?code={masterKey}");
+                    // List Functions test
+                    string uri = "admin/functions";
+                    var request = new HttpRequestMessage(HttpMethod.Get, uri);
+                    request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
+                    var response = await host.HttpClient.SendAsync(request);
+                    var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-                // List Functions test
-                string uri = "admin/functions";
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, "1234");
-                var response = await host.HttpClient.SendAsync(request);
-                var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
-
-                Assert.Equal(listCount, metadata.Length);
+                    Assert.Equal(listCount, metadata.Length);
+                }
             }
         }
 
@@ -222,14 +226,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var providerTwo = new TestCodelessFunctionProvider(metadataList2, null);
 
                 var functions = allowedList != null ? new[] { allowedList, "testFn2", "testFn1" } : null;
-                var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment);
-
-                // Sanity check for sync triggers
-                string uri = "admin/host/synctriggers";
-                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await host.GetMasterKeyAsync());
-                HttpResponseMessage response = await host.HttpClient.SendAsync(request);
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                using (var host = StartLocalHost(baseTestPath, sourceFunctionApp, functions, new List<IFunctionProvider>() { providerOne, providerTwo }, testEnvironment))
+                {
+                    // Sanity check for sync triggers
+                    string uri = "admin/host/synctriggers";
+                    HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+                    request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await host.GetMasterKeyAsync());
+                    HttpResponseMessage response = await host.HttpClient.SendAsync(request);
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                }
             }
         }
 
