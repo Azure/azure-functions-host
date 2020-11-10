@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _testHost.Dispose();
             int buildCalls = 0;
 
-            var testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
+            using (var testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
               configureWebHostServices: services =>
               {
                   services.Configure<LoggerFilterOptions>(o =>
@@ -336,17 +336,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
                       return new InterceptingScriptHostBuilder(appHostOptions, s, rootServiceScopeFactory, Intercept);
                   });
-              });
+              }))
+            {
+                var scriptHostService = testHost.WebHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
 
-            var scriptHostService = testHost.WebHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
+                List<Task> restarts = new List<Task>();
+                restarts.Add(testHost.RestartAsync(CancellationToken.None));
+                restarts.Add(testHost.RestartAsync(CancellationToken.None));
 
-            List<Task> restarts = new List<Task>();
-            restarts.Add(testHost.RestartAsync(CancellationToken.None));
-            restarts.Add(testHost.RestartAsync(CancellationToken.None));
+                await Task.WhenAll(restarts);
 
-            await Task.WhenAll(restarts);
-
-            await TestHelpers.Await(() => scriptHostService.State == ScriptHostState.Running, userMessageCallback: testHost.GetLog);
+                await TestHelpers.Await(() => scriptHostService.State == ScriptHostState.Running, userMessageCallback: testHost.GetLog);
+            }
         }
 
         public void Dispose()

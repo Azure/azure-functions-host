@@ -249,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 await JobHost.StopAsync();
                 await Host.StopAsync();
                 JobHost.Dispose();
+                Host.Dispose();
             }
             Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, string.Empty);
         }
