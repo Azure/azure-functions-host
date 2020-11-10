@@ -304,8 +304,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                 // Dispatcher not needed for non-proxy codeless function.
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !m.IsCodeless());
-                await _functionDispatcher.InitializeAsync(functionMetadataList, cancellationToken);
+                //var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !m.IsCodeless());
+                var filteredFunctionMetadata = functionMetadataList.Where(m => m.Language.Equals(RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase));
+                await _functionDispatcher.InitializeAsync(filteredFunctionMetadata, cancellationToken);
 
                 GenerateFunctions(directTypes);
 
