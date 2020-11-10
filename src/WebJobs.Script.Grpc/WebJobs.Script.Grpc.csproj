@@ -21,7 +21,6 @@
   
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.32.0" />
-    <PackageReference Include="Google.Protobuf.Tools" Version="3.11.4" />
     <PackageReference Include="Grpc.Tools" Version="2.32.0">
       <PrivateAssets>All</PrivateAssets>
     </PackageReference>
@@ -44,10 +43,7 @@
     </Reference>
   </ItemGroup>
   
-  <Target Name="GenerateProtoFiles" BeforeTargets="BeforeBuild" Inputs="azure-functions-language-worker-protobuf/src/proto/FunctionRpc.proto" Outputs="Messages/DotNet/FunctionRpc.cs;Messages/DotNet/FunctionRpcGrpc.cs">
-    <Exec Command="./generate_protos.$(Ext)" />
-    <ItemGroup>
-      <Compile Include="**/*$(DefaultLanguageSourceExtension)" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);$(BaseIntermediateOutputPath)**;$(BaseOutputPath)**;@(Compile)" />
-    </ItemGroup>
-  </Target>
+  <ItemGroup>
+     <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
+  </ItemGroup>
 </Project>

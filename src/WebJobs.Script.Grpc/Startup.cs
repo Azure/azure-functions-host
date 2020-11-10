@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class Startup
     {
-        private const int MaxMessageLengthBytes = 128 * 1024 * 1024;
+        private const int MaxMessageLengthBytes = int.MaxValue;
 
         public void ConfigureServices(IServiceCollection services)
         {

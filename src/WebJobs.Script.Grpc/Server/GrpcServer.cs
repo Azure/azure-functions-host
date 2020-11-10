@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task KillAsync() => _grpcHost.StopAsync();
 
-        protected async ValueTask Dispose(bool disposing)
+        protected async ValueTask DisposeAsync(bool disposing)
         {
             if (!_disposed)
             {
@@ -51,12 +51,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public ValueTask DisposeAsync()
         {
-            return Dispose(true);
+            return DisposeAsync(true);
         }
 
         public void Dispose()
         {
-            Dispose(true).GetAwaiter().GetResult();
+            DisposeAsync();
         }
     }
 }
