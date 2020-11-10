@@ -4,7 +4,7 @@
 -->
 - Fixed [bug](https://github.com/Azure/azure-functions-durable-extension/issues/1504) in sync triggers operations for Durable Functions using custom storage account connection strings.
 - Update PowerShell Worker to 2.0.559 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v2.0.559)
-- Update Python Worker to 1.1.7 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.7)
+- Update Python Worker to 1.1.8 [Release Note](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.8)
 - Update Python Library to 1.5.0 [Release Note](https://github.com/Azure/azure-functions-python-library/releases/tag/1.5.0)
 
 **Release sprint:** Sprint 86
