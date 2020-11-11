@@ -165,6 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionBundleTemplatesFile = "templates.json";
         public const string ExtensionBundleResourcesFile = "Resources.json";
         public const string DefaultExtensionBundleId = "Microsoft.Azure.Functions.ExtensionBundle";
+        public const string WorkFlowExtensionBundleId = "Microsoft.Azure.Functions.ExtensionBundle.Workflows";
         public const string ExtensionBundleForAppServiceWindows = "win-any";
         public const string ExtensionBundleForAppServiceLinux = "linux-x64";
         public const string ExtensionBundleForNonAppServiceEnvironment = "any-any";
@@ -172,6 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Linux64BitRID = "linux-x64";
         public const string Windows64BitRID = "win-x64";
         public const string Windows32BitRID = "win-x86";
+        public const string WorkFlowAppKind = "workflowapp";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

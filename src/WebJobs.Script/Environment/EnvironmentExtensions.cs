@@ -321,6 +321,15 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets the computer name.
+        /// </summary>
+        public static bool IsLogicApp(this IEnvironment environment)
+        {
+            string appKind = environment.GetEnvironmentVariable(AppKind)?.ToLower();
+            return !string.IsNullOrEmpty(appKind) && appKind.Contains(ScriptConstants.WorkFlowAppKind);
+        }
+
+        /// <summary>
         /// Gets the Antares version.
         /// </summary>
         public static string GetAntaresVersion(this IEnvironment environment)
