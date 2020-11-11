@@ -12,9 +12,11 @@ using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -34,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IMetricsLogger _metricsLogger;
         private readonly HostPerformanceManager _performanceManager;
         private readonly IOptions<HostHealthMonitorOptions> _healthMonitorOptions;
+        private readonly IConfiguration _config;
         private readonly SlidingWindow<bool> _healthCheckWindow;
         private readonly Timer _hostHealthCheckTimer;
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
@@ -53,7 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
-            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions, IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime)
+            HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
+            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config)
         {
             if (loggerFactory == null)
             {
@@ -74,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _performanceManager = hostPerformanceManager ?? throw new ArgumentNullException(nameof(hostPerformanceManager));
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+            _config = config ?? throw new ArgumentNullException(nameof(config));
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -461,8 +466,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     using (var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger))
                     {
-                        Task startTask = UnsynchronizedStartHostAsync(activeOperation);
-                        Task stopTask = Orphan(previousHost, cancellationToken);
+                        bool.TryParse(_config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart).Value, out bool enforceSequentialOrder);
+                        Task startTask, stopTask;
+
+                        // If we are running in development mode with core tools, do not overlap the restarts.
+                        // Overlapping restarts are problematic when language worker processes are listening
+                        // to the same debug port
+                        if (enforceSequentialOrder)
+                        {
+                            stopTask = Orphan(previousHost, cancellationToken);
+                            await stopTask;
+                            startTask = UnsynchronizedStartHostAsync(activeOperation);
+                        }
+                        else
+                        {
+                            startTask = UnsynchronizedStartHostAsync(activeOperation);
+                            stopTask = Orphan(previousHost, cancellationToken);
+                        }
 
                         await startTask;
                     }

@@ -22,5 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         public const string CustomHttpHeaders = Http + ":customHeaders";
         public const string EasyAuth = "easyauth";
         public const string Retry = "retry";
+        public const string SequentialJobHostRestart = JobHost + ":sequentialRestart";
     }
 }
