@@ -6,4 +6,4 @@
 **Release sprint:** Sprint <successiveSprint>
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+<successiveSprint>%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+<successiveSprint>%22+label%3Afeature+is%3Aclosed) ]
 
-where <successiveSprint> is the next sprint in question.
+where Sprint 88 is the next sprint in question.
