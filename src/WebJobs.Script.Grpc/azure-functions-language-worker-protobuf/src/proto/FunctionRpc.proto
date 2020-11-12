@@ -71,6 +71,10 @@ message StreamingMessage {
     FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
     FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
+
+    // Ask the worker to close any open shared memory resources for a given invocation
+    CloseSharedMemoryResourcesRequest close_shared_memory_resources_request = 27;
+    CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
   }
 }
 
@@ -201,6 +205,17 @@ message FunctionEnvironmentReloadResponse {
   StatusResult result = 3;
 }
 
+// Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
+message CloseSharedMemoryResourcesRequest {
+  repeated string map_names = 1;
+}
+
+// Response from the worker indicating which of the shared memory maps have been successfully closed and which have not been closed
+// The key (string) is the map name and the value (bool) is true if it was closed, false if not
+message CloseSharedMemoryResourcesResponse {
+  map<string, bool> close_map_results = 1;
+}
+
 // Host tells the worker to load a Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
@@ -318,6 +333,34 @@ message TypedData {
   }
 }
 
+// Specify which type of data is contained in the shared memory region being read
+enum RpcDataType {
+  unknown = 0;
+  string = 1;
+  json = 2;
+  bytes = 3;
+  stream = 4;
+  http = 5;
+  int = 6;
+  double = 7;
+  collection_bytes = 8;
+  collection_string = 9;
+  collection_double = 10;
+  collection_sint64 = 11;
+}
+
+// Used to provide metadata about shared memory region to read data from
+message RpcSharedMemory {
+  // Name of the shared memory map containing data
+  string name = 1;
+  // Offset in the shared memory map to start reading data from
+  int64 offset = 2;
+  // Number of bytes to read (starting from the offset)
+  int64 count = 3;
+  // Final type to which the read data (in bytes) is to be interpreted as
+  RpcDataType type = 4;
+}
+
 // Used to encapsulate collection string
 message CollectionString {
   repeated string string = 1;
@@ -343,8 +386,13 @@ message ParameterBinding {
   // Name for the binding
   string name = 1;
 
-  // Data for the binding
-  TypedData data = 2;
+  oneof rpc_data {
+    // Data for the binding
+    TypedData data = 2;
+
+    // Metadata about the shared memory region to read data from
+    RpcSharedMemory rpc_shared_memory = 3;
+  }
 }
 
 // Used to describe a given binding on load
