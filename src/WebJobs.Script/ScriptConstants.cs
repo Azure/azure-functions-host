@@ -177,6 +177,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 
+        public const string KubernetesManagedAppName = "K8SE_APP_NAME";
+        public const string KubernetesManagedAppNamespace = "K8SE_APP_NAMESPACE";
+
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";

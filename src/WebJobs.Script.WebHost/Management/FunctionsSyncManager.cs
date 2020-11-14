@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const int MinTaskHubNameSize = 3;
         private const string TaskHubPadding = "Hub";
 
+        //Managed Kubernetes build service variables
+        private const string ManagedKubernetesBuildServicePort = "8181";
+        private const string ManagedKubernetesBuildServiceName = "k8se-build-service";
+        private const string ManagedKubernetesBuildServiceNamespace = "k8se-system";
+
         private readonly Regex versionRegex = new Regex(@"Version=(?<majorversion>\d)\.\d\.\d");
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
@@ -558,6 +563,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var hostname = _hostNameProvider.Value;
             var url = $"{protocol}://{hostname}/operations/settriggers";
+            if (_environment.IsKubernetesManagedHosting())
+            {
+                url = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}/operations/settriggers";
+            }
 
             return new HttpRequestMessage(HttpMethod.Post, url);
         }
@@ -587,6 +596,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
+
+                if (_environment.IsKubernetesManagedHosting())
+                {
+                    request.Headers.Add(ScriptConstants.KubernetesManagedAppName, _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
+                    request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
+                }
 
                 _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
