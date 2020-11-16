@@ -554,18 +554,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal HttpRequestMessage BuildSetTriggersRequest()
         {
-            var protocol = "https";
-            if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
-            {
-                // On private stamps with no ssl certificate use http instead.
-                protocol = "http";
-            }
-
-            var hostname = _hostNameProvider.Value;
-            var url = $"{protocol}://{hostname}/operations/settriggers";
+            var url = default(string);
             if (_environment.IsKubernetesManagedHosting())
             {
                 url = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}/operations/settriggers";
+            }
+            else
+            {
+                var protocol = "https";
+                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.SkipSslValidation) == "1")
+                {
+                    // On private stamps with no ssl certificate use http instead.
+                    protocol = "http";
+                }
+
+                var hostname = _hostNameProvider.Value;
+                url = $"{protocol}://{hostname}/operations/settriggers";
             }
 
             return new HttpRequestMessage(HttpMethod.Post, url);
