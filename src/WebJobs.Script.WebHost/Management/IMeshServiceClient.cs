@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
     public interface IMeshServiceClient
     {
-        Task MountCifs(string connectionString, string contentShare, string targetPath);
+        Task<bool> MountCifs(string connectionString, string contentShare, string targetPath);
 
         Task MountBlob(string connectionString, string contentShare, string targetPath);
 

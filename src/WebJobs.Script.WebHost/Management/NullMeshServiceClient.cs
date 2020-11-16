@@ -17,9 +17,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             nullLogger.LogDebug($"Initializing {nameof(NullMeshServiceClient)}");
         }
 
-        public Task MountCifs(string connectionString, string contentShare, string targetPath)
+        public Task<bool> MountCifs(string connectionString, string contentShare, string targetPath)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         public Task MountBlob(string connectionString, string contentShare, string targetPath)
