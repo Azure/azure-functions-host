@@ -277,7 +277,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString))
             {
-                await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
+                bool succeeded = await _meshServiceClient.MountCifs(assignmentContext.AzureFilesConnectionString, assignmentContext.AzureFilesContentShare, "/home");
+                _logger.LogInformation($"Mounting {EnvironmentSettingNames.AzureFilesContentShare} Success = {succeeded}");
             }
 
             // BYOS
@@ -319,7 +320,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             switch (storageInfoValue.Type)
                             {
                                 case AzureStorageType.AzureFiles:
-                                    await _meshServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
+                                    if (!await _meshServiceClient.MountCifs(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath))
+                                    {
+                                        throw new Exception($"Failed to mount BYOS fileshare {storageInfoValue.Id}");
+                                    }
                                     break;
                                 case AzureStorageType.AzureBlob:
                                     await _meshServiceClient.MountBlob(storageConnectionString, storageInfoValue.ShareName, storageInfoValue.MountPath);
