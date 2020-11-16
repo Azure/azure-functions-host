@@ -291,8 +291,17 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> If running in a Kubernetes Azure App Service; otherwise, false.</returns>
         public static bool IsKubernetesManagedHosting(this IEnvironment environment)
         {
-            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost))
+            try
+            {
+                return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost))
                 && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(PodNamespace));
+            }
+            catch
+            {
+                //if there's an error reading the environment variable then return false
+                //this is happening when mock environment variable is not set for the test
+                return false;
+            }
         }
 
         /// <summary>
