@@ -90,13 +90,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Equal(3, result.Count);
 
             // simulate 10 sample iterations
+            var start = DateTime.UtcNow;
             for (int i = 0; i < 10; i++)
             {
                 Dictionary<IScaleMonitor, ScaleMetrics> metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
 
                 metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = i });
                 metricsMap.Add(monitor2, new TestScaleMetrics2 { Num = i });
-                metricsMap.Add(monitor3, new TestScaleMetrics3 { Length = i });
+                metricsMap.Add(monitor3, new TestScaleMetrics3 { Length = i, TimeSpan = DateTime.UtcNow - start });
 
                 await _repository.WriteMetricsAsync(metricsMap);
             }
@@ -127,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
                 var currSample = (TestScaleMetrics3)monitorMetricsList[i];
                 Assert.Equal(i, currSample.Length);
                 Assert.NotEqual(default(DateTime), currSample.Timestamp);
+                Assert.NotEqual(default(TimeSpan), currSample.TimeSpan);
             }
 
             // if no monitors are presented result will be empty
