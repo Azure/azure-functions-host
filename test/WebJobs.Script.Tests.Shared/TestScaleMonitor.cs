@@ -79,6 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class TestScaleMetrics3 : ScaleMetrics
     {
+        public TimeSpan TimeSpan { get; set; }
+
         public int Length { get; set; }
     }
 
