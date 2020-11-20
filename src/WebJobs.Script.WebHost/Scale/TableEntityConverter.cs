@@ -91,9 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Scale
                     entityProperty = new EntityProperty(value.ToObject<Guid>());
                     return true;
                 case JTokenType.Integer:
-                    entityProperty = new EntityProperty(value.ToObject<int>());
+                    // to handle both ints and longs, we normalize integer values
+                    // to type long
+                    entityProperty = new EntityProperty(value.ToObject<long>());
                     return true;
                 case JTokenType.String:
+                case JTokenType.TimeSpan:
                     entityProperty = new EntityProperty(value.ToObject<string>());
                     return true;
                 default:

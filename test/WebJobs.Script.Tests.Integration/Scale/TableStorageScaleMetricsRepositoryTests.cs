@@ -90,13 +90,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             Assert.Equal(3, result.Count);
 
             // simulate 10 sample iterations
+            var start = DateTime.UtcNow;
             for (int i = 0; i < 10; i++)
             {
                 Dictionary<IScaleMonitor, ScaleMetrics> metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
 
                 metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = i });
                 metricsMap.Add(monitor2, new TestScaleMetrics2 { Num = i });
-                metricsMap.Add(monitor3, new TestScaleMetrics3 { Length = i });
+                metricsMap.Add(monitor3, new TestScaleMetrics3 { Length = i, TimeSpan = DateTime.UtcNow - start });
 
                 await _repository.WriteMetricsAsync(metricsMap);
             }
@@ -127,12 +128,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
                 var currSample = (TestScaleMetrics3)monitorMetricsList[i];
                 Assert.Equal(i, currSample.Length);
                 Assert.NotEqual(default(DateTime), currSample.Timestamp);
+                Assert.NotEqual(default(TimeSpan), currSample.TimeSpan);
             }
 
             // if no monitors are presented result will be empty
             monitors = new IScaleMonitor[0];
             result = await _repository.ReadMetricsAsync(monitors);
             Assert.Equal(0, result.Count);
+        }
+
+        [Fact]
+        public async Task ReadWriteMetrics_IntegerConversion_HandlesLongs()
+        {
+            var monitor1 = new TestScaleMonitor1();
+            var monitors = new IScaleMonitor[] { monitor1 };
+
+            // first write a couple entities manually to the table to simulate
+            // the change in entity property type (int -> long)
+            // this shows that the table can have entities of both formats with
+            // no versioning issues
+
+            // add an entity with Count property of type int
+            var entity = new DynamicTableEntity
+            {
+                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                PartitionKey = TestHostId,
+                Properties = new Dictionary<string, EntityProperty>()
+            };
+            var expectedIntCountValue = int.MaxValue;
+            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
+            entity.Properties.Add("Count", new EntityProperty(expectedIntCountValue));
+            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
+            var batch = new TableBatchOperation();
+            batch.Add(TableOperation.Insert(entity));
+
+            // add an entity with Count property of type long
+            entity = new DynamicTableEntity
+            {
+                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                PartitionKey = TestHostId,
+                Properties = new Dictionary<string, EntityProperty>()
+            };
+            var expectedLongCountValue = long.MaxValue;
+            entity.Properties.Add("Timestamp", new EntityProperty(DateTime.UtcNow));
+            entity.Properties.Add("Count", new EntityProperty(expectedLongCountValue));
+            entity.Properties.Add(TableStorageScaleMetricsRepository.MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(monitor1.Descriptor.Id));
+            batch.Add(TableOperation.Insert(entity));
+
+            await _repository.ExecuteBatchSafeAsync(batch);
+
+            // push a long max value through serialization
+            var metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
+            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = long.MaxValue });
+            await _repository.WriteMetricsAsync(metricsMap);
+
+            // add one more
+            metricsMap = new Dictionary<IScaleMonitor, ScaleMetrics>();
+            metricsMap.Add(monitor1, new TestScaleMetrics1 { Count = 12345 });
+            await _repository.WriteMetricsAsync(metricsMap);
+
+            // read the metrics back
+            var result = await _repository.ReadMetricsAsync(monitors);
+            Assert.Equal(1, result.Count);
+            var monitorMetricsList = result[monitor1];
+            Assert.Equal(4, monitorMetricsList.Count);
+
+            // verify the explicitly written int record was read correctly
+            var currSample = (TestScaleMetrics1)monitorMetricsList[0];
+            Assert.Equal(expectedIntCountValue, currSample.Count);
+
+            // verify the explicitly written long record was read correctly
+            currSample = (TestScaleMetrics1)monitorMetricsList[1];
+            Assert.Equal(expectedLongCountValue, currSample.Count);
+
+            // verify the final roundtripped values
+            currSample = (TestScaleMetrics1)monitorMetricsList[2];
+            Assert.Equal(long.MaxValue, currSample.Count);
+
+            currSample = (TestScaleMetrics1)monitorMetricsList[3];
+            Assert.Equal(12345, currSample.Count);
         }
 
         [Fact]

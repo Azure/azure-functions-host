@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class TestScaleMetrics1 : ScaleMetrics
     {
-        public int Count { get; set; }
+        public long Count { get; set; }
     }
 
     public class TestScaleMonitor2 : TestScaleMonitor<TestScaleMetrics2>
@@ -79,6 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
     public class TestScaleMetrics3 : ScaleMetrics
     {
+        public TimeSpan TimeSpan { get; set; }
+
         public int Length { get; set; }
     }
 
