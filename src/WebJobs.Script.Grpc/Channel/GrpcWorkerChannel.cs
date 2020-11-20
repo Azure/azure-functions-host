@@ -391,16 +391,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
             _functionLoadRequestResponseEvent?.Dispose();
-            _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
+            string functionName = _functions.Single(m => m.GetFunctionId().Equals(loadResponse.FunctionId, StringComparison.OrdinalIgnoreCase)).Name;
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponse for function: {functionName} with functionId:{functionId}", functionName, loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception functionLoadEx))
             {
                 if (functionLoadEx == null)
                 {
-                    _workerChannelLogger?.LogError("Worker failed to function id {functionId}. Function load exception is not set by the worker", loadResponse.FunctionId);
+                    _workerChannelLogger?.LogError("Worker failed to to load funciton: {functionName} with function id: {functionId}. Function load exception is not set by the worker", functionName, loadResponse.FunctionId);
                 }
                 else
                 {
-                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to function id {functionId}.", loadResponse.FunctionId);
+                    _workerChannelLogger?.LogError(functionLoadEx, "Worker failed to load funciton: {functionName} with function id: {functionId}.", functionName, loadResponse.FunctionId);
                 }
                 //Cache function load errors to replay error messages on invoking failed functions
                 _functionLoadErrors[loadResponse.FunctionId] = functionLoadEx;
