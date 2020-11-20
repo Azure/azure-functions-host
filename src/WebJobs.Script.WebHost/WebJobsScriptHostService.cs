@@ -466,13 +466,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     using (var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger))
                     {
-                        bool.TryParse(_config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart).Value, out bool enforceSequentialOrder);
                         Task startTask, stopTask;
 
                         // If we are running in development mode with core tools, do not overlap the restarts.
                         // Overlapping restarts are problematic when language worker processes are listening
                         // to the same debug port
-                        if (enforceSequentialOrder)
+                        if (ShouldEnforceSequentialRestart())
                         {
                             stopTask = Orphan(previousHost, cancellationToken);
                             await stopTask;
@@ -505,6 +504,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _hostStartSemaphore.Release();
                 }
             }
+        }
+
+        internal bool ShouldEnforceSequentialRestart()
+        {
+            bool.TryParse(_config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart).Value, out bool enforceSequentialOrder);
+            return enforceSequentialOrder;
         }
 
         private void OnHostInitializing(object sender, EventArgs e)

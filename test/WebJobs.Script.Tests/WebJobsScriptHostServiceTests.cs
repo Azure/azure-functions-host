@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -394,6 +395,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(messages.Single(p => p.EventId.Id == 514)); // "StartupWasCanceled" message
             Assert.NotNull(messages.Single(p => p.EventId.Id == 520)); // "RestartBeforeStart" message
             _host.Verify(p => p.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("1", false)]
+        [InlineData("0", false)]
+        [InlineData("true", true)]
+        [InlineData("True", true)]
+        [InlineData("false", false)]
+        public void ShouldEnforceSequentialRestart_WithCorrectConfig(string value, bool expectedResult)
+        {
+            var metricsLogger = new TestMetricsLogger();
+            _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(_host.Object);
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "AzureFunctionsJobHost:SequentialRestart", value },
+                })
+                .Build();
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+                new Mock<IApplicationLifetime>().Object, config);
+
+            Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
         }
 
         public void RestartHost()
