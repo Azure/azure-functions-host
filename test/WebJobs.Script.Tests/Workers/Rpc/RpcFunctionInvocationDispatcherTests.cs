@@ -384,6 +384,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     TestRpcWorkerChannel testWorkerChannel = channel as TestRpcWorkerChannel;
                     testWorkerChannel.RaiseWorkerError();
+                    if (i < 2)
+                    {
+                        // wait for restart to complete before raising another error
+                        await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, 1);
+                    }
                 }
             }
 

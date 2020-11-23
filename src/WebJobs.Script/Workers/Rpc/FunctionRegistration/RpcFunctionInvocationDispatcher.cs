@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _restartWait = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
+        private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
         private IEnumerable<RpcWorkerConfig> _workerConfigs;
@@ -406,7 +406,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_languageWorkerErrors.TryPeek(out WorkerErrorEvent top))
             {
-                if ((currentErrorEvent.CreatedAt - top.CreatedAt) > thresholdBetweenRestarts)
+                if ((currentErrorEvent.CreatedAt - top.CreatedAt) > _thresholdBetweenRestarts)
                 {
                     while (!_languageWorkerErrors.IsEmpty)
                     {
