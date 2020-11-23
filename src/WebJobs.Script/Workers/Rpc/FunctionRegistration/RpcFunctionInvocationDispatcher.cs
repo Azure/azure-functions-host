@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _restartWait = TimeSpan.FromSeconds(10);
         private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
@@ -49,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
         private int _debounceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
+        private SemaphoreSlim _restartWorkerProcessSLock = new SemaphoreSlim(1, 1);
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -380,7 +382,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
-                await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
+                try
+                {
+                    // Issue only one restart at a time.
+                    await _restartWorkerProcessSLock.WaitAsync();
+                    await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
+                }
+                finally
+                {
+                    // Wait before releasing the lock to give time for the process to startup and initialize.
+                    await Task.Delay(_restartWait);
+                    _restartWorkerProcessSLock.Release();
+                }
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
             {
@@ -417,6 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _jobHostLanguageWorkerChannelManager.ShutdownChannels();
                 State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
+                _restartWorkerProcessSLock.Dispose();
             }
         }
 
