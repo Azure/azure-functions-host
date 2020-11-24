@@ -500,7 +500,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteId = 1234,
                 SiteName = "TestSite",
                 Environment = environment,
-                IsWarmupRequest = false
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK);
@@ -553,7 +554,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteId = 1234,
                 SiteName = "TestSite",
                 Environment = environment,
-                IsWarmupRequest = false
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
@@ -567,6 +569,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
                 p => Assert.StartsWith("Specialize MSI sidecar returned BadRequest", p),
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
+        }
+
+        [Fact]
+        public async Task DoesNotSpecializeMSISidecar_WhenMSIContextNull()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = null
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext was absent", p));
         }
 
         [Fact]
