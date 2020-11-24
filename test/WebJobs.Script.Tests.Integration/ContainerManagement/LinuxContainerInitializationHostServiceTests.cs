@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
                 }
             };
             hostAssignmentContext.Secrets = secrets;
+            hostAssignmentContext.MSIContext = new MSIContext();
 
             var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
             var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
@@ -103,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
         {
             var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
             var hostAssignmentContext = GetHostAssignmentContext();
+            hostAssignmentContext.MSIContext = new MSIContext();
             var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
             var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
 
