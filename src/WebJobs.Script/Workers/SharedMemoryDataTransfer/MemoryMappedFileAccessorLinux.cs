@@ -13,10 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     {
         public MemoryMappedFileAccessorLinux(ILogger<MemoryMappedFileAccessor> logger) : base(logger)
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                throw new PlatformNotSupportedException("Cannot instantiate on this platform");
-            }
+            ValidatePlatform(OSPlatform.Linux);
         }
 
         public override bool TryCreate(string mapName, long size, out MemoryMappedFile mmf)
@@ -119,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
         /// <returns>Path to the <see cref="MemoryMappedFile"/> if found an existing one
         /// <see cref="null"/> otherwise.</returns>
-        public string GetPath(string mapName)
+        private string GetPath(string mapName)
         {
             // We escape the mapName to make it a valid file name
             // Python will use urllib.parse.quote_plus(mapName)
@@ -145,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/>.</param>
         /// <param name="size">Required size in the directory.</param>
         /// <returns>Created path.</returns>
-        public string CreatePath(string mapName, long size)
+        private string CreatePath(string mapName, long size)
         {
             string escapedMapName = Uri.EscapeDataString(mapName);
 
@@ -170,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <returns>Directory with enough space to create <see cref="MemoryMappedFile"/>.
         /// If none of them has enough free space, the
         /// <see cref="SharedMemoryConstants.TempDirSuffix"/> is used.</returns>
-        public string GetDirectory(long size)
+        private string GetDirectory(long size)
         {
             foreach (string tempDir in SharedMemoryConstants.TempDirs)
             {

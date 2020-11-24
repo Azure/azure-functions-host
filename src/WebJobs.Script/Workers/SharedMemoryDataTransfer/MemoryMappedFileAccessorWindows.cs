@@ -13,10 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     {
         public MemoryMappedFileAccessorWindows(ILogger<MemoryMappedFileAccessor> logger) : base(logger)
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                throw new PlatformNotSupportedException("Cannot instantiate on this platform");
-            }
+            ValidatePlatform(OSPlatform.Windows);
         }
 
         public override bool TryCreate(string mapName, long size, out MemoryMappedFile mmf)

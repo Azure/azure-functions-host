@@ -30,24 +30,32 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
 
             var rpcValueCache = new Dictionary<object, TypedData>();
+            var sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
 
             foreach (var input in context.Inputs)
             {
-                RpcSharedMemory sharedMem = null;
+                RpcSharedMemory sharedMemValue = null;
                 ParameterBinding parameterBinding = null;
                 if (isSharedMemoryDataTransferEnabled)
                 {
                     // Try to transfer this data over shared memory instead of RPC
-                    sharedMem = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager);
+                    if (input.val == null || !sharedMemValueCache.TryGetValue(input.val, out sharedMemValue))
+                    {
+                        sharedMemValue = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager);
+                        if (input.val != null)
+                        {
+                            sharedMemValueCache.Add(input.val, sharedMemValue);
+                        }
+                    }
                 }
 
-                if (sharedMem != null)
+                if (sharedMemValue != null)
                 {
                     // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
                     parameterBinding = new ParameterBinding
                     {
                         Name = input.name,
-                        RpcSharedMemory = sharedMem
+                        RpcSharedMemory = sharedMemValue
                     };
                 }
                 else

@@ -497,7 +497,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                     // List of shared memory maps that were produced by the worker (for output bindings)
                     IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
-                    if (outputMaps.Any())
+                    if (outputMaps.Count > 0)
                     {
                         // If this invocation was using any shared memory maps produced by the worker, close them to free memory
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);

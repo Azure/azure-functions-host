@@ -1,7 +1,9 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.IO.MemoryMappedFiles;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
@@ -41,6 +43,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
             Logger.LogError("Cannot create or open shared memory map: {MapName} with size: {Size} bytes", mapName, size);
             return false;
+        }
+
+        protected void ValidatePlatform(OSPlatform platform)
+        {
+            if (!RuntimeInformation.IsOSPlatform(platform))
+            {
+                throw new PlatformNotSupportedException("Cannot instantiate on this platform");
+            }
         }
     }
 }

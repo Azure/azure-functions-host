@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     /// <summary>
-    /// Shared memory region on which
+    /// Shared memory region to read/write data from.
     /// </summary>
     public class SharedMemoryMap : IDisposable
     {
