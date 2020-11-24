@@ -61,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             const string containerEncryptionKey = "/a/vXvWJ3Hzgx4PFxlDUJJhQm5QVyGiu0NNLFm/ZMMg=";
             var hostAssignmentContext = new HostAssignmentContext
             {
-                Environment = new Dictionary<string, string>()
+                Environment = new Dictionary<string, string>(),
+                MSIContext = new MSIContext()
             };
 
             hostAssignmentContext.Environment[EnvironmentSettingNames.MsiEndpoint] = "http://localhost:8081";
