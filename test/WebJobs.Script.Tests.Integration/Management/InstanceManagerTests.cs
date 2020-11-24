@@ -287,25 +287,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(result);
         }
 
-        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/6643")]
+        [Fact]
         public async Task ValidateContext_InvalidZipUrl_WebsiteUseZip_ReturnsError()
         {
-            var environment = new Dictionary<string, string>()
+            var environmentSettings = new Dictionary<string, string>()
             {
                 { EnvironmentSettingNames.AzureWebsiteZipDeployment, "http://invalid.com/invalid/dne" }
             };
+
+            var environment = new TestEnvironment();
+            foreach (var (key, value) in environmentSettings)
+            {
+                environment.SetEnvironmentVariable(key, value);
+            }
+
+            var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
+
+            var loggerFactory = new LoggerFactory();
+            var loggerProvider = new TestLoggerProvider();
+            loggerFactory.AddProvider(loggerProvider);
+
+            var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+            handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.NotFound
+            });
+
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
+                scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+                new TestMetricsLogger(), null);
+
             var assignmentContext = new HostAssignmentContext
             {
                 SiteId = 1234,
                 SiteName = "TestSite",
-                Environment = environment,
+                Environment = environmentSettings,
                 IsWarmupRequest = false
             };
 
-            string error = await _instanceManager.ValidateContext(assignmentContext);
+            string error = await instanceManager.ValidateContext(assignmentContext);
             Assert.Equal("Invalid zip url specified (StatusCode: NotFound)", error);
 
-            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            var logs = loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
                 p => Assert.StartsWith("Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')", p),
                 p => Assert.StartsWith($"Will be using {EnvironmentSettingNames.AzureWebsiteZipDeployment} app setting as zip url. IsWarmup: 'False'", p),
@@ -477,7 +503,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteId = 1234,
                 SiteName = "TestSite",
                 Environment = environment,
-                IsWarmupRequest = false
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.OK);
@@ -530,7 +557,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 SiteId = 1234,
                 SiteName = "TestSite",
                 Environment = environment,
-                IsWarmupRequest = false
+                IsWarmupRequest = false,
+                MSIContext = new MSIContext()
             };
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
@@ -606,6 +634,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Verify(
                 client => client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3,
                     targetPath3), Times.Once);
+        }
+
+        [Fact]
+        public async Task DoesNotSpecializeMSISidecar_WhenMSIContextNull()
+        {
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.MsiEndpoint, "http://localhost:8081" },
+                { EnvironmentSettingNames.MsiSecret, "secret" }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false,
+                MSIContext = null
+            };
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest);
+
+            string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
+            Assert.Null(error);
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+            Assert.Collection(logs,
+                p => Assert.StartsWith("MSI enabled status: True", p),
+                p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext was absent", p));
         }
 
         [Fact]

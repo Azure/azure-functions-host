@@ -54,35 +54,41 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return null;
             }
 
-            string endpoint;
-            var msiEnabled = context.IsMSIEnabled(out endpoint);
+            var msiEnabled = context.IsMSIEnabled(out var endpoint);
 
             _logger.LogInformation($"MSI enabled status: {msiEnabled}");
 
             if (msiEnabled)
             {
-                using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
+                if (context.MSIContext == null)
                 {
-                    var uri = new Uri(endpoint);
-                    var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
-
-                    _logger.LogDebug($"Specializing sidecar at {address}");
-
-                    var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
+                    _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext was absent");
+                }
+                else
+                {
+                    using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationMSIInit))
                     {
-                        Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
-                            Encoding.UTF8, "application/json")
-                    };
+                        var uri = new Uri(endpoint);
+                        var address = $"http://{uri.Host}:{uri.Port}{ScriptConstants.LinuxMSISpecializationStem}";
 
-                    var response = await _client.SendAsync(requestMessage);
+                        _logger.LogDebug($"Specializing sidecar at {address}");
 
-                    _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
+                        var requestMessage = new HttpRequestMessage(HttpMethod.Post, address)
+                        {
+                            Content = new StringContent(JsonConvert.SerializeObject(context.MSIContext),
+                                Encoding.UTF8, "application/json")
+                        };
 
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var message = $"Specialize MSI sidecar call failed. StatusCode={response.StatusCode}";
-                        _logger.LogError(message);
-                        return message;
+                        var response = await _client.SendAsync(requestMessage);
+
+                        _logger.LogInformation($"Specialize MSI sidecar returned {response.StatusCode}");
+
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var message = $"Specialize MSI sidecar call failed. StatusCode={response.StatusCode}";
+                            _logger.LogError(message);
+                            return message;
+                        }
                     }
                 }
             }
