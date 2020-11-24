@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [1.1.10](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.10)
 - Fixed [bug](https://github.com/Azure/azure-functions-durable-extension/issues/1504) in sync triggers operations for Durable Functions using custom storage account connection strings.
 - Update PowerShell Worker to 2.0.559 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v2.0.559)
 
