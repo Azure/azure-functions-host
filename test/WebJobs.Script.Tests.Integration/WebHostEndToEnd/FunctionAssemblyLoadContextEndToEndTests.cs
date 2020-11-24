@@ -96,6 +96,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
+        [Fact]
+        public async Task MultipleDepenendencyVersions()
+        {
+            // Test that we consult the deps file 
+
+            await RunTest(async () =>
+            {
+                _launcher = new HostProcessLauncher("MultipleDependencyVersions");
+                await _launcher.StartHostAsync();
+
+                var client = _launcher.HttpClient;
+                var response = await client.GetAsync($"api/MultipleDependencyVersions");
+
+                // The function does all the validation internally.
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            });
+        }
+
         private async Task RunTest(Func<Task> test)
         {
             try

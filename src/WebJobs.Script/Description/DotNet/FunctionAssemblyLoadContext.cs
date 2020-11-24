@@ -97,12 +97,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 var assemblyGroup = runtimeAssemblyGroups.FirstOrDefault(g => string.Equals(g.Runtime, rid, StringComparison.OrdinalIgnoreCase));
                 if (assemblyGroup != null)
                 {
-                    return assemblyGroup.AssetPaths.Select(path => new RuntimeAsset(rid, path));
+                    return assemblyGroup.RuntimeFiles.Select(file => new RuntimeAsset(rid, file.Path, file.AssemblyVersion));
                 }
             }
 
             // If unsuccessful, load default assets, making sure the path is flattened to reflect deployed files
-            return runtimeAssemblyGroups.GetDefaultAssets().Select(a => new RuntimeAsset(null, Path.GetFileName(a)));
+            return runtimeAssemblyGroups.GetDefaultRuntimeFileAssets().Select(a => new RuntimeAsset(null, Path.GetFileName(a.Path), a.AssemblyVersion));
         }
 
         private static FunctionAssemblyLoadContext CreateSharedContext()
@@ -201,6 +201,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
+            bool isNameAdjusted = TryAdjustRuntimeAssemblyFromDepsFile(assemblyName, out assemblyName);
+
             // Try to load from deps references, if available
             if (TryLoadDepsDependency(assemblyName, out Assembly assembly))
             {
@@ -210,7 +212,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // If this is a runtime restricted assembly, load it based on unification rules
             if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
-                return LoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly);
+                assembly = LoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly);
+
+                // If the policy evaluation failed because the AssemblyName was adjusted due to
+                // deps.json, we cannot allow the Default context to load it. Instead, load directly.
+                if (assembly == null && isNameAdjusted)
+                {
+                    assembly = LoadCore(assemblyName);
+                }
+
+                return assembly;
             }
 
             // If the assembly being requested matches a host assembly, we'll use
@@ -221,6 +232,29 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return LoadCore(assemblyName);
+        }
+
+        private bool TryAdjustRuntimeAssemblyFromDepsFile(AssemblyName assemblyName, out AssemblyName newAssemblyName)
+        {
+            newAssemblyName = assemblyName;
+
+            // It's possible for references to depend on different versions, and deps.json is the
+            // source of truth for which version should be resolved.
+            if (IsRuntimeAssembly(assemblyName) &&
+                TryGetDepsAsset(_depsAssemblies, assemblyName.Name, _currentRidFallback, out RuntimeAsset asset)
+                && asset.AssemblyVersion != assemblyName.Version)
+            {
+                // We'll be using the deps.json version
+                newAssemblyName = new AssemblyName
+                {
+                    Name = assemblyName.Name,
+                    Version = asset.AssemblyVersion
+                };
+
+                return true;
+            }
+
+            return false;
         }
 
         private Assembly LoadRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly)
@@ -251,11 +285,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (_depsAssemblies != null &&
                 !IsRuntimeAssembly(assemblyName) &&
-                TryGetDepsAsset(_depsAssemblies, assemblyName.Name, _currentRidFallback, out string assemblyPath))
+                TryGetDepsAsset(_depsAssemblies, assemblyName.Name, _currentRidFallback, out RuntimeAsset asset))
             {
                 foreach (var probingPath in _probingPaths)
                 {
-                    string filePath = Path.Combine(probingPath, assemblyPath);
+                    string filePath = Path.Combine(probingPath, asset.Path);
                     if (File.Exists(filePath))
                     {
                         assembly = LoadFromAssemblyPath(filePath);
@@ -267,16 +301,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return assembly != null;
         }
 
-        internal static bool TryGetDepsAsset(IDictionary<string, RuntimeAsset[]> depsAssets, string assetName, List<string> ridFallbacks, out string assemblyPath)
+        internal static bool TryGetDepsAsset(IDictionary<string, RuntimeAsset[]> depsAssets, string assetName, List<string> ridFallbacks, out RuntimeAsset asset)
         {
-            assemblyPath = null;
+            asset = null;
 
-            if (depsAssets.TryGetValue(assetName, out RuntimeAsset[] assets))
+            if (depsAssets != null && depsAssets.TryGetValue(assetName, out RuntimeAsset[] assets))
             {
                 // If we have a single asset match, return it:
                 if (assets.Length == 1)
                 {
-                    assemblyPath = assets[0].Path;
+                    asset = assets[0];
                 }
                 else
                 {
@@ -286,21 +320,21 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
                         if (match != null)
                         {
-                            assemblyPath = match.Path;
+                            asset = match;
                             break;
                         }
                     }
 
                     // If we're unable to locate a matching asset based on the RID fallback probing,
                     // attempt to use a default/RID-agnostic asset instead
-                    if (assemblyPath == null)
+                    if (asset == null)
                     {
-                        assemblyPath = assets.FirstOrDefault(a => a.Rid == null)?.Path;
+                        asset = assets.FirstOrDefault(a => a.Rid == null);
                     }
                 }
             }
 
-            return assemblyPath != null;
+            return asset != null;
         }
 
         private bool TryLoadHostEnvironmentAssembly(AssemblyName assemblyName, bool allowPartialNameMatch, out Assembly assembly)
@@ -381,11 +415,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (result == null && _nativeLibraries != null)
             {
-                if (TryGetDepsAsset(_nativeLibraries, assetFileName, _currentRidFallback, out string relativePath))
+                if (TryGetDepsAsset(_nativeLibraries, assetFileName, _currentRidFallback, out RuntimeAsset asset))
                 {
                     string basePath = _probingPaths[0];
 
-                    string nativeLibraryFullPath = Path.Combine(basePath, relativePath);
+                    string nativeLibraryFullPath = Path.Combine(basePath, asset.Path);
                     if (File.Exists(nativeLibraryFullPath))
                     {
                         result = nativeLibraryFullPath;
