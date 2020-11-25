@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task RestartWorkerChannel(string runtime)
         {
-            if (!_disposing || !_disposed)
+            if (_disposing)
             {
                 return;
             }
