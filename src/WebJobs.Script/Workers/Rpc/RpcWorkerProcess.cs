@@ -54,6 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal override void HandleWorkerProcessExitError(WorkerProcessExitException rpcWorkerProcessExitException)
         {
+            if (Disposing)
+            {
+                return;
+            }
             if (rpcWorkerProcessExitException == null)
             {
                 throw new ArgumentNullException(nameof(rpcWorkerProcessExitException));
