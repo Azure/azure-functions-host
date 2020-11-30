@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 Type = dataType.Value
             };
 
-            logger.LogDebug("Put object in shared memory for invocation id: {Id}", invocationId);
+            logger.LogTrace("Put object in shared memory for invocation id: {Id}", invocationId);
             return sharedMem;
         }
 

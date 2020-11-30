@@ -483,7 +483,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void SharedMemoryDataTransferSetting_VerifyDisabledIfWorkerCapabilityAbsent()
         {
             // Enable shared memory data transfer in the environment
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName, "1");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
 
             StartStream startStream = new StartStream()
             {
@@ -640,7 +640,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private void EnableSharedMemoryDataTransfer()
         {
             // Enable shared memory data transfer in the environment
-            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName, "1");
+            _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
 
             // Enable shared memory data transfer capability in the worker
             IDictionary<string, string> capabilities = new Dictionary<string, string>()

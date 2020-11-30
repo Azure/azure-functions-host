@@ -473,6 +473,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 try
                 {
+                    long bytesReceivedViaSharedMemory = 0;
+
+                    foreach (ParameterBinding binding in invokeResponse.OutputData)
+                    {
+                        switch (binding.RpcDataCase)
+                        {
+                            case ParameterBindingType.RpcSharedMemory:
+                                bytesReceivedViaSharedMemory += binding.RpcSharedMemory.Count;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    if (bytesReceivedViaSharedMemory > 0)
+                    {
+                        _workerChannelLogger.LogDebug("Received: {Size} bytes over shared memory for invocation Id: {Id}", bytesReceivedViaSharedMemory, invokeResponse.InvocationId);
+                    }
+
                     IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
                         .ToDictionaryAsync(binding => binding.Name, binding => GetBindingDataAsync(binding, invokeResponse.InvocationId));
 
@@ -694,14 +713,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <summary>
         /// Determine if shared memory transfer is enabled.
         /// The following conditions must be met:
-        ///     1) <see cref="RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName"/> must be set in environment variable (AppSetting).
+        ///     1) <see cref="RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName"/> must be set in environment variable (AppSetting).
         ///     2) Worker must have the capability <see cref="RpcWorkerConstants.SharedMemoryDataTransfer"/>.
         /// </summary>
         /// <returns><see cref="true"/> if shared memory data transfer is enabled, <see cref="false"/> otherwise.</returns>
         internal bool IsSharedMemoryDataTransferEnabled()
         {
             // Check if the environment variable (AppSetting) has this feature enabled
-            string envVal = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferSettingName);
+            string envVal = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName);
             if (string.IsNullOrEmpty(envVal))
             {
                 return false;

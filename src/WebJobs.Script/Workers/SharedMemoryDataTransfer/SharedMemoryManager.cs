@@ -36,12 +36,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <summary>
         /// Gets mapping of invocation IDs to list of names of shared memory maps allocated for that invocation.
         /// </summary>
-        public ConcurrentDictionary<string, HashSet<string>> InvocationSharedMemoryMaps { get; private set; }
+        internal ConcurrentDictionary<string, HashSet<string>> InvocationSharedMemoryMaps { get; private set; }
 
         /// <summary>
         /// Gets mapping of shared memory map names to the <see cref="SharedMemoryMap"/> that were allocated.
         /// </summary>
-        public ConcurrentDictionary<string, SharedMemoryMap> AllocatedSharedMemoryMaps { get; private set; }
+        internal ConcurrentDictionary<string, SharedMemoryMap> AllocatedSharedMemoryMaps { get; private set; }
 
         public Task<SharedMemoryMetadata> PutObjectAsync(object input)
         {

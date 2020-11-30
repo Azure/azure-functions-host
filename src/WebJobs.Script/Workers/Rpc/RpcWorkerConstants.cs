@@ -10,7 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
         public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
-        public const string FunctionsWorkerSharedMemoryDataTransferSettingName = "FUNCTIONS_WORKER_SHARED_MEMORY_DATA_TRANSFER";
+        public const string FunctionsWorkerSharedMemoryDataTransferEnabledSettingName = "FUNCTIONS_WORKER_SHARED_MEMORY_DATA_TRANSFER_ENABLED";
         public const string DotNetLanguageWorkerName = "dotnet";
         public const string NodeLanguageWorkerName = "node";
         public const string JavaLanguageWorkerName = "java";

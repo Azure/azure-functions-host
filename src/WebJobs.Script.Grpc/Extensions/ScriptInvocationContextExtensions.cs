@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var rpcValueCache = new Dictionary<object, TypedData>();
             var sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
+            long bytesSentViaSharedMemory = 0;
 
             foreach (var input in context.Inputs)
             {
@@ -57,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Name = input.name,
                         RpcSharedMemory = sharedMemValue
                     };
+
+                    bytesSentViaSharedMemory += sharedMemValue.Count;
                 }
                 else
                 {
@@ -95,6 +98,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
+            }
+
+            if (bytesSentViaSharedMemory > 0)
+            {
+                logger.LogDebug("Sent: {Size} bytes over shared memory for invocation Id: {Id}", bytesSentViaSharedMemory, invocationRequest.InvocationId);
             }
 
             return invocationRequest;
