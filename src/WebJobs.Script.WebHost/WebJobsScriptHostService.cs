@@ -508,8 +508,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal bool ShouldEnforceSequentialRestart()
         {
-            bool.TryParse(_config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart).Value, out bool enforceSequentialOrder);
-            return enforceSequentialOrder;
+            var sequentialRestartSetting = _config.GetSection(ConfigurationSectionNames.SequentialJobHostRestart);
+            if (sequentialRestartSetting != null)
+            {
+                bool.TryParse(sequentialRestartSetting.Value, out bool enforceSequentialOrder);
+                return enforceSequentialOrder;
+            }
+
+            return false;
         }
 
         private void OnHostInitializing(object sender, EventArgs e)
