@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [1.1.10b](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.10b)
 - Configure host.json to use workflow when creating a default host.json and app is identified as a logic app. (#6810)
 
 
