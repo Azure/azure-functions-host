@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private ILoggerFactory _loggerFactory;
         private Mock<IScriptWebHostEnvironment> _mockScriptWebHostEnvironment;
         private Mock<IEnvironment> _mockEnvironment;
+        private IConfiguration _mockConfig;
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
@@ -55,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _healthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(new HostHealthMonitorOptions());
             var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions, serviceProviderMock.Object);
+            _mockConfig = new Mock<IConfiguration>().Object;
         }
 
         private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)
@@ -104,7 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+                new Mock<IApplicationLifetime>().Object, _mockConfig);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -129,7 +134,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions,
+                metricsLogger, new Mock<IApplicationLifetime>().Object,
+                _mockConfig);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -181,7 +189,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions,
+                metricsLogger, new Mock<IApplicationLifetime>().Object,
+                _mockConfig);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
             TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
@@ -254,7 +265,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                 _monitor, hostBuilder.Object, _loggerFactory,
-                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions,
+                metricsLogger, new Mock<IApplicationLifetime>().Object,
+                _mockConfig);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
 
@@ -321,7 +335,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
-               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+               _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+               new Mock<IApplicationLifetime>().Object, _mockConfig);
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
 
@@ -351,7 +367,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _hostService = new WebJobsScriptHostService(
                _monitor, hostBuilder.Object, _loggerFactory,
-               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object, _hostPerformanceManager, _healthMonitorOptions, metricsLogger, new Mock<IApplicationLifetime>().Object);
+               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+               _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+               new Mock<IApplicationLifetime>().Object, _mockConfig);
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
             // can happen before we ever start the service, which could create invalid state.
@@ -377,6 +395,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotNull(messages.Single(p => p.EventId.Id == 514)); // "StartupWasCanceled" message
             Assert.NotNull(messages.Single(p => p.EventId.Id == 520)); // "RestartBeforeStart" message
             _host.Verify(p => p.StartAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("1", false)]
+        [InlineData("0", false)]
+        [InlineData("true", true)]
+        [InlineData("True", true)]
+        [InlineData("false", false)]
+        public void ShouldEnforceSequentialRestart_WithCorrectConfig(string value, bool expectedResult)
+        {
+            var metricsLogger = new TestMetricsLogger();
+            _host.Setup(h => h.StartAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(_host.Object);
+
+            IConfiguration config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "AzureFunctionsJobHost:SequentialRestart", value },
+                })
+                .Build();
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+                new Mock<IApplicationLifetime>().Object, config);
+
+            Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
         }
 
         public void RestartHost()
