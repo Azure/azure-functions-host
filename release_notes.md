@@ -4,7 +4,7 @@
 -->
 - Update Python Worker Version to [1.1.10](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.10)
 - Configure host.json to use workflow when creating a default host.json and app is identified as a logic app. (#6810)
-
+- Update Node.js Worker Version to [2.1.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v2.1.0)
 
 **Release sprint:** Sprint 89
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Afeature+is%3Aclosed) ]
