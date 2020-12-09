@@ -504,7 +504,7 @@
     },
     {
       "name": "Microsoft.Extensions.DependencyInjection.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "runtimeVersion"
     },
     {
       "name": "Microsoft.Extensions.DependencyModel",
