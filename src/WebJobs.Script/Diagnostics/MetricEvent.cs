@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public Stopwatch StopWatch { get; set; }
 
-        public TimeSpan Duration { get; set; }
+        public TimeSpan Duration { get; private set; }
 
         public string Data { get; set; }
 
@@ -22,12 +22,21 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public string SlotName { get; set; }
 
-        public bool Completed
+        public bool Completed { get; private set; }
+
+        public void Complete()
         {
-            get
+            if (StopWatch != null)
             {
-                return Duration != default(TimeSpan);
+                StopWatch.Stop();
+                Duration = StopWatch.Elapsed;
             }
+            else
+            {
+                Duration = DateTime.UtcNow - Timestamp;
+            }
+
+            Completed = true;
         }
     }
 }
