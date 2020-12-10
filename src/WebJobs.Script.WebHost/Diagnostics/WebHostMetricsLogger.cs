@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (metricEvent is FunctionStartedEvent completedEvent)
             {
-                completedEvent.Duration = DateTime.UtcNow - completedEvent.Timestamp;
                 _metricsEventManager.FunctionCompleted(completedEvent);
             }
             else
