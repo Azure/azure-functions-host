@@ -10,11 +10,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly LinuxAppServiceFileLoggerFactory _loggerFactory;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly bool _consoleEnabled = true;
 
         public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider)
         {
             _loggerFactory = loggerFactory;
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
+            if (Environment.GetEnvironmentVariable(EnvironmentSettingNames.ConsoleLoggingDisabled) == "1")
+            {
+                _consoleEnabled = false;
+            }
         }
 
         public static string TraceEventRegex { get; } = $"(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<HostName>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*)";
@@ -69,8 +74,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             logger.Log(evt);
         }
 
+        private void ConsoleWriter(string evt)
+        {
+            if (_consoleEnabled)
+            {
+                Console.WriteLine(evt);
+            }
+        }
+
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
+            ConsoleWriter($"{ScriptConstants.LinuxAzureMonitorEventStreamName} {(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{"CONTAINER_NAME_ALT"},{"TENANT_ID"},{DateTime.UtcNow.ToString()}");
         }
 
         public static void LogUnhandledException(Exception e)
