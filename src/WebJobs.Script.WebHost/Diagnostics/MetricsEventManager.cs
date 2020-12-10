@@ -79,18 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             SystemMetricEvent evt = eventHandle as SystemMetricEvent;
             if (evt != null)
             {
-                long latencyMS = 0;
-                evt.StopWatch.Stop();
-                if (evt.StopWatch != null)
-                {
-                    evt.Duration = evt.StopWatch.Elapsed;
-                    latencyMS = evt.StopWatch.ElapsedMilliseconds;
-                }
-                else
-                {
-                    evt.Duration = DateTime.UtcNow - evt.Timestamp;
-                    latencyMS = (long)evt.Duration.TotalMilliseconds;
-                }
+                evt.Complete();
+                long latencyMS = (long)evt.Duration.TotalMilliseconds;
 
                 // event aggregation is based on this key
                 // for each unique key, there will be only 1
@@ -165,6 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal void FunctionCompleted(FunctionStartedEvent completedEvent)
         {
+            completedEvent.Complete();
             _functionActivityTracker.FunctionCompleted(completedEvent);
         }
 

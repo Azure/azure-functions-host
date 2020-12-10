@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -203,6 +204,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(15, metricEvent.Count);
             Assert.Equal("event3", metricEvent.EventName);
             Assert.Null(metricEvent.FunctionName);
+        }
+
+        [Fact]
+        public async Task Complete_TimestampSet_CompletesEvent()
+        {
+            var metadata = new FunctionMetadata();
+            var evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
+            evt.Timestamp = DateTime.UtcNow;
+            Assert.False(evt.Completed);
+
+            // complete immediately (potentially within system timer resolution)
+            evt.Complete();
+            Assert.True(evt.Completed);
+
+            evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
+            evt.Timestamp = DateTime.UtcNow;
+            Assert.False(evt.Completed);
+
+            // complete after a delay
+            await Task.Delay(250);
+            evt.Complete();
+            Assert.True(evt.Completed);
+        }
+
+        [Fact]
+        public async Task Complete_StopwatchSet_CompletesEvent()
+        {
+            var metadata = new FunctionMetadata();
+            var evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
+            evt.StopWatch = Stopwatch.StartNew();
+            Assert.False(evt.Completed);
+
+            // complete immediately (potentially within system timer resolution)
+            evt.Complete();
+            Assert.True(evt.Completed);
+            Assert.False(evt.StopWatch.IsRunning);
+
+            evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
+            evt.StopWatch = Stopwatch.StartNew();
+            Assert.False(evt.Completed);
+
+            // complete after a delay
+            await Task.Delay(250);
+            evt.Complete();
+            Assert.True(evt.Completed);
+            Assert.False(evt.StopWatch.IsRunning);
         }
 
         [Fact]
