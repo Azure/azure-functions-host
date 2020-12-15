@@ -235,7 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _requestQueue = new HttpRequestQueue(new OptionsWrapper<HttpOptions>(_httpOptions));
 
             bool isOverloaded = false;
-            _performanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<Collection<string>>(), null)).Returns(() => Task.FromResult(isOverloaded));
+            _performanceManager.Setup(p => p.PerformanceCountersExceeded(It.IsAny<Collection<string>>(), It.IsAny<ILogger>())).Returns(() => isOverloaded);
 
             RequestDelegate next = async (ctxt) =>
             {
@@ -269,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             bool highLoad = false;
             int highLoadQueryCount = 0;
-            _performanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
+            _performanceManager.Setup(p => p.PerformanceCountersExceeded(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
                 .Callback<Collection<string>, ILogger>((exceededCounters, tw) =>
                 {
                     if (highLoad)
@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }).Returns(() =>
                 {
                     highLoadQueryCount++;
-                    return Task.FromResult(highLoad);
+                    return highLoad;
                 });
 
             // issue some requests while not under high load
