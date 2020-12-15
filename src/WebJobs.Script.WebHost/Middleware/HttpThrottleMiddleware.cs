@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 // only check host status periodically
                 Collection<string> exceededCounters = new Collection<string>();
-                _rejectRequests = await performanceManager.IsUnderHighLoadAsync(exceededCounters);
+                _rejectRequests = performanceManager.PerformanceCountersExceeded(exceededCounters);
                 _lastPerformanceCheck = DateTime.UtcNow;
                 if (_rejectRequests)
                 {
