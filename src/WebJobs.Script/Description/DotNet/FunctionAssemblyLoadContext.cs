@@ -13,6 +13,8 @@ using System.Runtime.Loader;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyModel;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ResolutionPolicyEvaluator = System.Func<System.Reflection.AssemblyName, System.Reflection.Assembly, bool>;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -34,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly IDictionary<string, RuntimeAsset[]> _depsAssemblies;
         private readonly IDictionary<string, RuntimeAsset[]> _nativeLibraries;
         private readonly List<string> _currentRidFallback;
+        private readonly ILogger _logger = NullLogger<FunctionAssemblyLoadContext>.Instance;
 
         public FunctionAssemblyLoadContext(string basePath)
         {
@@ -44,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             _currentRidFallback = DependencyHelper.GetRuntimeFallbacks();
 
-            (_depsAssemblies, _nativeLibraries) = InitializeDeps(basePath, _currentRidFallback);
+            (_depsAssemblies, _nativeLibraries) = InitializeDeps(basePath, _currentRidFallback, _logger);
 
             _probingPaths.Add(basePath);
         }
@@ -56,11 +59,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
         }
 
-        internal static (IDictionary<string, RuntimeAsset[]> depsAssemblies, IDictionary<string, RuntimeAsset[]> nativeLibraries) InitializeDeps(string basePath, List<string> ridFallbacks)
+        internal static (IDictionary<string, RuntimeAsset[]> depsAssemblies, IDictionary<string, RuntimeAsset[]> nativeLibraries) InitializeDeps(string basePath, List<string> ridFallbacks, ILogger logger)
         {
             string depsFilePath = Path.Combine(basePath, DotNetConstants.FunctionsDepsFileName);
-
-            if (File.Exists(depsFilePath))
+            if (!File.Exists(depsFilePath))
+            {
+                logger.LogWarning("{FunctionsDepsFile} does not exist.", DotNetConstants.FunctionsDepsFileName);
+            }
+            else
             {
                 try
                 {
@@ -84,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                 }
             }
-
             return (null, null);
         }
 
