@@ -62,11 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         internal static (IDictionary<string, RuntimeAsset[]> depsAssemblies, IDictionary<string, RuntimeAsset[]> nativeLibraries) InitializeDeps(string basePath, List<string> ridFallbacks, ILogger logger)
         {
             string depsFilePath = Path.Combine(basePath, DotNetConstants.FunctionsDepsFileName);
-            if (!File.Exists(depsFilePath))
-            {
-                logger.LogWarning("{FunctionsDepsFile} does not exist.", DotNetConstants.FunctionsDepsFileName);
-            }
-            else
+            if (File.Exists(depsFilePath))
             {
                 try
                 {
@@ -89,6 +85,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 catch
                 {
                 }
+            }
+            else
+            {
+                logger.LogWarning("{FunctionsDepsFile} does not exist.", DotNetConstants.FunctionsDepsFileName);
             }
             return (null, null);
         }

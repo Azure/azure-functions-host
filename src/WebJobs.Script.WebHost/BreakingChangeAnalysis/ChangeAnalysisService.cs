@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -128,6 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
             cancellationToken.ThrowIfCancellationRequested();
 
             var generator = new BreakingChangeReportGenerator();
+            var removedAssembliesString = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.AssembliesRemoved.txt");
+            var removedAssemblies = removedAssembliesString.Split("\r\n").ToList();
 
             IEnumerable<Assembly> functionContextAssemblies = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(a => AssemblyLoadContext.GetLoadContext(a) == FunctionAssemblyLoadContext.Shared);
@@ -136,6 +139,11 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
             foreach (var assembly in functionContextAssemblies)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (removedAssemblies.Contains(assembly.GetName().Name))
+                {
+                    _logger.LogDebug("RemovedAssembly: '{assemblyName}' loaded from: '{location}'", assembly.GetName().Name, assembly.Location);
+                }
 
                 AssemblyReport report = generator.ProduceReport(new Uri(assembly.CodeBase).LocalPath);
                 _logger.LogDebug(JsonConvert.SerializeObject(report));

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
@@ -31,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
+    <None Remove="BreakingChangeAnalysis\AssembliesRemoved.txt" />
     <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
     <None Remove="web.InProcess.win-x64.xdt" />
@@ -76,6 +77,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\AssembliesRemoved.txt" />
     <EmbeddedResource Include="Home.html" />
     <EmbeddedResource Include="Resources\app_offline.htm" />
     <EmbeddedResource Include="Resources\Functions\host.json" />
