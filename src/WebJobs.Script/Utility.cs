@@ -807,6 +807,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static void LogSharedFxAssembliesInScriptRootPath(string rootScriptPath, string workerRuntime, ILogger logger)
         {
+            if (string.IsNullOrEmpty(workerRuntime))
+            {
+                return;
+            }
+
             // Skip logging for non-dotnet apps
             if (!workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
