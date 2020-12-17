@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public const int ContentLengthHeaderBytes = sizeof(long);
 
         /// <summary>
-        /// A flag to indicate that the <see cref="SharedMemoryMap"/> contains content and is not empty.
+        /// A flag to indicate that the <see cref="SharedMemoryMap"/> has been allocated, may be in use and is not new.
         /// </summary>
         public const bool DirtyBitSet = true;
 
