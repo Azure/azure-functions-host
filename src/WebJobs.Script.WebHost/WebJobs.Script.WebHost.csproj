@@ -31,7 +31,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="applicationHost.xdt" />
-    <None Remove="BreakingChangeAnalysis\AssembliesRemoved.txt" />
     <None Remove="Resources\app_offline.htm" />
     <None Remove="Resources\Functions\WarmUp\run.csx" />
     <None Remove="web.InProcess.win-x64.xdt" />

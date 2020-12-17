@@ -805,7 +805,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static void LogIfSharedFxMissingAssembliesExistInScriptRootPath(string rootScriptPath, string workerRuntime, ILogger logger)
+        public static void LogSharedFxAssembliesInScriptRootPath(string rootScriptPath, string workerRuntime, ILogger logger)
         {
             // Skip logging for non-dotnet apps
             if (!workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
