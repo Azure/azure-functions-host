@@ -199,17 +199,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             await FileUtility.DeleteDirectoryAsync(scriptPath, true);
             FileUtility.EnsureDirectoryExists(scriptPath);
 
-            string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
+            string content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.Functions.host.json");
             File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
 
-            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.proxies.json");
+            content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.Functions.proxies.json");
             File.WriteAllText(Path.Combine(scriptPath, "proxies.json"), content);
 
             string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
             Directory.CreateDirectory(functionPath);
-            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
+            content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
             File.WriteAllText(Path.Combine(functionPath, "function.json"), content);
-            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
+            content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
             File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
             _logger.LogInformation($"StandbyMode placeholder function directory created");

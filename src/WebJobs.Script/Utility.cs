@@ -15,9 +15,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -802,6 +802,42 @@ namespace Microsoft.Azure.WebJobs.Script
                     // ensure values specified to create ExponentialBackoffRetryAttribute are valid
                     _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
+            }
+        }
+
+        public static void LogIfSharedFxMissingAssembliesExistInScriptRootPath(string rootScriptPath, string workerRuntime, ILogger logger)
+        {
+            // Skip logging for non-dotnet apps
+            if (!workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            string binDir = Path.Combine(rootScriptPath, "bin");
+            if (FileUtility.DirectoryExists(binDir))
+            {
+                // Removed assemblies list includes :
+                // 1. Assemblies present in Microsoft.AspNetCore.App\2.2.8 but removed from Microsoft.AspNetCore.App\3.1.*
+                // 2. Assemblies present in Microsoft.AspNetCore.All\2.2.8 as this folder does not exist in .Net Core > 3.0.*
+                // 3. Assemblies present in Microsoft.NETCore.App\2.2.8 but removed from Microsoft.NETCore.App\3.1.*
+                var removedAssembliesString = FileUtility.ReadResourceString($"{ScriptConstants.ScriptResourcePath}.AssembliesRemoved.txt");
+                StringReader strReader = new StringReader(removedAssembliesString);
+                string sharedFxAssembly = strReader.ReadLine();
+                StringBuilder assembliesExistLog = new StringBuilder();
+                do
+                {
+                    string filePath = Path.Combine(binDir, sharedFxAssembly);
+                    if (FileUtility.FileExists(filePath))
+                    {
+                        assembliesExistLog.Append($" '{sharedFxAssembly}'; ");
+                    }
+                    sharedFxAssembly = strReader.ReadLine();
+                }
+                while (sharedFxAssembly != null);
+                if (assembliesExistLog.Length > 0)
+                {
+                    logger.LogSharedFxAssembliesInBin(assembliesExistLog.ToString());
+                }
             }
         }
 

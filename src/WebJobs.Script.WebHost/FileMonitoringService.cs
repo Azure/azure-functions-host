@@ -354,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (offline && !offlineFileExists)
             {
                 // create the app_offline.htm file in the root script directory
-                string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}");
+                string content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.{ScriptConstants.AppOfflineFileName}");
                 await FileUtility.WriteAsync(path, content);
             }
             else if (!offline && offlineFileExists)
