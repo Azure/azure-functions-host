@@ -816,6 +816,12 @@ namespace Microsoft.Azure.WebJobs.Script
             string binDir = Path.Combine(rootScriptPath, "bin");
             if (FileUtility.DirectoryExists(binDir))
             {
+                string depsFilePath = Path.Combine(binDir, DotNetConstants.FunctionsDepsFileName);
+                if (!FileUtility.FileExists(depsFilePath))
+                {
+                    logger.LogDepsFileMissingWarning();
+                }
+
                 // Removed assemblies list includes :
                 // 1. Assemblies present in Microsoft.AspNetCore.App\2.2.8 but removed from Microsoft.AspNetCore.App\3.1.*
                 // 2. Assemblies present in Microsoft.AspNetCore.All\2.2.8 as this folder does not exist in .Net Core > 3.0.*

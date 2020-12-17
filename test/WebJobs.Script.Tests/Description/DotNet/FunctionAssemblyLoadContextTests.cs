@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             List<string> currentRidFallbacks = DependencyHelper.GetRuntimeFallbacks();
 
             (IDictionary<string, RuntimeAsset[]> depsAssemblies, IDictionary<string, RuntimeAsset[]> nativeLibraries) =
-                FunctionAssemblyLoadContext.InitializeDeps(depsPath, currentRidFallbacks, new TestLogger("test"));
+                FunctionAssemblyLoadContext.InitializeDeps(depsPath, currentRidFallbacks);
 
             string testRid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" : "unix";
 
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             List<string> ridFallback = DependencyHelper.GetRuntimeFallbacks(rid);
 
             (_, IDictionary<string, RuntimeAsset[]> nativeLibraries) =
-                FunctionAssemblyLoadContext.InitializeDeps(depsPath, ridFallback, new TestLogger("test"));
+                FunctionAssemblyLoadContext.InitializeDeps(depsPath, ridFallback);
 
             string nativeAssetFileName = $"{prefix}Cosmos.CRTCompat.{suffix}";
 
