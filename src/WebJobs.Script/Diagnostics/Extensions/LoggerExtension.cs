@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            LoggerMessage.Define<string>(
            LogLevel.Warning,
            new EventId(334, nameof(LogDepsFileMissingWarning)),
-           "{FunctionsDepsFileName} dot not exist in bin folder.");
+           "{FunctionsDepsFileName} does not exist in bin folder.");
 
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {

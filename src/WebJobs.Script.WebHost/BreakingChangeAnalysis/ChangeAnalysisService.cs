@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Loader;
@@ -129,6 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
             cancellationToken.ThrowIfCancellationRequested();
 
             var generator = new BreakingChangeReportGenerator();
+
             IEnumerable<Assembly> functionContextAssemblies = AppDomain.CurrentDomain.GetAssemblies()
                 .Where(a => AssemblyLoadContext.GetLoadContext(a) == FunctionAssemblyLoadContext.Shared);
 
