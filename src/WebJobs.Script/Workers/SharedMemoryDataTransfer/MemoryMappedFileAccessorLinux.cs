@@ -56,6 +56,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                     null, // Named maps are not supported on Linux
                     size,
                     MemoryMappedFileAccess.ReadWrite);
+
+                if (IsDirtyBitSet(mmf))
+                {
+                    Logger.LogError("Cannot create MemoryMappedFile: {mapName}, it already exists", mapName);
+                    mmf = null;
+                    return false;
+                }
+
+                SetDirtyBit(mmf);
+
                 return true;
             }
             catch (Exception e)

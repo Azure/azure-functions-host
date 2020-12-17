@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <param name="mapName">Size of <see cref="SharedMemoryMap"/> to create.</param>
         /// <param name="contentSize">Size in bytes to allocate for the <see cref="SharedMemoryMap"/>.</param>
         /// <returns><see cref="SharedMemoryMap"/> if created successfully, <see cref="null"/> otherwise.</returns>
-        private SharedMemoryMap Create(string mapName, long contentSize)
+        internal SharedMemoryMap Create(string mapName, long contentSize)
         {
             long size = contentSize + SharedMemoryConstants.HeaderTotalBytes;
             if (_mapAccessor.TryCreate(mapName, size, out MemoryMappedFile mmf))

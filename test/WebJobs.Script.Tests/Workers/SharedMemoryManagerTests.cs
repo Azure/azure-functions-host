@@ -366,5 +366,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.False(_mapAccessor.TryOpen(mapName1, out _));
             Assert.False(_mapAccessor.TryOpen(mapName1, out _));
         }
+
+        /// <summary>
+        /// Try to create two <see cref="SharedMemoryMap"/> with the same name.
+        /// Verify that the second attempt to create fails.
+        /// </summary>
+        [Fact]
+        public void CreateTwoNewSharedMemoryMapsWithSameName_VerifyFailure()
+        {
+            string mapName = Guid.NewGuid().ToString();
+            long contentSize = 100;
+
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            {
+                Assert.NotNull(manager.Create(mapName, contentSize));
+                Assert.Null(manager.Create(mapName, contentSize));
+            }
+        }
     }
 }

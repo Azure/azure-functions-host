@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -31,7 +32,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var rpcValueCache = new Dictionary<object, TypedData>();
             var sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
-            long bytesSentViaSharedMemory = 0;
+            StringBuilder logBuilder = new StringBuilder();
+            bool usedSharedMemory = false;
 
             foreach (var input in context.Inputs)
             {
@@ -59,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         RpcSharedMemory = sharedMemValue
                     };
 
-                    bytesSentViaSharedMemory += sharedMemValue.Count;
+                    usedSharedMemory = true;
+                    logBuilder.AppendFormat("{BindingName}:{BytesSent},", input.name, sharedMemValue.Count);
                 }
                 else
                 {
@@ -100,9 +103,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
             }
 
-            if (bytesSentViaSharedMemory > 0)
+            if (usedSharedMemory)
             {
-                logger.LogDebug("Sent: {Size} bytes over shared memory for invocation Id: {Id}", bytesSentViaSharedMemory, invocationRequest.InvocationId);
+                logger.LogDebug("Shared memory usage for request of invocation Id: {Id} is {SharedMemoryUsage}", invocationRequest.InvocationId, logBuilder.ToString());
             }
 
             return invocationRequest;

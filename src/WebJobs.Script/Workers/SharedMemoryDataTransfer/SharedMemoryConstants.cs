@@ -8,16 +8,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     internal class SharedMemoryConstants
     {
         /// <summary>
+        /// The length in number of bytes of a <see cref="bool"/>.
+        /// It is used to specify a flag if the <see cref="SharedMemoryMap"/> contains any content or not.
+        /// This is to distinguish it from a completely empty/new <see cref="SharedMemoryMap"/>.
+        /// </summary>
+        public const int DirtyBitHeaderBytes = sizeof(bool);
+
+        /// <summary>
         /// The length in number of bytes of a <see cref="long"/>.
         /// It is used to specify the length (in the header) of content contained in a <see cref="SharedMemoryMap"/>.
         /// </summary>
         public const int ContentLengthHeaderBytes = sizeof(long);
 
         /// <summary>
+        /// A flag to indicate that the <see cref="SharedMemoryMap"/> contains content and is not empty.
+        /// </summary>
+        public const bool DirtyBitSet = true;
+
+        /// <summary>
         /// Length of the header in number of bytes at the start of a <see cref="SharedMemoryMap"/>.
         /// Note: Whenever the header is modified to contain more/less information, this needs to be updated.
         /// </summary>
-        public const int HeaderTotalBytes = ContentLengthHeaderBytes;
+        public const int HeaderTotalBytes = DirtyBitHeaderBytes + ContentLengthHeaderBytes;
 
         /// <summary>
         /// Minimum size (in number of bytes) an object must be in order for it to be transferred over shared memory.

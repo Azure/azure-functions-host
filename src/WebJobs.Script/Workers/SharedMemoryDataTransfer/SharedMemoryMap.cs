@@ -58,13 +58,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public async Task<long> PutStreamAsync(Stream content)
         {
             long contentLength = content.Length;
-            byte[] contentLengthBytes = BitConverter.GetBytes(contentLength);
 
             try
             {
                 using (MemoryMappedViewStream mmv = _memoryMappedFile.CreateViewStream())
                 {
-                    await mmv.WriteAsync(contentLengthBytes, 0, SharedMemoryConstants.ContentLengthHeaderBytes);
+                    // Seek past the dirty bit section of the header
+                    mmv.Seek(SharedMemoryConstants.DirtyBitHeaderBytes, SeekOrigin.Begin);
+                    await WriteLongAsync(mmv, contentLength);
                     await content.CopyToAsync(mmv, SharedMemoryConstants.MinBufferSize);
                     await mmv.FlushAsync();
                 }
@@ -128,7 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 // Create a MemoryMappedViewStream over the header
                 using (MemoryMappedViewStream mmv = _memoryMappedFile.CreateViewStream(0, SharedMemoryConstants.HeaderTotalBytes))
                 {
-                    // Reads the content length (equal to the size of one long)
+                    // Seek past the dirty bit section of the header
+                    mmv.Seek(SharedMemoryConstants.DirtyBitHeaderBytes, SeekOrigin.Begin);
+                    // Read the content length (equal to the size of one long)
                     long contentLength = await ReadLongAsync(mmv);
                     if (contentLength >= 0)
                     {
@@ -181,20 +184,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             Dispose(deleteFile: true);
         }
 
-        private async Task<long> ReadLongAsync(MemoryMappedViewStream mmv)
-        {
-            int numBytes = sizeof(long);
-            byte[] buffer = new byte[numBytes];
-            int numReadBytes = await mmv.ReadAsync(buffer, 0, numBytes);
-
-            if (numReadBytes != numBytes)
-            {
-                throw new IOException($"Invalid header format. Expected {numBytes} bytes, found {numReadBytes} bytes.");
-            }
-
-            return BitConverter.ToInt64(buffer, 0);
-        }
-
         /// <summary>
         /// Copy contents of the <see cref="SharedMemoryMap"/> into a <see cref="byte[]"/>.
         /// Note:
@@ -228,6 +217,36 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
 
             return output;
+        }
+
+        /// <summary>
+        /// Write the given <see cref="long"/> value into the <see cref="MemoryMappedViewStream"/>.
+        /// </summary>
+        /// <param name="mmv"><see cref="MemoryMappedViewStream"/> to write to.</param>
+        /// <param name="value">The <see cref="long"/> value to write.</param>
+        public static Task WriteLongAsync(MemoryMappedViewStream mmv, long value)
+        {
+            byte[] valueBytes = BitConverter.GetBytes(value);
+            return mmv.WriteAsync(valueBytes, 0, SharedMemoryConstants.ContentLengthHeaderBytes);
+        }
+
+        /// <summary>
+        /// Read a <see cref="long"/> value from the <see cref="MemoryMappedViewStream"/>.
+        /// </summary>
+        /// <param name="mmv"><see cref="MemoryMappedViewStream"/> to read from.</param>
+        /// <returns>The read <see cref="long"/> value.</returns>
+        public static async Task<long> ReadLongAsync(MemoryMappedViewStream mmv)
+        {
+            int numBytes = sizeof(long);
+            byte[] buffer = new byte[numBytes];
+            int numReadBytes = await mmv.ReadAsync(buffer, 0, numBytes);
+
+            if (numReadBytes != numBytes)
+            {
+                throw new IOException($"Invalid header format. Expected {numBytes} bytes, found {numReadBytes} bytes.");
+            }
+
+            return BitConverter.ToInt64(buffer, 0);
         }
     }
 }

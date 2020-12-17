@@ -38,6 +38,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                     mapName, // Named maps are supported on Windows
                     size,
                     MemoryMappedFileAccess.ReadWrite);
+
+                if (IsDirtyBitSet(mmf))
+                {
+                    Logger.LogError("Cannot create MemoryMappedFile: {mapName}, it already exists", mapName);
+                    mmf = null;
+                    return false;
+                }
+
+                SetDirtyBit(mmf);
+
                 return true;
             }
             catch (Exception e)

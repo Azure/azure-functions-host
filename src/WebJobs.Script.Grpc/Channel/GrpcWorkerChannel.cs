@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -473,23 +474,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 try
                 {
-                    long bytesReceivedViaSharedMemory = 0;
+                    StringBuilder logBuilder = new StringBuilder();
+                    bool usedSharedMemory = false;
 
                     foreach (ParameterBinding binding in invokeResponse.OutputData)
                     {
                         switch (binding.RpcDataCase)
                         {
                             case ParameterBindingType.RpcSharedMemory:
-                                bytesReceivedViaSharedMemory += binding.RpcSharedMemory.Count;
+                                logBuilder.AppendFormat("{BindingName}:{BytesReceived},", binding.Name, binding.RpcSharedMemory.Count);
+                                usedSharedMemory = true;
                                 break;
                             default:
                                 break;
                         }
                     }
 
-                    if (bytesReceivedViaSharedMemory > 0)
+                    if (usedSharedMemory)
                     {
-                        _workerChannelLogger.LogDebug("Received: {Size} bytes over shared memory for invocation Id: {Id}", bytesReceivedViaSharedMemory, invokeResponse.InvocationId);
+                        _workerChannelLogger.LogDebug("Shared memory usage for response of invocation Id: {Id} is {SharedMemoryUsage}", invokeResponse.InvocationId, logBuilder.ToString());
                     }
 
                     IDictionary<string, object> bindingsDictionary = await invokeResponse.OutputData
