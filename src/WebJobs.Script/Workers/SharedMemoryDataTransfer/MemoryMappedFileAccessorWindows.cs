@@ -39,14 +39,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                     size,
                     MemoryMappedFileAccess.ReadWrite);
 
-                if (IsDirtyBitSet(mmf))
+                if (IsMemoryMapInitialized(mmf))
                 {
                     Logger.LogError("Cannot create MemoryMappedFile: {mapName}, it already exists", mapName);
                     mmf = null;
                     return false;
                 }
 
-                SetDirtyBit(mmf);
+                SetMemoryMapInitialized(mmf);
 
                 return true;
             }

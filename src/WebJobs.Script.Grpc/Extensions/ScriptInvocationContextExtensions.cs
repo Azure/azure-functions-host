@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     };
 
                     usedSharedMemory = true;
-                    logBuilder.AppendFormat("{BindingName}:{BytesSent},", input.name, sharedMemValue.Count);
+                    logBuilder.AppendFormat("{0}:{1},", input.name, sharedMemValue.Count);
                 }
                 else
                 {

@@ -63,8 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             {
                 using (MemoryMappedViewStream mmv = _memoryMappedFile.CreateViewStream())
                 {
-                    // Seek past the dirty bit section of the header
-                    mmv.Seek(SharedMemoryConstants.DirtyBitHeaderBytes, SeekOrigin.Begin);
+                    // Seek past the MemoryMapInitialized flag section of the header
+                    mmv.Seek(SharedMemoryConstants.MemoryMapInitializedHeaderBytes, SeekOrigin.Begin);
                     await WriteLongAsync(mmv, contentLength);
                     await content.CopyToAsync(mmv, SharedMemoryConstants.MinBufferSize);
                     await mmv.FlushAsync();
@@ -129,8 +129,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 // Create a MemoryMappedViewStream over the header
                 using (MemoryMappedViewStream mmv = _memoryMappedFile.CreateViewStream(0, SharedMemoryConstants.HeaderTotalBytes))
                 {
-                    // Seek past the dirty bit section of the header
-                    mmv.Seek(SharedMemoryConstants.DirtyBitHeaderBytes, SeekOrigin.Begin);
+                    // Seek past the MemoryMapInitialized flag section of the header
+                    mmv.Seek(SharedMemoryConstants.MemoryMapInitializedHeaderBytes, SeekOrigin.Begin);
                     // Read the content length (equal to the size of one long)
                     long contentLength = await ReadLongAsync(mmv);
                     if (contentLength >= 0)

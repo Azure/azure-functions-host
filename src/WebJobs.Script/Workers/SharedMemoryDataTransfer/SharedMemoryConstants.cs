@@ -9,10 +9,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     {
         /// <summary>
         /// The length in number of bytes of a <see cref="bool"/>.
-        /// It is used to specify a flag if the <see cref="SharedMemoryMap"/> contains any content or not.
-        /// This is to distinguish it from a completely empty/new <see cref="SharedMemoryMap"/>.
+        /// It is used to specify a flag if the <see cref="SharedMemoryMap"/> has been initialized or is new.
         /// </summary>
-        public const int DirtyBitHeaderBytes = sizeof(bool);
+        public const int MemoryMapInitializedHeaderBytes = sizeof(bool);
 
         /// <summary>
         /// The length in number of bytes of a <see cref="long"/>.
@@ -21,15 +20,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public const int ContentLengthHeaderBytes = sizeof(long);
 
         /// <summary>
-        /// A flag to indicate that the <see cref="SharedMemoryMap"/> has been allocated, may be in use and is not new.
+        /// A flag to indicate that the <see cref="SharedMemoryMap"/> has been allocated and initialized.
         /// </summary>
-        public const bool DirtyBitSet = true;
+        public const bool MemoryMapInitializedFlag = true;
 
         /// <summary>
         /// Length of the header in number of bytes at the start of a <see cref="SharedMemoryMap"/>.
         /// Note: Whenever the header is modified to contain more/less information, this needs to be updated.
         /// </summary>
-        public const int HeaderTotalBytes = DirtyBitHeaderBytes + ContentLengthHeaderBytes;
+        public const int HeaderTotalBytes = MemoryMapInitializedHeaderBytes + ContentLengthHeaderBytes;
 
         /// <summary>
         /// Minimum size (in number of bytes) an object must be in order for it to be transferred over shared memory.

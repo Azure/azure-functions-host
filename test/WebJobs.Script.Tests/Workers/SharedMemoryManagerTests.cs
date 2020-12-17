@@ -370,12 +370,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         /// <summary>
         /// Try to create two <see cref="SharedMemoryMap"/> with the same name.
         /// Verify that the second attempt to create fails.
+        /// This test tries various inputs which have content length, which when converted to bytes, has the first byte as \x00.
+        /// E.g. content length == 256, or 512.
+        /// This should, however, still be detected as an initialized memory map because we have an extra byte in the header (first byte) which is set to \x01 when the memory map is created.
+        /// Since we check the first byte of the memory map and compare it against \x01 to distinguish new and initialized memory maps, the byte representation of the content length does not matter.
         /// </summary>
-        [Fact]
-        public void CreateTwoNewSharedMemoryMapsWithSameName_VerifyFailure()
+        /// <param name="contentSize">Size of memory map to allocate.</param>
+        [InlineData(1)]
+        [InlineData(100)]
+        [InlineData(256)]
+        [InlineData(512)]
+        [Theory]
+        public void CreateTwoNewSharedMemoryMapsWithSameName_VerifyFailure(long contentSize)
         {
             string mapName = Guid.NewGuid().ToString();
-            long contentSize = 100;
 
             using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             {

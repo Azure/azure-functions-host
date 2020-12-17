@@ -482,7 +482,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         switch (binding.RpcDataCase)
                         {
                             case ParameterBindingType.RpcSharedMemory:
-                                logBuilder.AppendFormat("{BindingName}:{BytesReceived},", binding.Name, binding.RpcSharedMemory.Count);
+                                logBuilder.AppendFormat("{0}:{1},", binding.Name, binding.RpcSharedMemory.Count);
                                 usedSharedMemory = true;
                                 break;
                             default:

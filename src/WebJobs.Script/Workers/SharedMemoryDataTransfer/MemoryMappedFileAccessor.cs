@@ -87,18 +87,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Checks if the dirty bit of the <see cref="MemoryMappedFile"/> has been set or not.
+        /// Checks if the <see cref="MemoryMappedFile"/> has been initialized or not.
         /// If it is set then it means the <see cref="MemoryMappedFile"/> was created and may already be in use.
         /// If it is not set then this <see cref="MemoryMappedFile"/> is new and can be used.
         /// </summary>
-        /// <param name="mmf">The <see cref="MemoryMappedFile"/> to check.</param>
-        /// <returns><see cref="true"/> if the <see cref="MemoryMappedFile"/> is new and does not contain any content, <see cref="false"/> otherwise.</returns>
-        protected bool IsDirtyBitSet(MemoryMappedFile mmf)
+        /// <param name="mmf">The <see cref="MemoryMappedFile"/> to check the flag from.</param>
+        /// <returns><see cref="true"/> if the <see cref="MemoryMappedFile"/> is initialized, <see cref="false"/> otherwise (the <see cref="MemoryMappedFile"/> is new).</returns>
+        protected bool IsMemoryMapInitialized(MemoryMappedFile mmf)
         {
-            using (MemoryMappedViewStream mmv = mmf.CreateViewStream(0, SharedMemoryConstants.DirtyBitHeaderBytes))
+            using (MemoryMappedViewStream mmv = mmf.CreateViewStream(0, SharedMemoryConstants.MemoryMapInitializedHeaderBytes))
             {
                 bool flag = ReadBool(mmv);
-                if (flag == SharedMemoryConstants.DirtyBitSet)
+                if (flag == SharedMemoryConstants.MemoryMapInitializedFlag)
                 {
                     return true;
                 }
@@ -110,15 +110,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         }
 
         /// <summary>
-        /// Sets the dirty bit in the header of the <see cref="MemoryMappedFile"/> to indicate that this <see cref="MemoryMappedFile"/> is not new anymore.
+        /// Sets the header flag in the <see cref="MemoryMappedFile"/> to indicate that this <see cref="MemoryMappedFile"/> is not new anymore and has been initialized.
         /// </summary>
-        /// <param name="mmf">The <see cref="MemoryMappedFile"/> to set the dirty bit on.</param>
-        protected void SetDirtyBit(MemoryMappedFile mmf)
+        /// <param name="mmf">The <see cref="MemoryMappedFile"/> to set the flag on.</param>
+        protected void SetMemoryMapInitialized(MemoryMappedFile mmf)
         {
             // Set the flag to indicate that this MemoryMappedFile is not new anymore before handing it out
-            using (MemoryMappedViewStream mmv = mmf.CreateViewStream(0, SharedMemoryConstants.DirtyBitHeaderBytes))
+            using (MemoryMappedViewStream mmv = mmf.CreateViewStream(0, SharedMemoryConstants.MemoryMapInitializedHeaderBytes))
             {
-                WriteBool(mmv, SharedMemoryConstants.DirtyBitSet);
+                WriteBool(mmv, SharedMemoryConstants.MemoryMapInitializedFlag);
             }
         }
     }
