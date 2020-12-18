@@ -4,11 +4,11 @@ $bypassPackaging = $true
 $suffix = "-ci"
 Write-Host "SourceBranch: $sourceBranch, Build reason: $buildReason"
 
-if($sourceBranch.endsWith('release/2.0') -or $sourceBranch.startsWith('release/2.0-hotfix')) {
+if($sourceBranch.Contains("release/2.0")) {
   $suffix = ""
 }
 
-if(($sourceBranch.endsWith('v2.x') -or $sourceBranch.endsWith('release/2.0') -or $sourceBranch.startsWith('release/2.0-hotfix')) -and ($buildReason -ne "PullRequest"))
+if(($sourceBranch.endsWith('v2.x') -or $sourceBranch.Contains("release/2.0")) -and ($buildReason -ne "PullRequest"))
 {
   $bypassPackaging = $false
 }
