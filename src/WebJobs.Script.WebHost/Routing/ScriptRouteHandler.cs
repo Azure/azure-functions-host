@@ -53,12 +53,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 }
             }
 
-            if (context.Request.Path.StartsWithSegments(new PathString("/admin"), System.StringComparison.OrdinalIgnoreCase))
-            {
-                // /admin/* routes should not be allowed to be overriden by proxies or function routes.
-                return Task.CompletedTask;
-            }
-
             var descriptor = _functionMap.GetOrAdd(functionName, (name) =>
             {
                 return _scriptHost.Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));

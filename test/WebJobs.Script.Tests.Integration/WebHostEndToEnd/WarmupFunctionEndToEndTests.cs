@@ -69,7 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/host/status");
 
             string content = await response.Content.ReadAsStringAsync();
-            Assert.False(content == "Pong", "/admin/* endpoints cannot be overriden by function routes.");
+            Assert.True(response.StatusCode.ToString("D") == "401", "/admin/* endpoints cannot be overriden by function routes.");
+            Assert.True(content == string.Empty, "/admin/* endpoints cannot be overriden by function routes.");
         }
 
 
