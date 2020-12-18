@@ -805,9 +805,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static void LogSharedFxAssembliesInScriptRootPath(string rootScriptPath, string workerRuntime, ILogger logger)
+        public static void LogSharedFxAssembliesInScriptRootPath(string rootScriptPath, string workerRuntime, IEnumerable<FunctionMetadata> functionMetadataList, ILogger logger)
         {
             if (string.IsNullOrEmpty(workerRuntime))
+            {
+                return;
+            }
+
+            if (functionMetadataList == null || !functionMetadataList.Any())
             {
                 return;
             }
@@ -818,13 +823,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 return;
             }
 
+            StringBuilder assembliesExistLog = new StringBuilder();
+            bool containsScriptFunctionsOnly = functionMetadataList.All(f => !string.IsNullOrEmpty(f.Language) && f.Language.Equals(DotNetScriptTypes.CSharp));
+            assembliesExistLog.Append($"ContainsCsxFunctionsOnly: '{containsScriptFunctionsOnly}';");
+
             string binDir = Path.Combine(rootScriptPath, "bin");
             if (FileUtility.DirectoryExists(binDir))
             {
                 string depsFilePath = Path.Combine(binDir, DotNetConstants.FunctionsDepsFileName);
-                if (!FileUtility.FileExists(depsFilePath))
+                if (!containsScriptFunctionsOnly && !FileUtility.FileExists(depsFilePath))
                 {
-                    logger.LogDepsFileMissingWarning();
+                    assembliesExistLog.Append($"File: '{DotNetConstants.FunctionsDepsFileName}' does not exist.");
                 }
 
                 // Removed assemblies list includes :
@@ -834,7 +843,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var removedAssembliesString = FileUtility.ReadResourceString($"{ScriptConstants.ScriptResourcePath}.AssembliesRemoved.txt");
                 StringReader strReader = new StringReader(removedAssembliesString);
                 string sharedFxAssembly = strReader.ReadLine();
-                StringBuilder assembliesExistLog = new StringBuilder();
+                assembliesExistLog.Append($"SharedFxAssemblies in bin folder: ");
                 do
                 {
                     string filePath = Path.Combine(binDir, sharedFxAssembly);
@@ -845,10 +854,10 @@ namespace Microsoft.Azure.WebJobs.Script
                     sharedFxAssembly = strReader.ReadLine();
                 }
                 while (sharedFxAssembly != null);
-                if (assembliesExistLog.Length > 0)
-                {
-                    logger.LogSharedFxAssembliesInBin(assembliesExistLog.ToString());
-                }
+            }
+            if (assembliesExistLog.Length > 0)
+            {
+                logger.LogSharedFxAssembliesInBin(assembliesExistLog.ToString());
             }
         }
 

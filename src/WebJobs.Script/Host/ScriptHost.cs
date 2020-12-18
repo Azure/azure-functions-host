@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
 
-                    Utility.LogSharedFxAssembliesInScriptRootPath(ScriptOptions.RootScriptPath, _workerRuntime, _logger);
+                    Utility.LogSharedFxAssembliesInScriptRootPath(ScriptOptions.RootScriptPath, _workerRuntime, functionMetadataList, _logger);
                 }
 
                 var directTypes = GetDirectTypes(functionMetadataList);

@@ -213,13 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            LoggerMessage.Define<string>(
            LogLevel.Debug,
            new EventId(333, nameof(LogSharedFxAssembliesInBin)),
-           "SharedFxAssemblies: {assemblyNames} exist in bin folder.");
-
-        private static readonly Action<ILogger, string, Exception> _logDepsFileMissingWarning =
-           LoggerMessage.Define<string>(
-           LogLevel.Warning,
-           new EventId(334, nameof(LogDepsFileMissingWarning)),
-           "{FunctionsDepsFileName} does not exist in bin folder.");
+           "{logMessage}.");
 
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
@@ -396,11 +390,6 @@ Lock file hash: {currentLockFileHash}";
         public static void LogSharedFxAssembliesInBin(this ILogger logger, string assemblyNames)
         {
             _logSharedFxAssembliesInBin(logger, assemblyNames, null);
-        }
-
-        public static void LogDepsFileMissingWarning(this ILogger logger)
-        {
-            _logDepsFileMissingWarning(logger, DotNetConstants.FunctionsDepsFileName, null);
         }
     }
 }
