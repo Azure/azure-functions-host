@@ -78,7 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppOfflineFileName = "app_offline.htm";
         public const string RunFromPackageFailedFileName = "FAILED TO INITIALIZE RUN FROM PACKAGE.txt";
         public const string DisableContainerFileName = "container_offline";
-        public const string ResourcePath = "Microsoft.Azure.WebJobs.Script.WebHost.Resources";
+        public const string WebHostResourcePath = "Microsoft.Azure.WebJobs.Script.WebHost.Resources";
+        public const string ScriptResourcePath = "Microsoft.Azure.WebJobs.Script.Resources";
 
         public const string DefaultMasterKeyName = "master";
         public const string DefaultFunctionKeyName = "default";

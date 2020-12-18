@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // create a test offline file
             var offlineFilePath = Path.Combine(Path.GetTempPath(), ScriptConstants.AppOfflineFileName);
-            string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.{ScriptConstants.AppOfflineFileName}", typeof(HttpException).Assembly);
+            string content = FileUtility.ReadResourceString($"{ScriptConstants.WebHostResourcePath}.{ScriptConstants.AppOfflineFileName}", typeof(HttpException).Assembly);
             File.WriteAllText(offlineFilePath, content);
             return offlineFilePath;
         }

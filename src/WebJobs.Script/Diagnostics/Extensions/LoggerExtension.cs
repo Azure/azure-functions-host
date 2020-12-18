@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
@@ -208,6 +209,12 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(331, nameof(JobHostFunctionTimeoutNotSet)),
             "FunctioTimeout is not set.");
 
+        private static readonly Action<ILogger, string, Exception> _logSharedFxAssembliesInBin =
+           LoggerMessage.Define<string>(
+           LogLevel.Debug,
+           new EventId(333, nameof(LogSharedFxAssembliesInBin)),
+           "{logMessage}.");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -378,6 +385,11 @@ Lock file hash: {currentLockFileHash}";
         public static void JobHostFunctionTimeoutNotSet(this ILogger logger)
         {
             _jobHostFunctionTimeoutNotSet(logger, null);
+        }
+
+        public static void LogSharedFxAssembliesInBin(this ILogger logger, string assemblyNames)
+        {
+            _logSharedFxAssembliesInBin(logger, assemblyNames, null);
         }
     }
 }
