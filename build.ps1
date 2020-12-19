@@ -257,7 +257,7 @@ function CreateZips([string] $runtimeSuffix) {
 
     Write-Host "Generating $hashesForHardlinksFile"
     Write-Host "---------------------------------------------------"
-    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
+    WriteHashesFile $siteExtensionPath\$extensionVersion
     Write-Host "Generated $hashesForHardlinksFile"
     Write-Host "---------------------------------------------------"
    
