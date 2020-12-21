@@ -76,7 +76,7 @@
     <!-- The System.Interactive.Async assembly is required to be deployed. See https://github.com/Azure/azure-functions-host/issues/6203 -->
     <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <!-- The System.Data.SqlClient assembly is required to be deployed. -->
-    <PackageReference Include="System.Data.SqlClient" Version="4.3.1" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
     <PackageReference Include="System.Net.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
