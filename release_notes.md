@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Updated HTTP extension to [3.0.10](https://github.com/Azure/azure-webjobs-sdk-extensions/releases/tag/http-v3.0.10)
 - Update Python Worker Version to [1.1.10](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.10)
 - Configure host.json to use workflow when creating a default host.json and app is identified as a logic app. (#6810)
 - Update Node.js Worker Version to [2.1.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v2.1.0)
