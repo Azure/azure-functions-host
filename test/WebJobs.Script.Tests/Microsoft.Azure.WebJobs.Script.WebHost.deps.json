@@ -45,8 +45,10 @@
                     "Microsoft.VisualStudio.Web.CodeGeneration.Design": "2.2.3",
                     "StyleCop.Analyzers": "1.1.0-beta004",
                     "System.Data.SqlClient": "4.8.2",
+                    "System.IO.Pipes": "4.3.0",
                     "System.Interactive.Async": "3.2.0",
                     "System.Net.Primitives": "4.3.0",
+                    "System.Threading.Overlapped": "4.3.0",
                     "Microsoft.AspNetCore.Antiforgery.Reference": "3.1.0.0",
                     "Microsoft.AspNetCore.Authentication.Abstractions.Reference": "3.1.0.0",
                     "Microsoft.AspNetCore.Authentication.Cookies": "3.1.0.0",
@@ -224,7 +226,7 @@
                     "System.IO.IsolatedStorage": "4.1.2.0",
                     "System.IO.MemoryMappedFiles": "4.1.2.0",
                     "System.IO.Pipelines.Reference": "4.0.2.0",
-                    "System.IO.Pipes": "4.1.2.0",
+                    "System.IO.Pipes.Reference": "4.1.2.0",
                     "System.IO.UnmanagedMemoryStream": "4.1.2.0",
                     "System.Linq.Reference": "4.2.2.0",
                     "System.Linq.Expressions.Reference": "4.2.2.0",
@@ -3335,6 +3337,29 @@
                 }
             },
             "System.IO.Pipelines/4.7.0": {},
+            "System.IO.Pipes/4.3.0": {
+                "dependencies": {
+                    "Microsoft.NETCore.Platforms": "3.1.0",
+                    "System.Buffers": "4.5.0",
+                    "System.Diagnostics.Debug": "4.3.0",
+                    "System.IO": "4.3.0",
+                    "System.IO.FileSystem.Primitives": "4.3.0",
+                    "System.Net.Primitives": "4.3.0",
+                    "System.Net.Sockets": "4.3.0",
+                    "System.Reflection": "4.3.0",
+                    "System.Resources.ResourceManager": "4.3.0",
+                    "System.Runtime": "4.3.0",
+                    "System.Runtime.Extensions": "4.3.0",
+                    "System.Runtime.Handles": "4.3.0",
+                    "System.Runtime.InteropServices": "4.3.0",
+                    "System.Security.Principal": "4.3.0",
+                    "System.Text.Encoding": "4.3.0",
+                    "System.Threading": "4.3.0",
+                    "System.Threading.Overlapped": "4.3.0",
+                    "System.Threading.Tasks": "4.3.0",
+                    "runtime.native.System": "4.3.0"
+                }
+            },
             "System.Linq/4.3.0": {
                 "dependencies": {
                     "System.Collections": "4.3.0",
@@ -3438,7 +3463,7 @@
                     "System.IO.FileSystem.Primitives": "4.3.0",
                     "System.Linq": "4.3.0",
                     "System.Net.Primitives": "4.3.0",
-                    "System.Net.Sockets": "4.1.0",
+                    "System.Net.Sockets": "4.3.0",
                     "System.Resources.ResourceManager": "4.3.0",
                     "System.Runtime": "4.3.0",
                     "System.Runtime.Extensions": "4.3.0",
@@ -3446,7 +3471,7 @@
                     "System.Runtime.InteropServices": "4.3.0",
                     "System.Security.Principal.Windows": "4.7.0",
                     "System.Threading": "4.3.0",
-                    "System.Threading.Overlapped": "4.0.1",
+                    "System.Threading.Overlapped": "4.3.0",
                     "System.Threading.Tasks": "4.3.0",
                     "System.Threading.Thread": "4.3.0",
                     "System.Threading.ThreadPool": "4.3.0",
@@ -3510,7 +3535,7 @@
                     "runtime.native.System.Security.Cryptography.OpenSsl": "4.3.2"
                 }
             },
-            "System.Net.Sockets/4.1.0": {
+            "System.Net.Sockets/4.3.0": {
                 "dependencies": {
                     "Microsoft.NETCore.Platforms": "3.1.0",
                     "Microsoft.NETCore.Targets": "1.1.0",
@@ -4013,7 +4038,7 @@
                     "System.Threading.Tasks": "4.3.0"
                 }
             },
-            "System.Threading.Overlapped/4.0.1": {
+            "System.Threading.Overlapped/4.3.0": {
                 "dependencies": {
                     "Microsoft.NETCore.Platforms": "3.1.0",
                     "System.Resources.ResourceManager": "4.3.0",
@@ -5257,7 +5282,7 @@
                 },
                 "compileOnly": true
             },
-            "System.IO.Pipes/4.1.2.0": {
+            "System.IO.Pipes.Reference/4.1.2.0": {
                 "compile": {
                     "System.IO.Pipes.dll": {}
                 },
@@ -7541,6 +7566,13 @@
             "path": "system.io.pipelines/4.7.0",
             "hashPath": "system.io.pipelines.4.7.0.nupkg.sha512"
         },
+        "System.IO.Pipes/4.3.0": {
+            "type": "package",
+            "serviceable": true,
+            "sha512": "sha512-wpGJuACA6r8+KRckXoI6ghGTwgPRiICI6T7kgHI/m7S5eMqV/8jH37fzAUhTwIe9RwlH/j1sWwm2Q2zyXwZGHw==",
+            "path": "system.io.pipes/4.3.0",
+            "hashPath": "system.io.pipes.4.3.0.nupkg.sha512"
+        },
         "System.Linq/4.3.0": {
             "type": "package",
             "serviceable": true,
@@ -7611,12 +7643,12 @@
             "path": "system.net.security/4.3.2",
             "hashPath": "system.net.security.4.3.2.nupkg.sha512"
         },
-        "System.Net.Sockets/4.1.0": {
+        "System.Net.Sockets/4.3.0": {
             "type": "package",
             "serviceable": true,
-            "sha512": "sha512-xAz0N3dAV/aR/9g8r0Y5oEqU1JRsz29F5EGb/WVHmX3jVSLqi2/92M5hTad2aNWovruXrJpJtgZ9fccPMG9uSw==",
-            "path": "system.net.sockets/4.1.0",
-            "hashPath": "system.net.sockets.4.1.0.nupkg.sha512"
+            "sha512": "sha512-m6icV6TqQOAdgt5N/9I5KNpjom/5NFtkmGseEH+AK/hny8XrytLH3+b5M8zL/Ycg3fhIocFpUMyl/wpFnVRvdw==",
+            "path": "system.net.sockets/4.3.0",
+            "hashPath": "system.net.sockets.4.3.0.nupkg.sha512"
         },
         "System.Net.WebHeaderCollection/4.0.1": {
             "type": "package",
@@ -7982,12 +8014,12 @@
             "path": "system.threading/4.3.0",
             "hashPath": "system.threading.4.3.0.nupkg.sha512"
         },
-        "System.Threading.Overlapped/4.0.1": {
+        "System.Threading.Overlapped/4.3.0": {
             "type": "package",
             "serviceable": true,
-            "sha512": "sha512-f7aLuLkBoCQM2kng7zqLFBXz9Gk48gDK8lk1ih9rH/1arJJzZK9gJwNvPDhL6Ps/l6rwOr8jw+4FCHL0KKWiEg==",
-            "path": "system.threading.overlapped/4.0.1",
-            "hashPath": "system.threading.overlapped.4.0.1.nupkg.sha512"
+            "sha512": "sha512-m3HQ2dPiX/DSTpf+yJt8B0c+SRvzfqAJKx+QDWi+VLhz8svLT23MVjEOHPF/KiSLeArKU/iHescrbLd3yVgyNg==",
+            "path": "system.threading.overlapped/4.3.0",
+            "hashPath": "system.threading.overlapped.4.3.0.nupkg.sha512"
         },
         "System.Threading.Tasks/4.3.0": {
             "type": "package",
@@ -8961,7 +8993,7 @@
             "serviceable": false,
             "sha512": ""
         },
-        "System.IO.Pipes/4.1.2.0": {
+        "System.IO.Pipes.Reference/4.1.2.0": {
             "type": "referenceassembly",
             "serviceable": false,
             "sha512": ""
