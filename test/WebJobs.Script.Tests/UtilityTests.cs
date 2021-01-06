@@ -676,6 +676,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void IsCodelessDotNetLanguageFunction_Returns_Expected(bool setIsCodeless)
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = DotNetScriptTypes.CSharp
+            };
+
+            FunctionMetadata func2 = new FunctionMetadata()
+            {
+                Name = "func2",
+                Language = DotNetScriptTypes.DotNetAssembly
+            };
+
+            FunctionMetadata nodeFunc = new FunctionMetadata()
+            {
+                Name = "func3",
+                Language = "node"
+            };
+
+            if (setIsCodeless)
+            {
+                func1.Properties.Add("IsCodeless", true);
+                func2.Properties.Add("IsCodeless", true);
+                nodeFunc.Properties.Add("IsCodeless", true);
+                Assert.True(Utility.IsCodelessDotNetLanguageFunction(func1));
+                Assert.True(Utility.IsCodelessDotNetLanguageFunction(func2));
+            }
+
+            Assert.False(Utility.IsCodelessDotNetLanguageFunction(func1));
+            Assert.False(Utility.IsCodelessDotNetLanguageFunction(func2));
+            Assert.False(Utility.IsCodelessDotNetLanguageFunction(nodeFunc));
+        }
+
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
         {
             var message = allLogs.Where(l => l.FormattedMessage.Contains(msg)).FirstOrDefault();
