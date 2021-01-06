@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     string runtimeStack = _workerRuntime;
 
-                    if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName)))
+                    if (!string.IsNullOrEmpty(runtimeStack))
                     {
                         // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
                         // Windows Consumption as well.
@@ -304,7 +304,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                 // Dispatcher not needed for non-proxy codeless function.
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !m.IsCodeless());
+                // Disptacher needed for non-dotnet codeless functions
+                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
                 await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
