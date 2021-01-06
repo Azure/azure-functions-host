@@ -633,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return workerConfigs.Any(config => string.Equals(config.Description.Language, workerRuntime, StringComparison.OrdinalIgnoreCase));
         }
-        
+
         public static bool IsCodelessDotNetLanguageFunction(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)

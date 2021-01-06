@@ -707,10 +707,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(Utility.IsCodelessDotNetLanguageFunction(func1));
                 Assert.True(Utility.IsCodelessDotNetLanguageFunction(func2));
             }
-
-            Assert.False(Utility.IsCodelessDotNetLanguageFunction(func1));
-            Assert.False(Utility.IsCodelessDotNetLanguageFunction(func2));
-            Assert.False(Utility.IsCodelessDotNetLanguageFunction(nodeFunc));
+            else
+            {
+                Assert.False(Utility.IsCodelessDotNetLanguageFunction(func1));
+                Assert.False(Utility.IsCodelessDotNetLanguageFunction(func2));
+                Assert.False(Utility.IsCodelessDotNetLanguageFunction(nodeFunc));
+            }
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
