@@ -306,7 +306,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Dispatcher not needed for non-proxy codeless function.
                 // Disptacher needed for non-dotnet codeless functions
                 var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.Language.Equals(RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase));
                 await _functionDispatcher.InitializeAsync(filteredFunctionMetadata, cancellationToken);
 
                 GenerateFunctions(directTypes);
