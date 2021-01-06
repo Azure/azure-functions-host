@@ -11,5 +11,5 @@
 - Updated [System.Data.SqlClient to 4.8.2](https://www.nuget.org/packages/System.Data.SqlClient/4.8.2)
 - Added direct refereces to [System.IO.Pipes](https://www.nuget.org/packages/System.IO.Pipes/4.3.0)  and [System.Threading.Overlapped](https://www.nuget.org/packages/System.Threading.Overlapped/4.3.0) to ensure System.Data.SqlClient package update does not impact unification 
 
-**Release sprint:** Sprint 89
+**Release sprint:** Sprint 89, 90, 91
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Afeature+is%3Aclosed) ]
