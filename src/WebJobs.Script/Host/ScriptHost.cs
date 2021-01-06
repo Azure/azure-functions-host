@@ -714,7 +714,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     catch (Exception ex)
                     {
                         // log any unhandled exceptions and continue
-                        _logger.LogError(ex, "FunctionError");
                         Utility.AddFunctionError(FunctionErrors, metadata.Name, Utility.FlattenException(ex, includeSource: false));
                     }
                 }
@@ -811,7 +810,6 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else if (exception is FunctionIndexingException || exception is FunctionListenerException)
             {
-                _logger.LogError(exception, "FunctionIndexError");
                 // For all startup time indexing/listener errors, we accumulate them per function
                 FunctionException functionException = exception as FunctionException;
                 string formattedError = Utility.FlattenException(functionException);
