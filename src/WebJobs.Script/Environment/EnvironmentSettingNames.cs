@@ -61,6 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";
+        public const string PodName = "POD_NAME";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
