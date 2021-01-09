@@ -216,7 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     _logger.LogDebug($"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')");
                 }
 
-                if (string.Compare(currentHash, lastHash) != 0)
+                if (string.Compare(currentHash, lastHash, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // hash will need to be updated - return the
                     // new hash value

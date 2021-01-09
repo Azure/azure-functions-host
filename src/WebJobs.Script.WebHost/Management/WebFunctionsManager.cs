@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 configChanged = true;
             }
 
-            if (functionMetadata.TestData != null)
+            if (functionMetadata?.TestData != null)
             {
                 await FileUtility.WriteAsync(dataFilePath, functionMetadata.TestData);
             }
