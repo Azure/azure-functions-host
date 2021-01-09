@@ -102,6 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var hostNameProvider = p.GetService<HostNameProvider>();
                     return new LinuxAppServiceEventGenerator(new LinuxAppServiceFileLoggerFactory(), hostNameProvider);
                 }
+                else if (environment.IsKubernetesManagedHosting())
+                {
+                    return new KubernetesEventGenerator(environment);
+                }
                 else
                 {
                     return new EtwEventGenerator();
