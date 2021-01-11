@@ -82,10 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Register /admin/vfs, and /admin/zip to the VirtualFileSystem middleware.
             builder.UseWhen(VirtualFileSystemMiddleware.IsVirtualFileSystemRequest, config => config.UseMiddleware<VirtualFileSystemMiddleware>());
 
+            // MVC routes (routes defined by Controllers like HostController, FunctionsController, ... must be added before functions/proxy routes so they are matched first and can not be overridden by functions or proxy routes)
+            // source here: https://github.com/aspnet/Mvc/blob/master/src/Microsoft.AspNetCore.Mvc.Core/Builder/MvcApplicationBuilderExtensions.cs
+            builder.UseMvc();
+
             // Ensure the HTTP binding routing is registered after all middleware
             builder.UseHttpBindingRouting(applicationLifetime, routes);
-
-            builder.UseMvc();
 
             return builder;
         }

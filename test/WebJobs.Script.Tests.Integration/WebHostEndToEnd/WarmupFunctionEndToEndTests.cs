@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Normal_Api_Warmup_HttpTrigger_Succeeds()
         {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/api/warmup");
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/warmup");
 
             string content = await response.Content.ReadAsStringAsync();
             Assert.True(response.StatusCode.ToString("D") =="200", "Normal http trigger with 'warmup' route failed to run. ");
@@ -60,7 +60,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/123");
 
             string content = await response.Content.ReadAsStringAsync();
-            Assert.True(response.StatusCode.ToString("D") == "404", "/admin/* endpoints cannot be overriden by proxies.");
+            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overriden by proxies.");
+        }
+
+        [Fact]
+        public async Task FunctionRoutes_Admin_Override_Fails()
+        {
+            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/host/status");
+
+            string content = await response.Content.ReadAsStringAsync();
+            Assert.True(response.StatusCode.ToString("D") == "401", "/admin/* endpoints cannot be overriden by function routes.");
+            Assert.True(content == string.Empty, "/admin/* endpoints cannot be overriden by function routes.");
         }
 
 
