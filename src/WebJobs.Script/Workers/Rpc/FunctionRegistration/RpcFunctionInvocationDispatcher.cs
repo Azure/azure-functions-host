@@ -312,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async void WorkerError(WorkerErrorEvent workerError)
         {
-            if (!_disposing || _disposed)
+            if (!_disposing && !_disposed)
             {
                 if (string.Equals(_workerRuntime, workerError.Language))
                 {
@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async void WorkerRestart(WorkerRestartEvent workerRestart)
         {
-            if (!_disposing || _disposed)
+            if (!_disposing && !_disposed)
             {
                 _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
                 await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task RestartWorkerChannel(string runtime)
         {
-            if (_disposing)
+            if (_disposing || _disposed)
             {
                 return;
             }
