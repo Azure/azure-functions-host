@@ -400,7 +400,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     // Wait before releasing the lock to give time for the process to startup and initialize.
                     await Task.Delay(_restartWait);
-                    _restartWorkerProcessSLock.Release();
+                    if (!_disposing && !_disposed)
+                    {
+                        _restartWorkerProcessSLock.Release();
+                    }
                 }
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
@@ -428,15 +431,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
-                _logger.LogDebug("Disposing FunctionDispatcher");
-                _restartWorkerProcessSLock.Dispose();
-                _workerErrorSubscription.Dispose();
-                _workerRestartSubscription.Dispose();
-                _processStartCancellationToken.Cancel();
-                _processStartCancellationToken.Dispose();
-                _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+                if (_disposing)
+                {
+                    _logger.LogDebug("Disposing FunctionDispatcher");
+                    _restartWorkerProcessSLock.Dispose();
+                    _workerErrorSubscription.Dispose();
+                    _workerRestartSubscription.Dispose();
+                    _processStartCancellationToken.Cancel();
+                    _processStartCancellationToken.Dispose();
+                    _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+                }
+
                 State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
