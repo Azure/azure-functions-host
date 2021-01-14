@@ -559,8 +559,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
 
-        [Fact]
-        public async Task HttpTrigger_Poco_Post_Succeeds()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task HttpTrigger_Poco_Post_Succeeds(bool chunked)
         {
             var vars = new Dictionary<string, string>
             {
@@ -582,7 +584,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
                 string content = requestBody.ToString();
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
-                request.Content.Headers.ContentLength = content.Length;
+                if (chunked)
+                {
+                    _fixture.Host.HttpClient.DefaultRequestHeaders.TransferEncodingChunked = true;
+                }
+                else
+                {
+                    request.Content.Headers.ContentLength = content.Length;
+                }
 
                 HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
