@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
             var proxies = new Collection<ProxyFunctionMetadata>();
             ProxyClientExecutor client = null;
 
-            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, logger);
+            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, logger, logger);
             if (rawProxyClient != null)
             {
                 client = new ProxyClientExecutor(rawProxyClient);
