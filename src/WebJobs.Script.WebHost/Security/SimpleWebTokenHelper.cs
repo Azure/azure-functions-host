@@ -86,6 +86,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static string Decrypt(string value, IEnvironment environment = null)
         {
+            if (environment.IsKubernetesManagedHosting())
+            {
+                var encryptionKey = GetPodEncryptionKey(environment);
+                return Decrypt(encryptionKey, value);
+            }
             // Use WebSiteAuthEncryptionKey if available else fallback to ContainerEncryptionKey.
             // Until the container is specialized to a specific site WebSiteAuthEncryptionKey will not be available.
             byte[] key;
@@ -151,6 +156,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             encryptionKey = hexOrBase64.ToKeyBytes();
 
             return true;
+        }
+
+        private static byte[] GetPodEncryptionKey(IEnvironment environment)
+        {
+            var podEncryptionKey = environment.GetEnvironmentVariable(EnvironmentSettingNames.PodEncryptionKey);
+            if (string.IsNullOrEmpty(podEncryptionKey))
+            {
+                throw new Exception("Pod encryption key is empty.");
+            }
+            return Convert.FromBase64String(podEncryptionKey);
         }
 
         public static byte[] ToKeyBytes(this string hexOrBase64)
