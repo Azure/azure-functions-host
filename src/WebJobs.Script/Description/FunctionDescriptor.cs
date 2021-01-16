@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection.Emit;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -38,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TriggerParameter = Parameters?.FirstOrDefault(p => p.IsTrigger);
             TriggerBinding = InputBindings?.SingleOrDefault(p => p.Metadata.IsTrigger);
             HttpTriggerAttribute = GetTriggerAttributeOrNull<HttpTriggerAttribute>();
-            LogCategory = LogCategories.CreateFunctionCategory(Name);
         }
 
         public string Name { get; internal set; }
@@ -60,8 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public FunctionBinding TriggerBinding { get; }
 
         public virtual HttpTriggerAttribute HttpTriggerAttribute { get; }
-
-        public string LogCategory { get; }
 
         private TAttribute GetTriggerAttributeOrNull<TAttribute>()
         {
