@@ -170,62 +170,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task VerifyAcceptResult_OtherFunctionRoute()
-        {
-            const string path = "api/httptrigger-routed";
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=accept")),
-                Method = HttpMethod.Get
-            };
-
-            var response = await Fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
-        }
-
-        [Fact]
-        public async Task VerifyCreateResult_OtherFunctionRoute()
-        {
-            const string path = "api/httptrigger-routed";
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=create")),
-                Method = HttpMethod.Get
-            };
-
-            var response = await Fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.Created);
-        }
-
-        [Fact]
-        public async Task VerifyAcceptResult_BadRoute()
-        {
-            const string path = "api/httptrigger-routed";
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=acceptBadRoute")),
-                Method = HttpMethod.Get
-            };
-
-            var response = await Fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
-        }
-
-        [Fact]
-        public async Task VerifyCreateResult_BadRoute()
-        {
-            const string path = "api/httptrigger-routed";
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(string.Format($"http://localhost/{path}?action=createBadRoute")),
-                Method = HttpMethod.Get
-            };
-
-            var response = await Fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.InternalServerError);
-        }
-
-        [Fact]
         public async Task MultipleOutputs()
         {
             string id1 = Guid.NewGuid().ToString();
@@ -569,7 +513,6 @@ namespace SecondaryDependency
                         "HttpTrigger-Scenarios",
                         "HttpTrigger-Model",
                         "HttpTrigger-Redirect",
-                        "HttpTrigger-Routed",
                         "HttpTriggerToBlob",
                         "FunctionExecutionContext",
                         "LoadScriptReference",
