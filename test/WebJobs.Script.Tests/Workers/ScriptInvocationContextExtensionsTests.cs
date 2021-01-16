@@ -7,8 +7,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Google.Protobuf.Collections;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 expectedAttributes = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("key1", "value2") };
             }
 
-            RpcTraceContext traceContext = Grpc.ScriptInvocationContextExtensions.GetRpcTraceContext(traceparent, tracestate, attributes, NullLogger.Instance);
+            RpcTraceContext traceContext = ScriptInvocationContextExtensions.GetRpcTraceContext(traceparent, tracestate, attributes, NullLogger.Instance);
 
             Assert.Equal(traceparent ?? string.Empty, traceContext.TraceParent);
             Assert.Equal(tracestate ?? string.Empty, traceContext.TraceState);
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public void GetHttpScriptInvocationContextValueTest_String()
         {
             string inputValue = "stringTest";
-            object result = Script.Workers.ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
+            object result = ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
             Assert.Equal($"\"{inputValue}\"", result);
         }
 
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Name = "TestName",
                 Id = 1234
             };
-            object result = Script.Workers.ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
+            object result = ScriptInvocationContextExtensions.GetHttpScriptInvocationContextValue(inputValue);
             var resultAsJObject = (JObject)result;
             Assert.Equal("TestName", resultAsJObject["Name"]);
             Assert.Equal(1234, resultAsJObject["Id"]);
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             functionMetadata.Bindings.Add(httpOutputBinding);
             invocationContext.FunctionMetadata = functionMetadata;
 
-            GrpcCapabilities capabilities = new GrpcCapabilities(logger);
+            Capabilities capabilities = new Capabilities(logger);
             MapField<string, string> addedCapabilities = new MapField<string, string>
             {
                 { RpcWorkerConstants.RpcHttpTriggerMetadataRemoved, "1" },
@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             functionMetadata.Bindings.Add(httpOutputBinding);
             invocationContext.FunctionMetadata = functionMetadata;
 
-            GrpcCapabilities capabilities = new GrpcCapabilities(logger);
+            Capabilities capabilities = new Capabilities(logger);
             var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities);
             Assert.Equal(5, result.InputData.Count);
 

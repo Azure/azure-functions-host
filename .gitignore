@@ -18,7 +18,7 @@ package-lock.json
 
 /packages
 tools/ExtensionsMetadataGenerator/packages
-TestResults/
+/TestResults
 
 /tools/NuGet.exe
 /node_modules

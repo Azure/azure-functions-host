@@ -33,10 +33,6 @@
     </PackageReference>
     <PackageReference Include="System.ComponentModel.Annotations" Version="4.5.0" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
-  </ItemGroup>
   
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">

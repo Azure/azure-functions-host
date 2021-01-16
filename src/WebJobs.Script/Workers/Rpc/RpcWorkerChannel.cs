@@ -14,20 +14,18 @@ using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
+    internal class RpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
         private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IScriptEventManager _eventManager;
@@ -47,13 +45,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
-        private IObservable<InboundGrpcEvent> _inboundWorkerEvents;
+        private IObservable<InboundEvent> _inboundWorkerEvents;
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
         private IEnumerable<FunctionMetadata> _functions;
-        private GrpcCapabilities _workerCapabilities;
+        private Capabilities _workerCapabilities;
         private ILogger _workerChannelLogger;
         private IMetricsLogger _metricsLogger;
         private IWorkerProcess _rpcWorkerProcess;
@@ -61,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
 
-        internal GrpcWorkerChannel(
+        internal RpcWorkerChannel(
            string workerId,
            IScriptEventManager eventManager,
            RpcWorkerConfig workerConfig,
@@ -82,9 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
 
-            _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
+            _workerCapabilities = new Capabilities(_workerChannelLogger);
 
-            _inboundWorkerEvents = _eventManager.OfType<InboundGrpcEvent>()
+            _inboundWorkerEvents = _eventManager.OfType<InboundEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
 
             _eventSubscriptions.Add(_inboundWorkerEvents
@@ -179,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(GrpcEvent startEvent)
+        internal void SendWorkerInitRequest(RpcEvent startEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
@@ -223,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             latencyEvent.Dispose();
         }
 
-        internal void WorkerInitResponse(GrpcEvent initEvent)
+        internal void WorkerInitResponse(RpcEvent initEvent)
         {
             _startLatencyMetric?.Dispose();
             _startLatencyMetric = null;
@@ -447,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void Log(GrpcEvent msg)
+        internal void Log(RpcEvent msg)
         {
             var rpcLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)rpcLog.Level;
@@ -458,7 +456,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     if (rpcLog.Exception != null)
                     {
-                        var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                        var exception = new RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
                         context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
                     }
                     else
@@ -469,7 +467,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void SystemLog(GrpcEvent msg)
+        internal void SystemLog(RpcEvent msg)
         {
             RpcLog systemLog = msg.Message.RpcLog;
             LogLevel logLevel = (LogLevel)systemLog.Level;
@@ -487,7 +485,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         if (systemLog.Exception != null)
                         {
-                            Workers.Rpc.RpcException exception = new Workers.Rpc.RpcException(systemLog.Message, systemLog.Exception.Message, systemLog.Exception.StackTrace);
+                            RpcException exception = new RpcException(systemLog.Message, systemLog.Exception.Message, systemLog.Exception.StackTrace);
                             _workerChannelLogger.LogError(exception, systemLog.Message);
                         }
                         else
@@ -543,7 +541,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void SendStreamingMessage(StreamingMessage msg)
         {
-            _eventManager.Publish(new OutboundGrpcEvent(_workerId, msg));
+            _eventManager.Publish(new OutboundEvent(_workerId, msg));
         }
 
         internal void ReceiveWorkerStatusResponse(string requestId, WorkerStatusResponse response)

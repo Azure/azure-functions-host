@@ -9,13 +9,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     // Implementation for the grpc service
     // TODO: move to WebJobs.Script.Grpc package and provide event stream abstraction
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     string workerId = requestStream.Current.StartStream.WorkerId;
                     _logger.LogDebug("Established RPC channel. WorkerId: {workerId}", workerId);
-                    outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundGrpcEvent>()
+                    outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundEvent>()
                         .Where(evt => evt.WorkerId == workerId)
                         .ObserveOn(NewThreadScheduler.Default)
                         .Subscribe(async evt =>
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         {
                             _logger.LogTrace("Received invocation response for invocationId: {invocationId} from workerId: {workerId}", currentMessage.InvocationResponse.InvocationId, workerId);
                         }
-                        _eventManager.Publish(new InboundGrpcEvent(workerId, currentMessage));
+                        _eventManager.Publish(new InboundEvent(workerId, currentMessage));
                     }
                     while (await messageAvailable());
                 }

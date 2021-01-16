@@ -9,8 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
+using Microsoft.Azure.WebJobs.Script.Eventing.Rpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -21,7 +20,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class GrpcWorkerChannelTests
+    public class RpcWorkerChannelTests
     {
         private static string _expectedLogMsg = "Outbound event subscribe event handler invoked";
         private static string _expectedSystemLogMessage = "Random system log message";
@@ -42,9 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly RpcWorkerConfig _testWorkerConfig;
         private readonly TestEnvironment _testEnvironment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _hostOptionsMonitor;
-        private GrpcWorkerChannel _workerChannel;
+        private RpcWorkerChannel _workerChannel;
 
-        public GrpcWorkerChannelTests()
+        public RpcWorkerChannelTests()
         {
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
@@ -62,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
-            _workerChannel = new GrpcWorkerChannel(
+            _workerChannel = new RpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,
@@ -137,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
             mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
-            _workerChannel = new GrpcWorkerChannel(
+            _workerChannel = new RpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,
@@ -161,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
@@ -190,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            RpcEvent rpcEvent = new RpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
             var traces = _logger.GetLogMessages();
@@ -211,19 +210,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task SendInvocationRequest_PublishesOutboundEvent()
+        public void SendInvocationRequest_PublishesOutboundEvent()
         {
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, _expectedLogMsg)));
         }
 
         [Fact]
-        public async Task SendInvocationRequest_IsInExecutingInvocation()
+        public void SendInvocationRequest_IsInExecutingInvocation()
         {
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
             Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
             Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
         }
@@ -233,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
-            GrpcWorkerChannel channel = new GrpcWorkerChannel(
+            RpcWorkerChannel channel = new RpcWorkerChannel(
                _workerId,
                _eventManager,
                _testWorkerConfig,
@@ -261,11 +260,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task InFlight_Functions_FailedWithException()
+        public void InFlight_Functions_FailedWithException()
         {
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            _workerChannel.SendInvocationRequest(scriptInvocationContext);
             Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
             Exception workerException = new Exception("worker failed");
             _workerChannel.TryFailExecutions(workerException);

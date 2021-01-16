@@ -6,14 +6,14 @@ using System.Collections.Generic;
 using Google.Protobuf.Collections;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal class GrpcCapabilities
+    internal class Capabilities
     {
         private readonly ILogger _logger;
         private IDictionary<string, string> _capabilities = new Dictionary<string, string>();
 
-        public GrpcCapabilities(ILogger logger)
+        public Capabilities(ILogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }

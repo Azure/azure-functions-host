@@ -5,7 +5,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal static class StatusResultExtensions
     {
@@ -44,15 +44,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static Workers.Rpc.RpcException GetRpcException(StatusResult statusResult)
+        public static RpcException GetRpcException(StatusResult statusResult)
         {
             var ex = statusResult?.Exception;
             var status = statusResult?.Status.ToString();
             if (ex != null)
             {
-                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace);
+                return new RpcException(status, ex.Message, ex.StackTrace);
             }
-            return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);
+            return new RpcException(status, string.Empty, string.Empty);
         }
     }
 }

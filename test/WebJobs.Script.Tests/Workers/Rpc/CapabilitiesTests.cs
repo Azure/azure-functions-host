@@ -4,27 +4,27 @@
 using System;
 using System.Linq;
 using Google.Protobuf.Collections;
-using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
-    public class GrpcCapabilitiesTests
+    public class CapabilitiesTests
     {
         private readonly TestLoggerProvider _loggerProvider;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
-        private readonly GrpcCapabilities _capabilities;
+        private readonly Capabilities _capabilities;
 
         private string testCapability1 = "TestCapability1";
         private string testCapability2 = "TestCapability2";
 
-        public GrpcCapabilitiesTests()
+        public CapabilitiesTests()
         {
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory.AddProvider(_loggerProvider);
-            _capabilities = new GrpcCapabilities(_loggerFactory.CreateLogger<GrpcCapabilities>());
+            _capabilities = new Capabilities(_loggerFactory.CreateLogger<Capabilities>());
         }
 
         private enum TestCapability

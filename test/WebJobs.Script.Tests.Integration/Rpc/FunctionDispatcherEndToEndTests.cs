@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 
@@ -14,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class FunctionDispatcherEndToEndTests : IClassFixture<FunctionDispatcherEndToEndTests.TestFixture>
     {
-        private GrpcWorkerChannel _nodeWorkerChannel;
+        private RpcWorkerChannel _nodeWorkerChannel;
 
         public FunctionDispatcherEndToEndTests(TestFixture fixture)
         {
@@ -66,10 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             process.Start();
         }
 
-        private GrpcWorkerChannel GetCurrentJobHostWorkerChannel()
+        private RpcWorkerChannel GetCurrentJobHostWorkerChannel()
         {
             RpcFunctionInvocationDispatcher fd = Fixture.JobHost.FunctionDispatcher as RpcFunctionInvocationDispatcher;
-            return (GrpcWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
+            return (RpcWorkerChannel)fd.JobHostLanguageWorkerChannelManager.GetChannels().FirstOrDefault();
         }
 
         public class TestFixture : ScriptHostEndToEndTestFixture

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,15 +13,14 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RpcDataType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.TypedData.DataOneofCase;
 
-namespace Microsoft.Azure.WebJobs.Script.Grpc
+namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    internal static class GrpcMessageConversionExtensions
+    internal static class RpcMessageConversionExtensions
     {
         private static readonly JsonSerializerSettings _datetimeSerializerSettings = new JsonSerializerSettings { DateParseHandling = DateParseHandling.None };
 
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
                 case RpcDataType.Http:
-                    return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
+                    return RpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities)
+        public static async Task<TypedData> ToRpc(this object value, ILogger logger, Capabilities capabilities)
         {
             TypedData typedData = new TypedData();
             if (value == null)
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
+        internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, Capabilities capabilities)
         {
             var http = new RpcHttp()
             {
@@ -227,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        private static async Task PopulateBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
+        private static async Task PopulateBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
             if (request.IsMediaTypeOctetOrMultipart() || IsRawBodyBytesRequested(capabilities))
@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             http.Body = await body.ToRpc(logger, capabilities);
         }
 
-        private static async Task PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, GrpcCapabilities capabilities, ILogger logger)
+        private static async Task PopulateBodyAndRawBody(HttpRequest request, RpcHttp http, Capabilities capabilities, ILogger logger)
         {
             object body = null;
             string rawBodyString = null;
@@ -365,27 +365,27 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return typedData;
         }
 
-        private static bool IsRawBodyBytesRequested(GrpcCapabilities capabilities)
+        private static bool IsRawBodyBytesRequested(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RawHttpBodyBytes));
         }
 
-        private static bool IsBodyOnlySupported(GrpcCapabilities capabilities)
+        private static bool IsBodyOnlySupported(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpBodyOnly));
         }
 
-        private static bool IsTypedDataCollectionSupported(GrpcCapabilities capabilities)
+        private static bool IsTypedDataCollectionSupported(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.TypedDataCollection));
         }
 
-        private static bool ShouldIgnoreEmptyHeaderValues(GrpcCapabilities capabilities)
+        private static bool ShouldIgnoreEmptyHeaderValues(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.IgnoreEmptyValuedRpcHttpHeaders));
         }
 
-        private static bool ShouldUseNullableValueDictionary(GrpcCapabilities capabilities)
+        private static bool ShouldUseNullableValueDictionary(Capabilities capabilities)
         {
             return !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.UseNullableValueDictionaryForHttp));
         }
