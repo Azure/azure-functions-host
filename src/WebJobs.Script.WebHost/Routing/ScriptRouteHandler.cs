@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             _loggerFactory = loggerFactory;
             _environment = environment;
             _isProxy = isProxy;
-            _isWarmup = isWarmup;
         }
 
         public async Task InvokeAsync(HttpContext context, string functionName)
@@ -38,14 +37,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             {
                 ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost);
                 context.Items.TryAdd(ScriptConstants.AzureProxyFunctionExecutorKey, proxyFunctionExecutor);
-            }
-            else if (_isWarmup)
-            {
-                // warmup function will get executed just once for the process.
-                if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
-                {
-                    return Task.CompletedTask;
-                }
             }
 
             var descriptor = _scriptHost.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
