@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
-using Microsoft.Azure.WebJobs.Script.Abstractions;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -22,8 +21,6 @@ using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.FileProvisioning;
-using Microsoft.Azure.WebJobs.Script.Grpc;
-using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
@@ -318,12 +315,9 @@ namespace Microsoft.Azure.WebJobs.Script
             // Add Language Worker Service
             // Need to maintain the order: Add RpcInitializationService before core script host services
             services.AddManagedHostedService<RpcInitializationService>();
-            services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
-            services.AddSingleton<IRpcServer, GrpcServer>();
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.AddSingleton<IRpcWorkerChannelFactory, RpcWorkerChannelFactory>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();

@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -255,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var channelFactory = host.Services.GetService<IRpcWorkerChannelFactory>();
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
-            var rpcChannelInPlaceholderMode = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
+            var rpcChannelInPlaceholderMode = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
             Assert.Equal("6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
 
 
@@ -283,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerOptionsAtJobhostLevel = scriptHostService.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(1, workerOptionsAtJobhostLevel.Value.WorkerConfigs.Count);
-            var rpcChannelAfterSpecialization = (RpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
+            var rpcChannelAfterSpecialization = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsAtJobhostLevel.Value.WorkerConfigs);
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
