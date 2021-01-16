@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -24,9 +22,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
         private readonly bool _isProxy;
-        private readonly bool _isWarmup;
-        private static int _warmupExecuted;
-        private readonly ConcurrentDictionary<string, FunctionDescriptor> _functionMap = new ConcurrentDictionary<string, FunctionDescriptor>(System.StringComparer.OrdinalIgnoreCase);
 
         public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, IEnvironment environment, bool isProxy, bool isWarmup = false)
         {
@@ -37,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
             _isWarmup = isWarmup;
         }
 
-        public Task InvokeAsync(HttpContext context, string functionName)
+        public async Task InvokeAsync(HttpContext context, string functionName)
         {
             if (_isProxy)
             {
@@ -53,21 +48,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
                 }
             }
 
-            var descriptor = _functionMap.GetOrAdd(functionName, (name) =>
-            {
-                return _scriptHost.Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
-            });
-
-            if (_isWarmup && descriptor == null)
-            {
-                // TODO: further optimization, If there is no warmup trigger provided we should call a simple warmup function for the given language of the function app.
-                return Task.CompletedTask;
-            }
-
+            var descriptor = _scriptHost.Functions.FirstOrDefault(f => string.Equals(f.Name, functionName));
             var executionFeature = new FunctionExecutionFeature(_scriptHost, descriptor, _environment, _loggerFactory);
             context.Features.Set<IFunctionExecutionFeature>(executionFeature);
 
-            return Task.CompletedTask;
+            await Task.CompletedTask;
         }
     }
 }

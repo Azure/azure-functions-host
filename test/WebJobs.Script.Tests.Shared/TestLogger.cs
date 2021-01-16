@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Level = logLevel,
                 EventId = eventId,
                 State = state as IEnumerable<KeyValuePair<string, object>>,
-                Scope = _scopeProvider.GetScopeDictionaryOrNull(),
+                Scope = _scopeProvider.GetScopeDictionary(),
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
                 Category = Category,

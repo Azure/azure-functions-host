@@ -8,24 +8,22 @@ namespace Microsoft.Extensions.Logging
 {
     internal static class IExternalScopeProviderExtensions
     {
-        public static IDictionary<string, object> GetScopeDictionaryOrNull(this IExternalScopeProvider scopeProvider)
+        public static IDictionary<string, object> GetScopeDictionary(this IExternalScopeProvider scopeProvider)
         {
-            IDictionary<string, object> result = null;
+            var dictionary = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
-            scopeProvider.ForEachScope((scope, _) =>
+            scopeProvider.ForEachScope((scope, d) =>
             {
                 if (scope is IEnumerable<KeyValuePair<string, object>> kvps)
                 {
-                    result = result ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
                     foreach (var kvp in kvps)
                     {
-                        result[kvp.Key] = kvp.Value;
+                        d[kvp.Key] = kvp.Value;
                     }
                 }
-            }, (object)null);
+            }, dictionary);
 
-            return result;
+            return dictionary;
         }
     }
 }

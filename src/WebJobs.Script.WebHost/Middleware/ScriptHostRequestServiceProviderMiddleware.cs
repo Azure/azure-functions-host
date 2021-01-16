@@ -12,19 +12,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class ScriptHostRequestServiceProviderMiddleware
     {
         private readonly RequestDelegate _next;
-        private readonly WebJobsScriptHostService _scriptHostService;
 
-        public ScriptHostRequestServiceProviderMiddleware(RequestDelegate next, WebJobsScriptHostService scriptHostService)
+        public ScriptHostRequestServiceProviderMiddleware(RequestDelegate next)
         {
             _next = next;
-            _scriptHostService = scriptHostService;
         }
 
-        public Task Invoke(HttpContext httpContext)
+        public Task Invoke(HttpContext httpContext, WebJobsScriptHostService manager)
         {
-            if (_scriptHostService.Services is IServiceScopeFactory scopedServiceProvider)
+            if (manager.Services is IServiceScopeFactory scopedServiceProvider)
             {
-                httpContext.Features.Set<IServiceProvidersFeature>(new RequestServicesFeature(httpContext, scopedServiceProvider));
+                var features = httpContext.Features;
+                var servicesFeature = features.Get<IServiceProvidersFeature>();
+                features.Set<IServiceProvidersFeature>(new RequestServicesFeature(httpContext, scopedServiceProvider));
             }
 
             return _next(httpContext);
