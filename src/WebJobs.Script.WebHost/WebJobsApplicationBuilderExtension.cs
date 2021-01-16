@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.CurrentValue.InStandbyMode, environment), config =>
             {
-                config.UseMiddleware<HostWarmupMiddleware>();
+                builder.UseMiddleware<HostWarmupMiddleware>();
             });
 
             // This middleware must be registered before any other middleware depending on
