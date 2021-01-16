@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILoggerFactory configLoggerFactory = rootServiceProvider.GetService<ILoggerFactory>();
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
-            IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
@@ -68,16 +67,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     loggingBuilder.Services.AddSingleton<ILoggerFactory, ScriptLoggerFactory>();
 
                     loggingBuilder.AddWebJobsSystem<SystemLoggerProvider>();
-                    if (environment.IsAzureMonitorEnabled())
-                    {
-                        loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
-                    }
+                    loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
                 })
                 .ConfigureServices(services =>
                 {
                     var webHostEnvironment = rootServiceProvider.GetService<IScriptWebHostEnvironment>();
+                    var environment = rootServiceProvider.GetService<IEnvironment>();
 
                     if (FunctionsSyncManager.IsSyncTriggersEnvironment(webHostEnvironment, environment))
                     {

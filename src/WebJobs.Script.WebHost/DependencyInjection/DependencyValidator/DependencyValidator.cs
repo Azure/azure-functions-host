@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60"); // Popularly-registered by Health Check Monitor.
 
             expected.ExpectSubcollection<ILoggerProvider>()
+                .Expect<AzureMonitorDiagnosticLoggerProvider>()
                 .Expect<FunctionFileLoggerProvider>()
                 .Expect<HostFileLoggerProvider>()
                 .Expect<SystemLoggerProvider>();

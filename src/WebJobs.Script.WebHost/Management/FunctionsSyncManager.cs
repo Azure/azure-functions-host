@@ -601,12 +601,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
-                if (_environment.IsKubernetesManagedHosting())
-                {
-                    request.Headers.Add(ScriptConstants.KubernetesManagedAppName, _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName));
-                    request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
-                }
-
                 _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
                 var response = await _httpClient.SendAsync(request);

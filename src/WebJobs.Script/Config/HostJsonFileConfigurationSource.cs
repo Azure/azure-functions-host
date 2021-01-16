@@ -211,9 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigNotFound();
 
                         hostConfigObject = GetDefaultHostConfigObject();
-                        string bundleId = _configurationSource.Environment.IsLogicApp() ?
-                                            ScriptConstants.WorkFlowExtensionBundleId :
-                                            ScriptConstants.DefaultExtensionBundleId;
+                        string bundleId = ScriptConstants.DefaultExtensionBundleId;
 
                         hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId);
                         // Add bundle configuration if no file exists and file system is not read only
