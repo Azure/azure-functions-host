@@ -62,20 +62,27 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning.PowerShell
                 string requirementsContent = FileUtility.ReadResourceString(RequirementsPsd1ResourceFileName);
                 string guidance = null;
 
+                bool majorVersionRetrievedSuccessfully = false;
+
                 try
                 {
                     string majorVersion = GetLatestAzModuleMajorVersion();
-
-                    requirementsContent = Regex.Replace(requirementsContent, @"#(\s?)'Az'", "'Az'");
                     requirementsContent = Regex.Replace(requirementsContent, "MAJOR_VERSION", majorVersion);
+
+                    majorVersionRetrievedSuccessfully = true;
                 }
                 catch
                 {
-                    guidance = "Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '2.*'";
+                    guidance = "Uncomment the next line and replace the MAJOR_VERSION, e.g., 'Az' = '5.*'";
                     _logger.LogDebug($"Failed to get Az module version. Edit the {RequirementsPsd1FileName} file when the powershellgallery.com is accessible.");
                 }
 
-                requirementsContent = Regex.Replace(requirementsContent, "GUIDANCE", guidance ?? string.Empty);
+                if (majorVersionRetrievedSuccessfully)
+                {
+                    guidance = Environment.NewLine + "    # To use the Az module in your function app, please uncomment the line below.";
+                }
+
+                requirementsContent = Regex.Replace(requirementsContent, "GUIDANCE", guidance);
                 File.WriteAllText(requirementsFilePath, requirementsContent);
 
                 _logger.LogDebug($"{RequirementsPsd1FileName} created sucessfully.");

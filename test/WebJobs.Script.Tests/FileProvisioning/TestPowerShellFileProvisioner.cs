@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
                 throw new Exception($@"Failed to get module version for 'Az'.");
             }
 
-            return "2";
+            return "5";
         }
     }
 }
