@@ -10,6 +10,7 @@
 - Updated PowerShell Worker to [3.0.629](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.629) (PS7) and [3.0.630](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.630) (PS6)
 - Updated [System.Data.SqlClient to 4.8.2](https://www.nuget.org/packages/System.Data.SqlClient/4.8.2)
 - Added direct refereces to [System.IO.Pipes](https://www.nuget.org/packages/System.IO.Pipes/4.3.0)  and [System.Threading.Overlapped](https://www.nuget.org/packages/System.Threading.Overlapped/4.3.0) to ensure System.Data.SqlClient package update does not impact unification 
+- Updated Java Worker Version to [1.8.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.2-SNAPSHOT)
 
 **Release sprint:** Sprint 89, 90, 91
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Afeature+is%3Aclosed) ]
