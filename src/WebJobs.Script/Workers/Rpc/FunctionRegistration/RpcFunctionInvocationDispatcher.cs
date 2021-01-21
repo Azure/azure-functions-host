@@ -313,29 +313,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async void WorkerError(WorkerErrorEvent workerError)
         {
-            if (!_disposing && !_disposed)
+            if (_disposing || _disposed)
             {
-                if (string.Equals(_workerRuntime, workerError.Language))
-                {
-                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
-                    AddOrUpdateErrorBucket(workerError);
-                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
-                }
-                else
-                {
-                    _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                    _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
-                }
+                return;
+            }
+
+            if (string.Equals(_workerRuntime, workerError.Language))
+            {
+                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                AddOrUpdateErrorBucket(workerError);
+                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
+            }
+            else
+            {
+                _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
             }
         }
 
         public async void WorkerRestart(WorkerRestartEvent workerRestart)
         {
-            if (!_disposing && !_disposed)
+            if (_disposing || _disposed)
             {
-                _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
-                await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
+                return;
             }
+
+            _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
+            await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
         }
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException = null)
@@ -389,6 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 return;
             }
+
             if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
                 try
