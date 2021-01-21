@@ -524,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void HandleWorkerFunctionLoadError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Loading function failed.");
-            if (_disposing)
+            if (_disposing || _disposed)
             {
                 return;
             }
@@ -534,7 +534,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private void PublishWorkerErrorEvent(Exception exc)
         {
             _workerInitTask.SetException(exc);
-            if (_disposing)
+            if (_disposing || _disposed)
             {
                 return;
             }

@@ -29,7 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
+        private readonly TimeSpan _restartWait = TimeSpan.FromSeconds(10);
+        private readonly SemaphoreSlim _restartWorkerProcessSLock = new SemaphoreSlim(1, 1);
+        private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
         private IScriptEventManager _eventManager;
         private IEnumerable<RpcWorkerConfig> _workerConfigs;
@@ -48,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
+        private CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _debounceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -310,35 +313,43 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async void WorkerError(WorkerErrorEvent workerError)
         {
-            if (!_disposing)
+            if (_disposing || _disposed)
             {
-                if (string.Equals(_workerRuntime, workerError.Language))
-                {
-                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
-                    AddOrUpdateErrorBucket(workerError);
-                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
-                }
-                else
-                {
-                    _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                    _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
-                }
+                return;
+            }
+
+            if (string.Equals(_workerRuntime, workerError.Language))
+            {
+                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                AddOrUpdateErrorBucket(workerError);
+                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
+            }
+            else
+            {
+                _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
             }
         }
 
         public async void WorkerRestart(WorkerRestartEvent workerRestart)
         {
-            if (!_disposing)
+            if (_disposing || _disposed)
             {
-                _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
-                await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
+                return;
             }
+
+            _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
+            await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
         }
 
         private async Task DisposeAndRestartWorkerChannel(string runtime, string workerId, Exception workerException = null)
         {
-            _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: {channelId}, runtime:{language}", workerId, runtime);
+            if (_disposing || _disposed)
+            {
+                return;
+            }
 
+            _logger.LogDebug("Attempting to dispose webhost or jobhost channel for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
             bool isWebHostChannelDisposed = await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(runtime, workerId, workerException);
             bool isJobHostChannelDisposed = false;
             if (!isWebHostChannelDisposed)
@@ -348,7 +359,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (!isWebHostChannelDisposed && !isJobHostChannelDisposed)
             {
-                _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: {channelId}, runtime:{language}", workerId, runtime);
+                _logger.LogDebug("Did not find WebHost or JobHost channel to dispose for workerId: '{channelId}', runtime: '{language}'", workerId, runtime);
             }
 
             if (ShouldRestartWorkerChannel(runtime, isWebHostChannelDisposed, isJobHostChannelDisposed))
@@ -360,13 +371,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger.LogDebug("No initialized worker channels for runtime '{runtime}'. Delaying future invocations", runtime);
                 }
                 // Restart worker channel
-                _logger.LogDebug("Restarting worker channel for runtime:{runtime}", runtime);
-                await RestartWorkerChannel(runtime, workerId);
+                _logger.LogDebug("Restarting worker channel for runtime: '{runtime}'", runtime);
+                await RestartWorkerChannel(runtime);
                 // State is set back to "Initialized" when worker channel is up again
             }
             else
             {
-                _logger.LogDebug("Skipping worker channel restart for errored worker runtime:{runtime}, current runtime:{currentRuntime}, isWebHostChannel:{isWebHostChannel}, isJobHostChannel:{isJobHostChannel}",
+                _logger.LogDebug("Skipping worker channel restart for errored worker runtime: '{runtime}', current runtime: '{currentRuntime}', isWebHostChannel: '{isWebHostChannel}', isJobHostChannel: '{isJobHostChannel}'",
                     runtime, _workerRuntime, isWebHostChannelDisposed, isJobHostChannelDisposed);
             }
         }
@@ -376,11 +387,33 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return string.Equals(_workerRuntime, runtime, StringComparison.InvariantCultureIgnoreCase) && (isWebHostChannel || isJobHostChannel);
         }
 
-        private async Task RestartWorkerChannel(string runtime, string workerId)
+        private async Task RestartWorkerChannel(string runtime)
         {
+            if (_disposing || _disposed)
+            {
+                return;
+            }
+
             if (_languageWorkerErrors.Count < ErrorEventsThreshold)
             {
-                await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
+                try
+                {
+                    // Issue only one restart at a time.
+                    await _restartWorkerProcessSLock.WaitAsync();
+                    await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
+                }
+                finally
+                {
+                    // Wait before releasing the lock to give time for the process to startup and initialize.
+                    try
+                    {
+                        await Task.Delay(_restartWait, _disposeToken.Token);
+                        _restartWorkerProcessSLock.Release();
+                    }
+                    catch (TaskCanceledException)
+                    {
+                    }
+                }
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
             {
@@ -393,12 +426,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_languageWorkerErrors.TryPeek(out WorkerErrorEvent top))
             {
-                if ((currentErrorEvent.CreatedAt - top.CreatedAt) > thresholdBetweenRestarts)
+                if ((currentErrorEvent.CreatedAt - top.CreatedAt) > _thresholdBetweenRestarts)
                 {
                     while (!_languageWorkerErrors.IsEmpty)
                     {
                         _languageWorkerErrors.TryPop(out WorkerErrorEvent popped);
-                        _logger.LogDebug($"Popping out errorEvent createdAt:{popped.CreatedAt} workerId:{popped.WorkerId}");
+                        _logger.LogDebug($"Popping out errorEvent createdAt: '{popped.CreatedAt}' workerId: '{popped.WorkerId}'");
                     }
                 }
             }
@@ -407,14 +440,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
-                _logger.LogDebug("Disposing FunctionDispatcher");
-                _workerErrorSubscription.Dispose();
-                _workerRestartSubscription.Dispose();
-                _processStartCancellationToken.Cancel();
-                _processStartCancellationToken.Dispose();
-                _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+                if (_disposing)
+                {
+                    _logger.LogDebug("Disposing FunctionDispatcher");
+                    _disposeToken.Cancel();
+                    _disposeToken.Dispose();
+                    _restartWorkerProcessSLock.Dispose();
+                    _workerErrorSubscription.Dispose();
+                    _workerRestartSubscription.Dispose();
+                    _processStartCancellationToken.Cancel();
+                    _processStartCancellationToken.Dispose();
+                    _jobHostLanguageWorkerChannelManager.ShutdownChannels();
+                }
+
                 State = FunctionInvocationDispatcherState.Disposed;
                 _disposed = true;
             }
@@ -435,7 +475,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 if (channel.IsExecutingInvocation(invocationId))
                 {
-                    _logger.LogInformation($"Restarting channel '{channel.Id}' that is executing invocation '{invocationId}' and timed out.");
+                    _logger.LogDebug($"Restarting channel with workerId: '{channel.Id}' that is executing invocation: '{invocationId}' and timed out.");
                     await DisposeAndRestartWorkerChannel(_workerRuntime, channel.Id);
                     return true;
                 }

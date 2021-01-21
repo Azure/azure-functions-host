@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private Process _process;
         private bool _useStdErrorStreamForErrorsOnly;
         private ProcessMonitor _processMonitor;
-        private bool _disposing;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
         internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, bool useStdErrStreamForErrorsOnly = false)
@@ -38,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _metricsLogger = metricsLogger;
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
         }
+
+        protected bool Disposing { get; private set; }
 
         public int Id => _process.Id;
 
@@ -129,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private void OnProcessExited(object sender, EventArgs e)
         {
-            if (_disposing)
+            if (Disposing)
             {
                 // No action needed
                 return;
@@ -192,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public void Dispose()
         {
-            _disposing = true;
+            Disposing = true;
             // best effort process disposal
             try
             {
