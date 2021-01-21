@@ -407,7 +407,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     catch (TaskCanceledException)
                     {
-                        // Ignoring since this means host is being disposed as part of shutdown or restart. 
                     }
                 }
             }
