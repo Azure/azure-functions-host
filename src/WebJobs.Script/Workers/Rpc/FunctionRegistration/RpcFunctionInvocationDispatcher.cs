@@ -405,9 +405,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         await Task.Delay(_restartWait, _disposeToken.Token);
                         _restartWorkerProcessSLock.Release();
                     }
-                    catch (TaskCanceledException ex)
+                    catch (TaskCanceledException)
                     {
-                        _logger.LogError($"Restart wait task canceled possibly because host instance is being disposed/recycled", ex);
+                        // Ignoring since this means host is being disposed as part of shutdown or restart. 
                     }
                 }
             }
