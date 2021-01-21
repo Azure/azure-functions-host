@@ -50,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
-        private CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _debounceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -400,10 +399,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 finally
                 {
                     // Wait before releasing the lock to give time for the process to startup and initialize.
-                    await Task.Delay(_restartWait).ContinueWith(tsk =>
+                    await Task.Delay(_restartWait);
+                    if (!_disposing && !_disposed)
                     {
                         _restartWorkerProcessSLock.Release();
-                    }, _disposeToken.Token);
+                    }
                 }
             }
             else if (_jobHostLanguageWorkerChannelManager.GetChannels().Count() == 0)
@@ -452,7 +452,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public void Dispose()
         {
             _disposing = true;
-            _disposeToken.Cancel();
             State = FunctionInvocationDispatcherState.Disposing;
             Dispose(true);
         }
