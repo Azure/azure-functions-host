@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IEnumerable<FunctionMetadata> _functions;
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
+        private CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _debounceMilliSeconds = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -399,10 +400,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 finally
                 {
                     // Wait before releasing the lock to give time for the process to startup and initialize.
-                    await Task.Delay(_restartWait);
-                    if (!_disposing && !_disposed)
+                    try
                     {
+                        await Task.Delay(_restartWait, _disposeToken.Token);
                         _restartWorkerProcessSLock.Release();
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        _logger.LogError($"Restart wait task canceled possibly because host instance is being disposed/recycled", ex);
                     }
                 }
             }
@@ -436,6 +441,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 if (_disposing)
                 {
                     _logger.LogDebug("Disposing FunctionDispatcher");
+                    _disposeToken.Cancel();
+                    _disposeToken.Dispose();
                     _restartWorkerProcessSLock.Dispose();
                     _workerErrorSubscription.Dispose();
                     _workerRestartSubscription.Dispose();
