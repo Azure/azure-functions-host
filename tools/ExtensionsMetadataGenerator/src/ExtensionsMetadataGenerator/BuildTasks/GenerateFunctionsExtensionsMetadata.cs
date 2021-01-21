@@ -37,7 +37,7 @@ namespace ExtensionsMetadataGenerator.BuildTasks
             var info = new ProcessStartInfo
             {
                 UseShellExecute = false,
-                CreateNoWindow = false,
+                CreateNoWindow = true,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 WorkingDirectory = Path.Combine(Path.GetDirectoryName(taskAssembly.Location), "..", "netstandard2.0", "generator"),
