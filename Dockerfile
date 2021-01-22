@@ -1,21 +1,26 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:3.0 AS installer-env
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS installer-env
 
 ENV PublishWithAspNetCoreTargetManifest false
 
 COPY . /workingdir
 
 RUN cd workingdir && \
-    dotnet build WebJobs.Script.sln && \
     dotnet publish src/WebJobs.Script.WebHost/WebJobs.Script.WebHost.csproj --output /azure-functions-host
 
 # Runtime image
-FROM mcr.microsoft.com/azure-functions/python:2.0
+FROM mcr.microsoft.com/azure-functions/python:3.0
 
 RUN apt-get update && \
     apt-get install -y gnupg && \
-    curl -sL https://deb.nodesource.com/setup_8.x | bash - && \
+    curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get update && \
-    apt-get install -y nodejs dotnet-sdk-3.0
+    apt-get install -y nodejs dotnet-sdk-3.1
+
+# Install the dependencies for Visual Studio Remote Debugger
+RUN apt-get update && apt-get install -y --no-install-recommends unzip procps
+
+# Install Visual Studio Remote Debugger
+RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/vsdbg
 
 COPY --from=installer-env ["/azure-functions-host", "/azure-functions-host"]
 

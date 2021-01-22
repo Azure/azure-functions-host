@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.IO;
+using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -27,18 +28,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string KubernetesSecretsDir = "/run/secrets/functions-keys";
         private readonly HttpClient _httpClient;
         private readonly IEnvironment _environment;
+        private readonly ILogger _logger;
         private Action _watchCallback;
         private bool _disposed;
         private AutoRecoveringFileSystemWatcher _fileWatcher;
 
-        public SimpleKubernetesClient(IEnvironment environment) : this(environment, CreateHttpClient())
+        public SimpleKubernetesClient(IEnvironment environment, ILogger logger) : this(environment, CreateHttpClient(), logger)
         { }
 
         // for testing
-        internal SimpleKubernetesClient(IEnvironment environment, HttpClient client)
+        internal SimpleKubernetesClient(IEnvironment environment, HttpClient client, ILogger logger)
         {
             _httpClient = client;
             _environment = environment;
+            _logger = logger;
             Task.Run(() => RunWatcher());
         }
 
@@ -58,7 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                throw new InvalidOperationException($"{nameof(KubernetesSecretsRepository)} requires setting {EnvironmentSettingNames.AzureWebJobsKubernetesSecretName} or mounting secrets to {KubernetesSecretsDir}");
+                var exception = new InvalidOperationException($"{nameof(KubernetesSecretsRepository)} requires setting {EnvironmentSettingNames.AzureWebJobsKubernetesSecretName} or mounting secrets to {KubernetesSecretsDir}");
+                _logger.LogError(exception, "Error geting secrets");
+                throw exception;
             }
         }
 
@@ -74,6 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             using (var request = await GetRequest(HttpMethod.Patch, url, new[] { new { op = "replace", path = "/data", value = data } }, "application/json-patch+json"))
             {
                 var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Error updating Kubernetes secrets. {StatusCode}: {Content}",
+                        response.StatusCode,
+                        await response.Content.ReadAsStringAsync());
+                }
                 response.EnsureSuccessStatusCode();
             }
         }
@@ -84,6 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         }
 
         private async Task RunWatcher()
+        {
+            while (!_disposed)
+            {
+                // watch API requests terminate after 4 minutes
+                await RunWatcherInternal();
+            }
+        }
+
+        private async Task RunWatcherInternal()
         {
             if (string.IsNullOrEmpty(KubernetesObjectName) && FileUtility.DirectoryExists(KubernetesSecretsDir))
             {
@@ -124,13 +144,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (response.IsSuccessStatusCode)
                 {
                     var obj = await response.Content.ReadAsAsync<JObject>();
-                    return obj["data"]
-                        ?.ToObject<IDictionary<string, string>>()
-                        ?.ToDictionary(
+                    return obj.ContainsKey("data")
+                    ? obj["data"]
+                        .ToObject<IDictionary<string, string>>()
+                        .ToDictionary(
                             k => k.Key,
                             v => decode
                                 ? Encoding.UTF8.GetString(Convert.FromBase64String(v.Value))
-                                : v.Value);
+                                : v.Value)
+                    : new Dictionary<string, string>();
                 }
                 else if (response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -139,7 +161,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else
                 {
-                    throw new HttpRequestException($"Error calling GET {url}, Status: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+                    var exception = new HttpRequestException($"Error calling GET {url}, Status: {response.StatusCode}, Content: {await response.Content.ReadAsStringAsync()}");
+                    _logger.LogError(exception, "Error reading secrets from Kubernetes");
+                    throw exception;
                 }
             }
         }
@@ -165,6 +189,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     using (var createRequest = await GetRequest(HttpMethod.Post, url, payload))
                     {
                         var createResponse = await _httpClient.SendAsync(createRequest);
+                        if (!createResponse.IsSuccessStatusCode)
+                        {
+                            _logger.LogError("Error creating Kubernetes secrets. {StatusCode}: {Content}",
+                                createResponse.StatusCode,
+                                await createResponse.Content.ReadAsStringAsync());
+                        }
                         createResponse.EnsureSuccessStatusCode();
                     }
                 }
