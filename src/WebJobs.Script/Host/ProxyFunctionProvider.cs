@@ -27,7 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ReaderWriterLockSlim _metadataLock = new ReaderWriterLockSlim();
         private readonly IOptions<ScriptJobHostOptions> _scriptOptions;
         private readonly IEnvironment _environment;
-        private readonly ILogger _logger;
+        private readonly ILogger _loggerStart;
+        private readonly ILogger _loggerRequests;
         private readonly IDisposable _fileChangeSubscription;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private Lazy<ImmutableArray<FunctionMetadata>> _metadata;
@@ -37,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _scriptOptions = scriptOptions;
             _environment = environment;
-            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _loggerStart = loggerFactory.CreateLogger(LogCategories.Startup);
+            _loggerRequests = loggerFactory.CreateLogger("ProxyRequests");
             _metadata = new Lazy<ImmutableArray<FunctionMetadata>>(LoadFunctionMetadata);
 
             _fileChangeSubscription = eventManager.OfType<FileEvent>()
@@ -80,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> LoadFunctionMetadata()
         {
             var functionErrors = new Dictionary<string, ICollection<string>>();
-            Collection<ProxyFunctionMetadata> proxies = ReadProxyMetadata(_scriptOptions.Value.RootScriptPath, _logger, functionErrors);
+            Collection<ProxyFunctionMetadata> proxies = ReadProxyMetadata(_scriptOptions.Value.RootScriptPath, _loggerStart, _loggerRequests, functionErrors);
 
             ImmutableArray<FunctionMetadata> metadata;
             if (proxies != null && proxies.Any())
@@ -92,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return metadata;
         }
 
-        internal static Collection<ProxyFunctionMetadata> ReadProxyMetadata(string scriptPath, ILogger logger, Dictionary<string, ICollection<string>> functionErrors = null)
+        internal static Collection<ProxyFunctionMetadata> ReadProxyMetadata(string scriptPath, ILogger loggerStart, ILogger loggerRequests, Dictionary<string, ICollection<string>> functionErrors = null)
         {
             functionErrors = functionErrors ?? new Dictionary<string, ICollection<string>>();
 
@@ -106,21 +108,21 @@ namespace Microsoft.Azure.WebJobs.Script
             string proxiesJson = File.ReadAllText(proxyConfigPath);
             if (!string.IsNullOrWhiteSpace(proxiesJson))
             {
-                logger.LogInformation("Loading proxies metadata");
-                var metadataCollection = LoadProxyMetadata(proxiesJson, functionErrors, logger);
-                logger.LogInformation($"{metadataCollection.Count} proxies loaded");
+                loggerStart.LogInformation("Loading proxies metadata");
+                var metadataCollection = LoadProxyMetadata(proxiesJson, functionErrors, loggerStart, loggerRequests);
+                loggerStart.LogInformation($"{metadataCollection.Count} proxies loaded");
                 return metadataCollection;
             }
 
             return null;
         }
 
-        private static Collection<ProxyFunctionMetadata> LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors, ILogger logger)
+        private static Collection<ProxyFunctionMetadata> LoadProxyMetadata(string proxiesJson, Dictionary<string, ICollection<string>> functionErrors, ILogger loggerStart, ILogger loggerRequests)
         {
             var proxies = new Collection<ProxyFunctionMetadata>();
             ProxyClientExecutor client = null;
 
-            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, logger);
+            var rawProxyClient = ProxyClientFactory.Create(proxiesJson, loggerStart, loggerRequests);
             if (rawProxyClient != null)
             {
                 client = new ProxyClientExecutor(rawProxyClient);
