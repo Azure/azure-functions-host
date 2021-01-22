@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         public static string Decrypt(string value, IEnvironment environment = null)
         {
-            if (environment.IsKubernetesManagedHosting())
+            if ((environment != null) && environment.IsKubernetesManagedHosting())
             {
                 var encryptionKey = GetPodEncryptionKey(environment);
                 return Decrypt(encryptionKey, value);
