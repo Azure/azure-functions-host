@@ -72,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else if (secretStorageType != null && secretStorageType.Equals("kubernetes", StringComparison.OrdinalIgnoreCase))
             {
-                return new KubernetesSecretsRepository(_environment, new SimpleKubernetesClient(_environment));
+                return new KubernetesSecretsRepository(_environment, new SimpleKubernetesClient(_environment, _loggerFactory.CreateLogger<SimpleKubernetesClient>()));
             }
             else if (secretStorageSas != null)
             {
