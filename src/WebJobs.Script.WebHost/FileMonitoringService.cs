@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private AutoRecoveringFileSystemWatcher _debugModeFileWatcher;
         private AutoRecoveringFileSystemWatcher _diagnosticModeFileWatcher;
         private FileWatcherEventSource _fileEventSource;
+        private bool _restartScheduled;
         private bool _shutdownScheduled;
         private long _restartRequested;
         private bool _disposed = false;
@@ -99,31 +100,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return Task.CompletedTask;
         }
 
-        public IDisposable SuspendRestart()
+        public IDisposable SuspendRestart(bool autoRestart)
         {
-            return new SuspendRestartRequest(this);
+            return new SuspendRestartRequest(this, autoRestart);
         }
 
-        public void ResumeRestart()
+        private void ResumeRestartIfScheduled()
         {
-            Interlocked.Decrement(ref _suspensionRequestsCount);
-            _typedLogger.LogDebug($"Resuming restart. ({_suspensionRequestsCount} requests).");
+            if (_restartScheduled)
+            {
+                using (System.Threading.ExecutionContext.SuppressFlow())
+                {
+                    _typedLogger.LogDebug("Resuming scheduled restart.");
+                    Task.Run(async () => await ScheduleRestartAsync());
+                }
+            }
         }
 
-        public async Task ScheduleRestartAsync(bool shutdown)
+        private async Task ScheduleRestartAsync(bool shutdown)
         {
+            _restartScheduled = true;
             if (shutdown)
             {
                 _shutdownScheduled = true;
             }
 
+            await ScheduleRestartAsync();
+        }
+
+        private async Task ScheduleRestartAsync()
+        {
             if (Interlocked.Read(ref _suspensionRequestsCount) > 0)
             {
                 _logger.LogDebug("Restart requested while currently suspended. Ignoring request.");
             }
             else
             {
-                if (shutdown || _shutdownScheduled)
+                if (_shutdownScheduled)
                 {
                     _shutdown();
                 }
@@ -396,11 +409,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private class SuspendRestartRequest : IDisposable
         {
             private FileMonitoringService _fileMonitoringService;
+            private bool _autoResume;
             private bool _disposed = false;
 
-            public SuspendRestartRequest(FileMonitoringService fileMonitoringService)
+            public SuspendRestartRequest(FileMonitoringService fileMonitoringService, bool autoResume)
             {
                 _fileMonitoringService = fileMonitoringService;
+                _autoResume = autoResume;
                 Interlocked.Increment(ref _fileMonitoringService._suspensionRequestsCount);
                 _fileMonitoringService._typedLogger.LogDebug($"Entering restart suspension scope. ({_fileMonitoringService._suspensionRequestsCount} requests).");
             }
@@ -411,6 +426,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     Interlocked.Decrement(ref _fileMonitoringService._suspensionRequestsCount);
                     _fileMonitoringService._typedLogger.LogDebug($"Exiting restart suspension scope. ({_fileMonitoringService._suspensionRequestsCount} requests).");
+                    if (_autoResume)
+                    {
+                        _fileMonitoringService.ResumeRestartIfScheduled();
+                    }
                     _disposed = true;
                 }
             }

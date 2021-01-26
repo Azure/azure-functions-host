@@ -139,22 +139,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 _ = Task.Run(async () =>
                 {
-                    using (fileMonitoringService.SuspendRestart())
+                    using (fileMonitoringService.SuspendRestart(true))
                     {
                         mockEventManager.Publish(randomFileEvent);
                         await Task.Delay(1000);
                     }
-                    await fileMonitoringService.ScheduleRestartAsync(false);
                     e1.Set();
                 });
 
                 _ = Task.Run(async () =>
                 {
-                    using (fileMonitoringService.SuspendRestart())
+                    using (fileMonitoringService.SuspendRestart(true))
                     {
                         await Task.Delay(2000);
                     }
-                    await fileMonitoringService.ScheduleRestartAsync(false);
                     e2.Set();
                 });
 
@@ -165,7 +163,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // wait for restart
                 await Task.Delay(1000);
-                mockScriptHostManager.Verify(m => m.RestartHostAsync(default));
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
+                await fileMonitoringService.StopAsync(CancellationToken.None);
+            }
+        }
+
+        [Fact]
+        public static async Task SuspendRestart_Restart_NestedUsings_Work()
+        {
+            using (var directory = new TempDirectory())
+            {
+                // Setup
+                string tempDir = directory.Path;
+                Directory.CreateDirectory(Path.Combine(tempDir, "Host"));
+
+                var jobHostOptions = new ScriptJobHostOptions
+                {
+                    RootLogPath = tempDir,
+                    RootScriptPath = tempDir,
+                    FileWatchingEnabled = true,
+                    WatchFiles = { "host.json" }
+                };
+                var loggerFactory = new LoggerFactory();
+                var mockApplicationLifetime = new Mock<IApplicationLifetime>();
+                var mockScriptHostManager = new Mock<IScriptHostManager>();
+                var mockEventManager = new ScriptEventManager();
+                var environment = new TestEnvironment();
+
+                // Act
+                FileMonitoringService fileMonitoringService = new FileMonitoringService(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions),
+                    loggerFactory, mockEventManager, mockApplicationLifetime.Object, mockScriptHostManager.Object, environment);
+                await fileMonitoringService.StartAsync(new CancellationToken(canceled: false));
+
+                var randomFileEventArgs = new FileSystemEventArgs(WatcherChangeTypes.Created, tempDir, "host.json");
+                FileEvent randomFileEvent = new FileEvent("ScriptFiles", randomFileEventArgs);
+
+                using (fileMonitoringService.SuspendRestart(true))
+                {
+                    using (fileMonitoringService.SuspendRestart(true))
+                    {
+                    }
+                    await Task.Delay(1000);
+                    mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Never);
+                    mockEventManager.Publish(randomFileEvent);
+                }
+                await Task.Delay(1000);
+                mockScriptHostManager.Verify(m => m.RestartHostAsync(default), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
@@ -205,22 +248,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 _ = Task.Run(async () =>
                 {
-                    using (fileMonitoringService.SuspendRestart())
+                    using (fileMonitoringService.SuspendRestart(true))
                     {
                         mockEventManager.Publish(randomFileEvent);
                         await Task.Delay(1000);
                     }
-                    await fileMonitoringService.ScheduleRestartAsync(true);
                     e1.Set();
                 });
 
                 _ = Task.Run(async () =>
                 {
-                    using (fileMonitoringService.SuspendRestart())
+                    using (fileMonitoringService.SuspendRestart(true))
                     {
                         await Task.Delay(2000);
                     }
-                    await fileMonitoringService.ScheduleRestartAsync(true);
                     e2.Set();
                 });
 
@@ -231,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // wait for restart
                 await Task.Delay(1000);
-                mockApplicationLifetime.Verify(m => m.StopApplication());
+                mockApplicationLifetime.Verify(m => m.StopApplication(), Times.Once);
                 await fileMonitoringService.StopAsync(CancellationToken.None);
             }
         }
