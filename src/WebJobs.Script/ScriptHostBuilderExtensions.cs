@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             // Including Core Tools as a warning during development time.
                             if (environment.IsWindowsConsumption() ||
                                 environment.IsLinuxConsumption() ||
-                                environment.IsWindowsElasticPremium() ||
+                                (environment.IsWindowsElasticPremium() && !environment.IsRuntimeScaleMonitoringEnabled()) ||
                                 environment.IsCoreTools())
                             {
                                 var validator = s.GetService<ExternalConfigurationStartupValidator>();
