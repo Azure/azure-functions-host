@@ -9,10 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public interface IFileMonitoringService : IHostedService
     {
-        IDisposable SuspendRestart();
-
-        void ResumeRestart();
-
-        Task ScheduleRestartAsync(bool shutdown);
+        IDisposable SuspendRestart(bool autoResume);
     }
 }
