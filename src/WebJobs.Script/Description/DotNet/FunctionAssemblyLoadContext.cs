@@ -224,7 +224,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 //     a. We did not adjust the requested assembly name via the deps file.
                 //        - This means that the DefaultLoadContext is looking for the correct version. Return null and let
                 //          it handle the load attempt.
-                //     b. We adjusted the requested assembly name via the deps file.
+                //     b. We adjusted the requested assembly name via the deps file. If we return null the DefaultLoadContext would attempt to
+                //        load the original assembly version, which may be incorrect if we had to adjust it forward past the runtime's version.
                 //        i.  The adjusted assembly name is higher than the runtime's version.
                 //            - Do not trust the DefaultLoadContext to handle this as it may resolve to the runtime's assembly. Instead,
                 //              call LoadCore() to ensure the adjusted assembly is loaded.
