@@ -201,67 +201,71 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
-            assemblyName = AdjustRuntimeAssemblyFromDepsFile(assemblyName);
+            bool isNameAdjusted = TryAdjustRuntimeAssemblyFromDepsFile(assemblyName, out AssemblyName adjustedAssemblyName);
 
             // Try to load from deps references, if available
-            if (TryLoadDepsDependency(assemblyName, out Assembly assembly))
+            if (TryLoadDepsDependency(adjustedAssemblyName, out Assembly assembly))
             {
                 return assembly;
             }
 
             // If this is a runtime restricted assembly, load it based on unification rules
-            if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
+            if (TryGetRuntimeAssembly(adjustedAssemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
-                // There are several possible scenarios if this is a runtime assembly:
-                //  1. Policy evaluation succeeded:
-                //     - Return the runtime assembly.
+                // There are several possible scenarios:
+                //  1. The assembly was found and the policy evaluator succeeeded.
+                //     - Return the assembly.
                 //
-                //  2. Policy evaluation failed:
-                //     a. The runtime assembly was not found.
-                //        - Return null and let the default context have a try to load it.
-                //     b. The requested assembly is a higher version than the runtime assembly.
-                //        - Cannot return null as this will force the default LoadContext to load the assembly, resulting in
-                //          a lower version than expected. In this case, run it through LoadCore() to load the higher version
-                //          into this LoadContext.
-                //     c. The requested assembly is a lower version than the runtime assembly.
-                //        - Cannot run through LoadCore() as this will load the lower version into this LoadContext when the desired
-                //          behavior is that the assembly is unified on the host version. Instead, return null.
+                //  2. The assembly was not found (meaning the policy evaluator wasn't able to run).
+                //     - Return null as there's not much else we can do. This will fail and come back to this context
+                //       through the fallback logic for another attempt. This is likely an error case so let it fail.
+                //
+                //  3. The assembly was found but the policy evaluator failed.
+                //     a. We did not adjust the requested assembly name via the deps file.
+                //        - This means that the DefaultLoadContext is looking for the correct version. Return null and let
+                //          it handle the load attempt.
+                //     b. We adjusted the requested assembly name via the deps file.
+                //        i.  The adjusted assembly name is higher than the runtime's version.
+                //            - Do not trust the DefaultLoadContext to handle this as it may resolve to the runtime's assembly. Instead,
+                //              call LoadCore() to ensure the adjusted assembly is loaded.
+                //        ii. The adjusted assembly name is still lower than or equal to the runtime's version (this likely means
+                //            a lower major version).
+                //            - Return null and let the DefaultLoadContext handle it. It may come back here due to fallback logic, but
+                //              ultimately it will unify on the runtime version.
 
-                if (ShouldUseRuntimeAssembly(assemblyName, scriptRuntimeAssembly, out assembly))
+                if (ShouldUseRuntimeAssembly(adjustedAssemblyName, scriptRuntimeAssembly, out assembly))
                 {
-                    // Scenario 1
+                    // Scenarios 1 and 2a
                     return assembly;
                 }
                 else
                 {
-                    if (assembly == null)
+                    if (assembly == null || !isNameAdjusted)
                     {
-                        // Scenario 2a
+                        // Scenario 2 and 3a.
                         return null;
                     }
 
                     AssemblyName runtimeAssemblyName = assembly.GetName();
-                    if (IsHigherThan(assemblyName, runtimeAssemblyName))
+                    if (IsHigherThan(adjustedAssemblyName, runtimeAssemblyName))
                     {
-                        // Scenario 2b
-                        return LoadCore(assemblyName);
+                        // Scenario 3bi.
+                        return LoadCore(adjustedAssemblyName);
                     }
-                    else
-                    {
-                        // Scenario 2c
-                        return null;
-                    }
+
+                    // Scenario 3bii.
+                    return null;
                 }
             }
 
             // If the assembly being requested matches a host assembly, we'll use
             // the host assembly instead of loading it in this context:
-            if (TryLoadHostEnvironmentAssembly(assemblyName, out assembly))
+            if (TryLoadHostEnvironmentAssembly(adjustedAssemblyName, out assembly))
             {
                 return assembly;
             }
 
-            return LoadCore(assemblyName);
+            return LoadCore(adjustedAssemblyName);
         }
 
         internal bool IsHigherThan(AssemblyName name1, AssemblyName name2)
@@ -270,8 +274,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 (name1.Version.Major == name2.Version.Major && name1.Version.Minor > name2.Version.Minor);
         }
 
-        private AssemblyName AdjustRuntimeAssemblyFromDepsFile(AssemblyName assemblyName)
+        private bool TryAdjustRuntimeAssemblyFromDepsFile(AssemblyName assemblyName, out AssemblyName newAssemblyName)
         {
+            newAssemblyName = assemblyName;
+
             // It's possible for references to depend on different versions, and deps.json is the
             // source of truth for which version should be resolved.
             if (IsRuntimeAssembly(assemblyName) &&
@@ -279,14 +285,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 && asset.AssemblyVersion != assemblyName.Version)
             {
                 // We'll be using the deps.json version
-                return new AssemblyName
+                newAssemblyName = new AssemblyName
                 {
                     Name = assemblyName.Name,
                     Version = asset.AssemblyVersion
                 };
+
+                return true;
             }
 
-            return assemblyName;
+            return false;
         }
 
         /// <summary>
