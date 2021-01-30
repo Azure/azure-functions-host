@@ -201,16 +201,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected override Assembly Load(AssemblyName assemblyName)
         {
-            bool isNameAdjusted = TryAdjustRuntimeAssemblyFromDepsFile(assemblyName, out AssemblyName adjustedAssemblyName);
+            bool isNameAdjusted = TryAdjustRuntimeAssemblyFromDepsFile(assemblyName, out assemblyName);
 
             // Try to load from deps references, if available
-            if (TryLoadDepsDependency(adjustedAssemblyName, out Assembly assembly))
+            if (TryLoadDepsDependency(assemblyName, out Assembly assembly))
             {
                 return assembly;
             }
 
             // If this is a runtime restricted assembly, load it based on unification rules
-            if (TryGetRuntimeAssembly(adjustedAssemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
+            if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
                 // There are several possible scenarios:
                 //  1. The assembly was found and the policy evaluator succeeeded.
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 //            - Return null and let the DefaultLoadContext handle it. It may come back here due to fallback logic, but
                 //              ultimately it will unify on the runtime version.
 
-                if (ShouldUseRuntimeAssembly(adjustedAssemblyName, scriptRuntimeAssembly, out assembly))
+                if (ShouldUseRuntimeAssembly(assemblyName, scriptRuntimeAssembly, out assembly))
                 {
                     // Scenarios 1 and 2a
                     return assembly;
@@ -247,10 +247,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     }
 
                     AssemblyName runtimeAssemblyName = assembly.GetName();
-                    if (IsHigherThan(adjustedAssemblyName, runtimeAssemblyName))
+                    if (IsHigherThan(assemblyName, runtimeAssemblyName))
                     {
                         // Scenario 3bi.
-                        return LoadCore(adjustedAssemblyName);
+                        return LoadCore(assemblyName);
                     }
 
                     // Scenario 3bii.
@@ -260,12 +260,12 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             // If the assembly being requested matches a host assembly, we'll use
             // the host assembly instead of loading it in this context:
-            if (TryLoadHostEnvironmentAssembly(adjustedAssemblyName, out assembly))
+            if (TryLoadHostEnvironmentAssembly(assemblyName, out assembly))
             {
                 return assembly;
             }
 
-            return LoadCore(adjustedAssemblyName);
+            return LoadCore(assemblyName);
         }
 
         internal bool IsHigherThan(AssemblyName name1, AssemblyName name2)
