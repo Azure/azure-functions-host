@@ -114,6 +114,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             });
         }
 
+        [Fact]
+        public async Task ReferenceOlderRuntimeAssembly()
+        {
+            // Test that we still return host version, even if it's a major version below.
+            // The test project used repros the scenario because it references the Storage extension, 
+            // which has references to Extensions.Hosting.Abstractions 2.1. The project itself directly
+            // references 2.2 of this assembly and before the fix, would throw an exception on Startup.
+
+            await RunTest(async () =>
+            {
+                _launcher = new HostProcessLauncher("ReferenceOlderRuntimeAssembly");
+                await _launcher.StartHostAsync();
+
+                var client = _launcher.HttpClient;
+                var response = await client.GetAsync($"api/ReferenceOlderRuntimeAssembly");
+
+                // The function does all the validation internally.
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            });
+        }
+
         private async Task RunTest(Func<Task> test)
         {
             try
