@@ -212,16 +212,51 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // If this is a runtime restricted assembly, load it based on unification rules
             if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
-                assembly = LoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly);
+                // There are several possible scenarios:
+                //  1. The assembly was found and the policy evaluator succeeded.
+                //     - Return the assembly.
+                //
+                //  2. The assembly was not found (meaning the policy evaluator wasn't able to run).
+                //     - Return null as there's not much else we can do. This will fail and come back to this context
+                //       through the fallback logic for another attempt. This is likely an error case so let it fail.
+                //
+                //  3. The assembly was found but the policy evaluator failed.
+                //     a. We did not adjust the requested assembly name via the deps file.
+                //        - This means that the DefaultLoadContext is looking for the correct version. Return null and let
+                //          it handle the load attempt.
+                //     b. We adjusted the requested assembly name via the deps file. If we return null the DefaultLoadContext would attempt to
+                //        load the original assembly version, which may be incorrect if we had to adjust it forward past the runtime's version.
+                //        i.  The adjusted assembly name is higher than the runtime's version.
+                //            - Do not trust the DefaultLoadContext to handle this as it may resolve to the runtime's assembly. Instead,
+                //              call LoadCore() to ensure the adjusted assembly is loaded.
+                //        ii. The adjusted assembly name is still lower than or equal to the runtime's version (this likely means
+                //            a lower major version).
+                //            - Return null and let the DefaultLoadContext handle it. It may come back here due to fallback logic, but
+                //              ultimately it will unify on the runtime version.
 
-                // If the policy evaluation failed because the AssemblyName was adjusted due to
-                // deps.json, we cannot allow the Default context to load it. Instead, load directly.
-                if (assembly == null && isNameAdjusted)
+                if (TryLoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly, out assembly))
                 {
-                    assembly = LoadCore(assemblyName);
+                    // Scenarios 1 and 2(a).
+                    return assembly;
                 }
+                else
+                {
+                    if (assembly == null || !isNameAdjusted)
+                    {
+                        // Scenario 2 and 3(a).
+                        return null;
+                    }
 
-                return assembly;
+                    AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(assembly);
+                    if (assemblyName.Version > runtimeAssemblyName.Version)
+                    {
+                        // Scenario 3(b)(i).
+                        return LoadCore(assemblyName);
+                    }
+
+                    // Scenario 3(b)(ii).
+                    return null;
+                }
             }
 
             // If the assembly being requested matches a host assembly, we'll use
@@ -257,26 +292,31 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return false;
         }
 
-        private Assembly LoadRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly)
+        /// <summary>
+        /// Loads the runtime's version of this assembly and runs it through the appropriate policy evaluator.
+        /// </summary>
+        /// <param name="assemblyName">The assembly name to load.</param>
+        /// <param name="scriptRuntimeAssembly">The policy evaluator details.</param>
+        /// <param name="runtimeAssembly">The runtime's assembly.</param>
+        /// <returns>true if the policy evaluation succeeded, otherwise, false.</returns>
+        private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly, out Assembly runtimeAssembly)
         {
             // If this is a private runtime assembly, return function dependency
             if (string.Equals(scriptRuntimeAssembly.ResolutionPolicy, PrivateDependencyResolutionPolicy))
             {
-                return LoadCore(assemblyName);
+                runtimeAssembly = LoadCore(assemblyName);
+                return true;
             }
 
             // Attempt to load the runtime version of the assembly based on the unification policy evaluation result.
-            if (TryLoadHostEnvironmentAssembly(assemblyName, allowPartialNameMatch: true, out Assembly assembly))
+            if (TryLoadHostEnvironmentAssembly(assemblyName, allowPartialNameMatch: true, out runtimeAssembly))
             {
                 var policyEvaluator = GetResolutionPolicyEvaluator(scriptRuntimeAssembly.ResolutionPolicy);
-
-                if (policyEvaluator.Invoke(assemblyName, assembly))
-                {
-                    return assembly;
-                }
+                return policyEvaluator.Invoke(assemblyName, runtimeAssembly);
             }
 
-            return null;
+            runtimeAssembly = null;
+            return false;
         }
 
         private bool TryLoadDepsDependency(AssemblyName assemblyName, out Assembly assembly)
