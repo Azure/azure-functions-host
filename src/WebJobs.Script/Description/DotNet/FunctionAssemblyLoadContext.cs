@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (TryGetRuntimeAssembly(assemblyName, out ScriptRuntimeAssembly scriptRuntimeAssembly))
             {
                 // There are several possible scenarios:
-                //  1. The assembly was found and the policy evaluator succeeeded.
+                //  1. The assembly was found and the policy evaluator succeeded.
                 //     - Return the assembly.
                 //
                 //  2. The assembly was not found (meaning the policy evaluator wasn't able to run).
