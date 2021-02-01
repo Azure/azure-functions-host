@@ -234,27 +234,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 //            - Return null and let the DefaultLoadContext handle it. It may come back here due to fallback logic, but
                 //              ultimately it will unify on the runtime version.
 
-                if (ShouldUseRuntimeAssembly(assemblyName, scriptRuntimeAssembly, out assembly))
+                if (TryLoadRuntimeAssembly(assemblyName, scriptRuntimeAssembly, out assembly))
                 {
-                    // Scenarios 1 and 2a
+                    // Scenarios 1 and 2(a).
                     return assembly;
                 }
                 else
                 {
                     if (assembly == null || !isNameAdjusted)
                     {
-                        // Scenario 2 and 3a.
+                        // Scenario 2 and 3(a).
                         return null;
                     }
 
-                    AssemblyName runtimeAssemblyName = assembly.GetName();
-                    if (IsHigherThan(assemblyName, runtimeAssemblyName))
+                    AssemblyName runtimeAssemblyName = AssemblyNameCache.GetName(assembly);
+                    if (assemblyName.Version > runtimeAssemblyName.Version)
                     {
-                        // Scenario 3bi.
+                        // Scenario 3(b)(i).
                         return LoadCore(assemblyName);
                     }
 
-                    // Scenario 3bii.
+                    // Scenario 3(b)(ii).
                     return null;
                 }
             }
@@ -267,12 +267,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             return LoadCore(assemblyName);
-        }
-
-        internal bool IsHigherThan(AssemblyName name1, AssemblyName name2)
-        {
-            return name1.Version.Major > name2.Version.Major ||
-                (name1.Version.Major == name2.Version.Major && name1.Version.Minor > name2.Version.Minor);
         }
 
         private bool TryAdjustRuntimeAssemblyFromDepsFile(AssemblyName assemblyName, out AssemblyName newAssemblyName)
@@ -305,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <param name="scriptRuntimeAssembly">The policy evaluator details.</param>
         /// <param name="runtimeAssembly">The runtime's assembly.</param>
         /// <returns>true if the policy evaluation succeeded, otherwise, false.</returns>
-        private bool ShouldUseRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly, out Assembly runtimeAssembly)
+        private bool TryLoadRuntimeAssembly(AssemblyName assemblyName, ScriptRuntimeAssembly scriptRuntimeAssembly, out Assembly runtimeAssembly)
         {
             // If this is a private runtime assembly, return function dependency
             if (string.Equals(scriptRuntimeAssembly.ResolutionPolicy, PrivateDependencyResolutionPolicy))
