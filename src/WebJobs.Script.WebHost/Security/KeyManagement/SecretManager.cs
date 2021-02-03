@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private ConcurrentDictionary<string, (string, AuthorizationLevel)> _authorizationCache = new ConcurrentDictionary<string, (string, AuthorizationLevel)>(StringComparer.OrdinalIgnoreCase);
         private HostSecretsInfo _hostSecrets;
         private SemaphoreSlim _hostSecretsLock = new SemaphoreSlim(1, 1);
+        private ConcurrentDictionary<string, SemaphoreSlim> _functionSecretsLocks = new ConcurrentDictionary<string, SemaphoreSlim>(StringComparer.OrdinalIgnoreCase);
         private IMetricsLogger _metricsLogger;
         private string _repositoryClassName;
         private DateTime _lastCacheResetTime;
@@ -149,41 +150,51 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 using (_metricsLogger.LatencyEvent(GetMetricEventName(MetricEventNames.SecretManagerGetFunctionSecrets), functionName))
                 {
-                    _logger.LogDebug($"Loading secrets for function '{functionName}'");
-
-                    FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
-                    if (secrets == null)
-                    {
-                        // no secrets exist for this function so generate them
-                        string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
-                        _logger.LogDebug(message);
-                        secrets = GenerateFunctionSecrets();
-
-                        await PersistSecretsAsync(secrets, functionName);
-                    }
+                    var functionSecretsLock = GetFunctionSecretsLock(functionName);
+                    await functionSecretsLock.WaitAsync();
 
                     try
                     {
-                        // Read all secrets, which will run the keys through the appropriate readers
-                        secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
-                    }
-                    catch (CryptographicException ex)
-                    {
-                        string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, ex);
-                        _logger.LogDebug(message);
-                        await PersistSecretsAsync(secrets, functionName, true);
-                        secrets = GenerateFunctionSecrets(secrets);
-                        await RefreshSecretsAsync(secrets, functionName);
-                    }
+                        _logger.LogDebug($"Loading secrets for function '{functionName}'");
 
-                    if (secrets.HasStaleKeys)
-                    {
-                        _logger.LogDebug(string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName));
-                        await RefreshSecretsAsync(secrets, functionName);
-                    }
+                        FunctionSecrets secrets = await LoadFunctionSecretsAsync(functionName);
+                        if (secrets == null)
+                        {
+                            // no secrets exist for this function so generate them
+                            string message = string.Format(Resources.TraceFunctionSecretGeneration, functionName);
+                            _logger.LogDebug(message);
+                            secrets = GenerateFunctionSecrets();
 
-                    var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
-                    functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
+                            await PersistSecretsAsync(secrets, functionName);
+                        }
+
+                        try
+                        {
+                            // Read all secrets, which will run the keys through the appropriate readers
+                            secrets.Keys = secrets.Keys.Select(k => _keyValueConverterFactory.ReadKey(k)).ToList();
+                        }
+                        catch (CryptographicException ex)
+                        {
+                            string message = string.Format(Resources.TraceNonDecryptedFunctionSecretRefresh, functionName, ex);
+                            _logger.LogDebug(message);
+                            await PersistSecretsAsync(secrets, functionName, true);
+                            secrets = GenerateFunctionSecrets(secrets);
+                            await RefreshSecretsAsync(secrets, functionName);
+                        }
+
+                        if (secrets.HasStaleKeys)
+                        {
+                            _logger.LogDebug(string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName));
+                            await RefreshSecretsAsync(secrets, functionName);
+                        }
+
+                        var result = secrets.Keys.ToDictionary(s => s.Name, s => s.Value);
+                        functionSecrets = _functionSecrets.AddOrUpdate(functionName, result, (n, r) => result);
+                    }
+                    finally
+                    {
+                        functionSecretsLock.Release();
+                    }
                 }
             }
 
@@ -726,6 +737,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return result;
+        }
+
+        private SemaphoreSlim GetFunctionSecretsLock(string functionName)
+        {
+            // We're only serializing access to secrets per-function, not across all functions,
+            // so we need to ensure we're using a single shared lock per-function.
+            return _functionSecretsLocks.GetOrAdd(functionName, k => new SemaphoreSlim(1, 1));
         }
     }
 }
