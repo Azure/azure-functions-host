@@ -52,6 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 string hostName = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
                 hostId = hostName?.Replace(".azurewebsites.net", string.Empty);
             }
+            else if (environment.IsKubernetesHosting())
+            {
+                // The hostid is delivered from the AzureWebsiteName.
+                hostId = environment.GetKubernetesHostname() ?? Environment.MachineName;
+            }
             else
             {
                 // When running locally, derive a stable host ID from machine name

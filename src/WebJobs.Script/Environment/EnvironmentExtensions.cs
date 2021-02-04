@@ -296,6 +296,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is running in Kubernetes
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> If running in a Kubernetes Azure App Service; otherwise, false.</returns>
+        public static bool IsKubernetesHosting(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost));
+        }
+
+        /// <summary>
         /// Gets a value that uniquely identifies the site and slot.
         /// </summary>
         public static string GetAzureWebsiteUniqueSlotName(this IEnvironment environment)
@@ -310,6 +320,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return name?.ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Gets a value from AzureWebsiteName environment variables.
+        /// </summary>
+        public static string GetKubernetesHostname(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteName);
         }
 
         /// <summary>
