@@ -2,7 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Bson;
@@ -13,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
     /// Encapsulates functionality for accessing <see cref="MemoryMappedFile"/>.
     /// There are platform specific implementations of this:
     /// 1) <see cref="MemoryMappedFileAccessorWindows"/>
-    /// 2) <see cref="MemoryMappedFileAccessorLinux"/>
+    /// 2) <see cref="MemoryMappedFileAccessorUnix"/>
     /// </summary>
     public abstract class MemoryMappedFileAccessor : IMemoryMappedFileAccessor
     {
@@ -46,9 +49,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             return false;
         }
 
+        /// <summary>
+        /// Check if the current OS platform is the same as the given valid platform.
+        /// </summary>
+        /// <param name="platform">Valid platform to check against.</param>
         protected void ValidatePlatform(OSPlatform platform)
         {
             if (!RuntimeInformation.IsOSPlatform(platform))
+            {
+                throw new PlatformNotSupportedException("Cannot instantiate on this platform");
+            }
+        }
+
+        /// <summary>
+        /// Check if the current OS platform is one of those given in the list of valid platforms.
+        /// </summary>
+        /// <param name="platforms">List of valid platforms to check against.</param>
+        protected void ValidatePlatform(IList<OSPlatform> platforms)
+        {
+            if (!platforms.Any((platform) => RuntimeInformation.IsOSPlatform(platform)))
             {
                 throw new PlatformNotSupportedException("Cannot instantiate on this platform");
             }

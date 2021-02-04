@@ -24,6 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         private readonly IMemoryMappedFileAccessor _mapAccessor;
 
+        private bool _isDisposed;
+
         public SharedMemoryManager(ILoggerFactory loggerFactory, IMemoryMappedFileAccessor mapAccessor)
         {
             _loggerFactory = loggerFactory;
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             _mapAccessor = mapAccessor;
             AllocatedSharedMemoryMaps = new ConcurrentDictionary<string, SharedMemoryMap>();
             InvocationSharedMemoryMaps = new ConcurrentDictionary<string, HashSet<string>>();
+            _isDisposed = false;
         }
 
         /// <summary>
@@ -151,6 +154,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// </summary>
         public void Dispose()
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             IList<string> mapNames = AllocatedSharedMemoryMaps.Keys.ToList();
             int numSuccess = 0;
             int numError = 0;
@@ -168,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
 
             _logger.LogTrace("Successfully freed: {Freed}, Failed to free: {error} shared memory maps", numSuccess, numError);
+            _isDisposed = true;
         }
 
         /// <summary>

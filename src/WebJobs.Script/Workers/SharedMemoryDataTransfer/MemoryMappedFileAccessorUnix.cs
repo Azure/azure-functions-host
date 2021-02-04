@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
@@ -9,11 +10,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
-    public class MemoryMappedFileAccessorLinux : MemoryMappedFileAccessor
+    /// <summary>
+    /// Note: This is platform specific implementation for Linux and OSX.
+    /// </summary>
+    public class MemoryMappedFileAccessorUnix : MemoryMappedFileAccessor
     {
-        public MemoryMappedFileAccessorLinux(ILogger<MemoryMappedFileAccessor> logger) : base(logger)
+        public MemoryMappedFileAccessorUnix(ILogger<MemoryMappedFileAccessor> logger) : base(logger)
         {
-            ValidatePlatform(OSPlatform.Linux);
+            ValidatePlatform(new List<OSPlatform>()
+            {
+                OSPlatform.Linux,
+                OSPlatform.OSX
+            });
         }
 
         public override bool TryCreate(string mapName, long size, out MemoryMappedFile mmf)

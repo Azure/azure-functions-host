@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else
             {
-                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorLinux>();
+                services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
             }
             services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
 

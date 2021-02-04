@@ -31,9 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             };
 
             var rpcValueCache = new Dictionary<object, TypedData>();
-            var sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
-            StringBuilder logBuilder = new StringBuilder();
+            Dictionary<object, RpcSharedMemory> sharedMemValueCache = null;
+            StringBuilder logBuilder = null;
             bool usedSharedMemory = false;
+
+            if (isSharedMemoryDataTransferEnabled)
+            {
+                sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
+                logBuilder = new StringBuilder();
+            }
 
             foreach (var input in context.Inputs)
             {

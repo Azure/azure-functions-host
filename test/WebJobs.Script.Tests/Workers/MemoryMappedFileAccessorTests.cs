@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     /// <summary>
     /// Tests for <see cref="MemoryMappedFileAccessor"/>.
-    /// Based on which platform these are run on, one of <see cref="MemoryMappedFileAccessorLinux"/> or <see cref="MemoryMappedFileAccessorWindows"/> will be created.
+    /// Based on which platform these are run on, one of <see cref="MemoryMappedFileAccessorUnix"/> or <see cref="MemoryMappedFileAccessorWindows"/> will be created.
     /// </summary>
     public class MemoryMappedFileAccessorTests
     {
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorLinux(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
             }
         }
 

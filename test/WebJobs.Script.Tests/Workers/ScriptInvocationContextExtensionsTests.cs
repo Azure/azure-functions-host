@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorLinux(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
             }
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
         }

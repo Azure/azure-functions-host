@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                    }
                    else
                    {
-                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorLinux>();
+                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
                    }
                    services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
 

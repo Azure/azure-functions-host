@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorLinux(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
             }
         }
 
