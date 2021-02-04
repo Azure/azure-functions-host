@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
@@ -14,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
+using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -334,6 +337,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal("!" + hostSecrets.MasterKey, result.MasterKey.Value);
                 Assert.True(functionSecretsConverted, "Function secrets were not persisted");
                 Assert.True(systemSecretsConverted, "System secrets were not persisted");
+            }
+        }
+
+        [Fact]
+        public async Task GetFunctionSecretsAsync_SecretGenerationIsSerialized()
+        {
+            var mockValueConverterFactory = GetConverterFactoryMock(false, false);
+            var metricsLogger = new TestMetricsLogger();
+            var testRepository = new TestSecretsRepository(true);
+            string testFunctionName = $"TestFunction";
+
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
+            {
+                var tasks = new List<Task<IDictionary<string, string>>>();
+                for (int i = 0; i < 10; i++)
+                {
+                    tasks.Add(secretManager.GetFunctionSecretsAsync(testFunctionName));
+                }
+
+                await Task.WhenAll(tasks);
+
+                // verify all calls return the same result
+                Assert.Equal(1, testRepository.FunctionSecrets.Count);
+                var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
+                string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
+            }
+        }
+
+        [Fact]
+        public async Task GetHostSecretsAsync_SecretGenerationIsSerialized()
+        {
+            var mockValueConverterFactory = GetConverterFactoryMock(false, false);
+            var metricsLogger = new TestMetricsLogger();
+            var testRepository = new TestSecretsRepository(true);
+
+            using (var secretManager = new SecretManager(testRepository, mockValueConverterFactory.Object, _logger, metricsLogger, _hostNameProvider, _startupContextProvider))
+            {
+                var tasks = new List<Task<HostSecretsInfo>>();
+                for (int i = 0; i < 10; i++)
+                {
+                    tasks.Add(secretManager.GetHostSecretsAsync());
+                }
+
+                await Task.WhenAll(tasks);
+
+                // verify all calls return the same result
+                var masterKey = tasks.First().Result.MasterKey;
+                Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
             }
         }
 
@@ -1123,6 +1175,85 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 }";
             File.WriteAllText(Path.Combine(path, ScriptConstants.HostMetadataFileName), hostSecrets);
             File.WriteAllText(Path.Combine(path, "testfunction.json"), functionSecrets);
+        }
+
+        private class TestSecretsRepository : ISecretsRepository
+        {
+            private int _writeCount = 0;
+            private Random _rand = new Random();
+            private bool _enforceSerialWrites = false;
+
+            public TestSecretsRepository(bool enforceSerialWrites)
+            {
+                _enforceSerialWrites = enforceSerialWrites;
+            }
+
+            public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
+
+            public ConcurrentDictionary<string, ScriptSecrets> FunctionSecrets { get; } = new ConcurrentDictionary<string, ScriptSecrets>(StringComparer.OrdinalIgnoreCase);
+
+            public ScriptSecrets HostSecrets { get; private set; }
+
+            public bool IsEncryptionSupported => throw new NotImplementedException();
+
+            public Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
+            {
+                return Task.FromResult(new string[0]);
+            }
+
+            public Task PurgeOldSecretsAsync(IList<string> currentFunctions, ILogger logger)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
+            {
+                ScriptSecrets secrets = null;
+
+                if (type == ScriptSecretsType.Function)
+                {
+                    FunctionSecrets.TryGetValue(functionName, out secrets);
+                }
+                else
+                {
+                    secrets = HostSecrets;
+                }
+
+                return Task.FromResult(secrets);
+            }
+
+            public async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
+            {
+                if (_enforceSerialWrites && _writeCount > 1)
+                {
+                    throw new Exception("Concurrent writes detected!");
+                }
+
+                Interlocked.Increment(ref _writeCount);
+
+                await Task.Delay(_rand.Next(100, 300));
+
+                if (type == ScriptSecretsType.Function)
+                {
+                    FunctionSecrets[functionName] = secrets;
+                }
+                else
+                {
+                    HostSecrets = secrets;
+                }
+
+                Interlocked.Decrement(ref _writeCount);
+
+                if (SecretsChanged != null)
+                {
+                    SecretsChanged(this, new SecretsChangedEventArgs { SecretsType = type, Name = functionName });
+                }
+            }
+
+            public Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
+            {
+                return Task.CompletedTask;
+            }
         }
     }
 }
