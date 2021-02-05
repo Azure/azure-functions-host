@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -59,7 +60,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerInitResponseEvent()
+        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null)
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+
+            WorkerInitResponse initResponse = new WorkerInitResponse()
+            {
+                Result = statusResult
+            };
+
+            if (capabilities != null)
+            {
+                initResponse.Capabilities.Add(capabilities);
+            }
+
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                WorkerInitResponse = initResponse
+            };
+
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+        }
+
+        public void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
         {
             StatusResult statusResult = new StatusResult()
             {
