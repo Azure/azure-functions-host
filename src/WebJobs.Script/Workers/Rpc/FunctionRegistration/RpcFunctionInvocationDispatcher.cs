@@ -146,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             for (var count = startIndex; count < _maxProcessCount; count++)
             {
-                startAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debounceMilliSeconds);
-                startAction();
+                var debouncedAction = startAction.Debounce(_processStartCancellationToken.Token, count * _debounceMilliSeconds);
+                debouncedAction();
             }
         }
 

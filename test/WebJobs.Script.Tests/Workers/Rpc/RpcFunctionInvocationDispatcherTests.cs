@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -42,6 +43,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Assert.Equal(TimeSpan.FromMilliseconds(10), status.Latency);
                 Assert.Equal(26, status.ProcessStats.CpuLoadHistory.Average());
             }
+        }
+
+        [Fact]
+        public async Task WorkersStartInLinearTime()
+        {
+            TimeSpan startupInterval = TimeSpan.FromSeconds(2);
+            int expectedProcessCount = 4;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, processStartupInterval: startupInterval);
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
+
+            await TestHelpers.Await(() =>
+            {
+                var currentChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
+                if (currentChannelCount == expectedProcessCount)
+                {
+                    return functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().All(ch => ch.IsChannelReadyForInvocations());
+                }
+                return false;
+            }, pollingInterval: 1000);
+
+            await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
+            stopwatch.Stop();
+
+            // The first worker is created immediately.
+            // So if we are waiting for 3 more workers to spin up and startup time is 2 seconds, then we expect it to take at least 3*2=6 seconds.
+            // If we waited 6+2=8 seconds and the workers are still not started, then we fail.
+            TimeSpan actual = stopwatch.Elapsed;
+            TimeSpan minimum = (expectedProcessCount - 1) * startupInterval;
+            TimeSpan maximum = minimum + startupInterval;
+
+            Assert.True(actual >= minimum, $"Workers should have taken at least {minimum} to start but took {actual}");
+            Assert.True(actual < maximum, $"Workers should not have taken more than {maximum} to start but took {actual}");
         }
 
         [Fact]
@@ -455,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(testLogs.Any(m => m.FormattedMessage.Contains("Removing errored webhost language worker channel for runtime")));
         }
 
-        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false)
+        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan processStartupInterval = default)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -475,7 +510,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var workerConfigOptions = new LanguageWorkerOptions
             {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs(processCountValue: maxProcessCountValue)
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs(processCountValue: maxProcessCountValue, processStartupInterval: processStartupInterval)
             };
             IRpcWorkerChannelFactory testLanguageWorkerChannelFactory = new TestRpcWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, throwOnProcessStartUp);
             IWebHostRpcWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestRpcWorkerChannelManager(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, testLanguageWorkerChannelFactory);

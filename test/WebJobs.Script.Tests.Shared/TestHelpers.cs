@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1)
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1, TimeSpan processStartupInterval = default)
         {
             var workerConfigs = new List<RpcWorkerConfig>
             {
@@ -268,6 +268,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             if (includeDllWorker)
             {
                 workerConfigs.Add(new RpcWorkerConfig() { Description = GetTestWorkerDescription("dllWorker", ".dll") });
+            }
+
+            if (processStartupInterval != default)
+            {
+                foreach (var config in workerConfigs)
+                {
+                    config.CountOptions.ProcessStartupInterval = processStartupInterval;
+                }
             }
 
             return workerConfigs;
