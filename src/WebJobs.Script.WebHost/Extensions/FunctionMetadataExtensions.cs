@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         {
             var possiblePath = Path.Combine(scriptRoot, functionName);
 
-            if (Directory.Exists(possiblePath))
+            if (FileUtility.DirectoryExists(possiblePath))
             {
                 return possiblePath;
             }
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             {
                 var possiblePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
 
-                if (File.Exists(possiblePath))
+                if (FileUtility.FileExists(possiblePath))
                 {
                     return possiblePath;
                 }
