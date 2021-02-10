@@ -112,11 +112,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         private static string GetFunctionPathOrNull(string scriptRoot, string functionName)
         {
-            var possiblePath = Path.Combine(scriptRoot, functionName);
+            var functionPath = Path.Combine(scriptRoot, functionName);
 
-            if (FileUtility.DirectoryExists(possiblePath))
+            if (FileUtility.DirectoryExists(functionPath))
             {
-                return possiblePath;
+                return functionPath;
             }
 
             return null;
@@ -126,11 +126,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         {
             if (!string.IsNullOrEmpty(functionPath))
             {
-                var possiblePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+                var metadataPath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
 
-                if (FileUtility.FileExists(possiblePath))
+                if (FileUtility.FileExists(metadataPath))
                 {
-                    return possiblePath;
+                    return metadataPath;
                 }
             }
 
