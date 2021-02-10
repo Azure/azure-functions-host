@@ -31,15 +31,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IOptions<ScriptApplicationHostOptions> _applicationOptions;
         private readonly IFileSystem _fileSystem;
         private readonly IFunctionsSyncManager _functionsSyncManager;
+        private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IScriptHostManager _hostManager;
 
-        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IFunctionsSyncManager functionsSyncManager, IScriptHostManager hostManager)
+        public KeysController(IOptions<ScriptApplicationHostOptions> applicationOptions, ISecretManagerProvider secretManagerProvider, ILoggerFactory loggerFactory, IFileSystem fileSystem, IFunctionsSyncManager functionsSyncManager, IFunctionMetadataManager functionMetadataManager, IScriptHostManager hostManager)
         {
             _applicationOptions = applicationOptions;
             _secretManagerProvider = secretManagerProvider;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryKeysController);
             _fileSystem = fileSystem;
             _functionsSyncManager = functionsSyncManager;
+            _functionMetadataManager = functionMetadataManager;
             _hostManager = hostManager;
         }
 
@@ -285,9 +287,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private bool IsFunction(string functionName)
         {
-            string json = null;
+            if (_functionMetadataManager.TryGetFunctionMetadata(functionName, out _))
+            {
+                return true;
+            }
+
             string functionPath = Path.Combine(_applicationOptions.Value.ScriptPath, functionName);
-            return Utility.TryReadFunctionConfig(functionPath, out json, _fileSystem);
+            return Utility.TryReadFunctionConfig(functionPath, out _, _fileSystem);
         }
     }
 }
