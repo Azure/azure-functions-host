@@ -287,13 +287,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         private bool IsFunction(string functionName)
         {
-            if (_functionMetadataManager.TryGetFunctionMetadata(functionName, out _))
+            string functionPath = Path.Combine(_applicationOptions.Value.ScriptPath, functionName);
+            if (Utility.TryReadFunctionConfig(functionPath, out _, _fileSystem))
             {
                 return true;
             }
 
-            string functionPath = Path.Combine(_applicationOptions.Value.ScriptPath, functionName);
-            return Utility.TryReadFunctionConfig(functionPath, out _, _fileSystem);
+            return _functionMetadataManager.TryGetFunctionMetadata(functionName, out _);
         }
     }
 }
