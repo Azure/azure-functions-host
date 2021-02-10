@@ -66,6 +66,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Fact]
+        public async Task ToFunctionTrigger_NoFile_ReturnsExpected()
+        {
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "AnyFunction",
+                EntryPoint = "MyEntry"
+            };
+
+            AddSampleBindings(functionMetadata);
+
+            var options = new ScriptJobHostOptions
+            {
+                RootScriptPath = _testRootScriptPath
+            };
+
+            var result = await functionMetadata.ToFunctionTrigger(options);
+
+            Assert.Equal("AnyFunction", result["functionName"].Value<string>());
+            Assert.Equal("httpTrigger", result["type"].Value<string>());
+        }
+
+        [Fact]
         public async Task ToFunctionTrigger_Codeless_ReturnsExpected()
         {
             var functionMetadata = new FunctionMetadata
@@ -79,13 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 
             functionMetadata.SetIsCodeless(true);
 
-            JObject functionConfig = JObject.Parse(_sampleBindingsJson);
-            JArray bindingArray = (JArray)functionConfig["bindings"];
-            foreach (JObject binding in bindingArray)
-            {
-                BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
-                functionMetadata.Bindings.Add(bindingMetadata);
-            }
+            AddSampleBindings(functionMetadata);
 
             var result = await functionMetadata.ToFunctionTrigger(options);
             Assert.Equal("TestFunction1", result["functionName"].Value<string>());
@@ -94,6 +110,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             // make sure original binding did not change
             Assert.Null(functionMetadata.Bindings[0].Raw["functionName"]?.Value<string>());
             Assert.Equal("httpTrigger", functionMetadata.Bindings[0].Raw["type"].Value<string>());
+        }
+
+        [Fact]
+        public async Task ToFunctionMetadataResponse_WithoutFiles_ReturnsExpected()
+        {
+            var functionMetadata = new FunctionMetadata
+            {
+                Name = "TestFunction1"
+            };
+            var options = new ScriptJobHostOptions
+            {
+                RootScriptPath = _testRootScriptPath
+            };
+
+            AddSampleBindings(functionMetadata);
+            var result = await functionMetadata.ToFunctionMetadataResponse(options, string.Empty, null);
+
+            Assert.Null(result.ScriptRootPathHref);
+            Assert.Null(result.ConfigHref);
+            Assert.Equal("TestFunction1", result.Name);
+
+            var binding = result.Config["bindings"] as JArray;
+            Assert.Equal("httpTrigger", binding[0]["type"].Value<string>());
         }
 
         [Fact]
@@ -127,6 +166,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             // with empty route prefix
             uri = WebHost.Extensions.FunctionMetadataExtensions.GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, string.Empty);
             Assert.Equal("https://localhost/catalog/products/{category:alpha?}/{id:int?}", uri.ToString());
+        }
+
+        private void AddSampleBindings(FunctionMetadata functionMetadata)
+        {
+            JObject functionConfig = JObject.Parse(_sampleBindingsJson);
+            JArray bindingArray = (JArray)functionConfig["bindings"];
+            foreach (JObject binding in bindingArray)
+            {
+                BindingMetadata bindingMetadata = BindingMetadata.Create(binding);
+                functionMetadata.Bindings.Add(bindingMetadata);
+            }
         }
     }
 }
