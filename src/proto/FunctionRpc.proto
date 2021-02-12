@@ -278,6 +278,9 @@ message InvocationRequest {
 
   // Populates activityId, tracestate and tags from host
   RpcTraceContext trace_context = 5;
+
+  // Current retry context
+  RetryContext retry_context = 6;
 }
 
 // Host sends ActivityId, traceStateString and Tags from host
@@ -290,6 +293,18 @@ message RpcTraceContext {
 
 	// This corresponds to Activity.Current?.Tags
 	map<string, string> attributes = 3;
+}
+
+// Host sends retry context for a function invocation
+message RetryContext {
+  // Current retry count
+  int32 retry_count = 1;
+
+  // Max retry count
+  int32 max_retry_count = 2;
+
+  // Exception that caused the retry
+  RpcException exception = 3;
 }
 
 // Host requests worker to cancel invocation
