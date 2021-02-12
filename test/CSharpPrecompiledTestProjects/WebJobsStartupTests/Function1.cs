@@ -28,27 +28,59 @@ namespace WebJobsStartupTests
         [FunctionName("Function1")]
         public IActionResult Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req)
         {
-            if (!(_myService is MyService))
+            try
             {
-                throw new InvalidOperationException();
+                if (!(_myService is MyService))
+                {
+                    return new ObjectResult("_myService is not of type MyService")
+                    {
+                        StatusCode = 500
+                    };
+                }
+
+                if (_myOptions.MyKey != "MyValue")
+                {
+                    return new ObjectResult($"_myOptions.MyKey is {_myOptions.MyKey}")
+                    {
+                        StatusCode = 500
+                    };
+                }
+
+                if (_myOptions.MyOtherKey != "FromEnvironment")
+                {
+                    return new ObjectResult($"_myOptions.MyOtherKey is {_myOptions.MyOtherKey}")
+                    {
+                        StatusCode = 500
+                    };
+
+                }
+
+                if (_config["SomeOtherKey"] != "SomeOtherValue")
+                {
+                    return new ObjectResult($"SomeOtherKey is {_config["SomeOtherKey"]}")
+                    {
+                        StatusCode = 500
+                    };
+                }
+
+                if (!ValidateConfig(_config))
+                {
+                    return new ObjectResult("Configuration validation failed.")
+                    {
+                        StatusCode = 500
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new ObjectResult(ex.ToString())
+                {
+                    StatusCode = 500
+                };
+
             }
 
-            if (_myOptions.MyKey != "MyValue" || _myOptions.MyOtherKey != "FromEnvironment")
-            {
-                throw new InvalidOperationException();
-            }
-
-            if (_config["SomeOtherKey"] != "SomeOtherValue")
-            {
-                throw new InvalidOperationException();
-            }
-
-            if (!ValidateConfig(_config))
-            {
-                throw new InvalidOperationException();
-            }
-
-            return new OkObjectResult("ok");
+            return new OkResult();
         }
 
         // Use this to test overwriting a trigger parameter.

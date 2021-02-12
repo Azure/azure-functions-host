@@ -26,27 +26,36 @@ namespace NativeDependencyWithTargetFramework
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req)
         {
             // Issue a query against Cosmos that forces a native assembly to load.
-
-            string cosmosConnection = _config.GetConnectionString("CosmosDB");
-            var builder = new DbConnectionStringBuilder()
+            try
             {
-                ConnectionString = cosmosConnection
-            };
+                string cosmosConnection = _config.GetConnectionString("CosmosDB");
+                var builder = new DbConnectionStringBuilder()
+                {
+                    ConnectionString = cosmosConnection
+                };
 
-            builder.TryGetValue("AccountEndpoint", out object dbUri);
-            builder.TryGetValue("AccountKey", out object dbKey);
+                builder.TryGetValue("AccountEndpoint", out object dbUri);
+                builder.TryGetValue("AccountKey", out object dbKey);
 
-            var client = new DocumentClient(new Uri(dbUri.ToString()), dbKey.ToString());
-            Uri collUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
+                var client = new DocumentClient(new Uri(dbUri.ToString()), dbKey.ToString());
+                Uri collUri = UriFactory.CreateDocumentCollectionUri("ItemDb", "ItemCollection");
 
-            var options = new FeedOptions
+                var options = new FeedOptions
+                {
+                    EnableCrossPartitionQuery = true
+                };
+
+                IDocumentQuery<Document> documentQuery = client.CreateDocumentQuery<Document>(collUri, "SELECT * FROM c WHERE STARTSWITH(c.id, @PartitionLeasePrefix)", options).AsDocumentQuery<Document>();
+
+                await documentQuery.ExecuteNextAsync();
+            }
+            catch (Exception ex)
             {
-                EnableCrossPartitionQuery = true
-            };
-
-            IDocumentQuery<Document> documentQuery = client.CreateDocumentQuery<Document>(collUri, "SELECT * FROM c WHERE STARTSWITH(c.id, @PartitionLeasePrefix)", options).AsDocumentQuery<Document>();
-
-            await documentQuery.ExecuteNextAsync();
+                return new ObjectResult(ex.ToString())
+                {
+                    StatusCode = 500
+                };
+            }
 
             return new OkResult();
         }
