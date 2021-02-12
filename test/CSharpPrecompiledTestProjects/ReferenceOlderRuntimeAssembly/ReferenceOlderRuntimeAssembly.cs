@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -9,7 +8,6 @@ namespace ReferenceOlderRuntimeAssembly
 {
     public class ReferenceOlderRuntimeAssembly
     {
-        public static IHostingEnvironment StartupEnv;
         private readonly IHostingEnvironment _env;
 
         public ReferenceOlderRuntimeAssembly(IHostingEnvironment env)
@@ -23,7 +21,10 @@ namespace ReferenceOlderRuntimeAssembly
         {
             if (_env == null)
             {
-                throw new InvalidOperationException();
+                return new ObjectResult("IHostingEnvironment was not injected into the function class.")
+                {
+                    StatusCode = 500
+                };
             }
 
             return new OkResult();
