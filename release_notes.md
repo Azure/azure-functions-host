@@ -12,6 +12,7 @@
 - Added direct refereces to [System.IO.Pipes](https://www.nuget.org/packages/System.IO.Pipes/4.3.0)  and [System.Threading.Overlapped](https://www.nuget.org/packages/System.Threading.Overlapped/4.3.0) to ensure System.Data.SqlClient package update does not impact unification 
 - Updated Java Worker Version to [1.8.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.2-SNAPSHOT)
 - Skip external config validation if RuntimeDrivenScaling is enabled in Elastic Premium sku (#6542)
+- Re-added dependencies: Microsoft.Extensions.PlatformAbstractions and Microsoft.Extensions.DiagnosticAdapter
 
 **Release sprint:** Sprint 89, 90, 91
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Afeature+is%3Aclosed) ]
