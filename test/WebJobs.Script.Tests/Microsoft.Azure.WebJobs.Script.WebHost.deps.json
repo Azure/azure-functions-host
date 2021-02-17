@@ -301,7 +301,7 @@
                     "System.Text.Encoding.Reference": "4.1.2.0",
                     "System.Text.Encoding.Extensions.Reference": "4.1.2.0",
                     "System.Text.Encodings.Web.Reference": "4.0.5.0",
-                    "System.Text.Json": "4.0.1.0",
+                    "System.Text.Json.Reference": "4.0.1.0",
                     "System.Text.RegularExpressions.Reference": "4.2.2.0",
                     "System.Threading.Channels": "4.0.2.0",
                     "System.Threading.Reference": "4.1.2.0",
@@ -9398,7 +9398,7 @@
             "serviceable": false,
             "sha512": ""
         },
-        "System.Text.Json/4.0.1.0": {
+        "System.Text.Json.Reference/4.0.1.0": {
             "type": "referenceassembly",
             "serviceable": false,
             "sha512": ""
