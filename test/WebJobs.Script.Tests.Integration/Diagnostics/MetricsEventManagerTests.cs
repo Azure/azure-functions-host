@@ -473,7 +473,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
             var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
             testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, NullLogger<MetricsEventManager>.Instance, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager =
+                new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, NullLogger<MetricsEventManager>.Instance, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;

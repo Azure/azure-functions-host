@@ -11,6 +11,7 @@ using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
@@ -272,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Use an inverted ticks rowkey to order the table in descending order, allowing us to easily
             // query for latest logs. Adding a guid as part of the key to ensure uniqueness.
-            string rowKey = GetRowKey(now.Value);
+            string rowKey = TableStorageHelpers.GetRowKey(now.Value);
 
             var entity = TableEntityConverter.ToEntity(metrics, hostId, rowKey, metrics.Timestamp);
             entity.Properties.Add(MonitorIdPropertyName, EntityProperty.GeneratePropertyForString(descriptor.Id));
@@ -283,11 +284,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             entity.Properties.Add(SampleTimestampPropertyName, EntityProperty.GeneratePropertyForDateTimeOffset(metrics.Timestamp));
 
             return TableOperation.Insert(entity);
-        }
-
-        internal static string GetRowKey(DateTime now)
-        {
-            return string.Format("{0:D19}-{1}", DateTime.MaxValue.Ticks - now.Ticks, Guid.NewGuid());
         }
 
         internal async Task<IEnumerable<DynamicTableEntity>> ExecuteQuerySafeAsync(CloudTable metricsTable, TableQuery query)

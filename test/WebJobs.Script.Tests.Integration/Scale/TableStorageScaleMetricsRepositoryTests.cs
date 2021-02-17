@@ -10,6 +10,7 @@ using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Helpers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -151,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             // add an entity with Count property of type int
             var entity = new DynamicTableEntity
             {
-                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                RowKey = TableStorageHelpers.GetRowKey(DateTime.UtcNow),
                 PartitionKey = TestHostId,
                 Properties = new Dictionary<string, EntityProperty>()
             };
@@ -165,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Scale
             // add an entity with Count property of type long
             entity = new DynamicTableEntity
             {
-                RowKey = TableStorageScaleMetricsRepository.GetRowKey(DateTime.UtcNow),
+                RowKey = TableStorageHelpers.GetRowKey(DateTime.UtcNow),
                 PartitionKey = TestHostId,
                 Properties = new Dictionary<string, EntityProperty>()
             };
