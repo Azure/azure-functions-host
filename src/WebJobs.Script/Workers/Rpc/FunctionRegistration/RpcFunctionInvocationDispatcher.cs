@@ -171,6 +171,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
+            if (functions == null || functions.Count() == 0)
+            {
+                // do not initialize function dispatcher if there are no functions
+                return;
+            }
+
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (workerConfig == null)
             {
@@ -179,12 +185,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _debounceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
             ErrorEventsThreshold = 3 * _maxProcessCount;
-
-            if (functions == null || functions.Count() == 0)
-            {
-                // do not initialize function dispatcher if there are no functions
-                return;
-            }
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
