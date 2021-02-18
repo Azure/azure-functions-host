@@ -171,20 +171,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            if (workerConfig == null)
-            {
-                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
-            }
-            _maxProcessCount = workerConfig.CountOptions.ProcessCount;
-            _debounceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
-            ErrorEventsThreshold = 3 * _maxProcessCount;
-
             if (functions == null || functions.Count() == 0)
             {
                 // do not initialize function dispatcher if there are no functions
                 return;
             }
+
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (workerConfig == null)
+            {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
+                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+            }
+            _maxProcessCount = workerConfig.CountOptions.ProcessCount;
+            _debounceMilliSeconds = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
