@@ -180,6 +180,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
             if (workerConfig == null)
             {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
                 throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
             }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
