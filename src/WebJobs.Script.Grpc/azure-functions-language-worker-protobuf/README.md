@@ -61,7 +61,7 @@ mkdir %MSGDIR%
 
 set OUTDIR=%MSGDIR%\DotNet
 mkdir %OUTDIR%
-%GRPC_TOOLS_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%GRPC_TOOLS_PATH%\grpc_csharp_plugin.exe --proto_path=%PROTO_PATH% --proto_path=%PROTOBUF_TOOLS% 
+%GRPC_TOOLS_PATH%\protoc.exe %PROTO% --csharp_out %OUTDIR% --grpc_out=%OUTDIR% --plugin=protoc-gen-grpc=%GRPC_TOOLS_PATH%\grpc_csharp_plugin.exe --proto_path=%PROTO_PATH% --proto_path=%PROTOBUF_TOOLS%
 ```
 ## JavaScript
 In package.json, add to the build script the following commands to build .js files and to build .ts files. Use and install npm package `protobufjs`.
@@ -81,7 +81,10 @@ In pom.xml add following under configuration for this plugin
 <protoSourceRoot>${basedir}/<path to this repo>/azure-functions-language-worker-protobuf/src/proto</protoSourceRoot>
 
 ## Python
---TODO
+```
+python -m pip install -e .[dev] -U
+python setup.py build
+```
 
 ## Contributing
 
