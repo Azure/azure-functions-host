@@ -307,6 +307,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.True(result.TriggerMetadata.ContainsKey("query"));
         }
 
+        [Fact]
+        public void TestSetRetryContext_NoRetry()
+        {
+            ScriptInvocationContext context = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+            };
+            InvocationRequest request = new InvocationRequest();
+            Grpc.ScriptInvocationContextExtensions.SetRetryContext(context, request);
+
+            Assert.Null(request.RetryContext);
+        }
+
+        [Fact]
+        public void TestSetRetryContext_Retry()
+        {
+            ScriptInvocationContext context = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    RetryContext = new Host.RetryContext()
+                    {
+                        RetryCount = 1,
+                        MaxRetryCount = 2,
+                        Exception = new Exception("test")
+                    }
+                }
+            };
+            InvocationRequest request = new InvocationRequest();
+            Grpc.ScriptInvocationContextExtensions.SetRetryContext(context, request);
+
+            Assert.NotNull(request.RetryContext);
+            Assert.Equal(request.RetryContext.RetryCount, 1);
+            Assert.Equal(request.RetryContext.MaxRetryCount, 2);
+            Assert.NotNull(request.RetryContext.Exception);
+        }
+
         /// <summary>
         /// The inputs meet the requirement for being transferred over shared memory.
         /// Ensure that the inputs are converted to <see cref="RpcSharedMemory"/>.
