@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -22,7 +23,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
+        private int _numberOfLoadingFunctions;
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -119,6 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _state = RpcWorkerChannelState.Default;
         }
+
+        public event EventHandler FunctionsLoaded;
 
         public string Id => _workerId;
 
@@ -284,6 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     SendFunctionLoadRequest(metadata, managedDependencyOptions);
                 }
+                _numberOfLoadingFunctions = _functions.Count();
             }
         }
 
@@ -371,6 +375,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void LoadResponse(FunctionLoadResponse loadResponse)
         {
+            Interlocked.Decrement(ref _numberOfLoadingFunctions);
+            if (_numberOfLoadingFunctions == 0 && FunctionsLoaded != null)
+            {
+                FunctionsLoaded.Invoke(this, null);
+            }
+
             _functionLoadRequestResponseEvent?.Dispose();
             _workerChannelLogger.LogDebug("Received FunctionLoadResponse for functionId:{functionId}", loadResponse.FunctionId);
             if (loadResponse.Result.IsFailure(out Exception functionLoadEx))

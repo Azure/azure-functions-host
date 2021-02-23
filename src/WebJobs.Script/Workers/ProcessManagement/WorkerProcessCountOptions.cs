@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public int MaxProcessCount { get; set; } = 10;
 
         /// <summary>
-        /// Gets or sets interval between process startups. Default 10secs
+        /// Gets or sets interval between process startups. Default 2secs
         /// </summary>
-        public TimeSpan ProcessStartupInterval { get; set; } = TimeSpan.FromSeconds(10);
+        public TimeSpan ProcessStartupInterval { get; set; } = TimeSpan.FromSeconds(2);
     }
 }

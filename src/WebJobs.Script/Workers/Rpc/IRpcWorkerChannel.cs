@@ -12,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public interface IRpcWorkerChannel
     {
+        event EventHandler FunctionsLoaded;
+
         string Id { get; }
 
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }

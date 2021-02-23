@@ -42,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _isDisposed = false;
         }
 
+        public event EventHandler FunctionsLoaded;
+
         public string Id => _workerId;
 
         public bool IsDisposed => _isDisposed;
@@ -64,6 +66,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencies, TimeSpan? functionTimeout)
         {
             _testLogger.LogInformation("RegisterFunctions called");
+            if (FunctionsLoaded != null)
+            {
+                FunctionsLoaded.Invoke(this, null);
+            }
         }
 
         public Task SendFunctionEnvironmentReloadRequest()
