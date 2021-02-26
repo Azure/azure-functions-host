@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
         private readonly LinuxAppServiceEventGenerator _generator;
         private readonly List<string> _events;
-        private readonly string _containerName = "test-container";
-        private readonly string _tenantId = "test-tenant";
         private readonly Dictionary<string, MockLinuxAppServiceFileLogger> _loggers;
 
         public LinuxAppServiceEventGeneratorTests()
@@ -47,8 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var environmentMock = new Mock<IEnvironment>();
             environmentMock.Setup(f => f.GetEnvironmentVariable(It.Is<string>(v => v == "WEBSITE_HOSTNAME")))
                 .Returns<string>(s => _hostNameDefault);
-            environmentMock.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns(_containerName);
-            environmentMock.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.WebSiteStampDeploymentId)).Returns(_tenantId);
 
             var hostNameProvider = new HostNameProvider(environmentMock.Object);
             _generator = new LinuxAppServiceEventGenerator(environmentMock.Object, loggerFactoryMock.Object, hostNameProvider, writer);
@@ -173,8 +169,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(category, p),
                 p => Assert.Equal(regionName, p),
                 p => Assert.Equal(properties, UnNormalize(p)),
-                p => Assert.Equal(_containerName.ToUpperInvariant(), p),
-                p => Assert.Equal(_tenantId, p),
                 p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
     }
