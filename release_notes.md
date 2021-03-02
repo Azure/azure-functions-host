@@ -13,6 +13,7 @@
 - Updated Java Worker Version to [1.8.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.2-SNAPSHOT)
 - Skip external config validation if RuntimeDrivenScaling is enabled in Elastic Premium sku (#6542)
 - Re-added dependencies: Microsoft.Extensions.PlatformAbstractions and Microsoft.Extensions.DiagnosticAdapter
+- Updated PowerShell Worker (PS7) to [3.0.705](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.705)
 
 **Release sprint:** Sprint 89, 90, 91
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+89%22+label%3Afeature+is%3Aclosed) ]
