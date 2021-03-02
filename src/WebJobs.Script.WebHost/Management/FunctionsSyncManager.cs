@@ -11,8 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
@@ -60,10 +59,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
+        private readonly HostStorageProvider _hostStorageProvider;
 
-        private CloudBlockBlob _hashBlob;
+        private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IOptions<HostStorageProvider> hostStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
+            _hostStorageProvider = hostStorageProvider.Value;
         }
 
         internal bool ArmCacheEnabled
@@ -104,8 +105,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _syncSemaphore.WaitAsync();
 
-                var hashBlob = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlob == null)
+                var hashBlobClient = await GetHashBlobAsync();
+                if (isBackgroundSync && hashBlobClient == null)
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
@@ -128,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 string newHash = null;
                 if (isBackgroundSync)
                 {
-                    newHash = await CheckHashAsync(hashBlob, payload.Content);
+                    newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
                 }
 
@@ -137,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
-                        await UpdateHashAsync(hashBlob, newHash);
+                        await UpdateHashAsync(hashBlobClient, newHash);
                     }
                     result.Success = success;
                     result.Error = error;
@@ -193,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return true;
         }
 
-        internal async Task<string> CheckHashAsync(CloudBlockBlob hashBlob, string content)
+        internal async Task<string> CheckHashAsync(BlobClient hashBlobClient, string content)
         {
             try
             {
@@ -210,9 +211,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 // get the last hash value if present
                 string lastHash = null;
-                if (await hashBlob.ExistsAsync())
+                if (await hashBlobClient.ExistsAsync())
                 {
-                    lastHash = await hashBlob.DownloadTextAsync();
+                    var downloadResponse = await hashBlobClient.DownloadAsync();
+                    using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+                    {
+                        lastHash = reader.ReadToEnd();
+                    }
                     _logger.LogDebug($"SyncTriggers hash (Last='{lastHash}', Current='{currentHash}')");
                 }
 
@@ -234,13 +239,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return null;
         }
 
-        internal async Task UpdateHashAsync(CloudBlockBlob hashBlob, string hash)
+        internal async Task UpdateHashAsync(BlobClient hashBlobClient, string hash)
         {
             try
             {
                 // hash value has changed or was not yet stored
                 // update the last hash value in storage
-                await hashBlob.UploadTextAsync(hash);
+                using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(hash)))
+                {
+                    await hashBlobClient.UploadAsync(stream);
+                }
                 _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
             }
             catch (Exception ex)
@@ -250,23 +258,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
         }
 
-        internal async Task<CloudBlockBlob> GetHashBlobAsync()
+        internal async Task<BlobClient> GetHashBlobAsync()
         {
-            if (_hashBlob == null)
+            if (_hashBlobClient == null)
             {
                 string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                CloudStorageAccount account = null;
                 if (!string.IsNullOrEmpty(storageConnectionString) &&
-                    CloudStorageAccount.TryParse(storageConnectionString, out account))
+                    _hostStorageProvider.TryGetBlobServiceClient(out BlobServiceClient blobClient, storageConnectionString))
                 {
                     string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
-                    CloudBlobClient blobClient = account.CreateCloudBlobClient();
-                    var blobContainer = blobClient.GetContainerReference(ScriptConstants.AzureWebJobsHostsContainerName);
+                    var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
                     string hashBlobPath = $"synctriggers/{hostId}/last";
-                    _hashBlob = blobContainer.GetBlockBlobReference(hashBlobPath);
+                    _hashBlobClient = blobContainerClient.GetBlobClient(hashBlobPath);
                 }
             }
-            return _hashBlob;
+            return _hashBlobClient;
         }
 
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()

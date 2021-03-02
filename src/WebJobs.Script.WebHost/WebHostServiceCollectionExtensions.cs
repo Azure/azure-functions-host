@@ -156,6 +156,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
+
+            services.TryAddSingleton<IConfigureOptions<HostStorageProvider>, HostStorageProviderOptions>();
         }
 
         private static void AddStandbyServices(this IServiceCollection services)

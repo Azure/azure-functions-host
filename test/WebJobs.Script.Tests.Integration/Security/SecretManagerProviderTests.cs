@@ -44,8 +44,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(environment);
 
+            var hostStorageProviderOptions = new HostStorageProviderOptions(config);
+            var hostStorageProvider = new HostStorageProvider();
+            hostStorageProviderOptions.Configure(hostStorageProvider);
+
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()));
+                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), new OptionsWrapper<HostStorageProvider>(hostStorageProvider));
         }
 
         [Fact]

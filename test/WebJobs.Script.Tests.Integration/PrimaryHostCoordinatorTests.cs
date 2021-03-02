@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // By default, all hosted services are removed from the test host
                     s.AddSingleton<IHostedService, PrimaryHostCoordinator>();
-
+                    s.AddSingleton<IConfigureOptions<HostStorageProvider>, HostStorageProviderOptions>();
                     configure?.Invoke(s);
                 })
                 .ConfigureLogging(b =>

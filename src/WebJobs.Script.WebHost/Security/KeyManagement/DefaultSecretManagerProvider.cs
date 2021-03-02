@@ -23,10 +23,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
+        private readonly HostStorageProvider _hostStorageProvider;
         private Lazy<ISecretManager> _secretManagerLazy;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider)
+            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider, IOptions<HostStorageProvider> hostStorageProvider)
         {
             if (loggerFactory == null)
             {
@@ -46,6 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // When these options change (due to specialization), we need to reset the secret manager.
             options.OnChange(_ => ResetSecretManager());
+
+            _hostStorageProvider = hostStorageProvider.Value;
         }
 
         public ISecretManager Current => _secretManagerLazy.Value;
@@ -77,12 +80,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             else if (secretStorageSas != null)
             {
                 string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
-                return new BlobStorageSasSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), secretStorageSas, siteSlotName, _loggerFactory.CreateLogger<BlobStorageSasSecretsRepository>(), _environment);
+                return new BlobStorageSasSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), secretStorageSas, siteSlotName, _loggerFactory.CreateLogger<BlobStorageSasSecretsRepository>(), _environment, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
             }
             else if (storageString != null)
             {
                 string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
-                return new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName, _loggerFactory.CreateLogger<BlobStorageSecretsRepository>(), _environment);
+                return new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), storageString, siteSlotName, _loggerFactory.CreateLogger<BlobStorageSecretsRepository>(), _environment, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
             }
             else
             {

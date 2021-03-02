@@ -2,9 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -13,14 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public sealed class BlobStorageSasSecretsRepository : BlobStorageSecretsRepository
     {
-        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment)
-            : base(secretSentinelDirectoryPath, containerSasUri, siteSlotName, logger, environment)
+        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment, IOptions<HostStorageProvider> hostStorageProvider)
+            : base(secretSentinelDirectoryPath, containerSasUri, siteSlotName, logger, environment, hostStorageProvider)
         {
         }
 
-        protected override CloudBlobContainer CreateBlobContainer(string containerSasUri)
+        protected override BlobContainerClient CreateBlobContainerClient(string containerSasUri)
         {
-            return new CloudBlobContainer(new Uri(containerSasUri));
+            return new BlobContainerClient(new Uri(containerSasUri));
         }
 
         protected override void LogErrorMessage(string operation)

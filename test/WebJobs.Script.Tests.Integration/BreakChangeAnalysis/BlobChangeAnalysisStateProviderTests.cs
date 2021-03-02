@@ -5,12 +5,14 @@ using System;
 using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Extensions.Options;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Moq;
 using Xunit;
 
@@ -20,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
     {
         private readonly IConfigurationRoot _configuration;
         private readonly IHostIdProvider _hostIdProvider;
+        private readonly HostStorageProvider _hostStorageProvider;
 
         public BlobChangeAnalysisStateProviderTests()
         {
@@ -33,6 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
                 .ReturnsAsync($"testhost123{Guid.NewGuid().ToString().Replace("-", string.Empty)}");
 
             _hostIdProvider = hostIdProviderMock.Object;
+
+            var hostStorageProviderOptions = new HostStorageProviderOptions(_configuration);
+            _hostStorageProvider = new HostStorageProvider();
+            hostStorageProviderOptions.Configure(_hostStorageProvider);
         }
 
         [Fact]
@@ -49,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             analysisBlob.Metadata.Add(BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName, lastAnalysisTestTime.ToString("O"));
             await analysisBlob.SetMetadataAsync();
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance);
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
 
             ChangeAnalysisState result = await stateProvider.GetCurrentAsync(CancellationToken.None);
 
@@ -64,15 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            ICloudBlob analysisBlob = await GetAnalysisBlobReference(_hostIdProvider);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _hostStorageProvider);
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance);
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
 
             await stateProvider.SetTimestampAsync(lastAnalysisTestTime, analysisBlob, CancellationToken.None);
 
-            analysisBlob = await analysisBlob.ServiceClient.GetBlobReferenceFromServerAsync(analysisBlob.Uri);
-
-            DateTimeOffset.TryParse(analysisBlob.Metadata[BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName], out DateTimeOffset result);
+            var blobPropertiesResponse = await analysisBlob.GetPropertiesAsync();
+            DateTimeOffset.TryParse(blobPropertiesResponse.Value.Metadata[BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName], out DateTimeOffset result);
 
             Assert.Equal(lastAnalysisTestTime, result);
         }
@@ -87,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             await analysisBlob.DeleteIfExistsAsync();
             await analysisBlob.UploadTextAsync(string.Empty);
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance);
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
 
             ChangeAnalysisState result = await stateProvider.GetCurrentAsync(CancellationToken.None);
 
@@ -104,16 +110,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            ICloudBlob analysisBlob = await GetAnalysisBlobReference(_hostIdProvider);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _hostStorageProvider);
             await analysisBlob.DeleteIfExistsAsync();
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance);
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
 
             await stateProvider.SetTimestampAsync(lastAnalysisTestTime, analysisBlob, CancellationToken.None);
 
-            analysisBlob = await analysisBlob.ServiceClient.GetBlobReferenceFromServerAsync(analysisBlob.Uri);
-
-            DateTime.TryParse(analysisBlob.Metadata[BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName], out DateTime result);
+            var blobPropertiesResponse = await analysisBlob.GetPropertiesAsync();
+            DateTimeOffset.TryParse(blobPropertiesResponse.Value.Metadata[BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName], out DateTimeOffset result);
 
             Assert.Equal(lastAnalysisTestTime, result);
         }
@@ -135,6 +140,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var blobContainer = blobClient.GetContainerReference(ScriptConstants.AzureWebJobsHostsContainerName);
 
             return blobContainer.GetBlockBlobReference(analysisBlobPath);
+        }
+
+        private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider, HostStorageProvider hostStorageProvider)
+        {
+            string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+
+            if (string.IsNullOrEmpty(storageConnectionString) ||
+                !hostStorageProvider.TryGetBlobServiceClient(out BlobServiceClient blobServiceClient, storageConnectionString))
+            {
+                throw new ConfigurationException("Invalid storage account configuration");
+            }
+
+            string hostId = await hostIdProvider.GetHostIdAsync(CancellationToken.None);
+            string analysisBlobPath = $"changeanalysis/{hostId}/sentinel";
+
+            var blobContainerClient = blobServiceClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
+            var blobClient = blobContainerClient.GetBlobClient(analysisBlobPath);
+            return blobClient;
         }
     }
 }

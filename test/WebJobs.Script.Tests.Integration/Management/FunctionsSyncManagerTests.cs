@@ -132,7 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var functionMetadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager);
+            var hostStorageProvider = new HostStorageProvider();
+
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, new OptionsWrapper<HostStorageProvider>(hostStorageProvider));
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
@@ -327,7 +329,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
                 Assert.Equal(GetExpectedSyncTriggersPayload(), triggers.ToString(Formatting.None));
-                string hash = await hashBlob.DownloadTextAsync();
+
+                string hash = string.Empty;
+                var downloadResponse = await hashBlob.DownloadAsync();
+                using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+                {
+                    hash = reader.ReadToEnd();
+                }
                 Assert.Equal(64, hash.Length);
 
                 // verify log statements

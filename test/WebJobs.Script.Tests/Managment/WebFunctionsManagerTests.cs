@@ -84,7 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _fileSystem = fileSystem;
             var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(new ScriptJobHostOptions()), metadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager);
+            var hostStorageProvider = new HostStorageProvider();
+
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, new OptionsWrapper<HostStorageProvider>(hostStorageProvider));
             _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager);
         }
 
