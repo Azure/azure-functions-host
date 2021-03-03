@@ -18,10 +18,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         private const string _hostNameDefault = "SimpleApp";
 
         private readonly LinuxAppServiceEventGenerator _generator;
+        private readonly List<string> _events;
         private readonly Dictionary<string, MockLinuxAppServiceFileLogger> _loggers;
 
         public LinuxAppServiceEventGeneratorTests()
         {
+            _events = new List<string>();
+            Action<string> writer = (s) =>
+            {
+                _events.Add(s);
+            };
+
             _loggers = new Dictionary<string, MockLinuxAppServiceFileLogger>
             {
                 [LinuxEventGenerator.FunctionsLogsCategory] =
@@ -40,7 +47,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 .Returns<string>(s => _hostNameDefault);
 
             var hostNameProvider = new HostNameProvider(environmentMock.Object);
-            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider);
+            _generator = new LinuxAppServiceEventGenerator(environmentMock.Object, loggerFactoryMock.Object, hostNameProvider, writer);
+        }
+
+        public static string UnNormalize(string normalized)
+        {
+            // We replace all double quotes to single before the writing the logs
+            // to avoid our logging agents parsing break
+            // TODO: we can remove this once platform is able to handle quotes in logs
+            return normalized.Replace("'", "\"");
         }
 
         [Theory]
@@ -130,6 +145,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(outputBindings, LinuxContainerEventGeneratorTests.UnNormalize(p)),
                 p => Assert.Equal(scriptType, p),
                 p => Assert.Equal(isDisabled ? "1" : "0", p));
+        }
+
+        [Theory]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetAzureMonitorEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        public void ParseAzureMonitoringEvents(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
+        {
+            _generator.LogAzureMonitorDiagnosticLogEvent(level, resourceId, operationName, category, regionName, properties);
+
+            string evt = _events.Single();
+
+            Regex regex = new Regex(LinuxAppServiceEventGenerator.AzureMonitorEventRegex);
+            var match = regex.Match(evt);
+
+            Assert.True(match.Success);
+            Assert.Equal(8, match.Groups.Count);
+
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
+            Assert.Collection(groupMatches,
+                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
+                p => Assert.Equal(resourceId, p),
+                p => Assert.Equal(operationName, p),
+                p => Assert.Equal(category, p),
+                p => Assert.Equal(regionName, p),
+                p => Assert.Equal(properties, UnNormalize(p)),
+                p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
     }
 }
