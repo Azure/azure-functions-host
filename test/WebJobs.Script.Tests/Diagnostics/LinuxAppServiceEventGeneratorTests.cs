@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(10, match.Groups.Count);
+            Assert.Equal(8, match.Groups.Count);
 
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
