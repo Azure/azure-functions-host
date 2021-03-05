@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly LinuxAppServiceFileLoggerFactory _loggerFactory;
         private readonly HostNameProvider _hostNameProvider;
 
-        public LinuxAppServiceEventGenerator(IEnvironment environment, LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null)
+        public LinuxAppServiceEventGenerator(LinuxAppServiceFileLoggerFactory loggerFactory, HostNameProvider hostNameProvider, Action<string> writeEvent = null)
         {
             _writeEvent = writeEvent ?? WriteEvent;
             _loggerFactory = loggerFactory;

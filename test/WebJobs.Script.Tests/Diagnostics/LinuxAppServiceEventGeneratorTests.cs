@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 .Returns<string>(s => _hostNameDefault);
 
             var hostNameProvider = new HostNameProvider(environmentMock.Object);
-            _generator = new LinuxAppServiceEventGenerator(environmentMock.Object, loggerFactoryMock.Object, hostNameProvider, writer);
+            _generator = new LinuxAppServiceEventGenerator(loggerFactoryMock.Object, hostNameProvider, writer);
         }
 
         public static string UnNormalize(string normalized)
