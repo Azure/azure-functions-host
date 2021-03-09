@@ -113,8 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
             Assert.Collection(logs,
-                p => Assert.StartsWith("Assign called while host is not in placeholder mode.", p),
-                p => Assert.StartsWith("Assign called while container is marked as specialized.", p));
+                p => Assert.StartsWith("Assign called while host is not in placeholder mode and start context is not present.", p));
         }
 
         [Fact]
@@ -284,7 +283,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
-        public void StartAssignment_ReturnsTrue_WhenNotInStandbyMode()
+        public void StartAssignment_ReturnsTrue_ForPinnedContainers()
+        {
+            Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
+
+            var context = new HostAssignmentContext();
+            context.Environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.ContainerStartContext, "startContext" }
+            };
+            context.IsWarmupRequest = false;
+            bool result = _instanceManager.StartAssignment(context);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void StartAssignment_ReturnsFalse_ForNonPinnedContainersInStandbyMode()
         {
             Assert.False(SystemEnvironment.Instance.IsPlaceholderModeEnabled());
 
@@ -292,7 +306,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             context.Environment = new Dictionary<string, string>();
             context.IsWarmupRequest = false;
             bool result = _instanceManager.StartAssignment(context);
-            Assert.True(result);
+            Assert.False(result);
         }
 
         [Fact]
