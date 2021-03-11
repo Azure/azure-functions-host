@@ -58,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HealthPingEnabled = "WEBSITE_FUNCTIONS_HEALTH_PING_ENABLED";
         public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
+        public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

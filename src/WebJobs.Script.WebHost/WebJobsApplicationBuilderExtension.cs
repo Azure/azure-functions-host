@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IOptionsMonitor<HttpBodyControlOptions> httpBodyControlOptions = builder.ApplicationServices.GetService<IOptionsMonitor<HttpBodyControlOptions>>();
             IServiceProvider serviceProvider = builder.ApplicationServices;
 
+            builder.UseMiddleware<HttpRequestSizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
             if (environment.IsLinuxConsumption())
