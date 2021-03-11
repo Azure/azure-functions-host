@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Fix ignoring of System assemblies was over matching to include non-system assemblies (#7058)
 - Updated HTTP extension to [3.0.10](https://github.com/Azure/azure-webjobs-sdk-extensions/releases/tag/http-v3.0.10)
 - Configure host.json to use workflow when creating a default host.json and app is identified as a logic app. (#6810)
 - Update Python Worker Version to [1.1.12](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.1.12)
