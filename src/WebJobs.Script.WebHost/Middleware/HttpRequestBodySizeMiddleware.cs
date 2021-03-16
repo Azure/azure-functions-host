@@ -5,35 +5,34 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 {
     /// <summary>
     /// A middleware responsible for MaxRequestBodySize size configuration
     /// </summary>
-    internal class HttpRequestSizeMiddleware
+    internal class HttpRequestBodySizeMiddleware
     {
-        private const long DefaultRequestBodySize = 104857600;
         private readonly RequestDelegate _next;
-        private readonly IEnvironment _environment;
         private RequestDelegate _invoke;
         private long _maxRequestBodySize;
 
-        public HttpRequestSizeMiddleware(RequestDelegate next, IEnvironment environment)
+        public HttpRequestBodySizeMiddleware(RequestDelegate next, IEnvironment environment)
         {
             _next = next;
-            _environment = environment;
             _invoke = (context) =>
             {
-                if (!environment.IsPlaceholderModeEnabled())
+                string bodySizeLimit = environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit);
+
+                if (!environment.IsPlaceholderModeEnabled() && long.TryParse(bodySizeLimit, out _maxRequestBodySize))
                 {
-                    _maxRequestBodySize = _environment.GetFunctionsRequestBodySizeLimit() ?? DefaultRequestBodySize;
                     Interlocked.Exchange(ref _invoke, InvokeAfterSpecialization);
                     return _invoke(context);
                 }
                 else
                 {
-                    return next(context);
+                    return _next(context);
                 }
             };
         }

@@ -30,18 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(AzureWebsitePlaceholderMode) == "1";
         }
 
-        public static long? GetFunctionsRequestBodySizeLimit(this IEnvironment environment)
-        {
-            if (long.TryParse(environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit), out long maxRequestBodySize))
-            {
-                return maxRequestBodySize;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
         public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
         {
             string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
