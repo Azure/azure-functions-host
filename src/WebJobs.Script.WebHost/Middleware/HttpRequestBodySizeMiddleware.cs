@@ -23,17 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _next = next;
             _invoke = (context) =>
             {
-                string bodySizeLimit = environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit);
-
-                if (!environment.IsPlaceholderModeEnabled() && long.TryParse(bodySizeLimit, out _maxRequestBodySize))
+                if (!environment.IsPlaceholderModeEnabled())
                 {
-                    Interlocked.Exchange(ref _invoke, InvokeAfterSpecialization);
-                    return _invoke(context);
+                    string bodySizeLimit = environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit);
+                    if (long.TryParse(bodySizeLimit, out _maxRequestBodySize))
+                    {
+                        Interlocked.Exchange(ref _invoke, InvokeAfterSpecialization);
+                        return _invoke(context);
+                    }
+                    else
+                    {
+                        Interlocked.Exchange(ref _invoke, _next.Invoke);
+                    }
                 }
-                else
-                {
-                    return _next(context);
-                }
+                return _next.Invoke(context);
             };
         }
 

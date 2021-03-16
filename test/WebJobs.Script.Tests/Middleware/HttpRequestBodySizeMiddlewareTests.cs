@@ -18,8 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 {
     public class HttpRequestBodySizeMiddlewareTests
     {
-        // request limit is enforced with valid environment values
-
         [Theory]
         [InlineData("", false)]
         [InlineData(null, false)]
