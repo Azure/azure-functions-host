@@ -15,40 +15,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     internal class HttpRequestBodySizeMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly IEnvironment _environment;
         private RequestDelegate _invoke;
         private long _maxRequestBodySize;
 
         public HttpRequestBodySizeMiddleware(RequestDelegate next, IEnvironment environment)
         {
             _next = next;
-            _invoke = (context) =>
-            {
-                if (!environment.IsPlaceholderModeEnabled())
-                {
-                    string bodySizeLimit = environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit);
-                    if (long.TryParse(bodySizeLimit, out _maxRequestBodySize))
-                    {
-                        Interlocked.Exchange(ref _invoke, InvokeAfterSpecialization);
-                        return _invoke(context);
-                    }
-                    else
-                    {
-                        Interlocked.Exchange(ref _invoke, _next.Invoke);
-                    }
-                }
-                return _next.Invoke(context);
-            };
+            _environment = environment;
+            _invoke = InvokeBeforeSpecialization;
         }
 
-        public Task Invoke(HttpContext httpContext)
+        // for testing
+        internal RequestDelegate InnerInvoke { get => _invoke; }
+
+        public Task Invoke(HttpContext context)
         {
-            return _invoke(httpContext);
+            return _invoke(context);
         }
 
-        private Task InvokeAfterSpecialization(HttpContext httpContext)
+        internal Task InvokeAfterSpecialization(HttpContext httpContext)
         {
             httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = _maxRequestBodySize;
             return _next.Invoke(httpContext);
+        }
+
+        internal Task InvokeBeforeSpecialization(HttpContext context)
+        {
+            if (!_environment.IsPlaceholderModeEnabled())
+            {
+                string bodySizeLimit = _environment.GetEnvironmentVariable(FunctionsRequestBodySizeLimit);
+                if (long.TryParse(bodySizeLimit, out _maxRequestBodySize))
+                {
+                    Interlocked.Exchange(ref _invoke, InvokeAfterSpecialization);
+                    return Invoke(context);
+                }
+                else
+                {
+                    Interlocked.Exchange(ref _invoke, _next);
+                }
+            }
+            return _next(context);
         }
     }
 }

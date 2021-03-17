@@ -88,6 +88,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
             Assert.Equal(configuredLimit, ScriptConstants.DefaultMaxRequestBodySize);
         }
 
+        [Theory]
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        public async Task MaxRequestBodySizeLimit_MiddleWareInvoke_GetWiredUpCorrectly(bool inPlaceHolderMode, bool isLimitSet)
+        {
+            bool nextInvoked = false;
+            long? configuredLimit = 0;
+            RequestDelegate next = (ctxt) =>
+            {
+                nextInvoked = true;
+                ctxt.Response.StatusCode = (int)HttpStatusCode.Accepted;
+                configuredLimit = ctxt.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize;
+                return Task.CompletedTask;
+            };
+
+            var environment = new TestEnvironment();
+
+            string placeHolderModeValue = inPlaceHolderMode ? "1" : "0";
+            string limit = isLimitSet ? "100" : "invalid";
+
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, placeHolderModeValue);
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsRequestBodySizeLimit, limit);
+
+            var middleware = new HttpRequestBodySizeMiddleware(next, environment);
+            var httpContext = new DefaultHttpContext();
+
+            httpContext.Features.Set<IHttpMaxRequestBodySizeFeature>(new TestHttpMaxRequestBodySizeFeature());
+            await middleware.Invoke(httpContext);
+            Assert.True(nextInvoked);
+
+            if (inPlaceHolderMode)
+            {
+                Assert.Equal(middleware.InnerInvoke, middleware.InvokeBeforeSpecialization);
+            }
+
+            if (!inPlaceHolderMode && isLimitSet)
+            {
+                Assert.Equal(middleware.InnerInvoke, middleware.InvokeAfterSpecialization);
+            }
+
+            if (!inPlaceHolderMode && !isLimitSet)
+            {
+                Assert.Equal(middleware.Invoke, next);
+            }
+        }
+
         public class TestHttpMaxRequestBodySizeFeature : IHttpMaxRequestBodySizeFeature
         {
             private long? _maxRequestBodySize = ScriptConstants.DefaultMaxRequestBodySize;
