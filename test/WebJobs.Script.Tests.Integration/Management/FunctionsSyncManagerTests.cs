@@ -589,7 +589,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 var extensionBundleConfig = new JObject();
                 extensionBundleConfig["id"] = "Microsoft.Azure.Functions.ExtensionBundle";
-                extensionBundleConfig["version"] = "[1.*, 2.0.0)";
+                extensionBundleConfig["version"] = "[2.*, 3.0.0)";
                 hostConfig["extensionBundle"] = extensionBundleConfig;
             }
 
