@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 if (!_configurationSource.Environment.IsFileSystemReadOnly())
                 {
-                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '[1.*, 2.0.0)'}";
+                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '[2.*, 3.0.0)'}";
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
                     _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                 }
