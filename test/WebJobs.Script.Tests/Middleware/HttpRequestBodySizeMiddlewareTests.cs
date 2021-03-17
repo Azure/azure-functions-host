@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
             if (!inPlaceHolderMode && !isLimitSet)
             {
-                Assert.Equal(middleware.Invoke, next);
+                Assert.Equal(middleware.InnerInvoke, next);
             }
         }
 
