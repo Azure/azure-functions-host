@@ -47,18 +47,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task Starting_MultipleJobhostChannels_Succeeds()
         {
+            _testLogger.ClearLogMessages();
             int expectedProcessCount = 3;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount);
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
 
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             Assert.Equal(expectedProcessCount, finalChannelCount);
+
+            VerifyStartIntervals();
         }
 
         [Fact]
         public async Task Starting_MultipleWebhostChannels_Succeeds()
         {
-            int expectedProcessCount = 2;
+            _testLogger.ClearLogMessages();
+            int expectedProcessCount = 3;
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, true);
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName));
 
@@ -67,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
             Assert.Equal(0, finalJobhostChannelCount);
+
+            // ignore first start as we added a WebhostChannel on GetTestFunctionDispatcher call
+            VerifyStartIntervals(true);
         }
 
         [Fact]
@@ -561,6 +568,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                      Name = "js2"
                 }
             };
+        }
+
+        private void VerifyStartIntervals(bool ignoreFirstStart = false)
+        {
+            // Verify that interval beetwen starts >10 secs and <15 secs
+            var startTimestamps = _testLogger.GetLogMessages().Where(x => x.FormattedMessage
+                .Contains("RegisterFunctions called")).Select(x => x.Timestamp).ToList();
+            if (ignoreFirstStart)
+            {
+                startTimestamps.RemoveAt(0);
+            }
+            for (int i = 1; i < startTimestamps.Count(); i++)
+            {
+                var diff = startTimestamps[i] - startTimestamps[i - 1];
+                Assert.True(diff > TimeSpan.FromSeconds(10) && diff < TimeSpan.FromSeconds(15));
+            }
         }
     }
 }

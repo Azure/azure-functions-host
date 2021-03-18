@@ -147,15 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 for (var count = startIndex; count < _maxProcessCount
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
-                    // Start a new worker right away if there is no one
-                    if (startIndex > 0)
-                    {
-                        await Task.Delay(_processStartupInterval);
-                    }
-                    if (!_processStartCancellationToken.IsCancellationRequested)
-                    {
-                        await startAction();
-                    }
+                    await startAction();
+                    await Task.Delay(_processStartupInterval);
                 }
             }, _processStartCancellationToken.Token);
         }
