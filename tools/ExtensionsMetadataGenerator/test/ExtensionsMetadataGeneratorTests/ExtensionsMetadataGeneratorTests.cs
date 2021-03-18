@@ -126,6 +126,8 @@ namespace ExtensionsMetadataGeneratorTests
         [InlineData("microsoft.azure.webjobs.extensions.http.dll", true)]
         [InlineData("Microsoft.Azure.EventGrid.dll", false)]
         [InlineData("MyCoolExtension.dll", false)]
+        [InlineData("SystemCompanyName.dll", false)]
+        [InlineData("System.dll", true)]
         public void SomeAssembliesAreSkipped(string assemblyFileName, bool shouldSkip)
         {
             Assert.Equal(shouldSkip, ExtensionsMetadataGenerator.ExtensionsMetadataGenerator.AssemblyShouldBeSkipped(assemblyFileName));

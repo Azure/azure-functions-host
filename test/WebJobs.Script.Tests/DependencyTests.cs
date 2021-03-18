@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             IList<RuntimeFile> changed = new List<RuntimeFile>();
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("The dependencies in WebHost have changed and should be reviewed before proceeding. Follow up with brettsam or fabiocav for next steps.");
+            sb.AppendLine("IMPORTANT: The dependencies in WebHost have changed and MUST be reviewed before proceeding. Please follow up with brettsam, fabiocav or mathewc for approval.");
             sb.AppendLine();
             sb.AppendLine($"Previous file: {oldDepsJson}");
             sb.AppendLine($"New file:      {newDepsJson}");

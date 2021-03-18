@@ -29,31 +29,18 @@ if (-not (Test-Path $path))
     WriteLog "Failed to find '$path' to update package references" -Throw
 }
 
-# Download the list of pacakges to update
-$response = $null
-try
-{
-    $url = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V3/HostBuild.json"
-    $response = Invoke-WebRequest -Uri $url -ErrorAction Stop       
-}
-catch
-{
-    WriteLog "Failed to download package list from '$url'" -Throw
-}
+WriteLog "Get the list of packages to update"
+$url = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/dev/integrationTestsBuild/V3/HostBuild.json"
 
-if (-not $response.Content)
-{
-    WriteLog "Failed to download package list. Verify that the file located at '$url' is not empty." -Throw
-}
-
-$packagesToUpdate = @($response.Content | ConvertFrom-Json)
-if (!$packagesToUpdate.Count)
+$packagesToUpdate = Invoke-RestMethod -Uri $url -ErrorAction Stop
+if ($packagesToUpdate.Count -eq 0)
 {
     WriteLog "There are no packages to update in '$url'" -Throw
 }
 
 # Update packages references
-WriteLog "Updating Package references"
+WriteLog "Package references to update: $($packagesToUpdate.Count)"
+
 $source = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
 
 $currentDirectory = Get-Location
@@ -63,18 +50,57 @@ try
 
     foreach ($package in $packagesToUpdate)
     {
-        $packageInfo = & {NuGet list $package -Source $source}
+        WriteLog "Package name: $package"
+
+        $packageInfo = & { NuGet list $package -Source $source -PreRelease }
+
+        if ($packageInfo -like "*No packages found*")
+        {
+            $command = "NuGet list '$($package)' -Source '$($source)' -PreRelease"
+            WriteLog "Failed to get the latest package information via: $command" -Throw
+        }
+
+        WriteLog "AzureFunctionsPreRelease latest package info --> $packageInfo"
         $packageName = $packageInfo.Split()[0]
         $packageVersion = $packageInfo.Split()[1]
 
-        WriteLog "Adding '$packageName' '$packageVersion' to project"
-
-        & { dotnet add package $packageName -v $packageVersion -s $source }
-
-        if ($LASTEXITCODE -ne 0)
+        if ($package -eq "Microsoft.Azure.Functions.PythonWorker")
         {
-            WriteLog "dotnet add package $packageName -v $packageVersion -s $source failed" -Throw    
-        }        
+            # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in build/python.props.
+            # To update the package version, the xml file build/python.props needs to be updated directly.
+            $pythonPropsFilePath = "$PSScriptRoot\python.props"
+
+            if (-not (Test-Path $pythonPropsFilePath))
+            {
+                WriteLog "Python Props file '$pythonPropsFilePath' does not exist." -Throw
+            }
+
+            WriteLog "Set Python package version in '$pythonPropsFilePath' to '$packageVersion'"
+
+            # Read the xml file
+            [xml]$xml = Get-Content $pythonPropsFilePath -Raw -ErrorAction Stop
+
+            # Replace the package version
+            $xml.Project.ItemGroup.PackageReference.Version = $packageVersion
+
+            # Save the file
+            $xml.Save($pythonPropsFilePath)
+
+            if ($LASTEXITCODE -ne 0)
+            {
+                WriteLog "Failed to update Python Props file" -Throw
+            }
+        }
+        else
+        {
+            WriteLog "Adding '$packageName' '$packageVersion' to project"
+            & { dotnet add package $packageName -v $packageVersion -s $source }
+
+            if ($LASTEXITCODE -ne 0)
+            {
+                WriteLog "dotnet add package $packageName -v $packageVersion -s $source failed" -Throw
+            }
+        }
     }
 }
 finally

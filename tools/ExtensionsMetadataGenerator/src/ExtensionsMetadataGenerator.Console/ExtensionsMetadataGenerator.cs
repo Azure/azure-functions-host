@@ -66,7 +66,7 @@ namespace ExtensionsMetadataGenerator
             logger.LogMessage($"'{outputPath}' successfully written.");
         }
 
-        public static bool AssemblyShouldBeSkipped(string fileName) => fileName.StartsWith("System", StringComparison.OrdinalIgnoreCase) || ExcludedAssemblies.Contains(fileName, StringComparer.OrdinalIgnoreCase);
+        public static bool AssemblyShouldBeSkipped(string fileName) => fileName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) || ExcludedAssemblies.Contains(fileName, StringComparer.OrdinalIgnoreCase);
 
         public static string GenerateExtensionsJson(IEnumerable<ExtensionReference> extensionReferences)
         {

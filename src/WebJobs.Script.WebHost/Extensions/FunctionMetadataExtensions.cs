@@ -22,8 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <returns>Promise of a FunctionMetadataResponse</returns>
         public static async Task<FunctionMetadataResponse> ToFunctionMetadataResponse(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions, string routePrefix, string baseUrl)
         {
-            var functionPath = Path.Combine(hostOptions.RootScriptPath, functionMetadata.Name);
-            var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+            string functionPath = GetFunctionPathOrNull(hostOptions.RootScriptPath, functionMetadata.Name);
+            string functionMetadataFilePath = GetMetadataPathOrNull(functionPath);
+
             if (string.IsNullOrEmpty(baseUrl))
             {
                 baseUrl = "https://localhost/";
@@ -32,10 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             var response = new FunctionMetadataResponse
             {
                 Name = functionMetadata.Name,
-                ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions),
-                ScriptRootPathHref = VirtualFileSystem.FilePathToVfsUri(functionPath, baseUrl, hostOptions, isDirectory: true),
                 Href = GetFunctionHref(functionMetadata.Name, baseUrl),
-                Config = await GetFunctionConfig(functionMetadataFilePath),
+                Config = await GetFunctionConfig(functionMetadata, functionMetadataFilePath),
 
                 // Properties below this comment are not present in the kudu version.
                 IsDirect = functionMetadata.IsDirect(),
@@ -44,6 +43,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };
+
+            if (!string.IsNullOrEmpty(functionPath))
+            {
+                response.ScriptRootPathHref = VirtualFileSystem.FilePathToVfsUri(functionPath, baseUrl, hostOptions, isDirectory: true);
+            }
+
+            if (!string.IsNullOrEmpty(functionMetadataFilePath))
+            {
+                response.ConfigHref = VirtualFileSystem.FilePathToVfsUri(functionMetadataFilePath, baseUrl, hostOptions);
+            }
 
             if (!string.IsNullOrEmpty(hostOptions.TestDataPath))
             {
@@ -70,28 +79,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
         /// <returns>JObject that represent the trigger for scale controller to consume</returns>
         public static async Task<JObject> ToFunctionTrigger(this FunctionMetadata functionMetadata, ScriptJobHostOptions config)
         {
-            // Codeless functions do not have a physical file and need to be converted differently.
-            if (functionMetadata.IsCodeless())
-            {
-                return await GetCodelessFunctionTrigger(functionMetadata);
-            }
-
-            return await GetRegularFunctionTrigger(functionMetadata, config);
-        }
-
-        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions) =>
-            GetTestDataFilePath(functionMetadata.Name, hostOptions);
-
-        public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions hostOptions) =>
-            Path.Combine(hostOptions.TestDataPath, $"{functionName}.dat");
-
-        private static async Task<JObject> GetRegularFunctionTrigger(FunctionMetadata functionMetadata, ScriptJobHostOptions config)
-        {
             var functionPath = Path.Combine(config.RootScriptPath, functionMetadata.Name);
             var functionMetadataFilePath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
 
             // Read function.json as a JObject
-            var functionConfig = await GetFunctionConfig(functionMetadataFilePath);
+            var functionConfig = await GetFunctionConfig(functionMetadata, functionMetadataFilePath);
 
             if (functionConfig.TryGetValue("bindings", out JToken value) &&
                 value is JArray)
@@ -112,35 +104,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             return null;
         }
 
-        private static Task<JObject> GetCodelessFunctionTrigger(FunctionMetadata functionMetadata)
+        public static string GetTestDataFilePath(this FunctionMetadata functionMetadata, ScriptJobHostOptions hostOptions) =>
+            GetTestDataFilePath(functionMetadata.Name, hostOptions);
+
+        public static string GetTestDataFilePath(string functionName, ScriptJobHostOptions hostOptions) =>
+            Path.Combine(hostOptions.TestDataPath, $"{functionName}.dat");
+
+        private static string GetFunctionPathOrNull(string scriptRoot, string functionName)
         {
-            if (functionMetadata.Bindings == null)
+            var functionPath = Path.Combine(scriptRoot, functionName);
+
+            if (FileUtility.DirectoryExists(functionPath))
             {
-                return null;
+                return functionPath;
             }
 
-            foreach (BindingMetadata binding in functionMetadata.Bindings)
+            return null;
+        }
+
+        private static string GetMetadataPathOrNull(string functionPath)
+        {
+            if (!string.IsNullOrEmpty(functionPath))
             {
-                JObject rawBinding = binding.Raw;
-                var type = (string)rawBinding["type"];
-                if (type != null && type.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                var metadataPath = Path.Combine(functionPath, ScriptConstants.FunctionMetadataFileName);
+
+                if (FileUtility.FileExists(metadataPath))
                 {
-                    JObject newBinding = (JObject)rawBinding.DeepClone();
-                    newBinding.Add("functionName", functionMetadata.Name);
-                    return Task.FromResult(newBinding);
+                    return metadataPath;
                 }
             }
 
             return null;
         }
 
-        private static async Task<JObject> GetFunctionConfig(string path)
+        private static async Task<JObject> GetFunctionConfig(FunctionMetadata metadata, string path)
         {
             try
             {
-                if (FileUtility.FileExists(path))
+                if (!string.IsNullOrEmpty(path) && FileUtility.FileExists(path))
                 {
-                    return JObject.Parse(await FileUtility.ReadAsync(path));
+                    return await GetFunctionConfigFromFile(path);
+                }
+                else
+                {
+                    return GetFunctionConfigFromMetadata(metadata);
                 }
             }
             catch
@@ -152,6 +159,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
             // This is current kudu behavior.
             // TODO: add an error field that can be used to communicate the JSON parse error.
             return new JObject();
+        }
+
+        private static async Task<JObject> GetFunctionConfigFromFile(string path)
+        {
+            return JObject.Parse(await FileUtility.ReadAsync(path));
+        }
+
+        private static JObject GetFunctionConfigFromMetadata(FunctionMetadata metadata)
+        {
+            var config = new
+            {
+                name = metadata.Name,
+                entryPoint = metadata.EntryPoint,
+                scriptFile = metadata.ScriptFile,
+                language = metadata.Language,
+                functionDirectory = metadata.FunctionDirectory,
+                bindings = metadata.Bindings.Select(m => m.Raw).ToList()
+            };
+
+            return JObject.FromObject(config);
         }
 
         private static async Task<string> GetTestData(string testDataPath, ScriptJobHostOptions config)

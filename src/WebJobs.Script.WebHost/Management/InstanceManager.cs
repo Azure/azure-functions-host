@@ -102,7 +102,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (!_webHostEnvironment.InStandbyMode)
             {
-                _logger.LogError("Assign called while host is not in placeholder mode");
+                // This is only true when specializing pinned containers.
+                if (!context.Environment.TryGetValue(EnvironmentSettingNames.ContainerStartContext, out string startContext))
+                {
+                    _logger.LogError("Assign called while host is not in placeholder mode and start context is not present.");
+                    return false;
+                }
+            }
+
+            if (_environment.IsContainerReady())
+            {
+                _logger.LogError("Assign called while container is marked as specialized.");
                 return false;
             }
 

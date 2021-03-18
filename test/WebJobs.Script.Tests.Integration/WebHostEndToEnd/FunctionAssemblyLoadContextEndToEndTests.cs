@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/Function1");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             });
         }
 
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/NativeDependencyOldSdk");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             });
         }
 
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/NativeDependencyNoRuntimes");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             });
         }
 
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/MultipleDependencyVersions");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             });
         }
 
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 var response = await client.GetAsync($"api/ReferenceOlderRuntimeAssembly");
 
                 // The function does all the validation internally.
-                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
             });
         }
 
@@ -147,7 +147,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 throw;
             }
         }
-
 
         public void Dispose()
         {

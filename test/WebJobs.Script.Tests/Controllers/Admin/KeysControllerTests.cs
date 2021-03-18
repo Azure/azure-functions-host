@@ -63,9 +63,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             _functionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             _functionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(false)).ReturnsAsync(new SyncTriggersResult { Success = true });
+
             var hostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
             hostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
-            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, _functionsSyncManagerMock.Object, hostManagerMock.Object);
+
+            var metadataManagerMock = new Mock<IFunctionMetadataManager>(MockBehavior.Strict);
+            FunctionMetadata metadata = null;
+            metadataManagerMock.Setup(m => m.TryGetFunctionMetadata("FunctionWithoutFile", out metadata, false)).Returns(true);
+            metadataManagerMock.Setup(m => m.TryGetFunctionMetadata("TestFunction1", out metadata, false)).Returns(true);
+            // Function that has a physical file, but is loaded (safety net).
+            metadataManagerMock.Setup(m => m.TryGetFunctionMetadata("TestFunction2", out metadata, false)).Returns(false);
+            metadataManagerMock.Setup(m => m.TryGetFunctionMetadata("DNE", out metadata, false)).Returns(false);
+
+            _testController = new KeysController(new OptionsWrapper<ScriptApplicationHostOptions>(settings), new TestSecretManagerProvider(_secretsManagerMock.Object), new LoggerFactory(), fileSystem.Object, _functionsSyncManagerMock.Object, metadataManagerMock.Object, hostManagerMock.Object);
 
             var keys = new Dictionary<string, string>
             {
@@ -79,6 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
             _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("TestFunction2", false)).ReturnsAsync(keys);
 
+            keys = new Dictionary<string, string>
+            {
+                { "key1", "secret1" }
+            };
+            _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("FunctionWithoutFile", false)).ReturnsAsync(keys);
+
             _secretsManagerMock.Setup(p => p.GetFunctionSecretsAsync("DNE", false)).ReturnsAsync((IDictionary<string, string>)null);
 
             SetHttpContext();
@@ -88,6 +104,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task GetKeys_ReturnsKeys()
         {
             ObjectResult result = (ObjectResult)await _testController.Get("TestFunction1");
+
+            var content = (JObject)result.Value;
+            var keys = content["keys"];
+            Assert.Equal("key1", keys[0]["name"]);
+            Assert.Equal("secret1", keys[0]["value"]);
+        }
+
+        [Fact]
+        public async Task GetKeys_NoFileFunction_ReturnsKeys()
+        {
+            ObjectResult result = (ObjectResult)await _testController.Get("FunctionWithoutFile");
 
             var content = (JObject)result.Value;
             var keys = content["keys"];

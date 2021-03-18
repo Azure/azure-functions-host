@@ -598,7 +598,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 var extensionBundleConfig = new JObject();
                 extensionBundleConfig["id"] = "Microsoft.Azure.Functions.ExtensionBundle";
-                extensionBundleConfig["version"] = "[1.*, 2.0.0)";
+                extensionBundleConfig["version"] = "[2.*, 3.0.0)";
                 hostConfig["extensionBundle"] = extensionBundleConfig;
             }
 
@@ -727,6 +727,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
             dirBase.Setup(d => d.Exists(rootPath)).Returns(true);
             dirBase.Setup(d => d.Exists(Path.Combine(rootPath, "bin"))).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, @"function1"))).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, @"function2"))).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, @"function3"))).Returns(true);
             dirBase.Setup(d => d.EnumerateDirectories(rootPath))
                 .Returns(() =>
                 {
@@ -790,7 +793,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     }
   ]
 }";
-
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
             fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(_function1);

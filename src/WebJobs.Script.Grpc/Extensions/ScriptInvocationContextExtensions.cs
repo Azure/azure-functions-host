@@ -3,19 +3,25 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Host.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Grpc.Extensions;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
+using RpcException = Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcException;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled, ISharedMemoryManager sharedMemoryManager)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -26,25 +32,68 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 TraceContext = GetRpcTraceContext(context.Traceparent, context.Tracestate, context.Attributes, logger),
             };
 
+            SetRetryContext(context, invocationRequest);
+
             var rpcValueCache = new Dictionary<object, TypedData>();
+            Dictionary<object, RpcSharedMemory> sharedMemValueCache = null;
+            StringBuilder logBuilder = null;
+            bool usedSharedMemory = false;
+
+            if (isSharedMemoryDataTransferEnabled)
+            {
+                sharedMemValueCache = new Dictionary<object, RpcSharedMemory>();
+                logBuilder = new StringBuilder();
+            }
 
             foreach (var input in context.Inputs)
             {
-                TypedData rpcValue = null;
-                if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                RpcSharedMemory sharedMemValue = null;
+                ParameterBinding parameterBinding = null;
+                if (isSharedMemoryDataTransferEnabled)
                 {
-                    rpcValue = await input.val.ToRpc(logger, capabilities);
-                    if (input.val != null)
+                    // Try to transfer this data over shared memory instead of RPC
+                    if (input.val == null || !sharedMemValueCache.TryGetValue(input.val, out sharedMemValue))
                     {
-                        rpcValueCache.Add(input.val, rpcValue);
+                        sharedMemValue = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager);
+                        if (input.val != null)
+                        {
+                            sharedMemValueCache.Add(input.val, sharedMemValue);
+                        }
                     }
                 }
 
-                var parameterBinding = new ParameterBinding
+                if (sharedMemValue != null)
                 {
-                    Name = input.name,
-                    Data = rpcValue
-                };
+                    // Data was successfully transferred over shared memory; create a ParameterBinding accordingly
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        RpcSharedMemory = sharedMemValue
+                    };
+
+                    usedSharedMemory = true;
+                    logBuilder.AppendFormat("{0}:{1},", input.name, sharedMemValue.Count);
+                }
+                else
+                {
+                    // Data was not transferred over shared memory (either disabled, type not supported or some error); resort to RPC
+                    TypedData rpcValue = null;
+                    if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                    {
+                        rpcValue = await input.val.ToRpc(logger, capabilities);
+                        if (input.val != null)
+                        {
+                            rpcValueCache.Add(input.val, rpcValue);
+                        }
+                    }
+
+                    parameterBinding = new ParameterBinding
+                    {
+                        Name = input.name,
+                        Data = rpcValue
+                    };
+                }
+
                 invocationRequest.InputData.Add(parameterBinding);
             }
 
@@ -62,6 +111,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
 
                 invocationRequest.TriggerMetadata.Add(pair.Key, rpcValue);
+            }
+
+            if (usedSharedMemory)
+            {
+                logger.LogDebug("Shared memory usage for request of invocation Id: {Id} is {SharedMemoryUsage}", invocationRequest.InvocationId, logBuilder.ToString());
             }
 
             return invocationRequest;
@@ -120,6 +174,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             return traceContext;
+        }
+
+        internal static void SetRetryContext(ScriptInvocationContext context, InvocationRequest invocationRequest)
+        {
+            if (context.ExecutionContext.RetryContext != null)
+            {
+                invocationRequest.RetryContext = new RetryContext()
+                {
+                    RetryCount = context.ExecutionContext.RetryContext.RetryCount,
+                    MaxRetryCount = context.ExecutionContext.RetryContext.MaxRetryCount
+                };
+                // RetryContext.Exception should not be null, check just in case
+                if (context.ExecutionContext.RetryContext.Exception != null)
+                {
+                    invocationRequest.RetryContext.Exception = new RpcException()
+                    {
+                        Message = ExceptionFormatter.GetFormattedException(context.ExecutionContext.RetryContext.Exception), // merge message from InnerException
+                        StackTrace = context.ExecutionContext.RetryContext.Exception.StackTrace ?? string.Empty,
+                        Source = context.ExecutionContext.RetryContext.Exception.Source ?? string.Empty
+                    };
+                }
+            }
         }
     }
 }
