@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             Assert.Equal(expectedProcessCount, finalChannelCount);
 
-            VerifyStartIntervals();
+            VerifyStartIntervals(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15));
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(0, finalJobhostChannelCount);
 
             // ignore first start as we added a WebhostChannel on GetTestFunctionDispatcher call
-            VerifyStartIntervals(true);
+            VerifyStartIntervals(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15), true);
         }
 
         [Fact]
@@ -570,9 +570,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private void VerifyStartIntervals(bool ignoreFirstStart = false)
+        private void VerifyStartIntervals(TimeSpan from, TimeSpan to, bool ignoreFirstStart = false)
         {
-            // Verify that interval beetwen starts >10 secs and <15 secs
             var startTimestamps = _testLogger.GetLogMessages().Where(x => x.FormattedMessage
                 .Contains("RegisterFunctions called")).Select(x => x.Timestamp).ToList();
             if (ignoreFirstStart)
@@ -582,7 +581,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             for (int i = 1; i < startTimestamps.Count(); i++)
             {
                 var diff = startTimestamps[i] - startTimestamps[i - 1];
-                Assert.True(diff > TimeSpan.FromSeconds(10) && diff < TimeSpan.FromSeconds(15));
+                Assert.True(diff > from && diff < to);
             }
         }
     }
