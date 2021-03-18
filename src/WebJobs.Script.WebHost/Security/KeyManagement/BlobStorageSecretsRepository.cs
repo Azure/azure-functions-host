@@ -11,7 +11,6 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -23,20 +22,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _secretsBlobPath;
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
-        private readonly string _accountConnectionString;
+        private readonly string _accountConnection;
         private readonly HostStorageProvider _hostStorageProvider;
         private BlobContainerClient _blobContainerClient;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnectionString, string siteSlotName, ILogger logger, IEnvironment environment, IOptions<HostStorageProvider> hostStorageProvider)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, HostStorageProvider hostStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
             if (secretSentinelDirectoryPath == null)
             {
                 throw new ArgumentNullException(nameof(secretSentinelDirectoryPath));
             }
-            if (accountConnectionString == null)
+            if (accountConnection == null)
             {
-                throw new ArgumentNullException(nameof(accountConnectionString));
+                throw new ArgumentNullException(nameof(accountConnection));
             }
             if (siteSlotName == null)
             {
@@ -45,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
-            _accountConnectionString = accountConnectionString;
-            _hostStorageProvider = hostStorageProvider.Value;
+            _accountConnection = accountConnection;
+            _hostStorageProvider = hostStorageProvider;
         }
 
         private BlobContainerClient Container
@@ -55,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_blobContainerClient == null)
                 {
-                    _blobContainerClient = CreateBlobContainerClient(_accountConnectionString);
+                    _blobContainerClient = CreateBlobContainerClient(_accountConnection);
                 }
                 return _blobContainerClient;
             }
@@ -71,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual BlobContainerClient CreateBlobContainerClient(string connectionString)
         {
-            if (_hostStorageProvider.TryGetBlobServiceClient(out BlobServiceClient blobServiceClient, connectionString))
+            if (_hostStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connectionString))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
                 blobContainerClient.CreateIfNotExists();

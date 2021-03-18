@@ -22,6 +22,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -157,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 
-            services.TryAddSingleton<IConfigureOptions<HostStorageProvider>, HostStorageProviderOptions>();
+            services.AddHostStorageProvider();
         }
 
         private static void AddStandbyServices(this IServiceCollection services)

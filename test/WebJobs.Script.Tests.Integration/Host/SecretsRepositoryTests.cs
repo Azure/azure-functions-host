@@ -13,10 +13,10 @@ using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.Rest.Azure;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
@@ -382,10 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);
                 KeyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
                 Environment = new TestEnvironment();
-
-                var hostStorageProviderOptions = new HostStorageProviderOptions(configuration);
-                HostStorageProvider = new HostStorageProvider();
-                hostStorageProviderOptions.Configure(HostStorageProvider);
+                HostStorageProvider = new HostStorageProvider(configuration, TestHelpers.GetAzureStorageService<BlobServiceClientProvider>(configuration));
             }
 
             public IEnvironment Environment { get; private set; }
@@ -445,11 +442,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var logger = LoggerProvider.CreateLogger("Test");
                 if (RepositoryType == SecretsRepositoryType.BlobStorage)
                 {
-                    return new BlobStorageSecretsRepository(SecretsDirectory, BlobConnectionString, TestSiteName, logger, Environment, new OptionsWrapper<HostStorageProvider>(HostStorageProvider));
+                    return new BlobStorageSecretsRepository(SecretsDirectory, ConnectionStringNames.Storage, TestSiteName, logger, Environment, HostStorageProvider);
                 }
                 else if (RepositoryType == SecretsRepositoryType.BlobStorageSas)
                 {
-                    return new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName, logger, Environment, new OptionsWrapper<HostStorageProvider>(HostStorageProvider));
+                    return new BlobStorageSasSecretsRepository(SecretsDirectory, BlobSasConnectionUri.ToString(), TestSiteName, logger, Environment, HostStorageProvider);
                 }
                 else if (RepositoryType == SecretsRepositoryType.FileSystem)
                 {

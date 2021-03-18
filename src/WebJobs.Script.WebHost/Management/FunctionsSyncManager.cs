@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IOptions<HostStorageProvider> hostStorageProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, HostStorageProvider hostStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
-            _hostStorageProvider = hostStorageProvider.Value;
+            _hostStorageProvider = hostStorageProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -262,9 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (_hashBlobClient == null)
             {
-                string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                if (!string.IsNullOrEmpty(storageConnectionString) &&
-                    _hostStorageProvider.TryGetBlobServiceClient(out BlobServiceClient blobClient, storageConnectionString))
+                if (_hostStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobClient, ConnectionStringNames.Storage))
                 {
                     string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
                     var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);

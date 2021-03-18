@@ -5,7 +5,6 @@ using System;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -14,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public sealed class BlobStorageSasSecretsRepository : BlobStorageSecretsRepository
     {
-        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment, IOptions<HostStorageProvider> hostStorageProvider)
+        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment, HostStorageProvider hostStorageProvider)
             : base(secretSentinelDirectoryPath, containerSasUri, siteSlotName, logger, environment, hostStorageProvider)
         {
         }

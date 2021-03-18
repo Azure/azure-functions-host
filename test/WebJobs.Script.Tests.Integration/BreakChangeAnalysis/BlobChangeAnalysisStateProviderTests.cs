@@ -15,6 +15,7 @@ using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Moq;
 using Xunit;
+using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 {
@@ -37,9 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 
             _hostIdProvider = hostIdProviderMock.Object;
 
-            var hostStorageProviderOptions = new HostStorageProviderOptions(_configuration);
-            _hostStorageProvider = new HostStorageProvider();
-            hostStorageProviderOptions.Configure(_hostStorageProvider);
+            _hostStorageProvider = new HostStorageProvider(_configuration, TestHelpers.GetAzureStorageService<BlobServiceClientProvider>(_configuration));
         }
 
         [Fact]
@@ -56,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             analysisBlob.Metadata.Add(BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName, lastAnalysisTestTime.ToString("O"));
             await analysisBlob.SetMetadataAsync();
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _hostStorageProvider);
 
             ChangeAnalysisState result = await stateProvider.GetCurrentAsync(CancellationToken.None);
 
@@ -73,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 
             BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _hostStorageProvider);
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _hostStorageProvider);
 
             await stateProvider.SetTimestampAsync(lastAnalysisTestTime, analysisBlob, CancellationToken.None);
 
@@ -93,7 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             await analysisBlob.DeleteIfExistsAsync();
             await analysisBlob.UploadTextAsync(string.Empty);
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _hostStorageProvider);
 
             ChangeAnalysisState result = await stateProvider.GetCurrentAsync(CancellationToken.None);
 
@@ -113,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _hostStorageProvider);
             await analysisBlob.DeleteIfExistsAsync();
 
-            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, new OptionsWrapper<HostStorageProvider>(_hostStorageProvider));
+            var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _hostStorageProvider);
 
             await stateProvider.SetTimestampAsync(lastAnalysisTestTime, analysisBlob, CancellationToken.None);
 
@@ -144,10 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 
         private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider, HostStorageProvider hostStorageProvider)
         {
-            string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
-            if (string.IsNullOrEmpty(storageConnectionString) ||
-                !hostStorageProvider.TryGetBlobServiceClient(out BlobServiceClient blobServiceClient, storageConnectionString))
+            if (!hostStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
                 throw new ConfigurationException("Invalid storage account configuration");
             }

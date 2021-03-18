@@ -4,6 +4,7 @@
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -43,13 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var hostNameProvider = new HostNameProvider(environment);
-
-            var hostStorageProviderOptions = new HostStorageProviderOptions(config);
-            var hostStorageProvider = new HostStorageProvider();
-            hostStorageProviderOptions.Configure(hostStorageProvider);
+            var hostStorageProvider = new HostStorageProvider(config, TestHelpers.GetAzureStorageService<BlobServiceClientProvider>(config));
 
             _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), new OptionsWrapper<HostStorageProvider>(hostStorageProvider));
+                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), hostStorageProvider);
         }
 
         [Fact]
