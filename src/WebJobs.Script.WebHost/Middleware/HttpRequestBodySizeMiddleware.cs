@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -36,6 +37,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         internal Task InvokeAfterSpecialization(HttpContext httpContext)
         {
+            if (httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() == null)
+            {
+                throw new InvalidOperationException("Unable to Configure MaxRequestBodySize. IHttpMaxRequestBodySizeFeature is not present");
+            }
+
             httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = _maxRequestBodySize;
             return _next.Invoke(httpContext);
         }
