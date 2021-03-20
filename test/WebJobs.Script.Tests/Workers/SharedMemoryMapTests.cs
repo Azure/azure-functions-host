@@ -18,9 +18,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     /// </summary>
     public class SharedMemoryMapTests
     {
+        private readonly ILoggerFactory _loggerFactory;
+
         private readonly IMemoryMappedFileAccessor _mapAccessor;
 
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly IEnvironment _testEnvironment;
 
         public SharedMemoryMapTests()
         {
@@ -28,13 +30,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
 
+            _testEnvironment = new TestEnvironment();
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 _mapAccessor = new MemoryMappedFileAccessorWindows(logger);
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
             }
         }
 

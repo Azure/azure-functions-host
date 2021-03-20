@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(mmapAccessorLogger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(mmapAccessorLogger, _testEnvironment);
             }
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
 

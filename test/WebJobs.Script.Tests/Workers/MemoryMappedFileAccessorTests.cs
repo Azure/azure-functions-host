@@ -4,6 +4,7 @@
 using System;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,11 +18,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     /// </summary>
     public class MemoryMappedFileAccessorTests
     {
+        private readonly IEnvironment _testEnvironment;
         private readonly IMemoryMappedFileAccessor _mapAccessor;
 
         public MemoryMappedFileAccessorTests()
         {
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            _testEnvironment = new TestEnvironment();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -29,8 +32,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
             }
+        }
+
+        [Fact]
+        public void Use_AppSetting_Directory_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string expectedDirectory = $"/tmp/shm/{SharedMemoryConstants.TempDirSuffix}";
+            Assert.Single(mapAccessor.ValidDirectories);
+            Assert.Contains(expectedDirectory, mapAccessor.ValidDirectories);
         }
 
         /// <summary>
