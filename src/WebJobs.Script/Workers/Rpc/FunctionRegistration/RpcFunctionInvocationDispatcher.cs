@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
         private CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private int _processStartupInterval = (int)TimeSpan.FromSeconds(10).TotalMilliseconds;
+        private int _processStartupInterval;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -141,14 +141,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void StartWorkerProcesses(int startIndex, Func<Task> startAction)
         {
-            // Starting the worker processes in a different thread to avoid delaying in the host initialization
             Task.Run(async () =>
             {
                 for (var count = startIndex; count < _maxProcessCount
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
-                    await startAction();
-                    await Task.Delay(_processStartupInterval);
+                    try
+                    {
+                        await startAction();
+                        await Task.Delay(_processStartupInterval);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
+                    }
+                }
+
+                if (State != FunctionInvocationDispatcherState.Initialized)
+                {
+                    _logger.LogError("FunctionInvocationDispatcher was not initialized. Shutting down and proactively recycling the Functions Host to recover.");
+                    _applicationLifetime.StopApplication();
                 }
             }, _processStartCancellationToken.Token);
         }
@@ -215,7 +227,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         }
                     }
                     StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                    if (webhostLanguageWorkerChannels.Count() > 0)
+                    if (webhostLanguageWorkerChannels.Any())
                     {
                         SetFunctionDispatcherStateToInitializedAndLog();
                     }
