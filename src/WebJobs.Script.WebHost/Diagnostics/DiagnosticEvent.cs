@@ -3,11 +3,12 @@
 
 using System;
 using System.Threading;
+using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DiagnosticEvent
+    public class DiagnosticEvent : TableEntity
     {
         public int HitCount { get; set; }
 
