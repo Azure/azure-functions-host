@@ -32,9 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private bool IsDiagnosticEvent(IDictionary<string, object> state)
         {
-            return state.Keys.Contains(ScriptConstants.DiagnosticEventKey, StringComparer.OrdinalIgnoreCase)
-                && state.Keys.Contains(ScriptConstants.HelpLinkKey, StringComparer.OrdinalIgnoreCase)
-                && state.Keys.Contains(ScriptConstants.ErrorCodeKey, StringComparer.OrdinalIgnoreCase);
+            return state.Keys.Contains(ScriptConstants.DiagnosticEventKey, StringComparer.OrdinalIgnoreCase);
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
