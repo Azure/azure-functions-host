@@ -105,9 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             Assert.Equal(logMessages.Where(x => x.FormattedMessage
                 .Contains("Failed to start a new language worker")).Count(), 3);
-
-            Assert.Equal(logMessages.Where(x => x.FormattedMessage
-                .Contains("FunctionInvocationDispatcher was not initialized")).Count(), 1);
         }
 
         [Fact]

@@ -156,12 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         _logger.LogError(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
                     }
                 }
-
-                if (State != FunctionInvocationDispatcherState.Initialized)
-                {
-                    _logger.LogError("FunctionInvocationDispatcher was not initialized. Shutting down and proactively recycling the Functions Host to recover.");
-                    _applicationLifetime.StopApplication();
-                }
             }, _processStartCancellationToken.Token);
         }
 
