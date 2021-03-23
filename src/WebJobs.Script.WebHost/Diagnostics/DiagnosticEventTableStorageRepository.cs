@@ -18,6 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository
     {
         private const int MaximumTableNameLength = 63;
+        private const string TableNamePreFix = "MSDiagnosticEvents";
         private readonly ConcurrentDictionary<string, DiagnosticEvent> _events = new ConcurrentDictionary<string, DiagnosticEvent>();
         private readonly Timer _resetTimer;
         private IConfiguration _configuration;
@@ -47,8 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 if (_tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                    if (!string.IsNullOrEmpty(storageConnectionString) &&
-                        CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
+                    if (!string.IsNullOrEmpty(storageConnectionString)
+                        && CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
                     {
                         var tableClientConfig = new TableClientConfiguration();
                         _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
@@ -71,14 +72,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             return _logTable;
         }
 
-        private static string NormalizedTableName(string appName)
-        {
-            string alphanumericStr = Regex.Replace(appName, @"[^0-9A-Za-z ,]", string.Empty);
-            string name = "MSDiagnosticEvents" + alphanumericStr;
-            int strLength = Math.Min(name.Length, MaximumTableNameLength);
-            return name.Substring(0, strLength);
-        }
-
         private void OnFlushLogs(object sender, ElapsedEventArgs e)
         {
             FlushLogs();
@@ -86,21 +79,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void FlushLogs()
         {
-            try
+            var table = GetLogTable();
+            foreach (string errorCode in _events.Keys)
             {
-                var table = GetLogTable();
-                foreach (string errorCode in _events.Keys)
-                {
-                    TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
-                    TableResult result = table.Execute(insertOperation);
-
-                    // remove after inserit operation is complete
-                    _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
-                }
-            }
-            catch (StorageException e)
-            {
-                throw;
+                TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
+                TableResult result = table.Execute(insertOperation);
+                _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
             }
         }
 
@@ -124,9 +108,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             });
         }
 
-        public IEnumerable<DiagnosticEvent> GetEvents()
+        private static string NormalizedTableName(string appName)
         {
-            return _events.Values;
+            string alphanumericStr = Regex.Replace(appName, @"[^0-9A-Za-z ,]", string.Empty);
+            string name = TableNamePreFix + alphanumericStr;
+            int strLength = Math.Min(name.Length, MaximumTableNameLength);
+            return name.Substring(0, strLength);
         }
     }
 }
