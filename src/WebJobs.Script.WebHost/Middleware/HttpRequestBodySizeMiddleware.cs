@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public HttpRequestBodySizeMiddleware(RequestDelegate next, IEnvironment environment)
         {
-            _next = next;
-            _environment = environment;
+            _next = next ?? throw new ArgumentNullException(nameof(next));
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _invoke = InvokeBeforeSpecialization;
         }
 
@@ -37,12 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         internal Task InvokeAfterSpecialization(HttpContext httpContext)
         {
-            if (httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() == null)
+            var httpBodySizeFeature = httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (httpBodySizeFeature == null)
             {
                 throw new InvalidOperationException("Unable to Configure MaxRequestBodySize. IHttpMaxRequestBodySizeFeature is not present");
             }
 
-            httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>().MaxRequestBodySize = _maxRequestBodySize;
+            httpBodySizeFeature.MaxRequestBodySize = _maxRequestBodySize;
             return _next.Invoke(httpContext);
         }
 
