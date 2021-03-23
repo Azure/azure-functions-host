@@ -9,15 +9,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class DiagnosticEventLoggerProvider : ILoggerProvider
     {
         private readonly IDiagnosticEventRepository _diagnosticEventRepository;
+        private readonly IEnvironment _environment;
 
-        public DiagnosticEventLoggerProvider(IDiagnosticEventRepository diagnosticEventRepository)
+        public DiagnosticEventLoggerProvider(IDiagnosticEventRepository diagnosticEventRepository, IEnvironment environment)
         {
             _diagnosticEventRepository = diagnosticEventRepository;
+            _environment = environment;
         }
 
         public ILogger CreateLogger(string categoryName)
         {
-            return new DiagnosticEventLogger(_diagnosticEventRepository);
+            return new DiagnosticEventLogger(_diagnosticEventRepository, _environment);
         }
 
         public void Dispose()

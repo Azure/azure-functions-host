@@ -14,10 +14,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const string ErrorCode = "errorCode";
         private const string HelpLink = "helpLink";
         private readonly IDiagnosticEventRepository _diagnosticEventRepository;
+        private readonly IEnvironment _environment;
+        private bool _isSpecialized = false;
 
-        public DiagnosticEventLogger(IDiagnosticEventRepository actionableEventRepository)
+        public DiagnosticEventLogger(IDiagnosticEventRepository actionableEventRepository, IEnvironment environment)
         {
             _diagnosticEventRepository = actionableEventRepository;
+            _environment = environment;
         }
 
         public IDisposable BeginScope<TState>(TState state)
@@ -27,7 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            return true;
+            if (!_isSpecialized)
+            {
+                _isSpecialized = !_environment.IsPlaceholderModeEnabled();
+            }
+
+            return _isSpecialized;
         }
 
         private bool IsDiagnosticEvent(IDictionary<string, object> state)
@@ -37,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
         {
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
             if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo))
             {
                 string message = formatter(state, exception);
