@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 var currentChannel = GetCurrentJobHostWorkerChannel();
-                return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id;
+                return currentChannel != null && currentChannel.Id != _nodeWorkerChannel.Id && currentChannel.IsChannelReadyForInvocations();
 
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentJobHostWorkerChannel();
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() =>
             {
                 var currentChannel = GetCurrentJobHostWorkerChannel();
-                return currentChannel != null;
+                return currentChannel != null && currentChannel.IsChannelReadyForInvocations();
             }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
             _nodeWorkerChannel = GetCurrentJobHostWorkerChannel();
         }
