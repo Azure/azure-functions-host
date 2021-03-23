@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             public void AddDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
             {
-                _events.Add(new DiagnosticEvent()
+                _events.Add(new DiagnosticEvent(errorCode)
                 {
                     LastTimeStamp = timestamp,
                     ErrorCode = errorCode,

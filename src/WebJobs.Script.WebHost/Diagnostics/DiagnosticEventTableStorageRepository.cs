@@ -33,8 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _resetTimer = new Timer()
             {
                 AutoReset = true,
-                // 10 mins
-                Interval = 600 * 1000,
+                Interval = 60 * 1000, // 10 mins
                 Enabled = true
             };
 
@@ -84,13 +83,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
                 TableResult result = table.Execute(insertOperation);
-                _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
+                _events.TryRemove(errorCode, out DiagnosticEvent diagnosticEvent);
             }
         }
 
         public void AddDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            var diagnosticEvent = new DiagnosticEvent()
+            var diagnosticEvent = new DiagnosticEvent(errorCode)
             {
                 ErrorCode = errorCode,
                 HelpLink = helpLink,
