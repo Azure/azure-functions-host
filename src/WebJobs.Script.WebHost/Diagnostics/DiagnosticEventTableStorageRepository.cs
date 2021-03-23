@@ -25,20 +25,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private CloudTableClient _tableClient;
         private CloudTable _logTable;
+        private ILogger _logger;
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IOptionsMonitor<AppServiceOptions> appServiceOptions)
+        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IOptionsMonitor<AppServiceOptions> appServiceOptions, ILogger<DiagnosticEventTableStorageRepository> logger)
         {
             _configuration = configuration;
             _appServiceOptions = appServiceOptions;
             _resetTimer = new Timer()
             {
                 AutoReset = true,
-                // 10 mins
-                Interval = 600 * 1000,
+                Interval = 600 * 1000, // 10 mins
                 Enabled = true
             };
 
             _resetTimer.Elapsed += OnFlushLogs;
+            _logger = logger;
         }
 
         private CloudTableClient TableClient
@@ -66,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 string tableName = NormalizedTableName(_appServiceOptions.CurrentValue.AppName);
                 CloudTable table = TableClient.GetTableReference(tableName);
                 table.CreateIfNotExists();
+                _logger.LogInformation("Diagnostic table name set to {name}", tableName);
                 _logTable = table;
             }
 
@@ -80,11 +82,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public void FlushLogs()
         {
             var table = GetLogTable();
-            foreach (string errorCode in _events.Keys)
+            try
             {
-                TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
-                TableResult result = table.Execute(insertOperation);
-                _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
+                foreach (string errorCode in _events.Keys)
+                {
+                    TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
+                    TableResult result = table.Execute(insertOperation);
+                    _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
+                }
+            }
+            catch (StorageException exeception)
+            {
+                _logger.LogError(exeception, "Error writing logs to table storage");
             }
         }
 
