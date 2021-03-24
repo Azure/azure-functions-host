@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         /// <summary>
-        /// 
+        /// Verify that when the AppSetting is specified, the directory used for shared memory is picked from the AppSetting and the default is not used.
         /// </summary>
         [Fact]
         public void Use_AppSetting_Directory_Unix()
