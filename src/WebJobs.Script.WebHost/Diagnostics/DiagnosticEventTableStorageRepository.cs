@@ -25,9 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private CloudTableClient _tableClient;
         private CloudTable _logTable;
-        private ILogger _logger;
 
-        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IOptionsMonitor<AppServiceOptions> appServiceOptions, ILogger<DiagnosticEventTableStorageRepository> logger)
+        public DiagnosticEventTableStorageRepository(IConfiguration configuration, IOptionsMonitor<AppServiceOptions> appServiceOptions)
         {
             _configuration = configuration;
             _appServiceOptions = appServiceOptions;
@@ -39,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             };
 
             _resetTimer.Elapsed += OnFlushLogs;
-            _logger = logger;
         }
 
         private CloudTableClient TableClient
@@ -54,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         var tableClientConfig = new TableClientConfiguration();
                         _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
-                        Console.WriteLine("**** table client initialized");
+                        Console.WriteLine("**** DiagnosticEventTableStorageRepository:table client initialized");
                     }
                 }
                 return _tableClient;
@@ -68,10 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 string tableName = NormalizedTableName(_appServiceOptions.CurrentValue.AppName);
                 CloudTable table = TableClient.GetTableReference(tableName);
                 table.CreateIfNotExists();
-                _logger.LogInformation("Diagnostic table name set to {tableName}", tableName);
                 _logTable = table;
-                Console.WriteLine("**** logtable client initialized");
-                Console.WriteLine($"**** logtable name:{tableName}");
+                Console.WriteLine("**** DiagnosticEventTableStorageRepository:logtable client initialized");
+                Console.WriteLine($"**** DiagnosticEventTableStorageRepository:logtable name:{tableName}");
             }
 
             return _logTable;
@@ -84,27 +81,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void FlushLogs()
         {
-            Console.WriteLine("**** Flush logs called");
+            Console.WriteLine("**** FlushLogs:Flush logs called");
             try
             {
                 var table = GetLogTable();
                 foreach (string errorCode in _events.Keys)
                 {
-                    Console.WriteLine($"**** Inserting:{errorCode}, Hitcount:{_events[errorCode].HitCount}");
+                    Console.WriteLine($"**** FlushLogs: Inserting:{errorCode}, Hitcount:{_events[errorCode].HitCount}");
                     TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
                     TableResult result = table.Execute(insertOperation);
-                    _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
+                    if (!_events.TryRemove(errorCode, out DiagnosticEvent diagnosticEvent))
+                    {
+                        Console.WriteLine($"**** FlushLogs:Remove failed for {errorCode}, Hitcount:{_events[errorCode].HitCount}");
+                    }
                 }
             }
             catch (StorageException exeception)
             {
-                _logger.LogError(exeception, "Error writing logs to table storage");
+                Console.WriteLine($"**** FlushLogs:storage exception {exeception.Message}");
             }
         }
 
         public void AddDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception)
         {
-            var diagnosticEvent = new DiagnosticEvent()
+            var diagnosticEvent = new DiagnosticEvent(errorCode)
             {
                 ErrorCode = errorCode,
                 HelpLink = helpLink,
@@ -118,10 +118,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 a.HitCount++;
                 a.LastTimeStamp = timestamp;
+                Console.WriteLine($"**** AddDiagnosticEvent:{a.ErrorCode}, Hitcount:{a.HitCount}");
                 return a;
             });
-
-            Console.WriteLine($"**** Recording:{diagnosticEvent.ErrorCode}, Hitcount:{diagnosticEvent.HitCount}");
         }
 
         private static string NormalizedTableName(string appName)

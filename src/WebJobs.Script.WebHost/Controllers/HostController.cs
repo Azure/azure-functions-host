@@ -60,22 +60,47 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _performanceManager = performanceManager;
         }
 
-        //[HttpGet]
-        //[Route("admin/host/Errors")]
-        //[Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        //public IActionResult GetDiagnosticEvents([FromServices] IDiagnosticEventRepository diagnosticEventRepository)
-        //{
-        //    //Task.Run(() =>
-        //    //{
-        //    //    for (int i = 0; i < 10; i++)
-        //    //    {
-        //    //        _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh123", "This is the message", "https://fwlink/", new Exception("exception message"));
-        //    //    }
-        //    //});
+        [HttpGet]
+        [Route("admin/host/Errors")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult GetDiagnosticEvents()
+        {
+            Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(1, 10);
 
-        //    //IEnumerable<DiagnosticEvent> events = diagnosticEventRepository.GetEvents();
-        //    return Ok(events);
-        //}
+                for (int i = 0; i < 1000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh1", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(4, 7);
+                for (int i = 0; i < 7000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh2", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(3, 9);
+                for (int i = 0; i < 3000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh3", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            return Ok();
+        }
 
         [HttpGet]
         [Route("admin/host/status")]

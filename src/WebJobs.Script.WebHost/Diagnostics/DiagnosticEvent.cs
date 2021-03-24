@@ -10,6 +10,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEvent : TableEntity
     {
+        public DiagnosticEvent(string errorCode)
+        {
+            this.PartitionKey = errorCode;
+            this.RowKey = DateTime.UtcNow.Ticks.ToString();
+        }
+
         public int HitCount { get; set; }
 
         public DateTime LastTimeStamp { get; set; }

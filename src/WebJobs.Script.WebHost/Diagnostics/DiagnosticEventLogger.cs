@@ -30,11 +30,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            Console.WriteLine($"**** DiagnosticEventLogger Before_isSpecialized:{_isSpecialized}");
+            //Console.WriteLine($"**** DiagnosticEventLogger: Before_isSpecialized:{_isSpecialized}");
             if (!_isSpecialized)
             {
                 _isSpecialized = !_environment.IsPlaceholderModeEnabled();
-                Console.WriteLine($"**** DiagnosticEventLogger After_isSpecialized:{_isSpecialized}");
+                Console.WriteLine($"**** DiagnosticEventLogger: _isSpecialized:{_isSpecialized}");
             }
 
             return _isSpecialized;
@@ -49,15 +49,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (!IsEnabled(logLevel))
             {
-                Console.WriteLine("**** DiagnosticEventLogger not specialized yet");
+                //Console.WriteLine("**** DiagnosticEventLogger: not specialized yet");
                 return;
             }
 
-            Console.WriteLine("**** DiagnosticEventLogger specialized now");
+            //Console.WriteLine("**** DiagnosticEventLogger: specialized now");
             if (state is IDictionary<string, object> stateInfo && IsDiagnosticEvent(stateInfo))
             {
                 string message = formatter(state, exception);
-                Console.WriteLine($"**** Logging: {message}");
+                Console.WriteLine($"**** DiagnosticEventLogger.Log: {message}");
                 _diagnosticEventRepository.AddDiagnosticEvent(DateTime.UtcNow, stateInfo[ErrorCode].ToString(), logLevel, message, stateInfo[HelpLink].ToString(), exception);
             }
         }
