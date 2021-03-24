@@ -141,8 +141,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Equal(1, allowedDirectories.Count);
         }
 
+        /// <summary>
+        /// Verify if the list of valid directories being used matches those specified in AppSetting.
+        /// The directory is not already there, it should be created.
+        /// </summary>
         [Fact]
-        public void Verify_ValidDirectories_Unix()
+        public void Verify_Single_NonExistent_ValidDirectory_Via_AppSetting_Unix()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -153,7 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
             MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
 
-            // Test with a single allowed directory specified in the AppSetting; this should override the default
             string directory = "/tmp/shm";
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
 
@@ -162,22 +165,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Contains(expectedDirectory, validDirectories);
             Assert.Equal(1, validDirectories.Count);
 
-            // The directory was already there, ensure that MemoryMappedFileAccessor cleaned it and created a new one
-            directory = "/tmp/shm1";
+            // Cleanup
+            Directory.Delete(expectedDirectory);
+        }
+
+        /// <summary>
+        /// Verify if the list of valid directories being used matches those specified in AppSetting.
+        /// The directory is already there, it should be cleaned up and a new one created.
+        /// </summary>
+        [Fact]
+        public void Verify_Single_AlreadyExistent_ValidDirectory_Via_AppSetting_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string directory = "/tmp/shm1";
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
 
+            // The directory should already be there before MemoryMappedFileAccessor checks for it
             string directoryWithSuffix = $"{directory}/{SharedMemoryConstants.TempDirSuffix}";
             DirectoryInfo dirInfo = Directory.CreateDirectory(directoryWithSuffix);
             DateTime oldCreationTime = dirInfo.CreationTimeUtc;
 
-            validDirectories = mapAccessor.GetValidDirectories();
-            expectedDirectory = $"{directory}/{SharedMemoryConstants.TempDirSuffix}";
-            Assert.Contains(expectedDirectory, validDirectories);
+            List<string> validDirectories = mapAccessor.GetValidDirectories();
+            Assert.Contains(directoryWithSuffix, validDirectories);
             Assert.Equal(1, validDirectories.Count);
 
             // Now check if MemoryMappedFileAccessor had cleaned and created the directory again
             DateTime newCreationTime = new DirectoryInfo(directory).CreationTimeUtc;
             Assert.True(newCreationTime > oldCreationTime);
+
+            // Cleanup
+            Directory.Delete(directoryWithSuffix);
         }
 
         /// <summary>
