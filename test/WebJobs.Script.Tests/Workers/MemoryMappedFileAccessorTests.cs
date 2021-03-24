@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -55,6 +57,72 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             string expectedDirectory = $"/tmp/shm/{SharedMemoryConstants.TempDirSuffix}";
             Assert.Single(mapAccessor.ValidDirectories);
             Assert.Contains(expectedDirectory, mapAccessor.ValidDirectories);
+        }
+
+        [Fact]
+        public void Verify_AllowedDirectories_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            // Test without setting the AppSetting; this should use the default
+            List<string> allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Equal(SharedMemoryConstants.TempDirs, allowedDirectories);
+
+            // Test with a single allowed directory specified in the AppSetting; this should override the default
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Contains(directory, allowedDirectories);
+            Assert.Equal(1, allowedDirectories.Count);
+
+            // Test with a list of allowed directories specified in the AppSetting; this should override the default
+            List<string> directories = new List<string>()
+            {
+                "/tmp/shm1",
+                "/tmp/shm2",
+                "/tmp/shm3",
+            };
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, string.Join(",", directories));
+
+            allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.All(allowedDirectories, (x) => allowedDirectories.Contains(x));
+            Assert.Equal(directories.Count, allowedDirectories.Count);
+
+            // Test with a list that does not have the right delimiter; it will be returned as a single directory
+            directory = "/tmp/shm-/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Contains(directory, allowedDirectories);
+            Assert.Equal(1, allowedDirectories.Count);
+        }
+
+        [Fact]
+        public void Verify_ValidDirectories_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            List<string> validDirectories = mapAccessor.GetValidDirectories();
+            Assert.Contains(directory, validDirectories);
+            Assert.Equal(1, validDirectories.Count);
         }
 
         /// <summary>

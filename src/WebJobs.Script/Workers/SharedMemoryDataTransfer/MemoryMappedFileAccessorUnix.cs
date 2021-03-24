@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// If one is specified, returns that list. Otherwise returns the default list.
         /// </summary>
         /// <returns>List of paths of directories where <see cref="MemoryMappedFile"/> are allowed to be created.</returns>
-        private List<string> GetAllowedDirectories()
+        internal List<string> GetAllowedDirectories()
         {
             string envVal = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories);
             if (string.IsNullOrEmpty(envVal))
@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// a list of those that are valid (i.e. exist, or have been successfully created).
         /// </summary>
         /// <returns>List of paths of directories where <see cref="MemoryMappedFile"/> can be created.</returns>
-        private List<string> GetValidDirectories()
+        internal List<string> GetValidDirectories()
         {
             List<string> allowedDirectories = GetAllowedDirectories();
             List<string> validDirectories = new List<string>();
@@ -167,30 +167,40 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 string path = Path.Combine(directory, SharedMemoryConstants.TempDirSuffix);
                 if (Directory.Exists(path))
                 {
-                    Logger.LogInformation("Found directory for shared memory usage: {Directory}", path);
-                    validDirectories.Add(path);
-                }
-                else
-                {
+                    // If the directory already exists (maybe from a previous run of the host) then clean it up and start afresh
+                    Logger.LogTrace("Found directory for shared memory usage: {Directory}", path);
                     try
                     {
-                        DirectoryInfo info = Directory.CreateDirectory(path);
-                        if (info.Exists)
-                        {
-                            validDirectories.Add(path);
-                        }
-                        else
-                        {
-                            Logger.LogWarning("Cannot create directory for shared memory usage: {Directory}", path);
-                        }
+                        Directory.Delete(path);
+                        validDirectories.Add(path);
+                        Logger.LogTrace("Cleaned up existing directory for shared memory usage: {Directory}", path);
                     }
                     catch (Exception exception)
                     {
-                        Logger.LogWarning(exception, "Cannot create directory for shared memory usage: {Directory}", path);
+                        Logger.LogWarning(exception, "Cannot delete existing directory for shared memory usage: {Directory}", path);
                     }
+                }
+
+                try
+                {
+                    DirectoryInfo info = Directory.CreateDirectory(path);
+                    if (info.Exists)
+                    {
+                        validDirectories.Add(path);
+                        Logger.LogTrace("Created directory for shared memory usage: {Directory}", path);
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Cannot create directory for shared memory usage: {Directory}", path);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Logger.LogWarning(exception, "Cannot create directory for shared memory usage: {Directory}", path);
                 }
             }
 
+            Logger.LogDebug("Valid directories for shared memory usage: {Directories}", validDirectories);
             return validDirectories;
         }
 
