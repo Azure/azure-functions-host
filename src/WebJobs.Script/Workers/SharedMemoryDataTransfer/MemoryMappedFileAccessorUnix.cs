@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                     {
                         // If the directory already exists (maybe from a previous run of the host) then clean it up and start afresh
                         // The previously created memory maps in that directory are not needed and we need to should clean up the memory
-                        Directory.Delete(path);
+                        Directory.Delete(path, recursive: true);
                         Logger.LogTrace("Cleaned up existing directory for shared memory usage: {Directory}", path);
                     }
                     catch (Exception exception)

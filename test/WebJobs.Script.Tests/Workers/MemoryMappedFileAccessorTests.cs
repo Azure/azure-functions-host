@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.Equal(1, validDirectories.Count);
 
             // Cleanup
-            Directory.Delete(expectedDirectory);
+            Directory.Delete(expectedDirectory, recursive: true);
         }
 
         /// <summary>
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             Assert.True(newCreationTime > oldCreationTime);
 
             // Cleanup
-            Directory.Delete(directoryWithSuffix);
+            Directory.Delete(directoryWithSuffix, recursive: true);
         }
 
         /// <summary>
