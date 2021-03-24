@@ -7,6 +7,7 @@ using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -192,6 +193,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             string directoryWithSuffix = $"{directory}/{SharedMemoryConstants.TempDirSuffix}";
             DirectoryInfo dirInfo = Directory.CreateDirectory(directoryWithSuffix);
             DateTime oldCreationTime = dirInfo.CreationTimeUtc;
+
+            // Sleep for 10ms so that the timestamp on when we created the directory above and when MemoryMappedFileAccessor creates the directory has significant difference.
+            // This will make it possible to check if the directory was created again by MemoryMappedFileAccessor by comparing the timestamps.
+            Thread.Sleep(10);
 
             List<string> validDirectories = mapAccessor.GetValidDirectories();
             Assert.Contains(directoryWithSuffix, validDirectories);
