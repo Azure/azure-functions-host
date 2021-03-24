@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _resetTimer = new Timer()
             {
                 AutoReset = true,
-                Interval = 600 * 1000, // 10 mins
+                Interval = 60 * 1000, // 10 mins
                 Enabled = true
             };
 
@@ -54,6 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         var tableClientConfig = new TableClientConfiguration();
                         _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
+                        Console.WriteLine("**** table client initialized");
                     }
                 }
                 return _tableClient;
@@ -67,8 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 string tableName = NormalizedTableName(_appServiceOptions.CurrentValue.AppName);
                 CloudTable table = TableClient.GetTableReference(tableName);
                 table.CreateIfNotExists();
-                _logger.LogInformation("Diagnostic table name set to {name}", tableName);
+                _logger.LogInformation("Diagnostic table name set to {tableName}", tableName);
                 _logTable = table;
+                Console.WriteLine("**** logtable client initialized");
+                Console.WriteLine($"**** logtable name:{tableName}");
             }
 
             return _logTable;
@@ -81,11 +84,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void FlushLogs()
         {
-            var table = GetLogTable();
+            Console.WriteLine("**** Flush logs called");
             try
             {
+                var table = GetLogTable();
                 foreach (string errorCode in _events.Keys)
                 {
+                    Console.WriteLine($"**** Inserting:{errorCode}, Hitcount:{_events[errorCode].HitCount}");
                     TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
                     TableResult result = table.Execute(insertOperation);
                     _events.Remove(errorCode, out DiagnosticEvent diagnosticEvent);
@@ -115,6 +120,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 a.LastTimeStamp = timestamp;
                 return a;
             });
+
+            Console.WriteLine($"**** Recording:{diagnosticEvent.ErrorCode}, Hitcount:{diagnosticEvent.HitCount}");
         }
 
         private static string NormalizedTableName(string appName)
