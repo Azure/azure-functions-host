@@ -167,12 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 string path = Path.Combine(directory, SharedMemoryConstants.TempDirSuffix);
                 if (Directory.Exists(path))
                 {
-                    // If the directory already exists (maybe from a previous run of the host) then clean it up and start afresh
                     Logger.LogTrace("Found directory for shared memory usage: {Directory}", path);
                     try
                     {
+                        // If the directory already exists (maybe from a previous run of the host) then clean it up and start afresh
+                        // The previously created memory maps in that directory are not needed and we need to should clean up the memory
                         Directory.Delete(path);
-                        validDirectories.Add(path);
                         Logger.LogTrace("Cleaned up existing directory for shared memory usage: {Directory}", path);
                     }
                     catch (Exception exception)
