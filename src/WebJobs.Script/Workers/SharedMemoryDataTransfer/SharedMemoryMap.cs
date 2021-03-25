@@ -195,6 +195,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public async Task<byte[]> CopyStreamAsync(int offset, int count)
         {
             Stream contentStream = await GetStreamAsync();
+            if (contentStream == null)
+            {
+                _logger.LogError("Cannot get stream for shared memory map: {MapName}", _mapName);
+                return null;
+            }
+
             int contentLength = (int)contentStream.Length;
             if (contentLength == 0)
             {

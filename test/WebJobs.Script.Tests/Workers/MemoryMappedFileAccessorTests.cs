@@ -2,8 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,11 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     /// </summary>
     public class MemoryMappedFileAccessorTests
     {
+        private readonly IEnvironment _testEnvironment;
         private readonly IMemoryMappedFileAccessor _mapAccessor;
 
         public MemoryMappedFileAccessorTests()
         {
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            _testEnvironment = new TestEnvironment();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -29,8 +36,178 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
             }
+        }
+
+        /// <summary>
+        /// Verify that when the AppSetting is specified, the directory used for shared memory is picked from the AppSetting and the default is not used.
+        /// </summary>
+        [Fact]
+        public void Use_AppSetting_Directory_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string expectedDirectory = $"/tmp/shm/{SharedMemoryConstants.TempDirSuffix}";
+            Assert.Single(mapAccessor.ValidDirectories);
+            Assert.Contains(expectedDirectory, mapAccessor.ValidDirectories);
+        }
+
+        /// <summary>
+        /// Test the allowed directories for shared memory without setting the AppSetting; this should use the default.
+        /// </summary>
+        [Fact]
+        public void Verify_AllowedDirectory_Default_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            List<string> allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Equal(SharedMemoryConstants.TempDirs, allowedDirectories);
+        }
+
+        /// <summary>
+        /// Test the allowed directories for shared memory with a single allowed directory specified in the AppSetting; this should override the default.
+        /// </summary>
+        [Fact]
+        public void Verify_Single_AllowedDirectory_Via_AppSetting_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            List<string> allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Contains(directory, allowedDirectories);
+            Assert.Equal(1, allowedDirectories.Count);
+        }
+
+        /// <summary>
+        /// Test the allowed directories for shared memory with a list of allowed directories specified in the AppSetting; this should override the default.
+        /// </summary>
+        [Fact]
+        public void Verify_Multiple_AllowedDirectories_Via_AppSetting_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            List<string> directories = new List<string>()
+            {
+                "/tmp/shm1",
+                "/tmp/shm2",
+                "/tmp/shm3",
+            };
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, string.Join(",", directories));
+
+            List<string> allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.All(allowedDirectories, (x) => allowedDirectories.Contains(x));
+            Assert.Equal(directories.Count, allowedDirectories.Count);
+
+            // Test with a list that does not have the right delimiter; it will be returned as a single directory
+            string directory = "/tmp/shm-/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            allowedDirectories = mapAccessor.GetAllowedDirectories();
+            Assert.Contains(directory, allowedDirectories);
+            Assert.Equal(1, allowedDirectories.Count);
+        }
+
+        /// <summary>
+        /// Verify if the list of valid directories being used matches those specified in AppSetting.
+        /// The directory is not already there, it should be created.
+        /// </summary>
+        [Fact]
+        public void Verify_Single_NonExistent_ValidDirectory_Via_AppSetting_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string directory = "/tmp/shm";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            List<string> validDirectories = mapAccessor.GetValidDirectories();
+            string expectedDirectory = $"{directory}/{SharedMemoryConstants.TempDirSuffix}";
+            Assert.Contains(expectedDirectory, validDirectories);
+            Assert.Equal(1, validDirectories.Count);
+
+            // Cleanup
+            Directory.Delete(expectedDirectory, recursive: true);
+        }
+
+        /// <summary>
+        /// Verify if the list of valid directories being used matches those specified in AppSetting.
+        /// The directory is already there, it should be cleaned up and a new one created.
+        /// </summary>
+        [Fact]
+        public void Verify_Single_AlreadyExistent_ValidDirectory_Via_AppSetting_Unix()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            IEnvironment testEnv = new TestEnvironment();
+            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            MemoryMappedFileAccessorUnix mapAccessor = new MemoryMappedFileAccessorUnix(logger, testEnv);
+
+            string directory = "/tmp/shm1";
+            testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsUnixSharedMemoryDirectories, directory);
+
+            // The directory should already be there before MemoryMappedFileAccessor checks for it
+            string directoryWithSuffix = $"{directory}/{SharedMemoryConstants.TempDirSuffix}";
+            DirectoryInfo dirInfo = Directory.CreateDirectory(directoryWithSuffix);
+            DateTime oldCreationTime = dirInfo.CreationTimeUtc;
+
+            // Sleep for 10ms so that the timestamp on when we created the directory above and when MemoryMappedFileAccessor creates the directory has significant difference.
+            // This will make it possible to check if the directory was created again by MemoryMappedFileAccessor by comparing the timestamps.
+            Thread.Sleep(10);
+
+            List<string> validDirectories = mapAccessor.GetValidDirectories();
+            Assert.Contains(directoryWithSuffix, validDirectories);
+            Assert.Equal(1, validDirectories.Count);
+
+            // Now check if MemoryMappedFileAccessor had cleaned and created the directory again
+            DateTime newCreationTime = new DirectoryInfo(directory).CreationTimeUtc;
+            Assert.True(newCreationTime > oldCreationTime);
+
+            // Cleanup
+            Directory.Delete(directoryWithSuffix, recursive: true);
         }
 
         /// <summary>

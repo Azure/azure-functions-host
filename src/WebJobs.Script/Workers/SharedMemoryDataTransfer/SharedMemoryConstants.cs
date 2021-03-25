@@ -33,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <summary>
         /// Minimum size (in number of bytes) an object must be in order for it to be transferred over shared memory.
         /// If the object is smaller than this, gRPC is used.
+        /// Note: This needs to be consistent among the host and workers.
+        ///       e.g. in the Python worker, it is defined in shared_memory_constants.py
         /// </summary>
         public const long MinObjectBytesForSharedMemoryTransfer = 1024 * 1024; // 1 MB
 
@@ -40,6 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// Maximum size (in number of bytes) an object can be in order for it to be transferred over shared memory.
         /// This limit is imposed because initializing objects like <see cref="byte[]"/> greater than 2GB is not allowed.
         /// Ref: https://stackoverflow.com/a/3944336/3132415
+        /// Note: This needs to be consistent among the host and workers.
+        ///       e.g. in the Python worker, it is defined in shared_memory_constants.py
         /// </summary>
         public const long MaxObjectBytesForSharedMemoryTransfer = ((long)2 * 1024 * 1024 * 1024) - 1; // 2 GB
 
