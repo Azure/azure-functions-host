@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                     }
                     else
                     {
-                        Logger.LogWarning("Cannot create directory for shared memory usage: {Directory}", path);
+                        Logger.LogWarning("Directory for shared memory usage does not exist: {Directory}", path);
                     }
                 }
                 catch (Exception exception)
@@ -200,7 +200,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 }
             }
 
-            Logger.LogDebug("Valid directories for shared memory usage: {Directories}", validDirectories);
+            Logger.LogDebug("Valid directories for shared memory usage: {Directories}", string.Join(",", validDirectories));
             return validDirectories;
         }
 
