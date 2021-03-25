@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public static IWebHostBuilder CreateWebHostBuilder(string[] args = null)
         {
-            Console.WriteLine("Build test");
+            Console.WriteLine("Build test 2");
 
             return AspNetCore.WebHost.CreateDefaultBuilder(args)
                 .ConfigureKestrel(o =>

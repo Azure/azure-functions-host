@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     {
                         var tableClientConfig = new TableClientConfiguration();
                         _tableClient = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
+                        Console.WriteLine("**** DiagnosticEventTableStorageRepository:table client initialized");
                     }
                 }
                 return _tableClient;
@@ -66,6 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 CloudTable table = TableClient.GetTableReference(tableName);
                 table.CreateIfNotExists();
                 _logTable = table;
+                Console.WriteLine("**** DiagnosticEventTableStorageRepository:logtable client initialized");
+                Console.WriteLine($"**** DiagnosticEventTableStorageRepository:logtable name:{tableName}");
             }
 
             return _logTable;
@@ -78,9 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void FlushLogs()
         {
+            Console.WriteLine("**** FlushLogs:Flush logs called");
             var table = GetLogTable();
             foreach (string errorCode in _events.Keys)
             {
+                Console.WriteLine($"**** Write to table storage:{errorCode}, Hitcount:{_events[errorCode].HitCount}");
                 TableOperation insertOperation = TableOperation.Insert(_events[errorCode]);
                 TableResult result = table.Execute(insertOperation);
                 _events.TryRemove(errorCode, out DiagnosticEvent diagnosticEvent);
@@ -103,6 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 a.HitCount++;
                 a.LastTimeStamp = timestamp;
+                Console.WriteLine($"**** AddDiagnosticEvent:{a.ErrorCode}, Hitcount:{a.HitCount}");
                 return a;
             });
         }

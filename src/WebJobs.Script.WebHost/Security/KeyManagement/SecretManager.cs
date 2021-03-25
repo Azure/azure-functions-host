@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             }
 
+            Console.WriteLine($"*************** ${_hostSecrets.MasterKey}");
             return _hostSecrets;
         }
 
