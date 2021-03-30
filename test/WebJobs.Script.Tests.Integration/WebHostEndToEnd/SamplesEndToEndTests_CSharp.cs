@@ -822,6 +822,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_StaticWebAppBringYourOwnIdentity_Identities_AnonymousAccessSucceeds()
+        {
+            var vars = new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { "WEBSITE_AUTH_ENABLED", "TRUE"}
+            };
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
+            {
+                string uri = $"api/httptrigger-identities";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                MockStaticWebAppBringYourOwnFunctions(request, "facebook", "Connor McMahon", "10241897674253170", new string[] { "role1", "anonymous", "authenticated" });
+
+                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                string[] identityStrings = StripBookendQuotations(responseContent).Split(';');
+                Assert.Equal("Identity: (facebook, Connor McMahon, 10241897674253170)", identityStrings[0]);
+            }
+        }
+
+        [Fact]
         public async Task HttpTrigger_Identities_BlocksSpoofedEasyAuthIdentity()
         {
             var vars = new Dictionary<string, string>
@@ -920,6 +943,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
   ],
   ""name_typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
   ""role_typ"": ""http://schemas.microsoft.com/ws/2008/06/identity/claims/role""
+}";
+            string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
+            request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
+        }
+
+        internal static void MockStaticWebAppBringYourOwnFunctions(HttpRequestMessage request, string provider, string name, string id, string[] roles)
+        {
+            string rolesString = $"[{string.Join(",", roles.Select(role => $"\"{role}\""))}]";
+            string userIdentityJson = @"{
+  ""identityProvider"": """ + provider + @""",
+  ""userId"": """ + id + @""",
+  ""userDetails"": """ + name + @""",
+  ""userRoles"": " + rolesString + @"
 }";
             string easyAuthHeaderValue = Convert.ToBase64String(Encoding.UTF8.GetBytes(userIdentityJson));
             request.Headers.Add("x-ms-client-principal", easyAuthHeaderValue);
