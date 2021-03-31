@@ -236,7 +236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
-            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>( () => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
+            var resultEx1 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
             Assert.Contains("ProcessCount must be greater than 0", resultEx1.Message);
 
             processCount["ProcessCount"] = 40;
