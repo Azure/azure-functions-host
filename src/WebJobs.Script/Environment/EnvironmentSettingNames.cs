@@ -120,5 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresComputerName = "COMPUTERNAME";
 
         public const string AppKind = "APP_KIND";
+
+        public const string DrainOnApplicationStopping = "DRAIN_ON_APP_STOPPING";
     }
 }

@@ -11,6 +11,7 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -693,6 +694,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _applicationLifetime.ApplicationStopping.Register(() =>
             {
                 Interlocked.Exchange(ref _applicationStopping, 1);
+                if (_environment.IsDrainOnApplicationStopping())
+                {
+                    var drainModeManager = _host?.Services.GetService<IDrainModeManager>();
+                    if (drainModeManager != null)
+                    {
+                        _logger.LogInformation("Application Stopping: enabling drain mode");
+                        drainModeManager.EnableDrainModeAsync(CancellationToken.None).Wait();
+                    }
+                    _logger.LogInformation("Draining completed");
+                }
             });
 
             _applicationLifetime.ApplicationStopped.Register(() =>
