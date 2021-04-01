@@ -22,8 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
     {
         private readonly ILogger _logger;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IFileSystemManager _fileSystemManager;
 
-        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public HostJsonFileConfigurationSource(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory,
+            IMetricsLogger metricsLogger, IFileSystemManager fileSystemManager)
         {
             if (loggerFactory == null)
             {
@@ -34,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             Environment = environment;
             _metricsLogger = metricsLogger;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _fileSystemManager = fileSystemManager;
         }
 
         public ScriptApplicationHostOptions HostOptions { get; }
@@ -228,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 var hostJsonJObj = JObject.Parse("{'version': '2.0'}");
                 if (string.Equals(_configurationSource.Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell", StringComparison.InvariantCultureIgnoreCase)
-                    && !_configurationSource.Environment.IsFileSystemReadOnly())
+                    && !_configurationSource._fileSystemManager.IsFileSystemReadOnly())
                 {
                     hostJsonJObj.Add("managedDependency", JToken.Parse("{'Enabled': true}"));
                 }
@@ -238,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private void TryWriteHostJson(string filePath, JObject content)
             {
-                if (!_configurationSource.Environment.IsFileSystemReadOnly())
+                if (!_configurationSource._fileSystemManager.IsFileSystemReadOnly())
                 {
                     try
                     {
@@ -257,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             private JObject TryAddBundleConfiguration(JObject content, string bundleId)
             {
-                if (!_configurationSource.Environment.IsFileSystemReadOnly())
+                if (!_configurationSource._fileSystemManager.IsFileSystemReadOnly())
                 {
                     string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '[2.*, 3.0.0)'}";
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));

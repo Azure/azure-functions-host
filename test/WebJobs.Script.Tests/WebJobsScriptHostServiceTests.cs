@@ -38,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private OptionsWrapper<HostHealthMonitorOptions> _healthMonitorOptions;
         private HostPerformanceManager _hostPerformanceManager;
         private Mock<IHost> _host;
+        private IFileSystemManager _fileSystemManager = new TestFileSystemManager();
 
         public WebJobsScriptHostServiceTests()
         {
@@ -109,7 +110,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-                new Mock<IApplicationLifetime>().Object, _mockConfig);
+                new Mock<IApplicationLifetime>().Object, _mockConfig,
+                _fileSystemManager);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -137,7 +139,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig);
+                _mockConfig,
+                _fileSystemManager);
 
             await _hostService.StartAsync(CancellationToken.None);
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
@@ -192,7 +195,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig);
+                _mockConfig,
+                _fileSystemManager);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
             TestLoggerProvider hostBLogger = hostB.Object.GetTestLoggerProvider();
@@ -268,7 +272,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions,
                 metricsLogger, new Mock<IApplicationLifetime>().Object,
-                _mockConfig);
+                _mockConfig,
+                _fileSystemManager);
 
             TestLoggerProvider hostALogger = hostA.Object.GetTestLoggerProvider();
 
@@ -337,7 +342,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-               new Mock<IApplicationLifetime>().Object, _mockConfig);
+               new Mock<IApplicationLifetime>().Object, _mockConfig,
+               _fileSystemManager);
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
 
@@ -369,7 +375,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                _monitor, hostBuilder.Object, _loggerFactory,
                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-               new Mock<IApplicationLifetime>().Object, _mockConfig);
+               new Mock<IApplicationLifetime>().Object, _mockConfig,
+               _fileSystemManager);
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
             // can happen before we ever start the service, which could create invalid state.
@@ -424,7 +431,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
                 _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
                 _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-                new Mock<IApplicationLifetime>().Object, config);
+                new Mock<IApplicationLifetime>().Object, config,
+                _fileSystemManager);
 
             Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
         }

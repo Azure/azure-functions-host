@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -14,20 +15,23 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IEnvironment _environment;
         private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
+        private readonly IFileSystemManager _fileSystemManager;
 
         public FuncAppFileProvisioningService(
             IEnvironment environment,
             IOptionsMonitor<ScriptApplicationHostOptions> options,
-            IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory)
+            IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory,
+            IFileSystemManager fileSystemManager)
         {
             _environment = environment;
             _options = options;
             _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
+            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (!_environment.IsFileSystemReadOnly())
+            if (!_fileSystemManager.IsFileSystemReadOnly())
             {
                 var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName));
                 if (funcAppFileProvisioner != null)

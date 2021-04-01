@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly Mock<IFunctionsSyncManager> _functionsSyncManager;
         private readonly Mock<IExtensionBundleManager> _extensionBundleManager;
+        private readonly IFileSystemManager _fileSystemManager;
         private readonly Mock<HostPerformanceManager> _mockHostPerformanceManager;
         private readonly HostHealthMonitorOptions _hostHealthMonitorOptions;
 
@@ -49,12 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockScriptHostManager.SetupGet(p => p.State).Returns(ScriptHostState.Running);
             _functionsSyncManager = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             _extensionBundleManager = new Mock<IExtensionBundleManager>(MockBehavior.Strict);
+            _fileSystemManager = new TestFileSystemManager(_mockEnvironment.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostHealthMonitorOptions = new HostHealthMonitorOptions();
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_hostHealthMonitorOptions);
             _mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object, null);
-            _hostController = new HostController(optionsWrapper, loggerFactory, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _mockHostPerformanceManager.Object);
+            _hostController = new HostController(optionsWrapper, loggerFactory, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _mockHostPerformanceManager.Object, _fileSystemManager);
 
             _appOfflineFilePath = Path.Combine(_scriptPath, ScriptConstants.AppOfflineFileName);
             if (File.Exists(_appOfflineFilePath))

@@ -58,7 +58,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 bashCommandHandler, zipHandler, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+<<<<<<< HEAD
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+=======
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                new TestFileSystemManager());
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
 
             InstanceManager.Reset();
         }
@@ -339,6 +344,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 environment.SetEnvironmentVariable(key, value);
             }
 
+            var fileSystemManager = new TestFileSystemManager(); // add environment here
+
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -356,7 +363,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
+<<<<<<< HEAD
                 new TestMetricsLogger(), null, _runFromPackageHandler);
+=======
+                new TestMetricsLogger(), null, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
 
             var assignmentContext = new HostAssignmentContext
             {
@@ -652,6 +663,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task Mounts_Valid_BYOS_Accounts()
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var fileSystemManager = new TestFileSystemManager();
 
             const string account1 = "storageaccount1";
             const string share1 = "share1";
@@ -693,7 +705,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+<<<<<<< HEAD
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
+=======
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -714,6 +730,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task Does_Not_Mount_Invalid_BYOS_Accounts()
         {
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+
+            var fileSystemManager = new TestFileSystemManager();
 
             const string account1 = "storageaccount1";
             const string share1 = "share1";
@@ -745,7 +763,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+<<<<<<< HEAD
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
+=======
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -1125,7 +1147,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             InstanceManager.Reset();
 
             return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment,
+<<<<<<< HEAD
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshServiceClient, _runFromPackageHandler);
+=======
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshServiceClient, new TestFileSystemManager());
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
         }
 
         public void Dispose()

@@ -25,12 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IFileSystemManager _fileSystemManager;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory,
+            IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger,
+            IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IFileSystemManager fileSystemManager)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -43,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
+            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
         }
 
         public Task<IRpcWorkerChannel> InitializeChannelAsync(string runtime)
@@ -138,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Use if readonly and not v2 compatible on ~3 extension
-                    return _environment.IsFileSystemReadOnly() && !_environment.IsV2CompatibileOnV3Extension();
+                    return _fileSystemManager.IsFileSystemReadOnly() && !_environment.IsV2CompatibileOnV3Extension();
                 }
                 return true;
             }

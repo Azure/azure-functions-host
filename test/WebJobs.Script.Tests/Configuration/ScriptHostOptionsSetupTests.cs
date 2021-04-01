@@ -348,7 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = builder.Build();
 
-            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
+            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), new TestFileSystemManager());
         }
     }
 }

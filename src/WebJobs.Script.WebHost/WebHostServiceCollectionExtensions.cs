@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddLinuxContainerServices();
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
-            // broader configuaration changes are made:
+            // broader configuration changes are made:
             services.AddSingleton<ScriptSettingsManager>();
             services.AddSingleton<IEventGenerator>(p =>
             {
@@ -147,6 +147,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Grpc
             services.AddGrpc();
+
+            // File system
+            services.AddSingleton<IFileSystemManager, FileSystemManager>();
 
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService

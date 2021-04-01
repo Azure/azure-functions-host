@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
+        private readonly IFileSystemManager _fileSystemManager;
 
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
+            IFileSystemManager fileSystemManager,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -149,6 +151,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     HandleHostError(evt.Exception);
                 }));
+
+            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
         }
 
         public event EventHandler HostInitializing;
@@ -439,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 FileUtility.EnsureDirectoryExists(_hostLogPath);
             }
 
-            if (!_environment.IsFileSystemReadOnly())
+            if (!_fileSystemManager.IsFileSystemReadOnly())
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }

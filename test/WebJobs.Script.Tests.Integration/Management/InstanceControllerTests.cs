@@ -43,6 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
+            var fileSystemManager = new TestFileSystemManager(environment);
+
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -58,9 +60,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.BadRequest
                 });
 
+<<<<<<< HEAD
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+=======
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -161,6 +168,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
+            var fileSystemManager = new TestFileSystemManager(environment);
+
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -176,9 +185,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
+<<<<<<< HEAD
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+=======
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -215,6 +229,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
+            var fileSystemManager = new TestFileSystemManager(environment);
+
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -230,9 +246,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             StatusCode = HttpStatusCode.OK
             });
 
+<<<<<<< HEAD
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+=======
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
+>>>>>>> WIP; add IFileSystemManager service, tests still broken
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();

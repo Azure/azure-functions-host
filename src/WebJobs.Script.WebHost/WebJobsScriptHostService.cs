@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
+        private readonly IFileSystemManager _fileSystemManager;
 
         private IHost _host;
         private CancellationTokenSource _startupLoopTokenSource;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
-            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config)
+            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IFileSystemManager fileSystemManager)
         {
             if (loggerFactory == null)
             {
@@ -79,6 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -169,7 +171,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void CheckFileSystem()
         {
             // Shutdown if RunFromZipFailed
-            if (_environment.IsZipDeployment(validate: false))
+            if (_fileSystemManager.IsZipDeployment(validate: false))
             {
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
                 if (File.Exists(path))

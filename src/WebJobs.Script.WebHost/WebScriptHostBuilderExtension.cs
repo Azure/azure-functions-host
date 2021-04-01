@@ -35,6 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IDependencyValidator validator = rootServiceProvider.GetService<IDependencyValidator>();
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
+            IFileSystemManager fileSystemManager = rootServiceProvider.GetService<IFileSystemManager>();
 
             builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootScopeFactory, validator))
                 .ConfigureServices(services =>
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<AppServiceOptionsSetup>();
                     services.ConfigureOptions<HostEasyAuthOptionsSetup>();
                 })
-                .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
+                .AddScriptHost(webHostOptions, fileSystemManager, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     webJobsBuilder.AddAzureStorageCoreServices();
 
