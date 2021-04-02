@@ -219,5 +219,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
             Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount());
         }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("", null, false)]
+        [InlineData("", "", false)]
+        [InlineData("", "false", false)]
+        [InlineData("", "true", true)]
+        [InlineData("10.0.0.1", "", true)]
+        [InlineData("10.0.0.1", "true", true)]
+        [InlineData("10.0.0.1", "false", true)]
+        public void IsDrainOnApplicationStopping_ReturnsExpectedResult(string serviceHostValue, string drainOnStoppingValue, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(KubernetesServiceHost, serviceHostValue);
+            environment.SetEnvironmentVariable(DrainOnApplicationStopping, drainOnStoppingValue);
+            Assert.Equal(expected, environment.IsDrainOnApplicationStopping());
+        }
     }
 }
