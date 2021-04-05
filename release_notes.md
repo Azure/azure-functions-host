@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [1.2.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.0)
 - Updated Java Worker Version to [1.8.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.8.2-SNAPSHOT)
 - Skip external config validation if RuntimeDrivenScaling is enabled in Elastic Premium sku (#6542)
 - Re-added dependencies: Microsoft.Extensions.PlatformAbstractions and Microsoft.Extensions.DiagnosticAdapter
