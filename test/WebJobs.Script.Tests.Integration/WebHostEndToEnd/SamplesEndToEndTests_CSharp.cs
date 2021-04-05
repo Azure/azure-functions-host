@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             ExtensionPackageReferenceWithActions body = new ExtensionPackageReferenceWithActions();
             var jsonBody = JsonConvert.SerializeObject(body);
             var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, "admin/host/extensions/123");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, "admin/host/extensions");
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, _fixture.MasterKey);
             request.Content = content;
             HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
