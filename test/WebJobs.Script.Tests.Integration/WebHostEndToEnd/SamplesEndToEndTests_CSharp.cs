@@ -26,6 +26,7 @@ using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -95,6 +96,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             var cacheHeader = response.Headers.GetValues("Cache-Control").Single();
             Assert.Equal("no-store, no-cache", cacheHeader);
+        }
+
+        [Fact]
+        public async Task InstallExtensionsEnsureOldPathReturns404()
+        {
+            ExtensionPackageReferenceWithActions body = new ExtensionPackageReferenceWithActions();
+            var jsonBody = JsonConvert.SerializeObject(body);
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, "123");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, _fixture.MasterKey);
+            request.Content = content;
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task InstallExtensionTest()
+        {
+            ExtensionPackageReferenceWithActions body = new ExtensionPackageReferenceWithActions();
+            var jsonBody = JsonConvert.SerializeObject(body);
+            var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Put, "admin/host/extensions");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, _fixture.MasterKey);
+            request.Content = content;
+            HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         }
 
         [Fact]
