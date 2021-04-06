@@ -10,6 +10,7 @@
 - Set bundle v2.x as the default version
 - Fixed issue where multiple worker processes are started slower than expected (#7136)
 - Updated HTTP extension to [3.1.0](https://github.com/Azure/azure-webjobs-sdk-extensions/releases/tag/http-v3.1.0)
+- Enabled the use of OpenTelemetry.Net instrumentation library (#7253)
 
 **Release sprint:** Sprint 96
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+96%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+96%22+label%3Afeature+is%3Aclosed) ]
