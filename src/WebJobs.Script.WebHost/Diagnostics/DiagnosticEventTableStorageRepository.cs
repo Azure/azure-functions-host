@@ -206,5 +206,81 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
         }
+
+        public async Task<IEnumerable<DiagnosticEvent>> GetDiagnosticEvents(TimeSpan cutoffTime, DateTime? now = null)
+        {
+            string hostId = HostId;
+            CloudTable diagnosticsEventsTable = GetDiagnosticEventsTable();
+            now = now ?? DateTime.UtcNow;
+            var cuttoff = now.Value - cutoffTime;
+            var ticks = string.Format("{0:D19}", DateTime.MaxValue.Ticks - cuttoff.Ticks);
+
+            string partitionKey = $"{hostId}-{now:yyyyMMdd}";
+
+            string filter = TableQuery.CombineFilters(
+                TableQuery.GenerateFilterCondition(nameof(TableEntity.PartitionKey), QueryComparisons.Equal, partitionKey),
+                TableOperators.And,
+                TableQuery.GenerateFilterCondition(nameof(TableEntity.RowKey), QueryComparisons.LessThan, ticks));
+
+            var query = new TableQuery<DiagnosticEvent>().Where(filter);
+
+            var queryResults = await ExecuteQuerySafeAsync(diagnosticsEventsTable, query);
+
+            var groupResult = queryResults.GroupBy(d => d.ErrorCode, d => (d.HitCount, d.LastTimeStamp), (errorCode, obj) => new
+            {
+                Key = errorCode,
+                Sum = obj.Sum(de => de.HitCount),
+                MaxTimeStamp = obj.Max(de => de.LastTimeStamp)
+            });
+
+            var finalList = new List<DiagnosticEvent>();
+            foreach (var item in groupResult.Select(p => p.Key))
+            {
+                var firstEvent = queryResults.First(d => d.ErrorCode == item);
+                firstEvent.HitCount = groupResult.First(d => d.Key == item).Sum;
+                firstEvent.LastTimeStamp = groupResult.First(d => d.Key == item).MaxTimeStamp;
+                finalList.Add(firstEvent);
+            }
+            return finalList;
+        }
+
+        internal static async Task<IEnumerable<DiagnosticEvent>> ExecuteQuerySafeAsync(CloudTable diagnosticsEventsTable, TableQuery<DiagnosticEvent> query)
+        {
+            try
+            {
+                return await ExecuteQueryWithContinuationAsync(diagnosticsEventsTable, query);
+            }
+            catch (StorageException e)
+            {
+                throw e;
+            }
+        }
+
+        private static async Task<List<DiagnosticEvent>> ExecuteQueryWithContinuationAsync(CloudTable diagnosticsEventsTable, TableQuery<DiagnosticEvent> query)
+        {
+            List<DiagnosticEvent> results = new List<DiagnosticEvent>();
+            TableContinuationToken continuationToken = null;
+
+            do
+            {
+                var result = await diagnosticsEventsTable.ExecuteQuerySegmentedAsync<DiagnosticEvent>(query, continuationToken);
+                continuationToken = result.ContinuationToken;
+                results.AddRange(result.Results);
+            }
+            while (continuationToken != null);
+
+            return results;
+        }
+
+        //private static string GetHostId(string name, string slotName)
+        //{
+        //    string hostId = string.IsNullOrEmpty(slotName) ? name : $"{name}-{slotName}";
+        //    if (hostId.Length > 32)
+        //    {
+        //        hostId = hostId.Substring(0, 32);
+        //    }
+
+        //    return hostId?.ToLowerInvariant().TrimEnd('-');
+        //}
     }
 }
