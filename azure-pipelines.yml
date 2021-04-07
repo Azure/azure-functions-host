@@ -53,7 +53,7 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: "Build artifacts"
@@ -302,7 +302,7 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
@@ -322,7 +322,7 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:      
@@ -378,7 +378,7 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
   - task: UseNode@1
     inputs:

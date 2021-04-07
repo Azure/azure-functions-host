@@ -88,10 +88,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     secretsContent = await secretBlob.DownloadTextAsync();
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("read");
-                throw e;
+                throw;
             }
 
             return string.IsNullOrEmpty(secretsContent) ? null : ScriptSecretSerializer.DeserializeSecrets(type, secretsContent);
@@ -109,10 +109,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("write");
-                throw e;
+                throw;
             }
 
             string filePath = GetSecretsSentinelFilePath(type, functionName);
@@ -133,10 +133,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("write");
-                throw e;
+                throw;
             }
         }
 
@@ -156,10 +156,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 segmentResult = await Container.ListBlobsSegmentedAsync(string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()), null);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("list");
-                throw e;
+                throw;
             }
             return segmentResult.Results.Select(x => x.Uri.ToString()).ToArray();
         }

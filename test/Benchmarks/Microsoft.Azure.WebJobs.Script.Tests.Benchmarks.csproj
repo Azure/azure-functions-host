@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Benchmarks</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Benchmarks</RootNamespace>
   </PropertyGroup>

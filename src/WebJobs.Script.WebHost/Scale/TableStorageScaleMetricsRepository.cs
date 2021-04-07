@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         return;
                     }
 
-                    throw e;
+                    throw;
                 }
             }
         }
@@ -303,7 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     return Enumerable.Empty<DynamicTableEntity>();
                 }
 
-                throw e;
+                throw;
             }
         }
 

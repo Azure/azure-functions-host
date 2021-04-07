@@ -293,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)
         {
-            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
+            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
             var file = new FileInfo(path);
 

@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                AssemblyReport report = generator.ProduceReport(new Uri(assembly.CodeBase).LocalPath);
+                AssemblyReport report = generator.ProduceReport(new Uri(assembly.Location).LocalPath);
                 _logger.LogDebug(JsonConvert.SerializeObject(report));
                 reports.Add(report);
             }

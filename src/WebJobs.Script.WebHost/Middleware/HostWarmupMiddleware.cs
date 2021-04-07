@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
             var path = Path.Combine(
-                Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath),
+                Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath),
                 WarmUpConstants.PreJitFolderName, jitTraceFileName);
 
             var file = new FileInfo(path);

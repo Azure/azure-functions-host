@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         public void GetEntryPointSignature_BindsToExpectedMethod(string entryPointName, string methodName)
         {
             var testAssembly = typeof(TestFunction1).Assembly;
-            string assemblyPath = new Uri(testAssembly.CodeBase, UriKind.Absolute).LocalPath;
+            string assemblyPath = new Uri(testAssembly.Location, UriKind.Absolute).LocalPath;
             var compilation = new RawAssemblyCompilation(assemblyPath, entryPointName);
 
             FunctionSignature signature = compilation.GetEntryPointSignature(new FunctionEntryPointResolver(), testAssembly);
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet
         public void GetEntryPointSignature_PrefersStaticMethod()
         {
             var testAssembly = typeof(TestFunction1).Assembly;
-            string assemblyPath = new Uri(testAssembly.CodeBase, UriKind.Absolute).LocalPath;
+            string assemblyPath = new Uri(testAssembly.Location, UriKind.Absolute).LocalPath;
             var compilation = new RawAssemblyCompilation(assemblyPath, $"{typeof(TestFunction3).FullName}.{nameof(TestFunction3.Run)}");
 
             FunctionSignature signature = compilation.GetEntryPointSignature(new FunctionEntryPointResolver(), testAssembly);
