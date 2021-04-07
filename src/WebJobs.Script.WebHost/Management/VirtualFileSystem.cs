@@ -621,7 +621,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     CRTime = fileSysInfo.CreationTimeUtc,
                     Mime = mime,
                     Size = size,
-                    Href = (baseAddress + Uri.EscapeUriString(unescapedHref) + query).EscapeHashCharacter(),
+                    Href = (baseAddress + Uri.EscapeDataString(unescapedHref) + query).EscapeHashCharacter(),
                     Path = fileSysInfo.FullName
                 };
             }

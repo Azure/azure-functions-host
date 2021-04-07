@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() => _buildCount.CurrentCount == 1);
 
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0"); 
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, "powershell");
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName, "7");
 
@@ -288,12 +288,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
-        [Theory]
+        [Theory(Skip = "May not be needed")]
         [InlineData(WarmUpConstants.JitTraceFileName)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)
         {
-            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
+            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
             var file = new FileInfo(path);
 
@@ -301,10 +301,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
 
-            var failurePercentage = (double) failedPrepares / successfulPrepares * 100;
-            
+            var failurePercentage = (double)failedPrepares / successfulPrepares * 100;
+
             // using 1% as approximate number of allowed failures before we need to regenrate a new PGO file.
-            Assert.True( failurePercentage < 1.0 , $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
+            Assert.True(failurePercentage < 1.0, $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // request for triggering specialization.
                     s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
 
-                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>(); 
+                    s.AddSingleton<IScriptHostBuilder, PausingScriptHostBuilder>();
                 })
                 .ConfigureScriptHostServices(s =>
                 {

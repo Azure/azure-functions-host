@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
                         MTime = dir.LastWriteTimeUtc,
                         CRTime = dir.CreationTimeUtc,
                         Mime = "inode/shortcut",
-                        Href = baseAddress + Uri.EscapeUriString(SystemDriveFolder + VirtualFileSystem.UriSegmentSeparator) + query,
+                        Href = baseAddress + Uri.EscapeDataString(SystemDriveFolder + VirtualFileSystem.UriSegmentSeparator) + query,
                         Path = dir.FullName
                     };
                 }
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
                         MTime = dir.LastWriteTimeUtc,
                         CRTime = dir.CreationTimeUtc,
                         Mime = "inode/shortcut",
-                        Href = baseAddress + Uri.EscapeUriString(LocalSiteRootFolder + VirtualFileSystem.UriSegmentSeparator) + query,
+                        Href = baseAddress + Uri.EscapeDataString(LocalSiteRootFolder + VirtualFileSystem.UriSegmentSeparator) + query,
                         Path = dir.FullName
                     };
                 }
