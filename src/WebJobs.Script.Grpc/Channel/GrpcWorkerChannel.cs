@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ISharedMemoryManager _sharedMemoryManager;
+        private readonly IFunctionDataCache _functionDataCache;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -78,7 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
            int attemptCount,
            IEnvironment environment,
            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           ISharedMemoryManager sharedMemoryManager)
+           ISharedMemoryManager sharedMemoryManager,
+           IFunctionDataCache functionDataCache)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -90,6 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
+            _functionDataCache = functionDataCache;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -416,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager, _functionDataCache);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -511,19 +514,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
-                    // Free memory allocated by the host (for input bindings)
-                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
-                    {
-                        _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
-                    }
+                    // TODO check if the references held by the worker (since we are not sending the message to the worker to remove the maps) prevents the maps from being freed
+                    // TODO check the above for Windows and Linux both
 
-                    // List of shared memory maps that were produced by the worker (for output bindings)
-                    IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
-                    if (outputMaps.Count > 0)
-                    {
-                        // If this invocation was using any shared memory maps produced by the worker, close them to free memory
-                        SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
-                    }
+                    //// Free memory allocated by the host (for input bindings)
+                    //if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
+                    //{
+                    //    _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
+                    //}
+
+                    //// List of shared memory maps that were produced by the worker (for output bindings)
+                    //IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
+                    //if (outputMaps.Count > 0)
+                    //{
+                    //    // If this invocation was using any shared memory maps produced by the worker, close them to free memory
+                    //    SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
+                    //}
                 }
             }
         }

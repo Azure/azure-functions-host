@@ -4,6 +4,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
 {
     internal static class RpcSharedMemoryDataExtensions
     {
-        internal static async Task<RpcSharedMemory> ToRpcSharedMemoryAsync(this object value, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager)
+        internal static async Task<RpcSharedMemory> ToRpcSharedMemoryAsync(this object value, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache)
         {
             if (value == null)
             {
@@ -23,30 +24,63 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 return null;
             }
 
-            // Put the content into shared memory and get the name of the shared memory map written to
-            SharedMemoryMetadata putResponse = await sharedMemoryManager.PutObjectAsync(value);
-            if (putResponse == null)
+            SharedMemoryMetadata sharedMemoryMeta;
+            RpcDataType? dataType;
+
+            if (value is SharedMemoryMetadata)
             {
-                logger.LogTrace("Cannot write to shared memory for invocation id: {Id}", invocationId);
-                return null;
+                // Content was already present in shared memory (cache hit)
+                logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
+                sharedMemoryMeta = value as SharedMemoryMetadata;
+                dataType = RpcDataType.Bytes;
+            }
+            else
+            {
+                FunctionDataCacheKey cacheKey = null;
+                if (value is CachableObject)
+                {
+                    CachableObject cachableObj = value as CachableObject;
+                    cacheKey = cachableObj.CacheKey;
+                    value = cachableObj.Value;
+                }
+
+                // Put the content into shared memory and get the name of the shared memory map written to
+                sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(value);
+                if (sharedMemoryMeta == null)
+                {
+                    logger.LogTrace("Cannot write to shared memory for invocation id: {Id}", invocationId);
+                    return null;
+                }
+
+                if (cacheKey != null)
+                {
+                    if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta))
+                    {
+                        logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
+                    }
+                    else
+                    {
+                        logger.LogTrace("Cannot put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
+                    }
+                }
+
+                dataType = GetRpcDataType(value);
+                if (!dataType.HasValue)
+                {
+                    logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
+                    return null;
+                }
             }
 
             // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
-            sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, putResponse.Name);
-
-            RpcDataType? dataType = GetRpcDataType(value);
-            if (!dataType.HasValue)
-            {
-                logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
-                return null;
-            }
+            sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMeta.MemoryMapName);
 
             // Generate a response
             RpcSharedMemory sharedMem = new RpcSharedMemory()
             {
-                Name = putResponse.Name,
+                Name = sharedMemoryMeta.MemoryMapName,
                 Offset = 0,
-                Count = putResponse.Count,
+                Count = sharedMemoryMeta.Count,
                 Type = dataType.Value
             };
 

@@ -8,6 +8,7 @@ using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
@@ -71,7 +72,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         {
             if (objectType == typeof(byte[]))
             {
-                return await GetBytesAsync(mapName, offset, count);
+                object value = await GetBytesAsync(mapName, offset, count);
+                return new SharedMemoryObject(mapName, count, value);
             }
             else if (objectType == typeof(string))
             {
@@ -142,6 +144,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
                 _logger.LogTrace("Cannot transfer string over shared memory; size {Size} not supported", strBytes);
                 return false;
+            }
+            else if (input is SharedMemoryMetadata)
+            {
+                return true;
+            }
+            else if (input is CachableObject)
+            {
+                return true;
             }
 
             Type objType = input.GetType();
@@ -221,11 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
 
             // Respond back with metadata about the created and written shared memory map
-            SharedMemoryMetadata response = new SharedMemoryMetadata
-            {
-                Name = mapName,
-                Count = contentSize
-            };
+            SharedMemoryMetadata response = new SharedMemoryMetadata(mapName, contentSize);
             return response;
         }
 

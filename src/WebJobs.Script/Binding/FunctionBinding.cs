@@ -10,9 +10,12 @@ using System.IO;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -238,15 +241,43 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        // TODO do we need this instead of just sticking with BindStreamAsync and doing special handling
+        // inside ConverValueToStream and ConvertStreamToValue?
+        internal static async Task BindStreamCacheAwareAsync(BindingContext context, FileAccess access)
+        {
+            Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
+
+            if (access == FileAccess.Write)
+            {
+                ConvertValueToStream(context.Value, stream);
+            }
+            else
+            {
+                // Read the value into the context Value converting based on data type
+                object converted = context.Value;
+                ConvertStreamToValue(stream, context.DataType, ref converted);
+                context.Value = converted;
+            }
+        }
+
         public static void ConvertValueToStream(object value, Stream stream)
         {
             Stream valueStream = value as Stream;
             if (valueStream == null)
             {
+                // If the object is wrapped as a SharedMemoryObject, extract the inner value and
+                // use that value and its corresponding type for further conversion.
+                SharedMemoryObject sharedMemoryObject = value as SharedMemoryObject;
+                if (sharedMemoryObject != null)
+                {
+                    value = sharedMemoryObject.Value;
+                }
+
                 // Convert the value to bytes and write it
                 // to the stream
                 byte[] bytes = null;
                 Type type = value.GetType();
+
                 if (type == typeof(byte[]))
                 {
                     bytes = (byte[])value;
@@ -312,10 +343,34 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     break;
                 case DataType.Binary:
-                    using (MemoryStream ms = new MemoryStream())
+                    if (stream is FunctionDataCacheStream)
                     {
-                        stream.CopyTo(ms);
-                        converted = ms.ToArray();
+                        // TODO if the target type is Stream, we should read the shared memory content into it from here
+                        // TODO explain what is happening here
+                        FunctionDataCacheStream cacheStream = stream as FunctionDataCacheStream;
+                        converted = cacheStream.SharedMemoryMetadata;
+                        break;
+                    }
+                    else if (stream is CachableObjectStream)
+                    {
+                        // TODO explain what is happening here
+                        CachableObjectStream cachableObjStream = stream as CachableObjectStream;
+                        FunctionDataCacheKey cacheKey = cachableObjStream.CacheKey;
+
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            stream.CopyTo(ms);
+                            byte[] value = ms.ToArray();
+                            converted = new CachableObject(cacheKey, value);
+                        }
+                    }
+                    else
+                    {
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            stream.CopyTo(ms);
+                            converted = ms.ToArray();
+                        }
                     }
                     break;
                 case DataType.Stream:

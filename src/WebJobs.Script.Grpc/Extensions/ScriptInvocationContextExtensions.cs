@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class ScriptInvocationContextExtensions
     {
-        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled, ISharedMemoryManager sharedMemoryManager)
+        public static async Task<InvocationRequest> ToRpcInvocationRequest(this ScriptInvocationContext context, ILogger logger, GrpcCapabilities capabilities, bool isSharedMemoryDataTransferEnabled, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache)
         {
             bool excludeHttpTriggerMetadata = !string.IsNullOrEmpty(capabilities.GetCapabilityState(RpcWorkerConstants.RpcHttpTriggerMetadataRemoved));
 
@@ -45,6 +45,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 logBuilder = new StringBuilder();
             }
 
+            // @gochaudh
+            // TOOD here we check again if input object is CacheObject - if so, we craft the shared memory message accordingly
             foreach (var input in context.Inputs)
             {
                 RpcSharedMemory sharedMemValue = null;
@@ -54,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     // Try to transfer this data over shared memory instead of RPC
                     if (input.val == null || !sharedMemValueCache.TryGetValue(input.val, out sharedMemValue))
                     {
-                        sharedMemValue = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager);
+                        sharedMemValue = await input.val.ToRpcSharedMemoryAsync(logger, invocationRequest.InvocationId, sharedMemoryManager, functionDataCache);
                         if (input.val != null)
                         {
                             sharedMemValueCache.Add(input.val, sharedMemValue);
