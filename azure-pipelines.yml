@@ -55,6 +55,7 @@ jobs:
       packageType: 'sdk'
       version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -304,6 +305,7 @@ jobs:
       packageType: 'sdk'
       version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -324,6 +326,7 @@ jobs:
       packageType: 'sdk'
       version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: UseNode@1
     inputs:      
       version: '10.x'
@@ -380,6 +383,7 @@ jobs:
       packageType: 'sdk'
       version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: UseNode@1
     inputs:
       version: '10.x'
