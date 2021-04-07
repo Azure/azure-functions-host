@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
 
                     app.UseMiddleware<ExceptionMiddleware>();
 
-                    app.Use((context, next) =>
+                    app.Run((context) =>
                     {
                         return callback(context);
                     });

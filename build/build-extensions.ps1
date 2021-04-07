@@ -1,14 +1,27 @@
 param (
-  [string]$buildNumber = "0",
-  [string]$extensionVersion = "4.0.$buildNumber",  
+  [string]$buildNumber = "0",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
+$suffixCmd = ""
+if ($hasSuffix) {
+  $suffixCmd = "/p:VersionSuffix=$suffix"
+}
+
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
+
+# use the same logic as the projects to generate the site extension version
+$cmd = "build", "$rootDir\build\common.props", "/t:GenerateSiteExtensionVersion", "-restore:False", "-o", "$buildOutput", "/p:BuildNumber=$buildNumber",  "/p:CommitHash=$commitHash", $suffixCmd, "-v", "q", "--nologo", "-clp:NoSummary"
+& dotnet $cmd
+
+$versionTxt = "$rootDir\buildoutput\version.txt"
+$extensionVersion = Get-Content $versionTxt -First 1
+
+Write-Host "Found site extension version in '$versionTxt': $extensionVersion"
 
 $extensionVersionNoSuffix = $extensionVersion
 
@@ -42,18 +55,13 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $publishTarget = "$buildOutput\publish\$targetRid"
     $symbolsTarget = "$buildOutput\symbols\$targetRid"
 
-    $suffixCmd = ""
-    if ($hasSuffix) {
-      $suffixCmd = "/p:VersionSuffix=$suffix"
-    }
-
     $projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=false", "/p:PublishReadyToRunEmitSymbols=false", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -121,7 +129,7 @@ function CreateSiteExtensions() {
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
-    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -142,8 +150,8 @@ function CreateSiteExtensions() {
 
     Write-Host "======================================"
     Write-Host "Generating hashes for hard links"
-    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
-    Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersionNoSuffix"
+    WriteHashesFile $siteExtensionPath/$extensionVersion
+    Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersion"
     Write-Host "======================================"
     Write-Host
     
@@ -190,7 +198,7 @@ if (Test-Path $buildOutput) {
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
-BuildRuntime "win-x86" $true
-BuildRuntime "win-x64" $true
+BuildRuntime "win-x86"
+BuildRuntime "win-x64"
 
 CreateSiteExtensions
