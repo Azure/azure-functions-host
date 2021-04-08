@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
 
-                services.AddSingleton<ScheduleMonitor, StorageScheduleMonitor>();
+                services.AddSingleton<ScheduleMonitor, StorageScheduleMonitorV2>();
             });
 
             RegisterFileProvisioningService(builder);
