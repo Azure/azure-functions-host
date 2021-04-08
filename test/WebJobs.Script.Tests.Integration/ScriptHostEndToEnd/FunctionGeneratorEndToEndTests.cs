@@ -63,7 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureWebJobs(b =>
                 {
                     b.AddTimers()
-                    .AddAzureStorageCoreServices();
+                    .AddAzureStorageCoreServices()
+                    .AddAzureStorageV12CoreServices();
                 })
                 .ConfigureServices(s =>
                 {

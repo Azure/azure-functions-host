@@ -13,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     /// </summary>
     public sealed class BlobStorageSasSecretsRepository : BlobStorageSecretsRepository
     {
-        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment, HostStorageProvider hostStorageProvider)
-            : base(secretSentinelDirectoryPath, containerSasUri, siteSlotName, logger, environment, hostStorageProvider)
+        public BlobStorageSasSecretsRepository(string secretSentinelDirectoryPath, string containerSasUri, string siteSlotName, ILogger logger, IEnvironment environment, AzureStorageProvider azureStorageProvider)
+            : base(secretSentinelDirectoryPath, containerSasUri, siteSlotName, logger, environment, azureStorageProvider)
         {
         }
 

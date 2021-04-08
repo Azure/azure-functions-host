@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public static T GetAzureStorageService<T>(IConfiguration configuration)
         {
             var serviceCollection = new ServiceCollection();
-            serviceCollection.AddHostStorageProvider();
+            serviceCollection.AddAzureStorageProvider();
             serviceCollection.AddSingleton(configuration); // Override configuration
             ServiceProvider provider = serviceCollection.BuildServiceProvider();
             var service = provider.GetService<T>();

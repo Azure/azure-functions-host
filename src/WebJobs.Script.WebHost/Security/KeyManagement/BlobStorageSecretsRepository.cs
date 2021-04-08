@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnection;
-        private readonly HostStorageProvider _hostStorageProvider;
+        private readonly AzureStorageProvider _azureStorageProvider;
         private BlobContainerClient _blobContainerClient;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, HostStorageProvider hostStorageProvider)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, AzureStorageProvider azureStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
             if (secretSentinelDirectoryPath == null)
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
             _accountConnection = accountConnection;
-            _hostStorageProvider = hostStorageProvider;
+            _azureStorageProvider = azureStorageProvider;
         }
 
         private BlobContainerClient Container
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual BlobContainerClient CreateBlobContainerClient(string connectionString)
         {
-            if (_hostStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connectionString))
+            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connectionString))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
                 blobContainerClient.CreateIfNotExists();

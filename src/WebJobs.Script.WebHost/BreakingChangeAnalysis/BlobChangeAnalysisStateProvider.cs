@@ -21,19 +21,19 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
-        private readonly HostStorageProvider _hostStorageProvider;
+        private readonly AzureStorageProvider _azureStorageProvider;
 
-        public BlobChangeAnalysisStateProvider(IConfiguration configuration, IHostIdProvider hostIdProvider, ILogger<BlobChangeAnalysisStateProvider> logger, HostStorageProvider hostStorageProvider)
+        public BlobChangeAnalysisStateProvider(IConfiguration configuration, IHostIdProvider hostIdProvider, ILogger<BlobChangeAnalysisStateProvider> logger, AzureStorageProvider azureStorageProvider)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
             _logger = logger;
-            _hostStorageProvider = hostStorageProvider;
+            _azureStorageProvider = azureStorageProvider;
         }
 
         public async Task<ChangeAnalysisState> GetCurrentAsync(CancellationToken cancellationToken)
         {
-            if (!_hostStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
+            if (!_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
                 throw new InvalidOperationException($"The {nameof(BlobChangeAnalysisStateProvider)} requires the default storage account '{ConnectionStringNames.Storage}', which is not defined.");
             }

@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
 
-                      services.AddHostStorageProvider();
+                      services.AddAzureStorageProvider();
                   })
                 .ConfigureScriptHostWebJobsBuilder(scriptHostWebJobsBuilder =>
                 {
