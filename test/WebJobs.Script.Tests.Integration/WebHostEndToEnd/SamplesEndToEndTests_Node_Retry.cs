@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("invocationCount: 4", body);
+            Assert.Equal("retryCount: 4", body);
         }
 
         [Fact]
@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("invocationCount: 2", body);
+            Assert.Equal("retryCount: 2", body);
         }
 
         public class TestFixture : EndToEndTestFixture
