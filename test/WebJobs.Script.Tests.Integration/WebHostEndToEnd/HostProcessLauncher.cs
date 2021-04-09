@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         public async Task StartHostAsync()
         {
-            string workingDir = Path.GetFullPath(@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\netcoreapp3.1\");
+            string workingDir = Path.GetFullPath(@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\net6.0\");
             string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
 
             _process.StartInfo = new ProcessStartInfo
