@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -82,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
 
             outputHelper?.WriteLine($"  Env vars:");
-            foreach (var envVar in _process.StartInfo.Environment)
+            foreach (var envVar in _process.StartInfo.Environment.OrderBy(p => p.Key))
             {
                 outputHelper?.WriteLine($"    {envVar.Key}: {envVar.Value}");
             }
