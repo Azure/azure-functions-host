@@ -81,6 +81,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
                 _process.StartInfo.Environment.Add(envVar.Key, envVar.Value);
             }
 
+            outputHelper?.WriteLine($"  Env vars:");
+            foreach (var envVar in _process.StartInfo.Environment)
+            {
+                outputHelper?.WriteLine($"    {envVar.Key}: {envVar.Value}");
+            }
+
             _process.EnableRaisingEvents = true;
             _process.OutputDataReceived += Process_OutputDataReceived;
             _process.ErrorDataReceived += Process_ErrorDataReceived;
