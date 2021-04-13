@@ -71,11 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
                 });
 
-
             using (var host = builder.Build())
             {
-
-
                 await host.StartAsync();
                 await Task.Delay(3000);
                 await host.StopAsync();
