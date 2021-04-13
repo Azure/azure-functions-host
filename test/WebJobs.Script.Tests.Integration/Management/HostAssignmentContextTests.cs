@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
@@ -52,6 +53,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("storage2", byosEnvironmentVariables.First(env => env.Key == "AzureFilesStorage_storage2").Value);
             Assert.Equal("blob1", byosEnvironmentVariables.First(env => env.Key == "AZUREBLOBSTORAGE_blob1").Value);
             Assert.Equal("blob2", byosEnvironmentVariables.First(env => env.Key == "AzureBlobStorage_blob2").Value);
+        }
+
+        [Theory]
+        [InlineData("", "",  false)]
+        [InlineData("cs", "share",  true)]
+        [InlineData("cs", "",  false)]
+        [InlineData("cs", null,  false)]
+        [InlineData("", "share",  false)]
+        [InlineData(null, "share",  false)]
+        [InlineData(null, null,  false)]
+        public void Returns_Is_AzureFilesConfigured(string connectionString, string contentShare, bool isAzureFilesConfigured)
+        {
+            var hostAssignmentContext = new HostAssignmentContext()
+            {
+                Environment = new Dictionary<string, string>()
+            };
+
+            hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            hostAssignmentContext.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            Assert.Equal(isAzureFilesConfigured, hostAssignmentContext.IsAzureFilesContentShareConfigured(NullLogger.Instance));
         }
     }
 }

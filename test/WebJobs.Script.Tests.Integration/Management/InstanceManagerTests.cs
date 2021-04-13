@@ -9,11 +9,15 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Moq.Protected;
@@ -34,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly HttpClient _httpClient;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
+        private readonly IRunFromPackageHandler _runFromPackageHandler;
 
         public InstanceManagerTests()
         {
@@ -46,8 +51,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
 
+            var metricsLogger = new MetricsLogger();
+            var bashCommandHandler = new BashCommandHandler(metricsLogger, new Logger<BashCommandHandler>(_loggerFactory));
+            var zipHandler = new UnZipHandler(metricsLogger, NullLogger<UnZipHandler>.Instance);
+            _runFromPackageHandler = new RunFromPackageHandler(_environment, _httpClient, _meshServiceClientMock.Object,
+                bashCommandHandler, zipHandler, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
+
             _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
 
             InstanceManager.Reset();
         }
@@ -103,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
 
             // calling again should return false, since we have 
@@ -166,6 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 0 app setting(s)", p),
+                p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
@@ -196,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 10)
+            if (logs.Length == 11)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
@@ -204,6 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Downloading zip contents from", p),
                     p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
                     p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
+                    p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Output:", p),
                     p => Assert.True(true), // this line varies depending on whether WSL is on the machine; just ignore it
@@ -218,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Downloading zip contents from", p),
                     p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
                     p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
+                    p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Error running bash", p),
                     p => Assert.StartsWith("Triggering specialization", p));
@@ -279,6 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
                 p => Assert.StartsWith($"{EnvironmentSettingNames.ScmRunFromPackage} points to an empty location. Function app has no content.", p),
+                p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
 
@@ -340,7 +356,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null);
+                new TestMetricsLogger(), null, _runFromPackageHandler);
 
             var assignmentContext = new HostAssignmentContext
             {
@@ -677,7 +693,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -729,7 +745,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -741,6 +757,353 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             meshInitServiceClient.Verify(
                 client => client.MountCifs(It.IsAny<string>(), It.IsAny<string>(), It.Is<string>(s => s != targetPath1)), Times.Never());
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        [InlineData(false, false)]
+        public async void Uses_Azure_Files_For_PowerShell_Apps(bool azureFilesConfigured, bool runFromPackageConfigured)
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
+                }
+            };
+
+            if (azureFilesConfigured)
+            {
+                context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+                context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+            }
+
+            if (runFromPackageConfigured)
+            {
+                context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url;
+            }
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(true);
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), true,
+                    false)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            if (azureFilesConfigured)
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+            }
+            else
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(It.IsAny<HostAssignmentContext>()), Times.Never);
+            }
+
+            if (runFromPackageConfigured)
+            {
+                runFromPackageHandler
+                    .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, azureFilesConfigured,
+                        false), Times.Once);
+            }
+            else
+            {
+                runFromPackageHandler
+                    .Verify(
+                        r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(),
+                            It.IsAny<bool>(), It.IsAny<bool>()), Times.Never);
+            }
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async void Uses_Local_Disk_If_Azure_Files_Unavailable_For_PowerShell_Apps(bool azureFilesMounted)
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
+                    [EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url
+                }
+            };
+
+            // AzureFiles
+            context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(azureFilesMounted);
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), azureFilesMounted,
+                    false)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+
+            runFromPackageHandler
+                .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, azureFilesMounted,
+                    false), Times.Once);
+        }
+
+        [Fact]
+        public async void Falls_Back_To_Local_Disk_If_Azure_Files_Unavailable_For_PowerShell_Apps()
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
+                }
+            };
+
+            // Azure files
+            context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            // Run-From-Pkg
+            context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url;
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).Returns(Task.FromResult(true));
+            
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), true,
+                    false)).ReturnsAsync(false); // return false to trigger failure
+
+            // 2nd attempt 
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
+                    true)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+
+            runFromPackageHandler
+                .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, true,
+                    false), Times.Once);
+
+            runFromPackageHandler
+                .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
+                    true), Times.Once);
+        }
+
+        [Fact]
+        public async void Falls_Back_To_Local_Disk_If_Azure_Files_Unavailable_Only_If_Azure_Files_Mounted_For_PowerShell_Apps()
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PowerShellLanguageWorkerName,
+                }
+            };
+
+            // Azure files
+            context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            // Run-From-Pkg
+            context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url;
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).Returns(Task.FromResult(false)); // Failed to mount
+
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
+                    false)).ReturnsAsync(false); // return false to trigger failure
+
+            // There will be no 2nd attempt since azure files mounting failed.
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+
+            runFromPackageHandler
+                .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
+                    false), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async void Uses_Local_Disk_For_Non_PowerShell_Apps(bool azureFilesConfigured)
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
+                    [EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url
+                }
+            };
+
+            // AzureFiles
+            if (azureFilesConfigured)
+            {
+                context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+                context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+            }
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
+                    false)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            runFromPackageHandler.Verify(r => r.MountAzureFileShare(It.IsAny<HostAssignmentContext>()), Times.Never);
+
+            runFromPackageHandler
+                .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
+                    true), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async void Mounts_Azure_Files_Only_If_RunFromPkg_Not_Configured_For_Non_PowerShell_Apps(bool runFromPackageConfigured)
+        {
+            const string url = "http://url";
+            const string connectionString = "AzureFiles-ConnectionString";
+            const string contentShare = "Content-Share";
+            const string scriptPath = "/home/site/wwwroot";
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            var context = new HostAssignmentContext
+            {
+                IsWarmupRequest = false,
+                Environment = new Dictionary<string, string>()
+                {
+                    [EnvironmentSettingNames.FunctionWorkerRuntime] = RpcWorkerConstants.PythonLanguageWorkerName,
+                }
+            };
+
+            // AzureFiles
+            context.Environment[EnvironmentSettingNames.AzureFilesConnectionString] = connectionString;
+            context.Environment[EnvironmentSettingNames.AzureFilesContentShare] = contentShare;
+
+            if (runFromPackageConfigured)
+            {
+                context.Environment[EnvironmentSettingNames.AzureWebsiteRunFromPackage] = url;
+            }
+
+            var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+            runFromPackageHandler
+                .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
+                    true)).ReturnsAsync(true);
+
+            runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).ReturnsAsync(true);
+
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
+
+            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+
+            bool result = instanceManager.StartAssignment(context);
+            Assert.True(result);
+
+            await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
+
+            if (runFromPackageConfigured)
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(It.IsAny<HostAssignmentContext>()), Times.Never);
+                runFromPackageHandler
+                    .Verify(r => r.ApplyBlobPackageContext(It.Is<RunFromPackageContext>(c => MatchesRunFromPackageContext(c, url)), scriptPath, false,
+                        true), Times.Once);
+            }
+            else
+            {
+                runFromPackageHandler.Verify(r => r.MountAzureFileShare(context), Times.Once);
+                runFromPackageHandler
+                    .Verify(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), It.IsAny<bool>(),
+                        It.IsAny<bool>()), Times.Never);
+            }
+        }
+
+        private static bool MatchesRunFromPackageContext(RunFromPackageContext r, string expectedUrl)
+        {
+            return string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase);
         }
 
         private InstanceManager GetInstanceManagerForMSISpecialization(HostAssignmentContext hostAssignmentContext,
@@ -762,7 +1125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             InstanceManager.Reset();
 
             return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshServiceClient);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshServiceClient, _runFromPackageHandler);
         }
 
         public void Dispose()

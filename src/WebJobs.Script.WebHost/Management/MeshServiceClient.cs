@@ -16,6 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     public class MeshServiceClient : IMeshServiceClient
     {
         private const string Operation = "operation";
+        private const string BindMountOperation = "bind-mount";
+        public const string SquashFsOperation = "squashfs";
+        public const string ZipOperation = "zip";
         private readonly HttpClient _client;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -51,12 +54,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         public async Task MountFuse(string type, string filePath, string scriptPath)
-            => await SendAsync(new[]
+        {
+            _logger.LogDebug($"Creating {type} mount from {filePath} to {scriptPath}");
+
+            await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, type),
                 new KeyValuePair<string, string>("filePath", filePath),
                 new KeyValuePair<string, string>("targetPath", scriptPath),
             });
+        }
 
         public async Task PublishContainerActivity(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
@@ -96,6 +103,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             });
 
             _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
+        }
+
+        public async Task CreateBindMount(string sourcePath, string targetPath)
+        {
+            _logger.LogDebug($"Creating bind mount from {sourcePath} to {targetPath}");
+
+            var httpResponseMessage = await SendAsync(new[]
+            {
+                new KeyValuePair<string, string>(Operation, BindMountOperation),
+                new KeyValuePair<string, string>("sourcePath", sourcePath),
+                new KeyValuePair<string, string>("targetPath", targetPath),
+            });
+
+            httpResponseMessage.EnsureSuccessStatusCode();
         }
 
         private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)

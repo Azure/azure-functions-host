@@ -3,15 +3,18 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest)
+        private readonly RunFromPackageCloudBlockBlobService _runFromPackageCloudBlockBlobService;
+
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest, RunFromPackageCloudBlockBlobService runFromPackageCloudBlockBlobService = null)
         {
+            _runFromPackageCloudBlockBlobService = runFromPackageCloudBlockBlobService ?? new RunFromPackageCloudBlockBlobService();
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
@@ -32,29 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                         StringComparison.OrdinalIgnoreCase);
         }
 
-        public async Task<bool> BlobExistsAsync(ILogger logger)
+        public async Task<bool> IsRunFromPackage(ILogger logger)
         {
-            bool exists = false;
-            await Utility.InvokeWithRetriesAsync(async () =>
-            {
-                try
-                {
-                    CloudBlockBlob blob = new CloudBlockBlob(new Uri(Url));
-                    exists = await blob.ExistsAsync();
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, $"Failed to check if zip url blob exists");
-                    throw;
-                }
-            }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
-
-            if (!exists)
-            {
-                logger.LogWarning($"{EnvironmentVariableName} points to an empty location. Function app has no content.");
-            }
-
-            return exists;
+            return (IsScmRunFromPackage() && await _runFromPackageCloudBlockBlobService.BlobExists(Url, EnvironmentVariableName, logger)) ||
+                   (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
         }
     }
 }
