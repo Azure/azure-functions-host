@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostPerformanceManager = new HostPerformanceManager(_mockEnvironment.Object, _healthMonitorOptions, serviceProviderMock.Object);
             _mockConfig = new Mock<IConfiguration>().Object;
+            _fileSystemManager.Setup(x => x.IsZipDeployment(false)).Returns(true);
         }
 
         private Mock<IHost> CreateMockHost(SemaphoreSlim disposedSemaphore = null)

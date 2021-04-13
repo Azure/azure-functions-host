@@ -30,11 +30,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     public class InstanceControllerTests
     {
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
+<<<<<<< HEAD
         private readonly Mock<IRunFromPackageHandler> _runFromPackageHandler;
 
         public InstanceControllerTests()
         {
             _runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
+=======
+        private readonly Mock<IFileSystemManager> _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
+
+        public InstanceControllerTests()
+        {
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(true);
+>>>>>>> more test cleanup
         }
 
         [Fact]
@@ -42,8 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-
-            var fileSystemManager = new TestFileSystemManager(environment);
 
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
@@ -66,8 +72,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
 =======
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+<<<<<<< HEAD
                 loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
 >>>>>>> WIP; add IFileSystemManager service, tests still broken
+=======
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, _fileSystemManager.Object);
+>>>>>>> more test cleanup
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -168,8 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
-            var fileSystemManager = new TestFileSystemManager(environment);
-
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -191,8 +199,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
 =======
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+<<<<<<< HEAD
                 loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
 >>>>>>> WIP; add IFileSystemManager service, tests still broken
+=======
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, _fileSystemManager.Object);
+>>>>>>> more test cleanup
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -229,8 +241,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
 
-            var fileSystemManager = new TestFileSystemManager(environment);
-
             var scriptWebEnvironment = new ScriptWebHostEnvironment(environment);
 
             var loggerFactory = new LoggerFactory();
@@ -252,8 +262,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 new TestMetricsLogger(), null, _runFromPackageHandler.Object);
 =======
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment,
+<<<<<<< HEAD
                 loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, fileSystemManager);
 >>>>>>> WIP; add IFileSystemManager service, tests still broken
+=======
+                loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, _fileSystemManager.Object);
+>>>>>>> more test cleanup
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
