@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -54,6 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 && !string.IsNullOrEmpty(Environment[EnvironmentSettingNames.AzureFilesContentShare])
                 ? Environment[EnvironmentSettingNames.AzureFilesContentShare]
                 : SiteName;
+
+        public bool IsAzureFilesContentShareConfigured(ILogger logger)
+        {
+            logger.LogDebug(
+                $"{nameof(EnvironmentSettingNames.AzureFilesConnectionString)} IsNullOrEmpty: {string.IsNullOrEmpty(AzureFilesConnectionString)}. {nameof(EnvironmentSettingNames.AzureFilesContentShare)}: IsNullOrEmpty {string.IsNullOrEmpty(AzureFilesContentShare)}");
+            return !string.IsNullOrEmpty(AzureFilesConnectionString) && !string.IsNullOrEmpty(AzureFilesContentShare);
+        }
 
         public RunFromPackageContext GetRunFromPkgContext()
         {

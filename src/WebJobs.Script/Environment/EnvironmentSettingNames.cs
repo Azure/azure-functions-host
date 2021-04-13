@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
+        public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
@@ -84,6 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         // handling server side builds
         public const string ScmRunFromPackage = "SCM_RUN_FROM_PACKAGE";
+        public const string LocalSitePackages = "LocalSitePackagesPath";
+        public const string DefaultLocalSitePackagesPath = "/local/sitepackages";
 
         public const string LinuxAzureAppServiceStorage = "WEBSITES_ENABLE_APP_SERVICE_STORAGE";
         public const string CoreToolsEnvironment = "FUNCTIONS_CORETOOLS_ENVIRONMENT";

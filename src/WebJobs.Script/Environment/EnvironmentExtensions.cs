@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -458,6 +459,20 @@ namespace Microsoft.Azure.WebJobs.Script
                 default:
                     return CloudConstants.AzureStorageSuffix;
             }
+        }
+
+        public static string GetFunctionsWorkerRuntime(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
+        /// </summary>
+        public static bool SupportsAzureFileShareMount(this IEnvironment environment)
+        {
+            return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
+                StringComparison.OrdinalIgnoreCase);
         }
     }
 }

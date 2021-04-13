@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null);
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -103,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null);
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
