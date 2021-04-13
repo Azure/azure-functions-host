@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
@@ -347,8 +348,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             var configuration = builder.Build();
+            var fileSystemManagerMock = new Mock<IFileSystemManager>(MockBehavior.Strict);
 
-            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), new TestFileSystemManager());
+            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), fileSystemManagerMock.Object);
         }
     }
 }

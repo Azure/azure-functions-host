@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
             _performanceManager = performanceManager;
-            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
+            _fileSystemManager = fileSystemManager;
         }
 
         [HttpGet]

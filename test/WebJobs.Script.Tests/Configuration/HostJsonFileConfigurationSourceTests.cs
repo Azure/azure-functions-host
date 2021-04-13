@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -198,7 +199,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger, new TestFileSystemManager(environment));
+            var fileSystemManagerMock = new Mock<IFileSystemManager>(MockBehavior.Strict);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger, fileSystemManagerMock.Object);
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);

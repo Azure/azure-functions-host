@@ -152,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     HandleHostError(evt.Exception);
                 }));
 
-            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
+            _fileSystemManager = fileSystemManager;
         }
 
         public event EventHandler HostInitializing;

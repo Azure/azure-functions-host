@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
             _environment = environment;
             _options = options;
             _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
-            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
+            _fileSystemManager = fileSystemManager;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
