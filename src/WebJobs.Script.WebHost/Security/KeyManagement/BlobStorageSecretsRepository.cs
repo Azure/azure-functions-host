@@ -163,12 +163,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var blobList = new List<BlobItem>();
             try
             {
-                var segmentResult = Container.GetBlobsAsync(prefix: string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()));
-                var asyncEnumerator = segmentResult.GetAsyncEnumerator();
-
-                while (await asyncEnumerator.MoveNextAsync())
+                var results = Container.GetBlobsAsync(prefix: string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()));
+                await foreach (BlobItem item in results)
                 {
-                    blobList.Add(asyncEnumerator.Current);
+                    blobList.Add(item);
                 }
             }
             catch (Exception e)

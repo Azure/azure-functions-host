@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
                 {
                     if (!await blobClient.ExistsAsync())
                     {
-                        using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(string.Empty)))
+                        using (Stream stream = new MemoryStream())
                         {
                             await blobClient.UploadAsync(stream, cancellationToken: cancellationToken);
                         }
