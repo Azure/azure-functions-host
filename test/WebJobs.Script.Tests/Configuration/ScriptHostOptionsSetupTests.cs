@@ -15,6 +15,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ScriptHostOptionsSetupTests
     {
+        private readonly Mock<IFileSystemManager> _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
+
+        public ScriptHostOptionsSetupTests()
+        {
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(false);
+        }
+
         [Fact]
         public void Configure_FileWatching()
         {
@@ -348,9 +355,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             var configuration = builder.Build();
-            var fileSystemManagerMock = new Mock<IFileSystemManager>(MockBehavior.Strict);
 
-            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), fileSystemManagerMock.Object);
+            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), _fileSystemManager.Object);
         }
     }
 }

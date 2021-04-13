@@ -26,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         private readonly ScriptApplicationHostOptions _options;
         private readonly string _hostJsonFile;
         private readonly TestLoggerProvider _loggerProvider = new TestLoggerProvider();
+        private readonly Mock<IFileSystemManager> _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
 
         public HostJsonFileConfigurationSourceTests()
         {
@@ -47,6 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 File.Delete(_hostJsonFile);
             }
+
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(false);
         }
 
         [Fact]
@@ -129,6 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ReadOnlyFileSystem_SkipsDefaultHostJsonCreation()
         {
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(true);
             Assert.False(File.Exists(_hostJsonFile));
 
             var environment = new TestEnvironment(new Dictionary<string, string>
@@ -199,8 +203,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
 
-            var fileSystemManagerMock = new Mock<IFileSystemManager>(MockBehavior.Strict);
-            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger, fileSystemManagerMock.Object);
+            var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, testMetricsLogger, _fileSystemManager.Object);
 
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(configSource);
