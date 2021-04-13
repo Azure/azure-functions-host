@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.EventHubs
             _fixture = fixture;
         }
 
-        [Fact(Skip = "Need to investigate .NET 6 failures"_]
+        [Fact(Skip = "Need to investigate .NET 6 failure")]
         public async Task EventHub()
         {
             // Event Hub needs the following environment vars:
