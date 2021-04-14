@@ -36,11 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFileSystemManager _fileSystemManager;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-<<<<<<< HEAD
             IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler)
-=======
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IFileSystemManager fileSystemManager)
->>>>>>> WIP; add IFileSystemManager service, tests still broken
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));

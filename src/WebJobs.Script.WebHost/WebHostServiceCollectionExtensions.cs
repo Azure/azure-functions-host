@@ -148,9 +148,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Grpc
             services.AddGrpc();
 
-            // File system
-            services.AddSingleton<IFileSystemManager, FileSystemManager>();
-
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
             ScriptHostBuilderExtensions.AddCommonServices(services);

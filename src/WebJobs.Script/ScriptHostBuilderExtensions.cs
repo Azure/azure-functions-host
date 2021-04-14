@@ -304,7 +304,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
-                services.AddSingleton<IFileSystemManager, FileSystemManager>();
             });
 
             RegisterFileProvisioningService(builder);
@@ -333,6 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+            services.AddSingleton<IFileSystemManager, FileSystemManager>();
             AddProcessRegistry(services);
         }
 
