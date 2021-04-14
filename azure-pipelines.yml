@@ -47,7 +47,6 @@ jobs:
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    SignArtifacts: 'false'
   pool:
     vmImage: 'windows-2019' 
   steps:

@@ -41,11 +41,6 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     
     $publishTarget = "$buildOutput\publish\$targetRid"
     $symbolsTarget = "$buildOutput\symbols\$targetRid"
-    
-    if ($isSelfContained) {
-        $publishTarget = "$publishTarget.self-contained"
-        $symbolsTarget = "$symbolsTarget.self-contained"
-    }
 
     $suffixCmd = ""
     if ($hasSuffix) {
@@ -197,7 +192,7 @@ if (Test-Path $buildOutput) {
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
-BuildRuntime "win-x86"
-BuildRuntime "win-x64"
+BuildRuntime "win-x86" $true
+BuildRuntime "win-x64" $true
 
 CreateSiteExtensions
