@@ -3,7 +3,6 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -34,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         [InlineData(EnvironmentSettingNames.AzureWebsiteRunFromPackage, null, false, false)]
         public async Task Returns_IsRunFromPackage(string environmentVariableName, string url, bool blobExists, bool scmRunFromPackageConfigured)
         {
-            var cloudBlockBlobService = new Mock<RunFromPackageCloudBlockBlobService>(MockBehavior.Strict);
+            var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
             cloudBlockBlobService
                 .Setup(c => c.BlobExists(Url, environmentVariableName, NullLogger.Instance))
                 .ReturnsAsync(blobExists);

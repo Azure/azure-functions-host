@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         public ScriptHostOptionsSetupTests()
         {
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(false);
         }
 
         [Fact]

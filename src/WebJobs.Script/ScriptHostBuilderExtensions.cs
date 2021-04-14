@@ -332,6 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+
             services.AddSingleton<IFileSystemManager, FileSystemManager>();
             AddProcessRegistry(services);
         }

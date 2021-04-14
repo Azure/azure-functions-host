@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(setting, appSettingValue);
-                var fileSystemManager = new FileSystemManager(environment, MockNullLoggerFactory.CreateLogger());
+                var fileSystemManager = new FileSystemManager(environment);
 
-                Assert.Equal(fileSystemManager.IsZipDeployment(), expectedOutcome);
+                Assert.Equal(fileSystemManager.IsZipDeployment(MockNullLoggerFactory.CreateLogger()), expectedOutcome);
             }
 
             // Test multiple being set
@@ -42,8 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 allSettingsEnvironment.SetEnvironmentVariable(setting, appSettingValue);
             }
 
-            var fileSystemManagerAllSettings = new FileSystemManager(allSettingsEnvironment, MockNullLoggerFactory.CreateLogger());
-            Assert.Equal(fileSystemManagerAllSettings.IsZipDeployment(), expectedOutcome);
+            var fileSystemManagerAllSettings = new FileSystemManager(allSettingsEnvironment);
+            Assert.Equal(fileSystemManagerAllSettings.IsZipDeployment(MockNullLoggerFactory.CreateLogger()), expectedOutcome);
         }
     }
 }

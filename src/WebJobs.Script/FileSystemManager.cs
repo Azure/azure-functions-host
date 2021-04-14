@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Logging;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -13,20 +11,20 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static bool? _blobExists = null;
         private readonly IEnvironment _environment;
-        private readonly ILogger _logger;
+        private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
 
-        public FileSystemManager(IEnvironment environment, ILogger logger)
+        public FileSystemManager(IEnvironment environment, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cloudBlockBlobHelperService = cloudBlockBlobHelperService ?? new CloudBlockBlobHelperService();
         }
 
-        public bool IsFileSystemReadOnly()
+        public bool IsFileSystemReadOnly(ILogger logger)
         {
-            return IsZipDeployment();
+            return IsZipDeployment(logger);
         }
 
-        public bool IsZipDeployment(bool validate = true)
+        public bool IsZipDeployment(ILogger logger, bool validate = true)
         {
             if (validate)
             {
@@ -59,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // SCM_RUN_FROM_PACKAGE is set, as well as Azure Files app settings, so we need to check if we are actually using the zip blob.
                 if (_blobExists == null)
                 {
-                    CacheIfBlobExists();
+                    CacheIfBlobExists(logger);
                 }
 
                 return _blobExists.Value;
@@ -73,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public void CacheIfBlobExists()
+        public void CacheIfBlobExists(ILogger logger)
         {
             if (_blobExists != null)
             {
@@ -95,29 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     // Check if blob exists only if both SCM_RUN_FROM_PACKAGE and Azure Files app settings are present.
-                    _blobExists = BlobExistsAsync().GetAwaiter().GetResult();
+                    _blobExists = _cloudBlockBlobHelperService.BlobExists(AzureWebsiteRunFromPackage, _environment.GetEnvironmentVariable(ScmRunFromPackage), logger).GetAwaiter().GetResult();
                 }
             }
-        }
-
-        private async Task<bool> BlobExistsAsync()
-        {
-            bool exists = false;
-            await Utility.InvokeWithRetriesAsync(async () =>
-            {
-                try
-                {
-                    CloudBlockBlob blob = new CloudBlockBlob(new Uri(_environment.GetEnvironmentVariable(ScmRunFromPackage)));
-                    exists = await blob.ExistsAsync();
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, $"Failed to check if zip url blob exists");
-                    throw;
-                }
-            }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
-
-            return exists;
         }
 
         private static bool IsValidZipSetting(string appSetting)

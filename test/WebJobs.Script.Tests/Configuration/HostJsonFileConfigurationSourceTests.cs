@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 File.Delete(_hostJsonFile);
             }
 
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(false);
         }
 
         [Fact]
@@ -132,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ReadOnlyFileSystem_SkipsDefaultHostJsonCreation()
         {
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(true);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(true);
             Assert.False(File.Exists(_hostJsonFile));
 
             var environment = new TestEnvironment(new Dictionary<string, string>

@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             // If we have a read only file system, override any configuration and
             // disable file watching
-            if (_fileSystemManager.IsFileSystemReadOnly())
+            if (_fileSystemManager.IsFileSystemReadOnly(NullLogger.Instance))
             {
                 options.FileWatchingEnabled = false;
             }

@@ -290,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Cache check if blob from SCM_RUN_FROM_PACKAGE exists. This check is valid per container lifecycle since it's specific
             // to Linux Consumption. This value is used when determining whether the filesystem is read only, which is important for scenarios
             // like turning on file watcher and writing template bundles to host.json, etc.
-            _fileSystemManager.CacheIfBlobExists();
+            _fileSystemManager.CacheIfBlobExists(_logger);
 
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.

@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 FileUtility.EnsureDirectoryExists(_hostLogPath);
             }
 
-            if (!_fileSystemManager.IsFileSystemReadOnly())
+            if (!_fileSystemManager.IsFileSystemReadOnly(_logger))
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }

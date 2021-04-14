@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
+namespace Microsoft.Azure.WebJobs.Script
 {
-    public class RunFromPackageCloudBlockBlobService
+    public class CloudBlockBlobHelperService
     {
         public virtual async Task<bool> BlobExists(string url, string environmentVariableName, ILogger logger)
         {

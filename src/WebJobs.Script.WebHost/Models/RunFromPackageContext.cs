@@ -3,18 +3,18 @@
 
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
+using Microsoft.Azure.WebJobs.Script.Management;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        private readonly RunFromPackageCloudBlockBlobService _runFromPackageCloudBlockBlobService;
+        private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
 
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest, RunFromPackageCloudBlockBlobService runFromPackageCloudBlockBlobService = null)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest, CloudBlockBlobHelperService runFromPackageCloudBlockBlobService = null)
         {
-            _runFromPackageCloudBlockBlobService = runFromPackageCloudBlockBlobService ?? new RunFromPackageCloudBlockBlobService();
+            _cloudBlockBlobHelperService = runFromPackageCloudBlockBlobService ?? new CloudBlockBlobHelperService();
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public async Task<bool> IsRunFromPackage(ILogger logger)
         {
-            return (IsScmRunFromPackage() && await _runFromPackageCloudBlockBlobService.BlobExists(Url, EnvironmentVariableName, logger)) ||
+            return (IsScmRunFromPackage() && await _cloudBlockBlobHelperService.BlobExists(Url, EnvironmentVariableName, logger)) ||
                    (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
         }
     }

@@ -49,8 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory = new LoggerFactory();
             _testEnvironment = new TestEnvironment();
+            _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(true);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(_testLogger)).Returns(true);
             _loggerFactory.AddProvider(_loggerProvider);
             _rpcWorkerProcess = new Mock<IWorkerProcess>();
             _languageWorkerOptions = new LanguageWorkerOptions
@@ -69,7 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _rpcWorkerProcessFactory = new Mock<IRpcWorkerProcessFactory>();
             _rpcWorkerProcessFactory.Setup(m => m.Create(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RpcWorkerConfig>())).Returns(_rpcWorkerProcess.Object);
 
-            _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor,
                 new TestMetricsLogger(), _workerOptionsMonitor, _fileSystemManager.Object);
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // This is an invalid setting configuration, but just to show that run from zip is NOT set
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "0");
 
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly()).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(_testLogger)).Returns(false);
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor,
                 testMetricsLogger, _workerOptionsMonitor, _fileSystemManager.Object);
 
