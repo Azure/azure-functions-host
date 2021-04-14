@@ -27,6 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     public class KubernetesPodControllerTests
     {
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
+        private readonly Mock<IFileSystemManager> _fileSystemManager;
+
+        public KubernetesPodControllerTests()
+        {
+            _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
+        }
 
         [Fact]
         public async Task Assignment_Succeeds_With_Encryption_Key()
@@ -49,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object);
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object, _fileSystemManager.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -104,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object);
+            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object, _fileSystemManager.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
