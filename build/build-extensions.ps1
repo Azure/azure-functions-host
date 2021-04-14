@@ -82,7 +82,10 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host "======================================"
     Write-Host ""
 
-    ZipContent $symbolsTarget "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
+    $zipOutput = "$buildOutput\Symbols$runtimeSuffix"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+
+    ZipContent $symbolsTarget "$zipOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -151,7 +154,10 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host
 
-    ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    $zipOutput = "$buildOutput\SiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+
+    ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null    
     
@@ -163,7 +169,10 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host ""
     
-    ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
+    $zipOutput = "$buildOutput\PrivateSiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+
+    ZipContent $siteExtensionPath "$zipOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
 }

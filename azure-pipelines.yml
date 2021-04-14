@@ -273,18 +273,18 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.?.?.*.zip
+  - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.*.win-x32.inproc.zip
+  - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.*.win-x64.zip
-    artifact: Symbols-x64
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.*.win-x86.zip
-    artifact: Symbols-x86
-  - publish: $(Build.Repository.LocalPath)\packages\**\*.nupkg
+  - publish: $(Build.ArtifactStagingDirectory)\Symbols.win-x64
+    artifact: Symbols.win-x64
+  - publish: $(Build.ArtifactStagingDirectory)\Symbols.win-x86
+    artifact: Symbols.win-x86
+  - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
   - publish: $(Build.Repository.LocalPath)\packages\WebJobs.Script.Performance.App
-    artifact: WebJobs.Script.Performance.App${{ variables.artifactSuffix }}
+    artifact: Performance
 
 - job: RunUnitTests
   pool:
