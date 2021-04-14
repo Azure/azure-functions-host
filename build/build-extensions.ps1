@@ -1,7 +1,6 @@
 param (
   [string]$buildNumber = "0",
-  [string]$extensionVersion = "3.0.$buildNumber",
-  [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",
+  [string]$extensionVersion = "4.0.$buildNumber",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
@@ -12,11 +11,9 @@ $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
 $extensionVersionNoSuffix = $extensionVersion
-$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
 
 if ($hasSuffix) {
-  $extensionVersion = "$extensionVersion-$suffix"
-  $v2CompatibleExtensionVersion = "$v2CompatibleExtensionVersion-$suffix"
+  $extensionVersion = "$extensionVersion-$suffix"  
 }
 
 function ZipContent([string] $sourceDirectory, [string] $target)
@@ -123,12 +120,10 @@ function CleanOutput([string] $rootPath) {
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
-    $v2CompatibleSiteExtensionPath = "$buildOutput\temp_extension_v2"
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
-    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -143,30 +138,22 @@ function CreateSiteExtensions() {
     Move-Item -Path "$officialSiteExtensionPath\64bit\workers"  -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
-    
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null    
     
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 
-    Write-Host "Generating $hashesForHardlinksFile"
     Write-Host "======================================"
+    Write-Host "Generating $hashesForHardlinksFile"    
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
-    Write-Host "Done generating $hashesForHardlinksFile"
+    Write-Host "Done generating $siteExtensionPath/$extensionVersionNoSuffix"
     Write-Host "======================================"
+    Write-Host
 
     ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-
-    Write-Host "======================================"
-    Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
-    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix -Force -Recurse > $null
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
-    ZipContent $officialV2CompatibleSiteExtensionPath "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
-    Write-Host "======================================"
     
-    Remove-Item $siteExtensionPath -Recurse -Force > $null
-    Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
+    Remove-Item $siteExtensionPath -Recurse -Force > $null    
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
@@ -199,7 +186,6 @@ if (Test-Path $buildOutput) {
     Remove-Item $buildOutput -Recurse -Force
 }
 Write-Host "Extensions version: $extensionVersion"
-Write-Host "V2 compatible Extensions version: $v2CompatibleExtensionVersion"
 Write-Host ""
 
 BuildRuntime "win-x86"
