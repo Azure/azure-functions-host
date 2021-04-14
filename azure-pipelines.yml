@@ -69,7 +69,7 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '*.zip'
+      Contents: '**\*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
@@ -121,6 +121,7 @@ jobs:
         **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -151,6 +152,7 @@ jobs:
           }
         ]
   - task: DeleteFiles@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
@@ -163,6 +165,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -187,6 +190,7 @@ jobs:
             }
         ]
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -232,6 +236,7 @@ jobs:
         ]
     condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))  
   - task: DeleteFiles@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
@@ -245,6 +250,7 @@ jobs:
         **\ExtensionsMetadataGenerator.csproj
         steps:
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
@@ -270,6 +276,7 @@ jobs:
        ]
     condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
+    condition: ne(variables['Build.Reason'], 'PullRequest')
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
