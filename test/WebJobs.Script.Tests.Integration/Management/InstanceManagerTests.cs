@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 bashCommandHandler, zipHandler, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
+            _fileSystemManager.Setup(x => x.CacheIfBlobExists(It.IsAny<ILogger>()));
 
             _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _fileSystemManager.Object);
