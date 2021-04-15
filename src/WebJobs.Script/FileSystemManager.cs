@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 else
                 {
                     // Check if blob exists only if both SCM_RUN_FROM_PACKAGE and Azure Files app settings are present.
-                    _blobExists = _cloudBlockBlobHelperService.BlobExists(AzureWebsiteRunFromPackage, _environment.GetEnvironmentVariable(ScmRunFromPackage), logger).GetAwaiter().GetResult();
+                    _blobExists = _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage), EnvironmentSettingNames.ScmRunFromPackage, logger).GetAwaiter().GetResult();
                 }
             }
         }
