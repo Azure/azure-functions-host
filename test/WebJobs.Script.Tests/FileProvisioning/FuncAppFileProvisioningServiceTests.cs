@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [Fact]
         public async Task Readonly_FunAppRoot_Test()
         {
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(true);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(It.IsAny<ILogger>())).Returns(true);
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
         [InlineData("powershell")]
         public async Task Create_App_Files_Runtime_Test(string workerRuntime)
         {
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(It.IsAny<ILogger>())).Returns(false);
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);

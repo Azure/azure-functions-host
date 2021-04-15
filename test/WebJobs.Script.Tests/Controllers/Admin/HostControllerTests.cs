@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionsSyncManager = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             _extensionBundleManager = new Mock<IExtensionBundleManager>(MockBehavior.Strict);
             _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(It.IsAny<ILogger>())).Returns(false);
 
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostHealthMonitorOptions = new HostHealthMonitorOptions();

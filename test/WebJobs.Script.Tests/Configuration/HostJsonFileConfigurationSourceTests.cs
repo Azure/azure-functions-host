@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -49,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 File.Delete(_hostJsonFile);
             }
 
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(false);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(It.IsAny<ILogger>())).Returns(false);
         }
 
         [Fact]
@@ -132,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Fact]
         public void ReadOnlyFileSystem_SkipsDefaultHostJsonCreation()
         {
-            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(MockNullLoggerFactory.CreateLogger())).Returns(true);
+            _fileSystemManager.Setup(x => x.IsFileSystemReadOnly(It.IsAny<ILogger>())).Returns(true);
             Assert.False(File.Exists(_hostJsonFile));
 
             var environment = new TestEnvironment(new Dictionary<string, string>
