@@ -11,6 +11,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEvent : TableEntity
     {
+        public DiagnosticEvent()
+        {
+        }
+
         public DiagnosticEvent(string hostId, DateTime now)
         {
             RowKey = TableStorageHelpers.GetRowKey(now);

@@ -15,8 +15,10 @@ using Microsoft.AspNetCore.Mvc.WebApiCompatShim;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -56,6 +58,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
             _performanceManager = performanceManager;
+        }
+
+        [HttpGet]
+        [Route("admin/host/setevents")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public async Task<IActionResult> SetDiagnosticEvents()
+        {
+            var t1 = Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(1, 10);
+
+                for (int i = 0; i < 1000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh1", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            var t2 = Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(4, 7);
+                for (int i = 0; i < 7000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh2", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            var t3 = Task.Run(() =>
+            {
+                Random r = new Random();
+                var x = r.Next(3, 9);
+                for (int i = 0; i < 3000; i++)
+                {
+                    Thread.Sleep(x * 1000);
+                    _logger.LogDiagnosticEvent(LogLevel.Information, 123, "eh3", "This is the message", "https://fwlink/", new Exception("exception message"));
+                }
+            });
+
+            await Task.WhenAll(t1, t2, t3);
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("admin/host/getevents")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public async Task<IActionResult> GetDiagnosticEvents([FromServices] IDiagnosticEventRepository diagnosticEventRepository)
+        {
+            var events = await diagnosticEventRepository.GetDiagnosticEvents(TimeSpan.FromHours(24));
+            return Ok(events);
         }
 
         [HttpGet]
@@ -171,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/log")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Log([FromBody]IEnumerable<HostLogEntry> logEntries)
+        public IActionResult Log([FromBody] IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
             {

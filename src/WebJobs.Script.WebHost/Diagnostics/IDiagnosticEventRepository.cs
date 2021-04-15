@@ -11,5 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public interface IDiagnosticEventRepository
     {
         void WriteDiagnosticEvent(DateTime timestamp, string errorCode, LogLevel level, string message, string helpLink, Exception exception);
+
+        Task<IEnumerable<DiagnosticEvent>> GetDiagnosticEvents(TimeSpan cutoffTime, DateTime? now = null);
     }
 }

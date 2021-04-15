@@ -3,6 +3,8 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos.Table;
@@ -16,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository
     {
         internal const string TableNamePrefix = "AzureFunctionsDiagnosticEvents";
-        private const int LogFlushInterval = 1000 * 60 * 10; // 10 mins
+        private const int LogFlushInterval = 1000 * 60 * 1; // 10 mins
         private readonly Timer _flushLogsTimer;
 
         private int _tableCreationRetries = 5;

@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -96,6 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             public void FlushLogs()
             {
                 Events.Clear();
+            }
+
+            public Task<IEnumerable<DiagnosticEvent>> GetDiagnosticEvents(TimeSpan cutoffTime, DateTime? now = null)
+            {
+                throw new NotImplementedException();
             }
         }
     }
