@@ -4,7 +4,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 
@@ -25,25 +24,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             }
 
             SharedMemoryMetadata sharedMemoryMeta;
-            RpcDataType? dataType;
 
             if (value is SharedMemoryMetadata)
             {
                 // Content was already present in shared memory (cache hit)
                 logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
                 sharedMemoryMeta = value as SharedMemoryMetadata;
-                dataType = RpcDataType.Bytes;
             }
             else
             {
-                FunctionDataCacheKey cacheKey = null;
-                if (value is CachableObject)
-                {
-                    CachableObject cachableObj = value as CachableObject;
-                    cacheKey = cachableObj.CacheKey;
-                    value = cachableObj.Value;
-                }
-
                 // Put the content into shared memory and get the name of the shared memory map written to
                 sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(value);
                 if (sharedMemoryMeta == null)
@@ -52,9 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                     return null;
                 }
 
-                if (cacheKey != null)
+                if (value is CacheableObjectStream)
                 {
-                    if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta))
+                    CacheableObjectStream cachableObj = value as CacheableObjectStream;
+                    FunctionDataCacheKey cacheKey = cachableObj.CacheKey;
+
+                    if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta, isIncrementActiveReference: true))
                     {
                         logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
                     }
@@ -63,15 +55,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                         logger.LogTrace("Cannot put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
                     }
                 }
-
-                dataType = GetRpcDataType(value);
-                if (!dataType.HasValue)
-                {
-                    logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
-                    return null;
-                }
             }
 
+            RpcDataType? dataType = GetRpcDataType(value);
+            if (!dataType.HasValue)
+            {
+                logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
+                return null;
+            }
+
+            // TODO: If we are adding things, we need to remove from this too (and right now we are not, since we are not freeing things)
             // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
             sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMeta.MemoryMapName);
 
@@ -111,6 +104,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
         private static RpcDataType? GetRpcDataType(object value)
         {
             if (value is byte[])
+            {
+                return RpcDataType.Bytes;
+            }
+            else if (value is CacheableObjectStream)
+            {
+                return RpcDataType.Bytes;
+            }
+            else if (value is SharedMemoryMetadata)
             {
                 return RpcDataType.Bytes;
             }

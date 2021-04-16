@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -45,8 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 logBuilder = new StringBuilder();
             }
 
-            // @gochaudh
-            // TOOD here we check again if input object is CacheObject - if so, we craft the shared memory message accordingly
             foreach (var input in context.Inputs)
             {
                 RpcSharedMemory sharedMemValue = null;
@@ -78,14 +77,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else
                 {
+                    if (!TryConvertObjectIfNeeded(input.val, out object val))
+                    {
+                        // Conversion did not take place, keep the existing value as it is
+                        val = input.val;
+                    }
+
                     // Data was not transferred over shared memory (either disabled, type not supported or some error); resort to RPC
                     TypedData rpcValue = null;
-                    if (input.val == null || !rpcValueCache.TryGetValue(input.val, out rpcValue))
+                    if (val == null || !rpcValueCache.TryGetValue(val, out rpcValue))
                     {
-                        rpcValue = await input.val.ToRpc(logger, capabilities);
+                        rpcValue = await val.ToRpc(logger, capabilities);
                         if (input.val != null)
                         {
-                            rpcValueCache.Add(input.val, rpcValue);
+                            rpcValueCache.Add(val, rpcValue);
                         }
                     }
 
@@ -146,6 +151,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // The system binding data isn't RPC friendly. It's designed for in memory use in the binding
                 // pipeline (e.g. sys.RandGuid, etc.)
                 return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if the object being passed is converted into a form that can be sent to the worker.
+        /// This is required in cases where an object conversion was being delayed for the <see cref="SharedMemoryManager"/> to handle,
+        /// but for some reason (error, out of memory etc.) it was unable to do so.
+        /// Therefore, we convert it to a form that can be sent without requiring shared memory.
+        /// </summary>
+        /// <param name="inputVal">Object to check if it is in a valid form.</param>
+        /// <param name="convertedVal">Output object in a valid form if the input was invalid, <see cref="null"/> otherwise.</param>
+        /// <returns><see cref="true"/> if a conversion took place, <see cref="false"/> otherwise.</returns>
+        private static bool TryConvertObjectIfNeeded(object inputVal, out object convertedVal)
+        {
+            convertedVal = null;
+
+            if (inputVal is CacheableObjectStream stream)
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    byte[] value = ms.ToArray();
+                    convertedVal = value;
+                    return true;
+                }
             }
 
             return false;

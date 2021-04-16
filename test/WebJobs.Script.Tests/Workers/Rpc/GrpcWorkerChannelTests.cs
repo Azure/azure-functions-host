@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 _mapAccessor = new MemoryMappedFileAccessorUnix(mmapAccessorLogger, _testEnvironment);
             }
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
-            _functionDataCache = new FunctionDataCache(_loggerFactory);
+            _functionDataCache = new FunctionDataCache(_sharedMemoryManager, _loggerFactory, _testEnvironment);
 
             var hostOptions = new ScriptApplicationHostOptions
             {

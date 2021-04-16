@@ -345,24 +345,15 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 case DataType.Binary:
                     if (stream is FunctionDataCacheStream)
                     {
-                        // TODO if the target type is Stream, we should read the shared memory content into it from here
                         // TODO explain what is happening here
                         FunctionDataCacheStream cacheStream = stream as FunctionDataCacheStream;
                         converted = cacheStream.SharedMemoryMetadata;
-                        break;
                     }
-                    else if (stream is CachableObjectStream)
+                    else if (stream is CacheableObjectStream)
                     {
-                        // TODO explain what is happening here
-                        CachableObjectStream cachableObjStream = stream as CachableObjectStream;
-                        FunctionDataCacheKey cacheKey = cachableObjStream.CacheKey;
-
-                        using (MemoryStream ms = new MemoryStream())
-                        {
-                            stream.CopyTo(ms);
-                            byte[] value = ms.ToArray();
-                            converted = new CachableObject(cacheKey, value);
-                        }
+                        // TODO explain what is happening here, delay the reading to the shared memory manager
+                        CacheableObjectStream cachableObjStream = stream as CacheableObjectStream;
+                        converted = cachableObjStream;
                     }
                     else
                     {

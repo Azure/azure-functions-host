@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
 
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
-            _functionDataCache = new FunctionDataCache(_loggerFactory);
+            _functionDataCache = new FunctionDataCache(_sharedMemoryManager, _loggerFactory, _testEnvironment);
         }
 
         public void Dispose()

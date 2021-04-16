@@ -514,6 +514,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
+                    // TODO this code path should be as it is when the cache is disabled (i.e. the worker should delete the map + files) - otherwise, it should just drop a ref (when cache is enabled)
                     // TODO check if the references held by the worker (since we are not sending the message to the worker to remove the maps) prevents the maps from being freed
                     // TODO check the above for Windows and Linux both
 

@@ -32,20 +32,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public SharedMemoryMap(ILoggerFactory loggerFactory, IMemoryMappedFileAccessor mapAccessor, string mapName, MemoryMappedFile memoryMappedFile)
         {
-            if (memoryMappedFile == null)
-            {
-                throw new ArgumentNullException(nameof(memoryMappedFile));
-            }
-
             if (string.IsNullOrEmpty(mapName))
             {
                 throw new ArgumentException(nameof(mapName));
             }
 
+            _memoryMappedFile = memoryMappedFile ?? throw new ArgumentNullException(nameof(memoryMappedFile));
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<SharedMemoryMap>();
             _mapName = mapName;
-            _memoryMappedFile = memoryMappedFile;
             _mapAccessor = mapAccessor;
         }
 
@@ -58,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public async Task<long> PutStreamAsync(Stream content)
         {
             long contentLength = content.Length;
+            long originalPosition = content.Position;
 
             try
             {
@@ -80,6 +76,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 _mapAccessor.Delete(_mapName, _memoryMappedFile);
 
                 _logger.LogError(e, "Cannot put stream into shared memory map: {MapName)", _mapName);
+
+                // Seek the input stream back to the original position it was given with
+                if (content.CanSeek)
+                {
+                    content.Seek(originalPosition, SeekOrigin.Begin);
+                }
+
                 return 0;
             }
         }
