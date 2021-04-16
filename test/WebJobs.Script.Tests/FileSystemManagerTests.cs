@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
+        [InlineData("https://functionstest42.blob.core.windows.net/microsoft/functionapp.zip", true)]
         public void CacheIfBlobExists_CallsStorageOnlyOnce(string appSettingValue, bool expectedOutcome)
         {
             var environment = new TestEnvironment();
@@ -97,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ReturnsAsync(expectedOutcome);
 
             var fileSystemManager = new FileSystemManager(environment, cloudBlockBlobService.Object);
-
             fileSystemManager.CacheIfBlobExists(NullLogger.Instance);
             fileSystemManager.CacheIfBlobExists(NullLogger.Instance);
             cloudBlockBlobService.Verify(x => x.BlobExists(appSettingValue, EnvironmentSettingNames.ScmRunFromPackage, NullLogger.Instance), Times.Once());
