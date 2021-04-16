@@ -9,9 +9,9 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class FileSystemManager : IFileSystemManager
     {
-        private static bool? _blobExists = null;
         private readonly IEnvironment _environment;
         private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
+        private bool? _blobExists = null;
 
         public FileSystemManager(IEnvironment environment, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
         {
