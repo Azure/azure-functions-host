@@ -3,14 +3,16 @@
 
 using System;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     internal class KubernetesEventGenerator : LinuxEventGenerator
     {
         private const int MaxDetailsLength = 10000;
-        private readonly string _podName;
         private readonly Action<string> _writeEvent;
+        private readonly string _podName;
 
         public KubernetesEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
@@ -20,34 +22,62 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
-            string formattedEventTimeStamp = eventTimestamp.ToString(EventTimestampFormat);
-            string hostVersion = ScriptHost.Version;
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
             details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
-            _writeEvent($"{(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimeStamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{runtimeSiteName},{slotName},{_podName}");
+            JObject traceLog = new JObject();
+            traceLog.Add("Level", (int)ToEventLevel(level));
+            traceLog.Add("SubscriptionId", subscriptionId);
+            traceLog.Add("AppName", appName);
+            traceLog.Add("FunctionName", functionName);
+            traceLog.Add("EventName", eventName);
+            traceLog.Add("Source", source);
+            traceLog.Add("Details", NormalizeString(details));
+            traceLog.Add("Summary", NormalizeString(summary));
+            traceLog.Add("HostVersion", ScriptHost.Version);
+            traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
+            traceLog.Add("ExceptionType", exceptionType);
+            traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage));
+            traceLog.Add("FunctionInvocationId", functionInvocationId);
+            traceLog.Add("HostInstanceId", hostInstanceId);
+            traceLog.Add("ActivityId", activityId);
+            traceLog.Add("RuntimeSiteName", runtimeSiteName);
+            traceLog.Add("SlotName", slotName);
+            traceLog.Add("PodName", _podName);
+
+            _writeEvent(traceLog.ToString(Formatting.None));
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
-            string hostVersion = ScriptHost.Version;
+            JObject metricEvent = new JObject();
+            metricEvent.Add("SubscriptionId", subscriptionId);
+            metricEvent.Add("AppName", appName);
+            metricEvent.Add("FunctionName", functionName);
+            metricEvent.Add("EventName", eventName);
+            metricEvent.Add("Average", average);
+            metricEvent.Add("Minimum", minimum);
+            metricEvent.Add("Maximum", maximum);
+            metricEvent.Add("Count", count);
+            metricEvent.Add("HostVersion", ScriptHost.Version);
+            metricEvent.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
+            metricEvent.Add("Data", NormalizeString(data));
+            metricEvent.Add("RuntimeSiteName", runtimeSiteName);
+            metricEvent.Add("SlotName", slotName);
 
-            _writeEvent($"{subscriptionId},{appName},{functionName},{eventName},{average},{minimum},{maximum},{count},{hostVersion},{eventTimestamp.ToString(EventTimestampFormat)},{NormalizeString(data)},{runtimeSiteName},{slotName},{_podName}");
+            _writeEvent(metricEvent.ToString(Formatting.None));
         }
 
         public override void LogFunctionDetailsEvent(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
         {
-            _writeEvent($"{siteName},{functionName},{NormalizeString(inputBindings)},{NormalizeString(outputBindings)},{scriptType},{(isDisabled ? 1 : 0)},{_podName}");
         }
 
         public override void LogFunctionExecutionAggregateEvent(string siteName, string functionName, long executionTimeInMs, long functionStartedCount, long functionCompletedCount, long functionFailedCount)
         {
-            _writeEvent($"{siteName},{functionName},{executionTimeInMs},{functionStartedCount},{functionCompletedCount},{functionFailedCount},{_podName}");
         }
 
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
-            _writeEvent($"{executionId},{siteName},{concurrency},{functionName},{invocationId},{executionStage},{executionTimeSpan},{success},{_podName}");
         }
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)

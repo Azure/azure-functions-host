@@ -42,36 +42,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         {
             _generator.LogFunctionTraceEvent(level, subscriptionId, appName, functionName, eventName, source, details, summary, exceptionType, exceptionMessage, functionInvocationId, hostInstanceId, activityId, runtimeSiteName, slotName, DateTime.UtcNow);
 
-            string expectedRegex = $"(?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*),(?<RuntimeSiteName>[^,]*),(?<SlotName>[^,]*),(?<PodName>[^,]*)";
-            Regex regex = new Regex(expectedRegex);
-
             string evt = _events.Single();
-            var match = regex.Match(evt);
+            var jObject = JObject.Parse(evt);
 
-            Assert.True(match.Success);
-            Assert.Equal(19, match.Groups.Count);
+            Assert.Equal(18, jObject.Properties().Count());
 
             DateTime dt;
-            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-            Assert.Collection(groupMatches,
-                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
-                p => Assert.Equal(subscriptionId, p),
-                p => Assert.Equal(appName, p),
-                p => Assert.Equal(functionName, p),
-                p => Assert.Equal(eventName, p),
-                p => Assert.Equal(source, p),
-                p => Assert.Equal(details, UnNormalize(p)),
-                p => Assert.Equal(summary, UnNormalize(p)),
-                p => Assert.Equal(ScriptHost.Version, p),
-                p => Assert.True(DateTime.TryParse(p, out dt)),
-                p => Assert.Equal(exceptionType, p),
-                p => Assert.Equal(exceptionMessage, UnNormalize(p)),
-                p => Assert.Equal(functionInvocationId, p),
-                p => Assert.Equal(hostInstanceId, p),
-                p => Assert.Equal(activityId, p),
-                p => Assert.Equal(runtimeSiteName, p),
-                p => Assert.Equal(slotName, p),
-                p => Assert.Equal(_podName, p));
+            Assert.Collection(jObject.Properties(),
+                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p.Value.ToString())),
+                p => Assert.Equal(subscriptionId, p.Value),
+                p => Assert.Equal(appName, p.Value),
+                p => Assert.Equal(functionName, p.Value),
+                p => Assert.Equal(eventName, p.Value),
+                p => Assert.Equal(source, p.Value),
+                p => Assert.Equal(LinuxEventGenerator.NormalizeString(details), p.Value.ToString()),
+                p => Assert.Equal(LinuxEventGenerator.NormalizeString(summary), p.Value.ToString()),
+                p => Assert.Equal(ScriptHost.Version, p.Value),
+                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out dt)),
+                p => Assert.Equal(exceptionType, p.Value.ToString()),
+                p => Assert.Equal(LinuxEventGenerator.NormalizeString(exceptionMessage), p.Value.ToString()),
+                p => Assert.Equal(functionInvocationId, p.Value.ToString()),
+                p => Assert.Equal(hostInstanceId, p.Value.ToString()),
+                p => Assert.Equal(activityId, p.Value),
+                p => Assert.Equal(runtimeSiteName, p.Value),
+                p => Assert.Equal(slotName, p.Value),
+                p => Assert.Equal(_podName, p.Value));
         }
 
         public static string UnNormalize(string normalized)
@@ -89,59 +84,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogFunctionMetricEvent(subscriptionId, appName, functionName, eventName, average, minimum, maximum, count, DateTime.Now, data, runtimeSiteName, slotName);
 
             string evt = _events.Single();
+            var jObject = JObject.Parse(evt);
 
-            string expectedRegex = $"(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Average>\\d*),(?<Min>\\d*),(?<Max>\\d*),(?<Count>\\d*),(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),\"(?<Data>.*)\",(?<RuntimeSiteName>[^,]*),(?<SlotName>[^,]*),(?<PodName>[^,]*)";
-            Regex regex = new Regex(expectedRegex);
-
-            var match = regex.Match(evt);
-
-            Assert.True(match.Success);
-            Assert.Equal(15, match.Groups.Count);
+            Assert.Equal(13, jObject.Properties().Count());
 
             DateTime dt;
-            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-            Assert.Collection(groupMatches,
-                p => Assert.Equal(subscriptionId, p),
-                p => Assert.Equal(appName, p),
-                p => Assert.Equal(functionName, p),
-                p => Assert.Equal(eventName, p),
-                p => Assert.Equal(average, long.Parse(p)),
-                p => Assert.Equal(minimum, long.Parse(p)),
-                p => Assert.Equal(maximum, long.Parse(p)),
-                p => Assert.Equal(count, long.Parse(p)),
-                p => Assert.Equal(ScriptHost.Version, p),
-                p => Assert.True(DateTime.TryParse(p, out dt)),
-                p => Assert.Equal(data, UnNormalize(p)),
-                p => Assert.Equal(runtimeSiteName, p),
-                p => Assert.Equal(slotName, p),
-                p => Assert.Equal(_podName, p));
-        }
-
-        [Theory]
-        [MemberData(nameof(LinuxEventGeneratorTestData.GetDetailsEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
-        public void ParseDetailsEvents(string siteName, string functionName, string inputBindings, string outputBindings, string scriptType, bool isDisabled)
-        {
-            _generator.LogFunctionDetailsEvent(siteName, functionName, inputBindings, outputBindings, scriptType, isDisabled);
-
-            string evt = _events.Single();
-
-            string expectedRegex = $"(?<AppName>[^,]*),(?<FunctionName>[^,]*),\"(?<InputBindings>.*)\",\"(?<OutputBindings>.*)\",(?<ScriptType>[^,]*),(?<IsDisabled>[0|1]),(?<PodName>[^,]*)";
-            Regex regex = new Regex(expectedRegex);
-
-            var match = regex.Match(evt);
-
-            Assert.True(match.Success);
-            Assert.Equal(8, match.Groups.Count);
-
-            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-            Assert.Collection(groupMatches,
-                p => Assert.Equal(siteName, p),
-                p => Assert.Equal(functionName, p),
-                p => Assert.Equal(inputBindings, UnNormalize(p)),
-                p => Assert.Equal(outputBindings, UnNormalize(p)),
-                p => Assert.Equal(scriptType, p),
-                p => Assert.Equal(isDisabled ? "1" : "0", p),
-                p => Assert.Equal(_podName, p));
+            Assert.Collection(jObject.Properties(),
+                p => Assert.Equal(subscriptionId, p.Value),
+                p => Assert.Equal(appName, p.Value),
+                p => Assert.Equal(functionName, p.Value),
+                p => Assert.Equal(eventName, p.Value),
+                p => Assert.Equal(average, long.Parse(p.Value.ToString())),
+                p => Assert.Equal(minimum, long.Parse(p.Value.ToString())),
+                p => Assert.Equal(maximum, long.Parse(p.Value.ToString())),
+                p => Assert.Equal(count, long.Parse(p.Value.ToString())),
+                p => Assert.Equal(ScriptHost.Version, p.Value),
+                p => Assert.True(DateTime.TryParse(p.Value.ToString(), out dt)),
+                p => Assert.Equal(LinuxEventGenerator.NormalizeString(data), p.Value),
+                p => Assert.Equal(runtimeSiteName, p.Value),
+                p => Assert.Equal(slotName, p.Value),
+                p => Assert.Equal(_podName, p.Value));
         }
 
         [Theory]
