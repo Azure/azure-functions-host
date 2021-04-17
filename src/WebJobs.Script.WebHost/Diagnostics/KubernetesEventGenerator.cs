@@ -12,11 +12,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private const int MaxDetailsLength = 10000;
         private readonly Action<string> _writeEvent;
-        private readonly string _podName;
 
-        public KubernetesEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
+        public KubernetesEventGenerator(Action<string> writeEvent = null)
         {
-            _podName = environment.GetEnvironmentVariable(EnvironmentSettingNames.PodName);
             _writeEvent = writeEvent ?? ConsoleWriter;
         }
 
@@ -43,7 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             traceLog.Add("ActivityId", activityId);
             traceLog.Add("RuntimeSiteName", runtimeSiteName);
             traceLog.Add("SlotName", slotName);
-            traceLog.Add("PodName", _podName);
 
             _writeEvent(traceLog.ToString(Formatting.None));
         }
@@ -82,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
-            _writeEvent($"{(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{DateTime.UtcNow.ToString()},{_podName}");
+            _writeEvent($"{(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{DateTime.UtcNow.ToString()}");
         }
 
         private void ConsoleWriter(string evt)

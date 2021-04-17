@@ -3,15 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Linq;
-using System.Net.Http;
 using System.Text.RegularExpressions;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Moq;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -21,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
     {
         private readonly KubernetesEventGenerator _generator;
         private readonly List<string> _events;
-        private readonly string _podName = "test-app-1234";
 
         public KubernetesEventGeneratorTests()
         {
@@ -31,9 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 _events.Add(s);
             };
 
-            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodName)).Returns(_podName);
-            _generator = new KubernetesEventGenerator(mockEnvironment.Object, writer);
+            _generator = new KubernetesEventGenerator(writer);
         }
 
         [Theory]
@@ -45,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string evt = _events.Single();
             var jObject = JObject.Parse(evt);
 
-            Assert.Equal(18, jObject.Properties().Count());
+            Assert.Equal(17, jObject.Properties().Count());
 
             DateTime dt;
             Assert.Collection(jObject.Properties(),
@@ -65,8 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(hostInstanceId, p.Value.ToString()),
                 p => Assert.Equal(activityId, p.Value),
                 p => Assert.Equal(runtimeSiteName, p.Value),
-                p => Assert.Equal(slotName, p.Value),
-                p => Assert.Equal(_podName, p.Value));
+                p => Assert.Equal(slotName, p.Value));
         }
 
         public static string UnNormalize(string normalized)
@@ -102,8 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.True(DateTime.TryParse(p.Value.ToString(), out dt)),
                 p => Assert.Equal(LinuxEventGenerator.NormalizeString(data), p.Value),
                 p => Assert.Equal(runtimeSiteName, p.Value),
-                p => Assert.Equal(slotName, p.Value),
-                p => Assert.Equal(_podName, p.Value));
+                p => Assert.Equal(slotName, p.Value));
         }
 
         [Theory]
@@ -114,13 +104,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
             string evt = _events.Single();
 
-            string expectedRegex = $"(?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<EventTimestamp>[^,]+),(?<PodName>[^,]*)";
+            string expectedRegex = $"(?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<EventTimestamp>[^,]+)";
             Regex regex = new Regex(expectedRegex);
 
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(9, match.Groups.Count);
+            Assert.Equal(8, match.Groups.Count);
 
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
             Assert.Collection(groupMatches,
@@ -130,8 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(category, p),
                 p => Assert.Equal(regionName, p),
                 p => Assert.Equal(properties, UnNormalize(p)),
-                p => Assert.True(DateTime.TryParse(p, out DateTime dt)),
-                p => Assert.Equal(_podName, p));
+                p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
     }
 }
