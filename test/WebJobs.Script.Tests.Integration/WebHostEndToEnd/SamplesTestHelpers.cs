@@ -28,7 +28,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string masterKey = await fixture.Host.GetMasterKeyAsync();
             uri = $"api/{functionName}?code={masterKey}&name=Mathew";
             request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+            response = await fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello Mathew", body);
+
+            // verify request suceeds without any content type set
+            uri = $"api/{functionName}?code={functionKey}&name=Mathew";
+            request = new HttpRequestMessage(HttpMethod.Get, uri);
+            response = await fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello Mathew", body);
         }
 
         public static async Task<HttpResponseMessage> InvokeHttpTrigger(EndToEndTestFixture fixture, string functionName)
