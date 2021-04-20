@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
@@ -37,10 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string evt = _events.Single();
             var jObject = JObject.Parse(evt);
 
-            Assert.Equal(17, jObject.Properties().Count());
+            Assert.Equal(18, jObject.Properties().Count());
 
             DateTime dt;
             Assert.Collection(jObject.Properties(),
+                p => Assert.Equal(ScriptConstants.LinuxLogEventStreamName, p.Value),
                 p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p.Value.ToString())),
                 p => Assert.Equal(subscriptionId, p.Value),
                 p => Assert.Equal(appName, p.Value),
@@ -60,14 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(slotName, p.Value));
         }
 
-        public static string UnNormalize(string normalized)
-        {
-            // We replace all double quotes to single before the writing the logs
-            // to avoid our logging agents parsing break
-            // TODO: we can remove this once platform is able to handle quotes in logs
-            return normalized.Replace("'", "\"");
-        }
-
         [Theory]
         [MemberData(nameof(LinuxEventGeneratorTestData.GetMetricEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
         public void ParseMetricEvents(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, string data, string runtimeSiteName, string slotName)
@@ -77,10 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             string evt = _events.Single();
             var jObject = JObject.Parse(evt);
 
-            Assert.Equal(13, jObject.Properties().Count());
+            Assert.Equal(14, jObject.Properties().Count());
 
             DateTime dt;
             Assert.Collection(jObject.Properties(),
+                p => Assert.Equal(ScriptConstants.LinuxLogEventStreamName, p.Value),
                 p => Assert.Equal(subscriptionId, p.Value),
                 p => Assert.Equal(appName, p.Value),
                 p => Assert.Equal(functionName, p.Value),
@@ -103,24 +96,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             _generator.LogAzureMonitorDiagnosticLogEvent(level, resourceId, operationName, category, regionName, properties);
 
             string evt = _events.Single();
+            var jObject = JObject.Parse(evt);
 
-            string expectedRegex = $"(?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<EventTimestamp>[^,]+)";
-            Regex regex = new Regex(expectedRegex);
+            Assert.Equal(7, jObject.Properties().Count());
 
-            var match = regex.Match(evt);
-
-            Assert.True(match.Success);
-            Assert.Equal(8, match.Groups.Count);
-
-            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).Skip(1).ToArray();
-            Assert.Collection(groupMatches,
-                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p)),
-                p => Assert.Equal(resourceId, p),
-                p => Assert.Equal(operationName, p),
-                p => Assert.Equal(category, p),
-                p => Assert.Equal(regionName, p),
-                p => Assert.Equal(properties, UnNormalize(p)),
-                p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
+            Assert.Collection(jObject.Properties(),
+                p => Assert.Equal(ScriptConstants.LinuxAzureMonitorEventStreamName, p.Value),
+                p => Assert.Equal((int)LinuxEventGenerator.ToEventLevel(level), int.Parse(p.Value.ToString())),
+                p => Assert.Equal(resourceId, p.Value),
+                p => Assert.Equal(operationName, p.Value),
+                p => Assert.Equal(category, p.Value),
+                p => Assert.Equal(regionName, p.Value),
+                p => Assert.Equal(LinuxEventGenerator.NormalizeString(properties), p.Value));
         }
     }
 }

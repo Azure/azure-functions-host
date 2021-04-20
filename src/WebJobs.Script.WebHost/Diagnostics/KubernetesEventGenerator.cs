@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
             JObject traceLog = new JObject();
+            traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
             traceLog.Add("Level", (int)ToEventLevel(level));
             traceLog.Add("SubscriptionId", subscriptionId);
             traceLog.Add("AppName", appName);
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
             JObject metricEvent = new JObject();
+            metricEvent.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
             metricEvent.Add("SubscriptionId", subscriptionId);
             metricEvent.Add("AppName", appName);
             metricEvent.Add("FunctionName", functionName);
@@ -79,7 +81,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
-            _writeEvent($"{(int)ToEventLevel(level)},{resourceId},{operationName},{category},{regionName},{NormalizeString(properties.Replace("'", string.Empty))},{DateTime.UtcNow.ToString()}");
+            JObject azMonEvent = new JObject();
+            azMonEvent.Add("EventType", ScriptConstants.LinuxAzureMonitorEventStreamName);
+            azMonEvent.Add("Level", (int)ToEventLevel(level));
+            azMonEvent.Add("ResourceId", resourceId);
+            azMonEvent.Add("OperationName", operationName);
+            azMonEvent.Add("Category", category);
+            azMonEvent.Add("RegionName", regionName);
+            azMonEvent.Add("Properties", NormalizeString(properties.Replace("'", string.Empty)));
+
+            _writeEvent(azMonEvent.ToString(Formatting.None));
         }
 
         private void ConsoleWriter(string evt)
