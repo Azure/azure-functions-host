@@ -208,6 +208,7 @@ message FunctionEnvironmentReloadResponse {
 // Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
 message CloseSharedMemoryResourcesRequest {
   repeated string map_names = 1;
+  bool to_delete = 2;
 }
 
 // Response from the worker indicating which of the shared memory maps have been successfully closed and which have not been closed

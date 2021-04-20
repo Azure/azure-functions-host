@@ -169,6 +169,35 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             return null;
         }
 
+        /// <summary>
+        /// Get a <see cref="Stream"/> over the content stored in this <see cref="SharedMemoryMap"/> starting from the offset
+        /// for a total of the content length specified.
+        /// </summary>
+        /// <param name="offset">Offset to start reading the content from.</param>
+        /// <param name="count">Number of bytes to read. -1 means read to completion.</param>
+        /// <returns><see cref="Stream"/> over the content if successful, <see cref="null"/> otherwise.</returns>
+        public async Task<Stream> GetStreamAsync(int offset, int count)
+        {
+            // TODO add tests
+            long contentLength = await GetContentLengthAsync();
+            if (contentLength >= 0)
+            {
+                if (count > contentLength || offset < 0)
+                {
+                    return null;
+                }
+
+                if (count == -1)
+                {
+                    count = (int)contentLength;
+                }
+
+                return _memoryMappedFile.CreateViewStream(SharedMemoryConstants.HeaderTotalBytes + offset, count);
+            }
+
+            return null;
+        }
+
         public void Dispose(bool deleteFile)
         {
             if (deleteFile)

@@ -241,38 +241,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        // TODO do we need this instead of just sticking with BindStreamAsync and doing special handling
-        // inside ConverValueToStream and ConvertStreamToValue?
-        internal static async Task BindStreamCacheAwareAsync(BindingContext context, FileAccess access)
-        {
-            Stream stream = await context.Binder.BindAsync<Stream>(context.Attributes);
-
-            if (access == FileAccess.Write)
-            {
-                ConvertValueToStream(context.Value, stream);
-            }
-            else
-            {
-                // Read the value into the context Value converting based on data type
-                object converted = context.Value;
-                ConvertStreamToValue(stream, context.DataType, ref converted);
-                context.Value = converted;
-            }
-        }
-
         public static void ConvertValueToStream(object value, Stream stream)
         {
+            // If the object is wrapped as a SharedMemoryObject, extract the inner value and
+            // use that value and its corresponding type for further conversion.
+            SharedMemoryObject sharedMemoryObject = value as SharedMemoryObject;
+            if (sharedMemoryObject != null)
+            {
+                value = sharedMemoryObject.Content;
+            }
+
             Stream valueStream = value as Stream;
             if (valueStream == null)
             {
-                // If the object is wrapped as a SharedMemoryObject, extract the inner value and
-                // use that value and its corresponding type for further conversion.
-                SharedMemoryObject sharedMemoryObject = value as SharedMemoryObject;
-                if (sharedMemoryObject != null)
-                {
-                    value = sharedMemoryObject.Value;
-                }
-
                 // Convert the value to bytes and write it
                 // to the stream
                 byte[] bytes = null;

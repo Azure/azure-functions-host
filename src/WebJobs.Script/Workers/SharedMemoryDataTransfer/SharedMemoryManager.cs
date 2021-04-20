@@ -9,7 +9,6 @@ using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
@@ -76,8 +75,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         {
             if (objectType == typeof(byte[]))
             {
-                object value = await GetBytesAsync(mapName, offset, count);
-                return new SharedMemoryObject(mapName, count, value);
+                return await GetBytesAsync(mapName, offset, count);
+            }
+            else if (objectType == typeof(SharedMemoryObject))
+            {
+                // TODO add tests
+                Stream contentStream = await GetStreamAsync(mapName, offset, count);
+                return new SharedMemoryObject(mapName, count, contentStream);
             }
             else if (objectType == typeof(string))
             {
@@ -177,6 +181,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             Type objType = input.GetType();
             _logger.LogTrace("Cannot transfer object over shared memory; type {Type} not supported", objType);
             return false;
+        }
+
+        public bool TryTrackSharedMemoryMap(string mapName)
+        {
+            SharedMemoryMap sharedMemoryMap = Open(mapName);
+            if (sharedMemoryMap == null)
+            {
+                return false;
+            }
+            return AllocatedSharedMemoryMaps.TryAdd(mapName, sharedMemoryMap);
         }
 
         /// <summary>
@@ -356,6 +370,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         {
             byte[] contentBytes = await GetBytesAsync(mapName, offset, count);
             return Encoding.UTF8.GetString(contentBytes);
+        }
+
+        /// <summary>
+        /// Gets a <see cref="Stream"/> over the data from the <see cref="SharedMemoryMap"/> with the given name.
+        /// </summary>
+        /// <param name="mapName">Name of the <see cref="MemoryMappedFile"/> to read from.</param>
+        /// <param name="offset">Offset to start reading data from in the <see cref="SharedMemoryMap"/>.</param>
+        /// <param name="count">Number of bytes to read from, starting from the offset, in the <see cref="SharedMemoryMap"/>.</param>
+        /// <returns><see cref="Stream"/> over the data if successful, <see cref="null"/> otherwise.
+        /// </returns>
+        private async Task<Stream> GetStreamAsync(string mapName, int offset, int count)
+        {
+            // TODO add tests.
+            SharedMemoryMap sharedMemoryMap = Open(mapName);
+
+            try
+            {
+                Stream content = await sharedMemoryMap.GetStreamAsync(offset, count);
+
+                if (content == null)
+                {
+                    _logger.LogError($"Cannot get Stream of MemoryMappedFile: {mapName}");
+                    throw new Exception($"Cannot get Stream of MemoryMappedFile: {mapName} with offset: {offset} and count: {count}");
+                }
+
+                return content;
+            }
+            finally
+            {
+                sharedMemoryMap.Dispose(deleteFile: false);
+            }
         }
 
         /// <summary>

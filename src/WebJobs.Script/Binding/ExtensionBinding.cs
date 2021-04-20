@@ -75,8 +75,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObject.MemoryMapName, sharedMemoryObject.Count));
                     context.Attributes = currentAttributes.ToArray();
                 }
-                //await BindStreamAsync(context, Access);
-                await BindStreamCacheAwareAsync(context, Access);
+
+                await BindStreamAsync(context, Access);
             }
             else if (_binding.DefaultType == typeof(JObject))
             {

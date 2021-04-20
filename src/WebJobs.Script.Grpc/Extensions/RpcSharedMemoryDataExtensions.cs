@@ -65,8 +65,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             }
 
             // TODO: If we are adding things, we need to remove from this too (and right now we are not, since we are not freeing things)
-            // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
-            sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMeta.MemoryMapName);
+            // Do not add to this list if cache enabled - we will add references when adding something to the cache
+            if (!functionDataCache.IsEnabled)
+            {
+                // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
+                sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMeta.MemoryMapName);
+            }
 
             // Generate a response
             RpcSharedMemory sharedMem = new RpcSharedMemory()
@@ -81,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             return sharedMem;
         }
 
-        internal static async Task<object> ToObjectAsync(this RpcSharedMemory sharedMem, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager)
+        internal static async Task<object> ToObjectAsync(this RpcSharedMemory sharedMem, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager, bool isFunctionDataCacheEnabled)
         {
             // Data was transferred by the worker using shared memory
             string mapName = sharedMem.Name;
@@ -92,6 +96,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             switch (sharedMem.Type)
             {
                 case RpcDataType.Bytes:
+                    if (isFunctionDataCacheEnabled)
+                    {
+                        if (sharedMemoryManager.TryTrackSharedMemoryMap(mapName))
+                        {
+                            return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(SharedMemoryObject));
+                        }
+                    }
+
                     return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(byte[]));
                 case RpcDataType.String:
                     return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(string));

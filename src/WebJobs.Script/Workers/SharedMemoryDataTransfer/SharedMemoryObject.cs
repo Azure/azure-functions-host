@@ -1,14 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.IO;
+
 namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     internal class SharedMemoryObject
     {
-        public SharedMemoryObject(string memoryMapName, int count, object value)
+        public SharedMemoryObject(string memoryMapName, int count, Stream content)
         {
             MemoryMapName = memoryMapName;
-            Value = value;
+            Content = content;
             Count = count;
         }
 
@@ -16,6 +18,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public int Count { get; private set; }
 
-        public object Value { get; private set; }
+        public Stream Content { get; private set; }
     }
 }
