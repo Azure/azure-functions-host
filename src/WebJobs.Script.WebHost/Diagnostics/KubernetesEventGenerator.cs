@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
             details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
+            // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
             JObject traceLog = new JObject();
             traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
             traceLog.Add("Level", (int)ToEventLevel(level));
@@ -48,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
         {
+            // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
             JObject metricEvent = new JObject();
             metricEvent.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
             metricEvent.Add("SubscriptionId", subscriptionId);
@@ -75,6 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
         }
 
+        // The execution event state is not stored anywhere in Kubernetes environments since all
+        // scaling is driven by KEDA. So we won't log this event.
+
         public override void LogFunctionExecutionEvent(string executionId, string siteName, int concurrency, string functionName, string invocationId, string executionStage, long executionTimeSpan, bool success)
         {
         }
@@ -82,6 +87,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public override void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName, string category, string regionName, string properties)
         {
             JObject azMonEvent = new JObject();
+            // Set event type to MS_FUNCTION_AZURE_MONITOR_EVENT to send these event to customer's
+            // azure monitor workspace.
             azMonEvent.Add("EventType", ScriptConstants.LinuxAzureMonitorEventStreamName);
             azMonEvent.Add("Level", (int)ToEventLevel(level));
             azMonEvent.Add("ResourceId", resourceId);
