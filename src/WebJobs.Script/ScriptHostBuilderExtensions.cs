@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
@@ -286,6 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
+                    services.AddAzureStorageProvider();
                 }
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
@@ -298,11 +300,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
 
-                services.AddSingleton<ScheduleMonitor, StorageScheduleMonitorV2>();
+                AddHostOverrides(services);
             });
 
             RegisterFileProvisioningService(builder);
             return builder;
+        }
+
+        public static void AddHostOverrides(IServiceCollection services)
+        {
+            // Custom implementations that the Host overrides
+            services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
+            services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
         }
 
         public static void AddCommonServices(IServiceCollection services)

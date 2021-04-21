@@ -21,9 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
-        private readonly AzureStorageProvider _azureStorageProvider;
+        private readonly IAzureStorageProvider _azureStorageProvider;
 
-        public BlobChangeAnalysisStateProvider(IConfiguration configuration, IHostIdProvider hostIdProvider, ILogger<BlobChangeAnalysisStateProvider> logger, AzureStorageProvider azureStorageProvider)
+        public BlobChangeAnalysisStateProvider(IConfiguration configuration, IHostIdProvider hostIdProvider, ILogger<BlobChangeAnalysisStateProvider> logger, IAzureStorageProvider azureStorageProvider)
         {
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;

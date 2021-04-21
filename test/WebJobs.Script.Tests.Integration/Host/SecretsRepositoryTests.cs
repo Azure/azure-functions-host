@@ -382,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);
                 KeyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
                 Environment = new TestEnvironment();
-                AzureStorageProvider = new AzureStorageProvider(configuration, TestHelpers.GetAzureStorageService<BlobServiceClientProvider>(configuration));
+                AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
 
             public IEnvironment Environment { get; private set; }
@@ -407,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public ILoggerProvider LoggerProvider { get; private set; }
 
-            public AzureStorageProvider AzureStorageProvider { get; private set; }
+            public IAzureStorageProvider AzureStorageProvider { get; private set; }
 
             public async Task TestInitialize(SecretsRepositoryType repositoryType, string secretsDirectory, string testSiteName = null)
             {

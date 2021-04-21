@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnection;
-        private readonly AzureStorageProvider _azureStorageProvider;
+        private readonly IAzureStorageProvider _azureStorageProvider;
         private BlobContainerClient _blobContainerClient;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, AzureStorageProvider azureStorageProvider)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureStorageProvider azureStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
             if (secretSentinelDirectoryPath == null)
@@ -160,13 +160,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Prefix is secret blob path without extension
             string prefix = Path.GetFileNameWithoutExtension(GetSecretsBlobPath(type, functionName)) + $".{ScriptConstants.Snapshot}";
 
-            var blobList = new List<BlobItem>();
+            var blobList = new List<string>();
             try
             {
                 var results = Container.GetBlobsAsync(prefix: string.Format("{0}/{1}", _secretsBlobPath, prefix.ToLowerInvariant()));
                 await foreach (BlobItem item in results)
                 {
-                    blobList.Add(item);
+                    blobList.Add(item.Name);
                 }
             }
             catch (Exception e)
@@ -174,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 LogErrorMessage("list");
                 throw e;
             }
-            return blobList.Select(x => x.Name).ToArray();
+            return blobList.ToArray();
         }
 
         private string GetSecretsBlobPath(ScriptSecretsType secretsType, string functionName = null)

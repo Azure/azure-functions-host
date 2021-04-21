@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
     {
         private readonly IConfigurationRoot _configuration;
         private readonly IHostIdProvider _hostIdProvider;
-        private readonly AzureStorageProvider _azureStorageProvider;
+        private readonly IAzureStorageProvider _azureStorageProvider;
 
         public BlobChangeAnalysisStateProviderTests()
         {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 
             _hostIdProvider = hostIdProviderMock.Object;
 
-            _azureStorageProvider = new AzureStorageProvider(_configuration, TestHelpers.GetAzureStorageService<BlobServiceClientProvider>(_configuration));
+            _azureStorageProvider = TestHelpers.GetAzureStorageProvider(_configuration);
         }
 
         [Fact]
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             return blobContainer.GetBlockBlobReference(analysisBlobPath);
         }
 
-        private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider, AzureStorageProvider azureStorageProvider)
+        private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider, IAzureStorageProvider azureStorageProvider)
         {
             if (!azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {

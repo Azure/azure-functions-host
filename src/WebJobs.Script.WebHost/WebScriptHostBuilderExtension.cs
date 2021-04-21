@@ -52,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     webJobsBuilder.AddAzureStorageCoreServices();
-                    webJobsBuilder.AddAzureStorageV12CoreServices();
 
                     configureWebJobs?.Invoke(webJobsBuilder);
 

@@ -400,14 +400,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new Uri(container.StorageUri.PrimaryUri, sas);
         }
 
-        public static T GetAzureStorageService<T>(IConfiguration configuration)
+        public static IAzureStorageProvider GetAzureStorageProvider(IConfiguration configuration)
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddAzureStorageProvider();
-            serviceCollection.AddSingleton(configuration); // Override configuration
-            ServiceProvider provider = serviceCollection.BuildServiceProvider();
-            var service = provider.GetService<T>();
-            return service;
+            IHost tempHost = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    // Override configuration
+                    services.AddSingleton(configuration);
+                    services.AddAzureStorageProvider();
+                }).Build();
+
+            var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureStorageProvider>();
+            return azureStorageProvider;
         }
     }
 }

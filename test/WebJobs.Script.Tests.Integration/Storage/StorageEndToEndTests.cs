@@ -116,6 +116,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             }, userMessageCallback: _fixture.Host.GetLog);
         }
 
+        [Fact]
+        public async Task CanUseStorageV12Types()
+        {
+            // The point of this test is to verify back compat behavior that a user can still #r and use storage v11 types in CSX, 
+            // even if storage extension is not installed 
+
+            _fixture.AssertNoScriptHostErrors();
+
+            string testData = Guid.NewGuid().ToString();
+
+            await _fixture.Host.BeginFunctionAsync("StorageReferenceV12", testData);
+
+            await TestHelpers.Await(() =>
+            {
+                // make sure the function executed successfully
+                var logs = _fixture.Host.GetScriptHostLogMessages();
+                return logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
+            }, userMessageCallback: _fixture.Host.GetLog);
+        }
+
         public class NoStorageReferenceTestFixture : EndToEndTestFixture
         {
             public NoStorageReferenceTestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
@@ -137,7 +157,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     o.Functions = new[]
                     {
                         "StorageReferenceV9",
-                        "StorageReferenceV11"
+                        "StorageReferenceV11",
+                        "StorageReferenceV12"
                     };
                 });
             }
