@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 // Content was already present in shared memory (cache hit)
                 logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
                 sharedMemoryMeta = value as SharedMemoryMetadata;
+                needToFreeAfterInvocation = false;
             }
             else
             {
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                     {
                         // Try to add the object into the cache and keep an active ref-count for it so that it does not get
                         // evicted while it is still being used by the invocation.
-                        if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta, isIncrementActiveReference: true))
+                        if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta, isIncrementActiveReference: true, isDeleteOnFailure: false))
                         {
                             logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
                             // We don't need to free the object after the invocation; it will be freed as part of the cache's

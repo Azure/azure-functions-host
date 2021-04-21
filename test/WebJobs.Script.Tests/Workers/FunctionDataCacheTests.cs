@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Put into cache
                 FunctionDataCacheKey key = new FunctionDataCacheKey("foo", "bar");
-                Assert.True(cache.TryPut(key, metadata, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key, metadata, isIncrementActiveReference: false, isDeleteOnFailure: false));
 
                 // Get from cache
                 Assert.True(cache.TryGet(key, isIncrementActiveReference: false, out SharedMemoryMetadata getMetadata));
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 };
                 for (int i = 0; i < 3; i++)
                 {
-                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false));
+                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false, isDeleteOnFailure: false));
                 }
 
                 // The order of the LRU list should be the same as that in which objects were inserted above.
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 };
                 for (int i = 0; i < 3; i++)
                 {
-                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false));
+                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false, isDeleteOnFailure: false));
                 }
 
                 // Access the middle object so that now it is the most recently used
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 };
                 for (int i = 0; i < 3; i++)
                 {
-                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false));
+                    Assert.True(cache.TryPut(keys[i], metadatas[i], isIncrementActiveReference: false, isDeleteOnFailure: false));
                 }
 
                 // Access the middle object so that now it is the most recently used
@@ -278,13 +278,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Put one object into the cache and keep an active reference
                 FunctionDataCacheKey key1 = new FunctionDataCacheKey("foo1", "bar1");
-                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: true));
+                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: true, isDeleteOnFailure: false));
 
                 // The first object has used up the cache space.
                 // When trying to insert the second object into the cache, it should fail
                 // since the first has an active reference and cannot be evicted.
                 FunctionDataCacheKey key2 = new FunctionDataCacheKey("foo2", "bar2");
-                Assert.False(cache.TryPut(key2, metadata2, isIncrementActiveReference: false));
+                Assert.False(cache.TryPut(key2, metadata2, isIncrementActiveReference: false, isDeleteOnFailure: false));
                 // Ensure that the first object was not evicted
                 Assert.True(cache.TryGet(key1, isIncrementActiveReference: false, out var _));
 
@@ -293,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Now, when trying to insert the second object into the cache, it should succeed
                 // since the first object can be evicted (since its active reference was dropped).
-                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false, isDeleteOnFailure: false));
                 // Ensure that the first object was evicted
                 Assert.False(cache.TryGet(key1, isIncrementActiveReference: false, out var _));
             }
@@ -324,9 +324,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 FunctionDataCacheKey key1 = new FunctionDataCacheKey("foo1", "bar1");
                 FunctionDataCacheKey key2 = new FunctionDataCacheKey("foo2", "bar2");
                 FunctionDataCacheKey key3 = new FunctionDataCacheKey("foo3", "bar3");
-                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: false));
-                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false));
-                Assert.True(cache.TryPut(key3, metadata3, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: false, isDeleteOnFailure: false));
+                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false, isDeleteOnFailure: false));
+                Assert.True(cache.TryPut(key3, metadata3, isIncrementActiveReference: false, isDeleteOnFailure: false));
 
                 // Verify that the cache is full
                 Assert.Equal(0, cache.RemainingCapacityBytes);
@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 // We will create another object and try to insert it.
                 SharedMemoryMetadata metadata4 = await manager.PutObjectAsync(content);
                 FunctionDataCacheKey key4 = new FunctionDataCacheKey("foo4", "bar4");
-                Assert.True(cache.TryPut(key4, metadata4, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key4, metadata4, isIncrementActiveReference: false, isDeleteOnFailure: false));
 
                 // The first object should be evicted (least recently used) by now
                 Assert.False(cache.TryGet(key1, isIncrementActiveReference: false, out var _));
@@ -377,15 +377,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 // Put the two objects into the cache
                 FunctionDataCacheKey key1 = new FunctionDataCacheKey("foo1", "bar1");
                 FunctionDataCacheKey key2 = new FunctionDataCacheKey("foo2", "bar2");
-                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: false));
-                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key1, metadata1, isIncrementActiveReference: false, isDeleteOnFailure: false));
+                Assert.True(cache.TryPut(key2, metadata2, isIncrementActiveReference: false, isDeleteOnFailure: false));
 
                 // At this point, the cache is full.
                 // We will create another object and try to insert it.
                 byte[] contentFinal = TestUtils.GetRandomBytesInArray(contentSizeFinal);
                 SharedMemoryMetadata metadata3 = await manager.PutObjectAsync(contentFinal);
                 FunctionDataCacheKey key3 = new FunctionDataCacheKey("foo3", "bar3");
-                Assert.True(cache.TryPut(key3, metadata3, isIncrementActiveReference: false));
+                Assert.True(cache.TryPut(key3, metadata3, isIncrementActiveReference: false, isDeleteOnFailure: false));
 
                 // The first two objects should be evicted by now
                 Assert.False(cache.TryGet(key1, isIncrementActiveReference: false, out var _));

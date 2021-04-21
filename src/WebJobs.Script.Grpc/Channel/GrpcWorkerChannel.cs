@@ -537,21 +537,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <param name="outputMaps">List of names of shared memory maps to close from the worker.</param>
         internal void SendCloseSharedMemoryResourcesForInvocationRequest(IList<string> outputMaps)
         {
-            // If caching is enabled, then the worker must not delete its memory maps.
-            // It should only drop its own reference to it (because the host is now already holding
-            // a reference to that memory map and would not let the OS clean it up).
-            // The cache will release the resources for these memory maps as part of its eviction policy.
-            // We only ask the worker to delete the memory maps it created if caching is not enabled
-            // and the output has been read by the host and is no more needed in shared memory.
-            bool toDeleteWorkerMemoryMaps = true;
-            if (_functionDataCache.IsEnabled)
-            {
-                toDeleteWorkerMemoryMaps = false;
-            }
-
+            // Request the worker to drop its references to any shared memory maps that it had produced.
+            // This is because the host has read them (or holds a reference to them if caching is enabled.)
+            // The worker will not delete the resources allocated for the memory maps; it will only drop its reference
+            // so that the worker process does not prevent the OS from freeing the memory maps when the host attempts
+            // to free them (either right away after reading them or if caching is enabled, then when the cache decides
+            // to evict that object based on its eviction policy).
             CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest();
             closeSharedMemoryResourcesRequest.MapNames.AddRange(outputMaps);
-            closeSharedMemoryResourcesRequest.ToDelete = toDeleteWorkerMemoryMaps;
 
             SendStreamingMessage(new StreamingMessage()
             {
