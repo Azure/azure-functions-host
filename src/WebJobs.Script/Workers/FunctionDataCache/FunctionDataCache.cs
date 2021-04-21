@@ -57,38 +57,54 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
         internal Dictionary<FunctionDataCacheKey, long> ActiveReferences { get; private set; }
 
-        public bool TryPut(FunctionDataCacheKey cacheKey, SharedMemoryMetadata sharedMemoryMeta, bool isIncrementActiveReference)
+        public bool TryPut(FunctionDataCacheKey cacheKey, SharedMemoryMetadata sharedMemoryMeta, bool isIncrementActiveReference, bool isDeleteOnFailure)
         {
-            lock (_lock)
+            bool success = false;
+
+            try
             {
-                // Check if the key is already present in the cache
-                if (_localCache.ContainsKey(cacheKey))
+                lock (_lock)
                 {
-                    // Key already exists in the local cache; do not overwrite
-                    return false;
-                }
+                    // Check if the key is already present in the cache
+                    if (_localCache.ContainsKey(cacheKey))
+                    {
+                        // Key already exists in the local cache; do not overwrite
+                        return false;
+                    }
 
-                long bytesRequired = sharedMemoryMeta.Count;
-                if (!EvictUntilCapacityAvailable(bytesRequired))
+                    long bytesRequired = sharedMemoryMeta.Count;
+                    if (!EvictUntilCapacityAvailable(bytesRequired))
+                    {
+                        return false;
+                    }
+
+                    // Add the mapping into the local cache
+                    _localCache.Add(cacheKey, sharedMemoryMeta);
+
+                    // Update the LRU list (mark this key as the most recently used)
+                    AddToEndOfLRU(cacheKey);
+
+                    if (isIncrementActiveReference)
+                    {
+                        IncrementActiveReference(cacheKey);
+                    }
+
+                    // Update the cache utilization
+                    RemainingCapacityBytes -= sharedMemoryMeta.Count;
+
+                    success = true;
+                    return true;
+                }
+            }
+            finally
+            {
+                if (!success && isDeleteOnFailure)
                 {
-                    return false;
+                    if (!_sharedMemoryManager.TryFreeSharedMemoryMap(sharedMemoryMeta.MemoryMapName))
+                    {
+                        _logger.LogTrace("Cannot free shared memory map: {MapName} with size: {Size} bytes on failure to insert into the cache", sharedMemoryMeta.MemoryMapName, sharedMemoryMeta.Count);
+                    }
                 }
-
-                // Add the mapping into the local cache
-                _localCache.Add(cacheKey, sharedMemoryMeta);
-
-                // Update the LRU list (mark this key as the most recently used)
-                AddToEndOfLRU(cacheKey);
-
-                if (isIncrementActiveReference)
-                {
-                    IncrementActiveReference(cacheKey);
-                }
-
-                // Update the cache utilization
-                RemainingCapacityBytes -= sharedMemoryMeta.Count;
-
-                return true;
             }
         }
 

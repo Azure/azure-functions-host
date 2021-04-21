@@ -514,18 +514,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
-                    // TODO this code path should be as it is when the cache is disabled (i.e. the worker should delete the map + files) - otherwise, it should just drop a ref (when cache is enabled)
-                    // TODO check if the references held by the worker (since we are not sending the message to the worker to remove the maps) prevents the maps from being freed
-                    // TODO check the above for Windows and Linux both
-
-                    if (!_functionDataCache.IsEnabled)
+                    // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
+                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
                     {
-                        // If caching is enabled, the cache will decide when the object is to be evicted
-                        // Free memory allocated by the host (for input bindings)
-                        if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
-                        {
-                            _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
-                        }
+                        _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
                     }
 
                     // List of shared memory maps that were produced by the worker (for output bindings)
@@ -548,7 +540,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // If caching is enabled, then the worker must not delete its memory maps.
             // It should only drop its own reference to it (because the host is now already holding
             // a reference to that memory map and would not let the OS clean it up).
-            // The cache will release the resources for these memory maps as part of its eviction logic.
+            // The cache will release the resources for these memory maps as part of its eviction policy.
             // We only ask the worker to delete the memory maps it created if caching is not enabled
             // and the output has been read by the host and is no more needed in shared memory.
             bool toDeleteWorkerMemoryMaps = true;
