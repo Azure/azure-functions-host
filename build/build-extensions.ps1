@@ -1,7 +1,7 @@
 param (
   [string]$buildNumber = "0",
   [string]$extensionVersion = "3.0.$buildNumber",
-  [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",
+  [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
@@ -15,7 +15,7 @@ $extensionVersionNoSuffix = $extensionVersion
 $v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
 
 if ($hasSuffix) {
-  $extensionVersion = "$extensionVersion-$suffix"
+  $extensionVersion = "$extensionVersion-$suffix"  
   $v2CompatibleExtensionVersion = "$v2CompatibleExtensionVersion-$suffix"
 }
 
@@ -44,11 +44,6 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     
     $publishTarget = "$buildOutput\publish\$targetRid"
     $symbolsTarget = "$buildOutput\symbols\$targetRid"
-    
-    if ($isSelfContained) {
-        $publishTarget = "$publishTarget.self-contained"
-        $symbolsTarget = "$symbolsTarget.self-contained"
-    }
 
     $suffixCmd = ""
     if ($hasSuffix) {
@@ -85,7 +80,10 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host "======================================"
     Write-Host ""
 
-    ZipContent $symbolsTarget "$buildOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
+    $zipOutput = "$buildOutput\Symbols"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+
+    ZipContent $symbolsTarget "$zipOutput\Functions.Symbols.$extensionVersion$runtimeSuffix.zip"
 }
 
 function GetFolderSizeInMb([string] $rootPath) {
@@ -135,40 +133,49 @@ function CreateSiteExtensions() {
     Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
     Copy-Item -Path $buildOutput\publish\win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
-
-    Write-Host "======================================"
-    Write-Host "Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
+    Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
     Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
-    Write-Host "Moving workers directory:$officialSiteExtensionPath\64bit\workers to" $privateSiteExtensionPath 
-    Move-Item -Path "$officialSiteExtensionPath\64bit\workers"  -Destination "$officialSiteExtensionPath\workers" 
+    Write-Host "  Moving workers directory: $officialSiteExtensionPath\64bit\workers to $officialSiteExtensionPath\workers"
+    Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
-    
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null    
     
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
 
-    Write-Host "Generating $hashesForHardlinksFile"
     Write-Host "======================================"
+    Write-Host "Generating $hashesForHardlinksFile"    
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
-    Write-Host "Done generating $hashesForHardlinksFile"
+    Write-Host "Done generating $siteExtensionPath/$extensionVersionNoSuffix"
     Write-Host "======================================"
+    Write-Host
 
-    ZipContent $siteExtensionPath "$buildOutput\Functions.$extensionVersion$runtimeSuffix.zip"
-
+  
+    
     Write-Host "======================================"
+    $stopwatch.Reset()
     Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
     Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix -Force -Recurse > $null
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
-    ZipContent $officialV2CompatibleSiteExtensionPath "$buildOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
+    Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
+    Write-Host
+
+    $zipOutput = "$buildOutput\V2SiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+    ZipContent $officialV2CompatibleSiteExtensionPath "$zipOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
+
+    $zipOutput = "$buildOutput\SiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+    ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
     
-    Remove-Item $siteExtensionPath -Recurse -Force > $null
+    Remove-Item $siteExtensionPath -Recurse -Force > $null    
     Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
     
     Write-Host "======================================"
+    $stopwatch.Reset()
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
     Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $siteExtensionPath\SiteExtensions\Functions\32bit -Force -Recurse > $null
     Copy-Item -Path $siteExtensionPath\SiteExtensions\Functions\32bit\applicationHost.xdt -Destination $siteExtensionPath\SiteExtensions\Functions -Force > $null
@@ -176,7 +183,9 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host ""
     
-    ZipContent $siteExtensionPath "$buildOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
+    $zipOutput = "$buildOutput\PrivateSiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+    ZipContent $siteExtensionPath "$zipOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null
 }
