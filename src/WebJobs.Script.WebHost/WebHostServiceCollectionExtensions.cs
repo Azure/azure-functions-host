@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsKubernetesManagedHosting())
                 {
-                    return new KubernetesEventGenerator(environment);
+                    return new KubernetesEventGenerator();
                 }
                 else
                 {
