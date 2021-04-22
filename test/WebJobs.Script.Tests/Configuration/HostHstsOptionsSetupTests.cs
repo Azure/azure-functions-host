@@ -8,7 +8,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
-using Moq;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -99,7 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
-
             var configSource = new HostJsonFileConfigurationSource(_options, environment, loggerFactory, new TestMetricsLogger());
 
             var configurationBuilder = new ConfigurationBuilder()
