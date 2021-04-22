@@ -44,16 +44,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                     return null;
                 }
 
-                if (value is CacheableObjectStream)
+                if (functionDataCache.IsEnabled)
                 {
-                    CacheableObjectStream cachableObj = value as CacheableObjectStream;
-                    FunctionDataCacheKey cacheKey = cachableObj.CacheKey;
-
-                    if (functionDataCache.IsEnabled)
+                    if (value is CacheableObjectStream)
                     {
+                        CacheableObjectStream cacheableObj = value as CacheableObjectStream;
+                        FunctionDataCacheKey cacheKey = cacheableObj.CacheKey;
+
                         // Try to add the object into the cache and keep an active ref-count for it so that it does not get
                         // evicted while it is still being used by the invocation.
-                        if (functionDataCache.TryPut(cacheKey, sharedMemoryMeta, isIncrementActiveReference: true, isDeleteOnFailure: false))
+                        if (cacheableObj.TryCacheObject(sharedMemoryMeta))
                         {
                             logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
                             // We don't need to free the object after the invocation; it will be freed as part of the cache's
@@ -78,8 +78,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 return null;
             }
 
-            // When using the cache, we don't need to free memory maps after using them;
-            // they will be freed as per the eviction policy of the cache.
+            // When using the cache, we don't need to free the memory map after using it;
+            // it will be freed as per the eviction policy of the cache.
             // However, if either the cache was not enabled or the object could not be added to the cache,
             // we will need to free it after the invocation.
             if (needToFreeAfterInvocation)
