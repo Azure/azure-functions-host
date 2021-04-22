@@ -5,7 +5,6 @@ using System;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -36,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = inStandbyMode });
             var mockCache = new Mock<IOptionsMonitorCache<ScriptApplicationHostOptions>>();
             var mockServiceProvider = new Mock<IServiceProvider>();
-            return new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object);
+            var environment = new TestEnvironment();
+            return new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, environment, MockNullLoggerFactory.CreateLoggerFactory());
         }
     }
 }

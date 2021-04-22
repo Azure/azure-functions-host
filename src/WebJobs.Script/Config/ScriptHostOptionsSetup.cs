@@ -13,20 +13,17 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IFileSystemManager _fileSystemManager;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeoutDynamic = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions,
-            IFileSystemManager fileSystemManager)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _configuration = configuration;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
-            _fileSystemManager = fileSystemManager;
         }
 
         public void Configure(ScriptJobHostOptions options)
@@ -63,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             // If we have a read only file system, override any configuration and
             // disable file watching
-            if (_fileSystemManager.IsFileSystemReadOnly(NullLogger.Instance))
+            if (_applicationHostOptions.Value.IsFileSystemReadOnly)
             {
                 options.FileWatchingEnabled = false;
             }
@@ -74,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
+            options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
         }
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)

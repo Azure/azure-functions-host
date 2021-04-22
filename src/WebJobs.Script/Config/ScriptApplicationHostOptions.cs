@@ -31,5 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public IServiceProvider RootServiceProvider { get; set; }
 
         public bool IsStandbyConfiguration { get; internal set; }
+
+        public bool IsFileSystemReadOnly { get; set; }
+
+        public bool IsZipDeployment { get; set; }
+
+        public bool AreZipDeploymentAppSettingsValid { get; set; }
+
+        public bool ScmRunFromPackageBlobExists { get; set; }
     }
 }

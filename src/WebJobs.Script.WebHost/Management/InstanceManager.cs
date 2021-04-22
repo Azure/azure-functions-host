@@ -33,10 +33,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
-        private readonly IFileSystemManager _fileSystemManager;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler, IFileSystemManager fileSystemManager)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
@@ -46,7 +45,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _runFromPackageHandler = runFromPackageHandler ?? throw new ArgumentNullException(nameof(runFromPackageHandler));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
-            _fileSystemManager = fileSystemManager ?? throw new ArgumentNullException(nameof(fileSystemManager));
         }
 
         public async Task<string> SpecializeMSISidecar(HostAssignmentContext context)
@@ -286,11 +284,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             _logger.LogInformation($"Applying {assignmentContext.Environment.Count} app setting(s)");
             assignmentContext.ApplyAppSettings(_environment, _logger);
-
-            // Cache check if blob from SCM_RUN_FROM_PACKAGE exists. This check is valid per container lifecycle since it's specific
-            // to Linux Consumption. This value is used when determining whether the filesystem is read only, which is important for scenarios
-            // like turning on file watcher and writing template bundles to host.json, etc.
-            _fileSystemManager.CacheIfBlobExists(_logger);
 
             // We need to get the non-PlaceholderMode script Path so we can unzip to the correct location.
             // This asks the factory to skip the PlaceholderMode check when configuring options.

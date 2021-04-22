@@ -42,15 +42,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
-        private readonly IFileSystemManager _fileSystemManager;
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
             IEnvironment environment,
             IScriptHostManager scriptHostManager,
             IFunctionsSyncManager functionsSyncManager,
-            HostPerformanceManager performanceManager,
-            IFileSystemManager fileSystemManager)
+            HostPerformanceManager performanceManager)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostController);
@@ -58,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _scriptHostManager = scriptHostManager;
             _functionsSyncManager = functionsSyncManager;
             _performanceManager = performanceManager;
-            _fileSystemManager = fileSystemManager;
         }
 
         [HttpGet]
@@ -267,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Running && currentState == ScriptHostState.Offline)
             {
-                if (_fileSystemManager.IsFileSystemReadOnly(_logger))
+                if (_applicationHostOptions.Value.IsFileSystemReadOnly)
                 {
                     return BadRequest();
                 }
@@ -277,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
             {
-                if (_fileSystemManager.IsFileSystemReadOnly(_logger))
+                if (_applicationHostOptions.Value.IsFileSystemReadOnly)
                 {
                     return BadRequest();
                 }

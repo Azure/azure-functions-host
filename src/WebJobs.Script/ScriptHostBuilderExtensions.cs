@@ -45,36 +45,28 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string DelayedConfigurationActionKey = "MS_DelayedConfigurationAction";
         private const string ConfigurationSnapshotKey = "MS_ConfigurationSnapshot";
 
-        public static IHostBuilder AddScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configureOptions,
-            IFileSystemManager fileSystemManager, ILoggerFactory loggerFactory = null)
+        public static IHostBuilder AddScriptHost(this IHostBuilder builder, Action<ScriptApplicationHostOptions> configureOptions, ILoggerFactory loggerFactory = null)
         {
             if (configureOptions == null)
             {
                 throw new ArgumentNullException(nameof(configureOptions));
             }
 
-            if (fileSystemManager == null)
-            {
-                throw new ArgumentNullException(nameof(fileSystemManager));
-            }
-
             ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
 
             configureOptions(options);
 
-            return builder.AddScriptHost(options, fileSystemManager, loggerFactory, null);
+            return builder.AddScriptHost(options, loggerFactory, null);
         }
 
         public static IHostBuilder AddScriptHost(this IHostBuilder builder,
                                                  ScriptApplicationHostOptions applicationOptions,
-                                                 IFileSystemManager fileSystemManager,
                                                  Action<IWebJobsBuilder> configureWebJobs = null,
                                                  IMetricsLogger metricsLogger = null)
-            => builder.AddScriptHost(applicationOptions, fileSystemManager, null, metricsLogger, configureWebJobs);
+            => builder.AddScriptHost(applicationOptions, null, metricsLogger, configureWebJobs);
 
         public static IHostBuilder AddScriptHost(this IHostBuilder builder,
                                                  ScriptApplicationHostOptions applicationOptions,
-                                                 IFileSystemManager fileSystemManager,
                                                  ILoggerFactory loggerFactory,
                                                  IMetricsLogger metricsLogger,
                                                  Action<IWebJobsBuilder> configureWebJobs = null)
@@ -102,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (!context.Properties.ContainsKey(ScriptConstants.SkipHostJsonConfigurationKey))
                 {
-                    configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger, fileSystemManager));
+                    configBuilder.Add(new HostJsonFileConfigurationSource(applicationOptions, SystemEnvironment.Instance, loggerFactory, metricsLogger));
                 }
             });
 
@@ -333,7 +325,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
 
-            services.AddSingleton<IFileSystemManager, FileSystemManager>();
             AddProcessRegistry(services);
         }
 

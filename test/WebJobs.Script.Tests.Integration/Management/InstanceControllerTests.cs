@@ -31,12 +31,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
     {
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions());
         private readonly Mock<IRunFromPackageHandler> _runFromPackageHandler;
-        private readonly Mock<IFileSystemManager> _fileSystemManager;
 
         public InstanceControllerTests()
         {
             _runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
-            _fileSystemManager = new Mock<IFileSystemManager>(MockBehavior.Strict);
         }
 
         [Fact]
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object, _fileSystemManager.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -180,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object, _fileSystemManager.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -234,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object, _fileSystemManager.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
