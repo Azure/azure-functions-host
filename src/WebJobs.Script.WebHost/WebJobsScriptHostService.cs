@@ -700,7 +700,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (drainModeManager != null)
                     {
                         _logger.LogDebug("Application Stopping: enabling drain mode");
-                        drainModeManager.EnableDrainModeAsync(CancellationToken.None).Wait();
+                        drainModeManager.EnableDrainModeAsync(CancellationToken.None);
+                        Thread.Sleep(TimeSpan.FromMinutes(10));
                     }
                     _logger.LogDebug("Draining completed");
                 }
