@@ -150,9 +150,7 @@ function CreateSiteExtensions() {
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
     Write-Host "Done generating $siteExtensionPath/$extensionVersionNoSuffix"
     Write-Host "======================================"
-    Write-Host
-
-  
+    Write-Host  
     
     Write-Host "======================================"
     $stopwatch.Reset()

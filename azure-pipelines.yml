@@ -84,12 +84,12 @@ jobs:
   - pwsh: |
       foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
       {    
-        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"    
-        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"        
+        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
+        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
         if (-not (test-path $sourcePath))    
-        {        
-          throw "Unable to find '$packageName' at './package'"    
-        }   
+        {
+          throw "Unable to find '$packageName' at './package'"
+        }
         Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: 'Copy package to ArtifactStagingDirectory'
@@ -108,7 +108,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-o packages\WebJobs.Script.Performance.App'
+      arguments: '-o WebJobs.Script.Performance.App'
       projects: |
         **\WebJobs.Script.Performance.App.csproj
   - task: DotNetCoreCLI@2
@@ -158,14 +158,14 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages\WebJobs.Script.Abstractions'
+      arguments: '--no-build -c Release -o packages'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages\WebJobs.Script.Abstractions'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -239,7 +239,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages\ExtensionsMetadataGenerator $(emgSuffixSwitch)'
+      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
@@ -247,7 +247,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages\ExtensionsMetadataGenerator'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -282,7 +282,7 @@ jobs:
     artifact: Symbols
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
-  - publish: $(Build.Repository.LocalPath)\packages\WebJobs.Script.Performance.App
+  - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
 
 - job: RunUnitTests
