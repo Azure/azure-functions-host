@@ -13,6 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
     {
         internal static async Task<RpcSharedMemory> ToRpcSharedMemoryAsync(this object value, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager)
         {
+            if (value == null)
+            {
+                return new RpcSharedMemory();
+            }
+
             if (!sharedMemoryManager.IsSupported(value))
             {
                 return null;

@@ -24,12 +24,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     public class ScriptInvocationContextExtensionsTests : IDisposable
     {
         private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+        private readonly IEnvironment _testEnvironment;
         private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
 
         public ScriptInvocationContextExtensionsTests()
         {
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
+            _testEnvironment = new TestEnvironment();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -37,8 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
             else
             {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(logger);
+                _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
             }
+
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
         }
 

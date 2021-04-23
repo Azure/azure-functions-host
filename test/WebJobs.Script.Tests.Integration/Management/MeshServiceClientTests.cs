@@ -179,5 +179,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 ItExpr.IsAny<CancellationToken>());
 
         }
+
+        private static bool IsCreateBindMountRequest(HttpRequestMessage request, string filePath, string targetPath)
+        {
+            var formData = request.Content.ReadAsFormDataAsync().Result;
+            return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
+                   string.Equals("bind-mount", formData["operation"]) &&
+                   string.Equals(filePath, formData["sourcePath"]) &&
+                   string.Equals(targetPath, formData["targetPath"]);
+        }
+
+        [Fact]
+        public async Task CreatesBindMount()
+        {
+            _handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK
+            });
+
+            const string sourcePath = EnvironmentSettingNames.DefaultLocalSitePackagesPath;
+            const string targetPath = "/home/site/wwwroot";
+            await _meshServiceClient.CreateBindMount(sourcePath, targetPath);
+
+            await Task.Delay(500);
+
+            _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
+                ItExpr.Is<HttpRequestMessage>(r => IsCreateBindMountRequest(r, sourcePath, targetPath)),
+                ItExpr.IsAny<CancellationToken>());
+        }
     }
 }

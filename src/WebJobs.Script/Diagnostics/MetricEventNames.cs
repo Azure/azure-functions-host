@@ -71,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string SecretManagerPurgeOldSecrets = "secretmanager.purgeoldsecrets.{0}";
 
         // Linux container specialization events
+        public const string LinuxContainerSpecializationBindMount = "linux.container.specialization.bind.mount";
+        public const string LinuxContainerSpecializationMountCifs = "linux.container.specialization.mount.cifs";
         public const string LinuxContainerSpecializationZipExtract = "linux.container.specialization.zip.extract";
         public const string LinuxContainerSpecializationZipDownload = "linux.container.specialization.zip.download";
         public const string LinuxContainerSpecializationZipDownloadWarmup = "linux.container.specialization.zip.download.warmup";

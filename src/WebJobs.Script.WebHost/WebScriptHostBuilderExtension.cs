@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -138,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
 
             var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
-            if (debugStateProvider.InDebugMode)
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDevInDebug, environment) && debugStateProvider.InDebugMode)
             {
                 builder.UseEnvironment(EnvironmentName.Development);
             }

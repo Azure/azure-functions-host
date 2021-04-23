@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagAllowSynchronousIO = "AllowSynchronousIO";
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
+        public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -184,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");
         public static readonly string HostUserAgent = $"azure-functions-host/{ScriptHost.Version}";
         public static readonly NuGetVersion ExtensionBundleVersionTwo = new NuGetVersion("2.0.0");
+        public static readonly long DefaultMaxRequestBodySize = 104857600;
 
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
     }

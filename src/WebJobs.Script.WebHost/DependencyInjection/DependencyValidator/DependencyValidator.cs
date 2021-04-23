@@ -54,7 +54,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Optional<JobHostService>() // Missing when host is offline.
                 .Optional<FunctionsSyncService>() // Conditionally registered.
                 .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60") // Popularly-registered by DataProtection.
-                .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60"); // Popularly-registered by Health Check Monitor.
+                .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60") // Popularly-registered by Health Check Monitor.
+                .OptionalExternal("OpenTelemetry.Extensions.Hosting.Implementation.TelemetryHostedService", "OpenTelemetry.Extensions.Hosting", "7bd6737fe5b67e3c"); // Enable OpenTelemetry.Net instrumentation library
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<FunctionFileLoggerProvider>()
