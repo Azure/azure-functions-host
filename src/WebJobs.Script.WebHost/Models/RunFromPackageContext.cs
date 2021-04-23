@@ -10,11 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
-
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest, CloudBlockBlobHelperService runFromPackageCloudBlockBlobService = null)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest)
         {
-            _cloudBlockBlobHelperService = runFromPackageCloudBlockBlobService ?? new CloudBlockBlobHelperService();
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
@@ -35,10 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                         StringComparison.OrdinalIgnoreCase);
         }
 
-        public async Task<bool> IsRunFromPackage(ILogger logger)
+        public bool IsRunFromPackage(ScriptApplicationHostOptions options)
         {
-            return (IsScmRunFromPackage() && await _cloudBlockBlobHelperService.BlobExists(Url, EnvironmentVariableName, logger)) ||
-                   (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+            return (IsScmRunFromPackage() && options.ScmRunFromPackageBlobExists) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
         }
     }
 }

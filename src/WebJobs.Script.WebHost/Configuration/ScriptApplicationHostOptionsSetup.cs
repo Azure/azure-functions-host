@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private ILogger _logger;
 
         public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptionsMonitorCache<ScriptApplicationHostOptions> cache,
-            IServiceProvider serviceProvider, IEnvironment environment, ILoggerFactory loggerFactory, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
+            IServiceProvider serviceProvider, IEnvironment environment, ILogger<ScriptApplicationHostOptionsSetup> logger, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // If standby options change, invalidate this options cache.
             _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logger = loggerFactory.CreateLogger<ScriptApplicationHostOptionsSetup>();
+            _logger = logger;
             _cloudBlockBlobHelperService = cloudBlockBlobHelperService ?? new CloudBlockBlobHelperService();
         }
 
@@ -71,11 +71,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             }
 
             options.AreZipDeploymentAppSettingsValid = ValidateZipDeploymentAppSettings();
-            options.IsZipDeployment = IsZipDeployment();
+            options.ScmRunFromPackageBlobExists = BlobExists();
+            options.IsZipDeployment = IsZipDeployment(options);
             options.IsFileSystemReadOnly = options.IsZipDeployment;
         }
 
-        public bool IsZipDeployment()
+        private bool BlobExists()
+        {
+            var blobExists = _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage), EnvironmentSettingNames.ScmRunFromPackage, _logger).GetAwaiter().GetResult();
+            _logger.LogInformation($"Checked if ${EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: ${blobExists}");
+            return blobExists;
+        }
+
+        private bool IsZipDeployment(ScriptApplicationHostOptions options)
         {
             // If the app is using the new app settings for zip deployment, we don't need to check further, it must be a zip deployment.
             bool usesNewZipDeployAppSettings = IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
@@ -104,10 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             }
 
             // SCM_RUN_FROM_PACKAGE is set, as well as Azure Files app settings, so we need to check if we are actually using the zip blob.
-            var blobExists = _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage), EnvironmentSettingNames.ScmRunFromPackage, _logger).GetAwaiter().GetResult();
-            _logger.LogInformation($"Checked if ${EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: ${blobExists}");
-
-            return blobExists;
+            return options.ScmRunFromPackageBlobExists;
         }
 
         private bool ValidateZipDeploymentAppSettings()

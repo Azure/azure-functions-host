@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public RetryOptions Retry { get; set; }
 
         /// <summary>
-        /// Gets or sets the flag indicating if the filesystem is read-only.
+        /// Gets or sets a value indicating whether the filesystem is read-only.
         /// </summary>
         public bool IsFileSystemReadOnly { get; set; }
     }

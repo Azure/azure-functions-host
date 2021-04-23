@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         $"No {nameof(EnvironmentSettingNames.AzureFilesConnectionString)} or {nameof(EnvironmentSettingNames.AzureFilesContentShare)} configured. Azure FileShare will not be mounted. For PowerShell Functions, Managed Dependencies will not persisted across functions host instances.");
                 }
 
-                if (await pkgContext.IsRunFromPackage(_logger))
+                if (pkgContext.IsRunFromPackage(options))
                 {
                     if (azureFilesMounted)
                     {
@@ -325,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
-                if (await pkgContext.IsRunFromPackage(_logger))
+                if (pkgContext.IsRunFromPackage(options))
                 {
                     await _runFromPackageHandler.ApplyBlobPackageContext(pkgContext, options.ScriptPath, false);
                 }

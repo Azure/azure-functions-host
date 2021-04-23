@@ -1,11 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
-using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
@@ -31,20 +27,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         [InlineData(EnvironmentSettingNames.AzureWebsiteRunFromPackage, "", false, false)]
         [InlineData(EnvironmentSettingNames.AzureWebsiteRunFromPackage, null, true, false)]
         [InlineData(EnvironmentSettingNames.AzureWebsiteRunFromPackage, null, false, false)]
-        public async Task Returns_IsRunFromPackage(string environmentVariableName, string url, bool blobExists, bool scmRunFromPackageConfigured)
+        public void Returns_IsRunFromPackage(string environmentVariableName, string url, bool blobExists, bool scmRunFromPackageConfigured)
         {
-            var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
-            cloudBlockBlobService
-                .Setup(c => c.BlobExists(Url, environmentVariableName, NullLogger.Instance))
-                .ReturnsAsync(blobExists);
-
-            cloudBlockBlobService
-                .Setup(c => c.BlobExists(It.Is<string>(s => !string.Equals(s, Url, StringComparison.OrdinalIgnoreCase)), environmentVariableName, NullLogger.Instance))
-                .ReturnsAsync(false);
-
-            var runFromPackageContext = new RunFromPackageContext(environmentVariableName, url, 10,
-                false, cloudBlockBlobService.Object);
-            Assert.Equal(scmRunFromPackageConfigured, await runFromPackageContext.IsRunFromPackage(NullLogger.Instance));
+            var runFromPackageContext = new RunFromPackageContext(environmentVariableName, url, 10, false);
+            var options = new ScriptApplicationHostOptions
+            {
+                ScmRunFromPackageBlobExists = Url.Equals(url) ? blobExists : false
+            };
+            Assert.Equal(scmRunFromPackageConfigured, runFromPackageContext.IsRunFromPackage(options));
         }
 
         [Theory]
