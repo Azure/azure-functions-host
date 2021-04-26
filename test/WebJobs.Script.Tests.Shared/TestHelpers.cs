@@ -400,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new Uri(container.StorageUri.PrimaryUri, sas);
         }
 
-        public static IAzureStorageProvider GetAzureStorageProvider(IConfiguration configuration)
+        public static IAzureStorageProvider GetAzureStorageProvider(IConfiguration configuration, JobHostInternalStorageOptions storageOptions = null)
         {
             IHost tempHost = new HostBuilder()
                 .ConfigureServices(services =>
@@ -408,6 +408,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // Override configuration
                     services.AddSingleton(configuration);
                     services.AddAzureStorageProvider();
+                    if (storageOptions != null)
+                    {
+                        services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));
+                    }
                 }).Build();
 
             var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureStorageProvider>();

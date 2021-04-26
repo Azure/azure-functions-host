@@ -10,10 +10,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
+namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
     // Borrowed from WebJobs TestCommon
-    static class TestUtilities
+    static class HostTestUtilities
     {
         public static StorageAccount GetStorageAccount(this IHost host)
         {

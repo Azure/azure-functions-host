@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     configureScriptHostServices?.Invoke(scriptHostServices);
                     ScriptHostBuilderExtensions.AddHostOverrides(scriptHostServices);
+                    scriptHostServices.AddAzureStorageProvider();
                 })
                 .UseStartup<TestStartup>();
 

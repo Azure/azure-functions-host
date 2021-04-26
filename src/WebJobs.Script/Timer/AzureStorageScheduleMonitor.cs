@@ -10,6 +10,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 

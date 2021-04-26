@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -300,18 +301,26 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
 
-                AddHostOverrides(services);
+                // This must go after AddAzureStorageProvider and AddTimers as it overrides implementation
+                services.AddHostOverrides();
             });
 
             RegisterFileProvisioningService(builder);
             return builder;
         }
 
-        public static void AddHostOverrides(IServiceCollection services)
+        public static void AddHostOverrides(this IServiceCollection services)
         {
             // Custom implementations that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
             services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
+        }
+
+        public static void AddAzureStorageProvider(this IServiceCollection services)
+        {
+            services.AddAzureStorageCoreServices();
+            services.TryAddSingleton<IAzureStorageProvider, AzureStorageProvider>();
+            services.AddAzureStorageBlobs();
         }
 
         public static void AddCommonServices(IServiceCollection services)
