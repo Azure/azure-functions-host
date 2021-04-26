@@ -146,9 +146,9 @@ function CreateSiteExtensions() {
     Write-Host ""
 
     Write-Host "======================================"
-    Write-Host "Generating $hashesForHardlinksFile"    
+    Write-Host "Generating hashes for hard links"
     WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
-    Write-Host "Done generating $siteExtensionPath/$extensionVersionNoSuffix"
+    Write-Host "Done generating hashes for hard links into "$siteExtensionPath/$extensionVersionNoSuffix"
     Write-Host "======================================"
     Write-Host  
     
