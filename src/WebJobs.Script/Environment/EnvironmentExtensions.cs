@@ -78,6 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
+        public static bool AreZipDeploymentAppSettingsValid(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));

@@ -70,7 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.AreZipDeploymentAppSettingsValid = ValidateZipDeploymentAppSettings();
             options.ScmRunFromPackageBlobExists = BlobExists();
             options.IsZipDeployment = IsZipDeployment(options);
             options.IsFileSystemReadOnly = options.IsZipDeployment;
@@ -113,14 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             // SCM_RUN_FROM_PACKAGE is set, as well as Azure Files app settings, so we need to check if we are actually using the zip blob.
             return options.ScmRunFromPackageBlobExists;
-        }
-
-        private bool ValidateZipDeploymentAppSettings()
-        {
-            return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                   !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                   !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                   !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
         private static bool IsValidZipSetting(string appSetting)
