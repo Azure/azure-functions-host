@@ -68,9 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        protected virtual BlobContainerClient CreateBlobContainerClient(string connectionString)
+        protected virtual BlobContainerClient CreateBlobContainerClient(string connection)
         {
-            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connectionString))
+            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connection))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
                 blobContainerClient.CreateIfNotExists();

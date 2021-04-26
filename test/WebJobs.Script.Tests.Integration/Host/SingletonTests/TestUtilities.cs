@@ -1,18 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs;
+using System;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 {
@@ -60,11 +56,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
         {
             return host.Services.GetService<IJobHost>() as JobHost;
         }
+    }
 
-        // Test error if not reached within a timeout 
-        public static Task<TResult> AwaitWithTimeout<TResult>(this TaskCompletionSource<TResult> taskSource)
+    internal class JobHost<TProgram> : JobHost
+    {
+        private readonly IJobActivator _jobActivator;
+
+        public JobHost(
+            IOptions<JobHostOptions> options,
+            IJobHostContextFactory contextFactory,
+            IJobActivator jobActivator)
+            : base(options, contextFactory)
         {
-            return taskSource.Task;
+            _jobActivator = jobActivator;
         }
     }
 }

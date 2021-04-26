@@ -10,14 +10,13 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.TimerTests
 {
+    // Borrowed From WebJobs Extensions 
     [Trait("Category", "E2E")]
     public class StorageScheduleMonitorTests
     {

@@ -27,6 +27,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 {

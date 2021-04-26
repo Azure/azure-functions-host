@@ -10,12 +10,9 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
 using Moq;
 using Xunit;
-using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
+using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 {
@@ -49,11 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            CloudBlockBlob analysisBlob = await GetAnalysisBlobReference(_hostIdProvider);
-            await analysisBlob.UploadTextAsync(string.Empty);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider);
 
-            analysisBlob.Metadata.Add(BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName, lastAnalysisTestTime.ToString("O"));
-            await analysisBlob.SetMetadataAsync();
+            using (Stream stream = new MemoryStream())
+            {
+                await analysisBlob.UploadAsync(stream, cancellationToken: CancellationToken.None);
+            }
+
+            var blobPropertiesResponse = await analysisBlob.GetPropertiesAsync();
+            blobPropertiesResponse.Value.Metadata.Add(BlobChangeAnalysisStateProvider.AnalysisTimestampMetadataName, lastAnalysisTestTime.ToString("O"));
+            await analysisBlob.SetMetadataAsync(blobPropertiesResponse.Value.Metadata, cancellationToken: CancellationToken.None);
 
             var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _azureStorageProvider);
 
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _azureStorageProvider);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider);
 
             var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _azureStorageProvider);
 
@@ -88,9 +90,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            CloudBlockBlob analysisBlob = await GetAnalysisBlobReference(_hostIdProvider);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider);
             await analysisBlob.DeleteIfExistsAsync();
-            await analysisBlob.UploadTextAsync(string.Empty);
+
+            using (Stream stream = new MemoryStream())
+            {
+                await analysisBlob.UploadAsync(stream, cancellationToken: CancellationToken.None);
+            }
 
             var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _azureStorageProvider);
 
@@ -109,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             var primaryHostMock = new Mock<IPrimaryHostStateProvider>();
             primaryHostMock.Setup(p => p.IsPrimary).Returns(true);
 
-            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider, _azureStorageProvider);
+            BlobClient analysisBlob = await GetAnalysisBlobClient(_hostIdProvider);
             await analysisBlob.DeleteIfExistsAsync();
 
             var stateProvider = new BlobChangeAnalysisStateProvider(_configuration, _hostIdProvider, NullLogger<BlobChangeAnalysisStateProvider>.Instance, _azureStorageProvider);
@@ -122,28 +128,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
             Assert.Equal(lastAnalysisTestTime, result);
         }
 
-        private async Task<CloudBlockBlob> GetAnalysisBlobReference(IHostIdProvider hostIdProvider)
+        private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider)
         {
-            string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-
-            if (string.IsNullOrEmpty(storageConnectionString) ||
-                !CloudStorageAccount.TryParse(storageConnectionString, out CloudStorageAccount account))
-            {
-                throw new ConfigurationException("Invalid storage account configuration");
-            }
-
-            string hostId = await hostIdProvider.GetHostIdAsync(CancellationToken.None);
-            string analysisBlobPath = $"changeanalysis/{hostId}/sentinel";
-
-            CloudBlobClient blobClient = account.CreateCloudBlobClient();
-            var blobContainer = blobClient.GetContainerReference(ScriptConstants.AzureWebJobsHostsContainerName);
-
-            return blobContainer.GetBlockBlobReference(analysisBlobPath);
-        }
-
-        private async Task<BlobClient> GetAnalysisBlobClient(IHostIdProvider hostIdProvider, IAzureStorageProvider azureStorageProvider)
-        {
-            if (!azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
+            if (!_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
                 throw new ConfigurationException("Invalid storage account configuration");
             }
