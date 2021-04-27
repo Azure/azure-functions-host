@@ -21,10 +21,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnvironment _environment;
         private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
-        private ILogger _logger;
 
         public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptionsMonitorCache<ScriptApplicationHostOptions> cache,
-            IServiceProvider serviceProvider, IEnvironment environment, ILogger<ScriptApplicationHostOptionsSetup> logger, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
+            IServiceProvider serviceProvider, IEnvironment environment, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -33,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // If standby options change, invalidate this options cache.
             _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _logger = logger;
             _cloudBlockBlobHelperService = cloudBlockBlobHelperService ?? new CloudBlockBlobHelperService();
         }
 
@@ -77,41 +75,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         private bool BlobExists()
         {
-            var blobExists = _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage), EnvironmentSettingNames.ScmRunFromPackage, _logger).GetAwaiter().GetResult();
-            _logger.LogInformation($"Checked if ${EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: ${blobExists}");
-            return blobExists;
+            return _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage)).GetAwaiter().GetResult();
         }
 
         private bool IsZipDeployment(ScriptApplicationHostOptions options)
         {
-            // If the app is using the new app settings for zip deployment, we don't need to check further, it must be a zip deployment.
-            bool usesNewZipDeployAppSettings = IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+            // If the app is using app settings for run from package, we don't need to check further, it must be a zip deployment.
+            bool runFromPkgConfigured = IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
                 IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
                 IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage));
 
-            if (usesNewZipDeployAppSettings)
-            {
-                return usesNewZipDeployAppSettings;
-            }
-
-            // Check if the old app setting for zip deployment is set, SCM_RUN_FROM_PACKAGE.
-            // If not, this is not a zip deployment. If yes, we still need to check if the blob exists,
-            // since this app setting is always created for Linux Consumption, even when it is not used.
-            // In portal deployment, SCM_RUN_FROM_PACKAGE will be set, but we will be using Azure Files instead.
-            if (!IsValidZipUrl(_environment.GetEnvironmentVariable(ScmRunFromPackage)))
-            {
-                return false;
-            }
-
-            // If SCM_RUN_FROM_PACKAGE is a valid app setting and Azure Files are not being used, it must be a zip deployment.
-            if (string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureFilesConnectionString)) &&
-                string.IsNullOrEmpty(_environment.GetEnvironmentVariable(AzureFilesContentShare)))
+            if (runFromPkgConfigured)
             {
                 return true;
             }
 
-            // SCM_RUN_FROM_PACKAGE is set, as well as Azure Files app settings, so we need to check if we are actually using the zip blob.
-            return options.ScmRunFromPackageBlobExists;
+            // If SCM_RUN_FROM_PACKAGE is set to a valid value and the blob exists, it's a zip deployment.
+            // We need to explicitly check if the blob exists because on Linux Consumption the app setting is always added, regardless if it's used or not.
+            bool scmRunFromPkgConfigured = IsValidZipSetting(_environment.GetEnvironmentVariable(ScmRunFromPackage)) && options.ScmRunFromPackageBlobExists;
+            return scmRunFromPkgConfigured;
         }
 
         private static bool IsValidZipSetting(string appSetting)

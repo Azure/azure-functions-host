@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
             // This method is not used in this test case, but it's still called as part of configuration binding step, so we need to define the outcome
-            cloudBlockBlobService.Setup(c => c.BlobExists(It.IsAny<string>(), It.IsAny<string>(), NullLogger<ScriptApplicationHostOptionsSetup>.Instance)).ReturnsAsync(false);
+            cloudBlockBlobService.Setup(c => c.BlobExists(It.IsAny<string>())).ReturnsAsync(false);
 
             var zipSettings = new string[]
             {
@@ -73,30 +73,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
         [InlineData("/microsoft/functionapp.zip", false)]
-        public void IsZipDeployment_UsesAzureFilesAndOldZipSettings(string appSettingValue, bool expectedOutcome)
+        public void IsZipDeployment_ChecksScmRunFromPackageBlob(string appSettingValue, bool expectedOutcome)
         {
             var environment = new TestEnvironment();
             var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
-            cloudBlockBlobService
-                .Setup(c => c.BlobExists(appSettingValue, EnvironmentSettingNames.ScmRunFromPackage, NullLogger<ScriptApplicationHostOptionsSetup>.Instance))
-                .ReturnsAsync(true);
-            cloudBlockBlobService
-                .Setup(c => c.BlobExists(It.Is<string>(s => !string.Equals(s, appSettingValue, StringComparison.OrdinalIgnoreCase)), EnvironmentSettingNames.ScmRunFromPackage,
-                NullLogger<ScriptApplicationHostOptionsSetup>.Instance)).ReturnsAsync(false);
+            cloudBlockBlobService.Setup(c => c.BlobExists(appSettingValue)).ReturnsAsync(true);
+            cloudBlockBlobService.Setup(c => c.BlobExists(It.Is<string>(s => !string.Equals(s, appSettingValue, StringComparison.OrdinalIgnoreCase)))).ReturnsAsync(false);
 
             var options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
 
             // No zip deployment settings set, it's not a zip deployment
             Assert.Equal(options.IsZipDeployment, false);
 
-            // SCM_RUN_FROM_PACKAGE is set, no Azure files settings. If it's a valid URI, it's a zip deployment.
+            // SCM_RUN_FROM_PACKAGE is set. If it's a valid URI, it's a zip deployment.
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage, appSettingValue);
-            options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
-            Assert.Equal(options.IsZipDeployment, expectedOutcome);
-
-            // Both SCM_RUN_FROM_PACKAGE and Azure files are being used. If the blob URI is valid and the blob exists, it's zip deployment.
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString, appSettingValue);
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare, appSettingValue);
             options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
             Assert.Equal(options.IsZipDeployment, expectedOutcome);
         }
@@ -111,8 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var mockServiceProvider = new Mock<IServiceProvider>();
             var mockEnvironment = environment ?? new TestEnvironment();
             var mockCloudBlockBlobHelper = cloudBlockBlobHelper ?? new Mock<CloudBlockBlobHelperService>(MockBehavior.Default).Object;
-            var setup = new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, mockEnvironment,
-                NullLogger<ScriptApplicationHostOptionsSetup>.Instance, mockCloudBlockBlobHelper);
+            var setup = new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, mockEnvironment, mockCloudBlockBlobHelper);
 
             var options = new ScriptApplicationHostOptions();
             setup.Configure(options);

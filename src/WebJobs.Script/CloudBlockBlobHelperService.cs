@@ -4,19 +4,22 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage.Blob;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     public class CloudBlockBlobHelperService
     {
-        public virtual async Task<bool> BlobExists(string url, string environmentVariableName, ILogger logger)
+        public virtual async Task<bool> BlobExists(string url)
         {
-            return await BlobExistsAsync(url, environmentVariableName, logger);
+            return await BlobExistsAsync(url);
         }
 
-        private static async Task<bool> BlobExistsAsync(string url, string environmentVariableName, ILogger logger)
+        private static async Task<bool> BlobExistsAsync(string url)
         {
+            if (string.IsNullOrEmpty(url))
+            {
+                return false;
+            }
             bool exists = false;
             await Utility.InvokeWithRetriesAsync(async () =>
             {
@@ -25,17 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script
                     CloudBlockBlob blob = new CloudBlockBlob(new Uri(url));
                     exists = await blob.ExistsAsync();
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    logger.LogError(e, $"Failed to check if zip url blob exists");
                     throw;
                 }
             }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
-
-            if (!exists)
-            {
-                logger.LogWarning($"{environmentVariableName} points to an empty location. Function app has no content.");
-            }
 
             return exists;
         }

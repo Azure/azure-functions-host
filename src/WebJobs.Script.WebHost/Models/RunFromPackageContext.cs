@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Management;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -28,13 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public bool IsScmRunFromPackage()
         {
-            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage,
-                        StringComparison.OrdinalIgnoreCase);
+            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage, StringComparison.OrdinalIgnoreCase);
         }
 
-        public bool IsRunFromPackage(ScriptApplicationHostOptions options)
+        public bool IsRunFromPackage(ScriptApplicationHostOptions options, ILogger logger)
         {
-            return (IsScmRunFromPackage() && options.ScmRunFromPackageBlobExists) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+            return (IsScmRunFromPackage() && ScmRunFromPackageBlobExists(options, logger)) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+        }
+
+        private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
+        {
+            var blobExists = options.ScmRunFromPackageBlobExists;
+            logger.LogInformation($"Checking if {EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: {blobExists}");
+            return blobExists;
         }
     }
 }

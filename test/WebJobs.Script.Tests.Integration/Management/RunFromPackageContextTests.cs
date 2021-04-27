@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             {
                 ScmRunFromPackageBlobExists = Url.Equals(url) ? blobExists : false
             };
-            Assert.Equal(scmRunFromPackageConfigured, runFromPackageContext.IsRunFromPackage(options));
+            Assert.Equal(scmRunFromPackageConfigured, runFromPackageContext.IsRunFromPackage(options, NullLogger.Instance));
         }
 
         [Theory]
