@@ -23,6 +23,8 @@ using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using Microsoft.Extensions.Options;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -56,6 +58,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             await InitializeTestHostAsync("Linux", environment);
 
+            // Check that the filesystem is not read-only before specialization.
+            var options = _httpServer.Host.Services.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            Assert.False(options.CurrentValue.IsFileSystemReadOnly);
+
             // verify only the Warmup function is present
             // generally when in placeholder mode, the list API won't be called
             // but we're doing this for regression testing
@@ -71,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // immediately call a function - expect the call to block until
             // the host is fully specialized
-            // the Unauthorized is expected since we havne't specified the key
+            // the Unauthorized is expected since we haven't specified the key
             // it's enough here to ensure we don't get a 404
             var request = new HttpRequestMessage(HttpMethod.Get, $"api/httptrigger");
             request.Headers.Add(ScriptConstants.AntaresColdStartHeaderName, "1");
@@ -97,6 +103,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             functions = await ListFunctions();
             Assert.Equal(1, functions.Length);
             Assert.Equal("HttpTrigger", functions[0]);
+
+            // Check options are refreshed after specialization.
+            // The filesystem should be read-only since the app is running from zip.
+            Assert.True(options.CurrentValue.IsFileSystemReadOnly);
 
             // verify warmup function no longer there
             request = new HttpRequestMessage(HttpMethod.Get, "api/warmup");

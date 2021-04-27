@@ -11,15 +11,15 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public virtual async Task<bool> BlobExists(string url)
         {
+            if (string.IsNullOrEmpty(url))
+            {
+                return false;
+            }
             return await BlobExistsAsync(url);
         }
 
         private static async Task<bool> BlobExistsAsync(string url)
         {
-            if (string.IsNullOrEmpty(url))
-            {
-                return false;
-            }
             bool exists = false;
             await Utility.InvokeWithRetriesAsync(async () =>
             {
