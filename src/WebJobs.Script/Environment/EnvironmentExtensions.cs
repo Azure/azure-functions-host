@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
-        public static bool AreZipDeploymentAppSettingsValid(this IEnvironment environment)
+        public static bool ZipDeploymentAppSettingsExist(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||

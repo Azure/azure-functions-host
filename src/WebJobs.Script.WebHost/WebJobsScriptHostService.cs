@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void CheckFileSystem()
         {
             // Shutdown if RunFromZipFailed
-            if (_environment.AreZipDeploymentAppSettingsValid())
+            if (_environment.ZipDeploymentAppSettingsExist())
             {
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
                 if (File.Exists(path))

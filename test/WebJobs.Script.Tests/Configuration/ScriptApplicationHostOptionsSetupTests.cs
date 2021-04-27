@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 var options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
 
-                Assert.Equal(options.IsZipDeployment, expectedOutcome);
                 Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
                 Assert.Equal(options.ScmRunFromPackageBlobExists, false);
             }
@@ -67,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             }
 
             var optionsAllSettings = CreateConfiguredOptions(true, allSettingsEnvironment, cloudBlockBlobService.Object);
-            Assert.Equal(optionsAllSettings.IsZipDeployment, expectedOutcome);
+            Assert.Equal(optionsAllSettings.IsFileSystemReadOnly, expectedOutcome);
         }
 
         [Theory]
@@ -83,12 +82,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
 
             // No zip deployment settings set, it's not a zip deployment
-            Assert.Equal(options.IsZipDeployment, false);
+            Assert.Equal(options.IsFileSystemReadOnly, false);
 
             // SCM_RUN_FROM_PACKAGE is set. If it's a valid URI, it's a zip deployment.
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage, appSettingValue);
             options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
-            Assert.Equal(options.IsZipDeployment, expectedOutcome);
+            Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
         }
 
         private ScriptApplicationHostOptions CreateConfiguredOptions(bool inStandbyMode, IEnvironment environment = null, CloudBlockBlobHelperService cloudBlockBlobHelper = null)

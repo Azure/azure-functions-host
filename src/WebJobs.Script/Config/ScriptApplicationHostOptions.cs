@@ -34,8 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public bool IsFileSystemReadOnly { get; set; }
 
-        public bool IsZipDeployment { get; set; }
-
         public bool ScmRunFromPackageBlobExists { get; set; }
     }
 }
