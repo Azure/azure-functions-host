@@ -313,7 +313,27 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // Custom implementations that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
-            services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
+            services.AddBlobLockManagerIfAvailable();
+        }
+
+        private static void AddBlobLockManagerIfAvailable(this IServiceCollection services)
+        {
+            var provider = services.BuildServiceProvider();
+            try
+            {
+                var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+                var container = azureStorageProvider.GetBlobContainerClient();
+
+                if (container != null)
+                {
+                    services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
+                }
+            }
+            catch
+            {
+                // If we can't get the BlobContainerClient, skip registering a LockManager.
+                // The AddAzureStorageCoreServices should have already registered an InMemoryDistributedLockManager
+            }
         }
 
         public static void AddAzureStorageProvider(this IServiceCollection services)
