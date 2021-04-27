@@ -202,18 +202,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context);
+            var options = new ScriptApplicationHostOptions()
+            {
+                ScriptPath = Path.GetTempPath(),
+                ScmRunFromPackageBlobExists = true
+            };
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 5000);
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 11)
+            if (logs.Length == 12)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.EndsWith("points to an existing blob: True", p),
                     p => Assert.StartsWith("Downloading zip contents from", p),
                     p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
                     p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
@@ -229,6 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
+                    p => Assert.EndsWith("points to an existing blob: True", p),
                     p => Assert.StartsWith("Downloading zip contents from", p),
                     p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
                     p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
@@ -282,7 +293,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 },
                 IsWarmupRequest = false
             };
-            bool result = _instanceManager.StartAssignment(context);
+            var options = new ScriptApplicationHostOptions()
+            {
+                ScriptPath = Path.GetTempPath(),
+                ScmRunFromPackageBlobExists = false
+            };
+            var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+
+            bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
 
             await TestHelpers.Await(() => !_scriptWebEnvironment.InStandbyMode, timeout: 4000);
@@ -293,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
-                p => Assert.StartsWith($"{EnvironmentSettingNames.ScmRunFromPackage} points to an empty location. Function app has no content.", p),
+                p => Assert.StartsWith($"Checking if {EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: False", p),
                 p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
