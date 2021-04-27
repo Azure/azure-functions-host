@@ -169,8 +169,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             convertedVal = null;
 
-            if (inputVal is CacheableObjectStream stream)
+            if (inputVal is ICacheAwareReadObject obj)
             {
+                if (obj.IsCacheHit)
+                {
+                    throw new NotSupportedException("Cannot convert object; it is already cached");
+                }
+
+                Stream stream = obj.BlobStream;
                 using (MemoryStream ms = new MemoryStream())
                 {
                     stream.CopyTo(ms);

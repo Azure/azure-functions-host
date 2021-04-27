@@ -26,34 +26,29 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             SharedMemoryMetadata sharedMemoryMeta;
             bool needToFreeAfterInvocation = true;
 
-            if (value is SharedMemoryMetadata)
+            // Check if the cache is being used or not.
+            // The binding extension will only hand out ICacheAwareReadObject if the FunctionDataCache is available and enabled.
+            if (value is ICacheAwareReadObject obj)
             {
-                // Content was already present in shared memory (cache hit)
-                logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
-                sharedMemoryMeta = value as SharedMemoryMetadata;
-                needToFreeAfterInvocation = false;
-            }
-            else
-            {
-                // Put the content into shared memory and get the name of the shared memory map written to.
-                // This will make the SharedMemoryManager keep an active reference to the memory map.
-                sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(value);
-                if (sharedMemoryMeta == null)
+                if (obj.IsCacheHit)
                 {
-                    logger.LogTrace("Cannot write to shared memory for invocation id: {Id}", invocationId);
-                    return null;
+                    // Content was already present in shared memory (cache hit)
+                    logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
+                    sharedMemoryMeta = obj.CacheObject;
+                    needToFreeAfterInvocation = false;
                 }
-
-                if (functionDataCache.IsEnabled)
+                else
                 {
-                    if (value is CacheableObjectStream)
+                    // Put the content into shared memory and get the name of the shared memory map written to.
+                    // This will make the SharedMemoryManager keep an active reference to the memory map.
+                    sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(obj.BlobStream);
+                    if (sharedMemoryMeta != null)
                     {
-                        CacheableObjectStream cacheableObj = value as CacheableObjectStream;
-                        FunctionDataCacheKey cacheKey = cacheableObj.CacheKey;
+                        FunctionDataCacheKey cacheKey = obj.CacheKey;
 
                         // Try to add the object into the cache and keep an active ref-count for it so that it does not get
                         // evicted while it is still being used by the invocation.
-                        if (cacheableObj.TryCacheObject(sharedMemoryMeta))
+                        if (obj.TryPutToCache(sharedMemoryMeta, isIncrementActiveReference: true))
                         {
                             logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
                             // We don't need to free the object after the invocation; it will be freed as part of the cache's
@@ -69,6 +64,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                         }
                     }
                 }
+            }
+            else
+            {
+                // Put the content into shared memory and get the name of the shared memory map written to
+                sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(value);
+                needToFreeAfterInvocation = true;
+            }
+
+            // Check if the object was either already in shared memory or written to shared memory
+            if (sharedMemoryMeta == null)
+            {
+                logger.LogTrace("Cannot write to shared memory for invocation id: {Id}", invocationId);
+                return null;
             }
 
             RpcDataType? dataType = GetRpcDataType(value);
@@ -143,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             {
                 return RpcDataType.Bytes;
             }
-            else if (value is CacheableObjectStream)
+            else if (value is ICacheAwareReadObject)
             {
                 return RpcDataType.Bytes;
             }

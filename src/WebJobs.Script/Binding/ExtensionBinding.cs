@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -23,11 +22,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     public class ExtensionBinding : FunctionBinding
     {
+        private readonly bool _isFunctionDataCacheEnabled;
+
         private ScriptBinding _binding;
 
         public ExtensionBinding(ScriptJobHostOptions config, ScriptBinding binding, BindingMetadata metadata) : base(config, metadata, binding.Context.Access)
         {
             _binding = binding;
+            _isFunctionDataCacheEnabled = config.IsFunctionDataCacheEnabled;
             Attributes = _binding.GetAttributes();
         }
 
@@ -43,6 +45,19 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
 
             return attributeBuilders;
+        }
+
+        private async Task PrepareAttributesAndBindCacheAwareStreamAsync(BindingContext context, FileAccess access)
+        {
+            if (access == FileAccess.Write && context.Value is SharedMemoryObject sharedMemoryObj)
+            {
+                // First copy the attributes and then add a specific attribute (mapName) for the particular invocation.
+                var currentAttributes = Attributes.ToList();
+                currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count));
+                context.Attributes = currentAttributes.ToArray();
+            }
+
+            await BindCacheAwareStreamAsync(context, access);
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -63,20 +78,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else if (_binding.DefaultType == typeof(Stream))
             {
-                // TODO the sharedMemoryObject contains a "copy" of the value too - we should probably get rid of that
-                // and make the extension just read directly from shared memory
-                SharedMemoryObject sharedMemoryObject = context.Value as SharedMemoryObject;
-                if (sharedMemoryObject != null)
+                if (_isFunctionDataCacheEnabled)
                 {
-                    // TODO this first copy is needed because each invocation will have a separate (unqiue) mapName.
-                    // Therefore, we first copy the attributes and then add a specific attribute (mapName) for that invocation.
-                    // This cloning first may be slow so is there a better way?
-                    var currentAttributes = Attributes.ToList();
-                    currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObject.MemoryMapName, sharedMemoryObject.Count));
-                    context.Attributes = currentAttributes.ToArray();
+                    await PrepareAttributesAndBindCacheAwareStreamAsync(context, Access);
                 }
-
-                await BindStreamAsync(context, Access);
+                else
+                {
+                    await BindStreamAsync(context, Access);
+                }
             }
             else if (_binding.DefaultType == typeof(JObject))
             {

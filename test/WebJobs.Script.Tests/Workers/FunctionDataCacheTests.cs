@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         private void PrintLRU(FunctionDataCache cache)
         {
+            // TODO delete this function
             StringBuilder builder = new StringBuilder();
             foreach (FunctionDataCacheKey key in cache.LRUList)
             {
@@ -233,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 Assert.True(cache.TryGet(keys[1], isIncrementActiveReference: false, out var _));
 
                 // The order of objects in LRU should be 1->3->2.
-                // Since 2 is the most recently used, it is add the end of the list.
+                // Since 2 is the most recently used, it is at the end of the list.
 
                 // Evict an object and check that the right object was evicted (1)
                 Assert.True(cache.EvictOne());
@@ -300,6 +301,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Fact]
+        public async Task PutObject_ActiveReference_VerifyCorrectObjectEvicted()
+        {
+            int contentSize = 2 * 1024 * 1024; // 2MB
+            int cacheSize = 6 * 1024 * 1024; // 6MB
+            string cacheSizeVal = cacheSize.ToString();
+
+            IEnvironment environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+
+            using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
+            {
+                // Prepare content
+                byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
+
+                // Put into shared memory as three distinct objects
+                List<SharedMemoryMetadata> metadatas = new List<SharedMemoryMetadata>()
+                {
+                    await manager.PutObjectAsync(content),
+                    await manager.PutObjectAsync(content),
+                    await manager.PutObjectAsync(content),
+                };
+
+                // Put the three objects into the cache
+                List<FunctionDataCacheKey> keys = new List<FunctionDataCacheKey>()
+                {
+                    new FunctionDataCacheKey("foo_1", "bar_1"),
+                    new FunctionDataCacheKey("foo_2", "bar_2"),
+                    new FunctionDataCacheKey("foo_3", "bar_3"),
+                };
+
+                // Put object (1) with an active reference
+                Assert.True(cache.TryPut(keys[0], metadatas[0], isIncrementActiveReference: true, isDeleteOnFailure: false));
+
+                // Put objects (2) and (3) with NO active reference
+                Assert.True(cache.TryPut(keys[1], metadatas[1], isIncrementActiveReference: false, isDeleteOnFailure: false));
+                Assert.True(cache.TryPut(keys[2], metadatas[2], isIncrementActiveReference: false, isDeleteOnFailure: false));
+
+                // Access the middle object so that now it is the most recently used
+                Assert.True(cache.TryGet(keys[1], isIncrementActiveReference: false, out var _));
+
+                // The order of objects in LRU should be 1->3->2.
+                // Since 2 is the most recently used, it is at the end of the list.
+
+                // Evict an object and check that the right object was evicted (3)
+                // Object (1) will not be evicted because it has an active reference even though it is before object (3) in the LRU list.
+                Assert.True(cache.EvictOne());
+                Assert.False(cache.TryGet(keys[2], isIncrementActiveReference: false, out var _));
+                // Check if the other objects are still present;
+                // We cannot check using TryGet as that will impact the LRU ordering
+                Assert.Contains(keys[0], cache.LRUList);
+                Assert.Contains(keys[1], cache.LRUList);
+
+                // Evict an object and check that the right object was evicted (2)
+                Assert.True(cache.EvictOne());
+                Assert.False(cache.TryGet(keys[1], isIncrementActiveReference: false, out var _));
+                // Check if the other object are still present;
+                // We cannot check using TryGet as that will impact the LRU ordering
+                Assert.Contains(keys[0], cache.LRUList);
+
+                // The only object left is object (1) but it has an active reference so cannot be evicted
+                Assert.False(cache.EvictOne());
+                Assert.Contains(keys[0], cache.LRUList);
+
+                // Decrement the reference on object (1)
+                cache.DecrementActiveReference(keys[0]);
+
+                // Now object (1) should be evicted and the cache should be empty
+                Assert.True(cache.EvictOne());
+                Assert.Empty(cache.LRUList);
+                Assert.Empty(cache.ActiveReferences);
+                Assert.Equal(cacheSize, cache.RemainingCapacityBytes);
+            }
+        }
+
+        [Fact]
         public async Task PutObject_NoActiveReferences_ForceOneEviction_VerifyCorrectEviction()
         {
             int contentSize = 2 * 1024 * 1024; // 2MB
@@ -333,6 +410,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // At this point, the cache is full.
                 // We will create another object and try to insert it.
+                // This should be inserted (as another object will be evicted to make room for this).
                 SharedMemoryMetadata metadata4 = await manager.PutObjectAsync(content);
                 FunctionDataCacheKey key4 = new FunctionDataCacheKey("foo4", "bar4");
                 Assert.True(cache.TryPut(key4, metadata4, isIncrementActiveReference: false, isDeleteOnFailure: false));
@@ -400,6 +478,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Verify that the cache has 1MB remaining
                 Assert.Equal(1 * 1024 * 1024, cache.RemainingCapacityBytes);
+            }
+        }
+
+        [Fact]
+        public async Task PutObject_FailToPut_DeleteOnFailure()
+        {
+            int contentSize = 4 * 1024 * 1024; // 4MB
+            int cacheSize = 3 * 1024 * 1024; // 3MB
+            string cacheSizeVal = cacheSize.ToString();
+
+            IEnvironment environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
+            {
+                // Prepare content
+                byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
+
+                // Put into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
+
+                // Try to put the object into the cache; this will fail because the cache is smaller than the object size.
+                // Since isDeleteOnFailure is true, the object will be deleted from shared memory.
+                FunctionDataCacheKey key = new FunctionDataCacheKey("foo", "bar");
+                Assert.False(cache.TryPut(key, metadata, isIncrementActiveReference: true, isDeleteOnFailure: true));
+
+                // Ensure that nothing was cached and no references are held
+                Assert.Empty(cache.LRUList);
+                Assert.Empty(cache.ActiveReferences);
+                Assert.Equal(cacheSize, cache.RemainingCapacityBytes);
+
+                // Ensure that the SharedMemoryManager does not have any maps allocated
+                Assert.Empty(manager.AllocatedSharedMemoryMaps);
+
+                // Try to open the shared memory map of the first object and ensure it is removed and cannot be opened
+                Assert.False(_mapAccessor.TryOpen(metadata.MemoryMapName, out var _));
+            }
+        }
+
+        [Fact]
+        public async Task PutObject_FailToPut_DoNotDeleteOnFailure()
+        {
+            int contentSize = 4 * 1024 * 1024; // 4MB
+            int cacheSize = 3 * 1024 * 1024; // 3MB
+            string cacheSizeVal = cacheSize.ToString();
+
+            IEnvironment environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
+            {
+                // Prepare content
+                byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
+
+                // Put into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
+
+                // Try to put the object into the cache; this will fail because the cache is smaller than the object size.
+                // Since isDeleteOnFailure is false, the object will not be deleted from shared memory.
+                FunctionDataCacheKey key = new FunctionDataCacheKey("foo", "bar");
+                Assert.False(cache.TryPut(key, metadata, isIncrementActiveReference: true, isDeleteOnFailure: false));
+
+                // Ensure that nothing was cached and no references are held
+                Assert.Empty(cache.LRUList);
+                Assert.Empty(cache.ActiveReferences);
+                Assert.Equal(cacheSize, cache.RemainingCapacityBytes);
+
+                // Ensure that the SharedMemoryManager has the allocated memory map and it was not deleted
+                Assert.Equal(1, manager.AllocatedSharedMemoryMaps.Count);
+
+                // Try to open the shared memory map of the first object and ensure it exists and can be opened
+                Assert.True(_mapAccessor.TryOpen(metadata.MemoryMapName, out var _));
             }
         }
     }

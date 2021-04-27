@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
         public bool TryPut(FunctionDataCacheKey cacheKey, SharedMemoryMetadata sharedMemoryMeta, bool isIncrementActiveReference, bool isDeleteOnFailure)
         {
-            bool success = false;
+            bool isFailure = true;
 
             try
             {
@@ -68,7 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                     // Check if the key is already present in the cache
                     if (_localCache.ContainsKey(cacheKey))
                     {
-                        // Key already exists in the local cache; do not overwrite
+                        // Key already exists in the local cache; do not overwrite and don't
+                        // delete the existing data.
+                        isFailure = false;
                         return false;
                     }
 
@@ -92,13 +94,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                     // Update the cache utilization
                     RemainingCapacityBytes -= sharedMemoryMeta.Count;
 
-                    success = true;
+                    isFailure = false;
                     return true;
                 }
             }
             finally
             {
-                if (!success && isDeleteOnFailure)
+                if (isFailure && isDeleteOnFailure)
                 {
                     if (!_sharedMemoryManager.TryFreeSharedMemoryMap(sharedMemoryMeta.MemoryMapName))
                     {
@@ -147,17 +149,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                     return false;
                 }
 
-                // Free the shared memory containing data for the given key that is being removed
-                if (!_sharedMemoryManager.TryFreeSharedMemoryMap(sharedMemoryMeta.MemoryMapName))
-                {
-                    // Unable to free the shared memory
-                    return false;
-                }
-
                 // Remove the key from the local cache
                 if (!_localCache.Remove(cacheKey))
                 {
                     // Key does not exist in the local cache
+                    return false;
+                }
+
+                // Free the shared memory containing data for the given key that is being removed
+                if (!_sharedMemoryManager.TryFreeSharedMemoryMap(sharedMemoryMeta.MemoryMapName))
+                {
+                    // Unable to free the shared memory
                     return false;
                 }
 
