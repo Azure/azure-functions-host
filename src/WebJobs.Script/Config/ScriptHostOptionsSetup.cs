@@ -12,25 +12,21 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         private readonly IConfiguration _configuration;
         private readonly IEnvironment _environment;
         private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IFunctionDataCache _functionDataCache;
 
         internal static readonly TimeSpan MinFunctionTimeout = TimeSpan.FromSeconds(1);
         internal static readonly TimeSpan DefaultFunctionTimeoutDynamic = TimeSpan.FromMinutes(5);
         internal static readonly TimeSpan MaxFunctionTimeoutDynamic = TimeSpan.FromMinutes(10);
         internal static readonly TimeSpan DefaultFunctionTimeout = TimeSpan.FromMinutes(30);
 
-        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions, IFunctionDataCache functionDataCache)
+        public ScriptHostOptionsSetup(IConfiguration configuration, IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _configuration = configuration;
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
-            _functionDataCache = functionDataCache;
         }
 
         public void Configure(ScriptJobHostOptions options)
         {
-            options.IsFunctionDataCacheEnabled = _functionDataCache.IsEnabled;
-
             // Add the standard built in watched directories set to any the user may have specified
             options.WatchDirectories.Add("node_modules");
 

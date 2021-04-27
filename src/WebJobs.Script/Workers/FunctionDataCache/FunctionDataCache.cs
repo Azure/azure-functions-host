@@ -14,6 +14,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         /// </summary>
         private readonly ILogger _logger;
 
+        /// <summary>
+        /// Shared memory manager which manages the backing memory regions for the cache.
+        /// </summary>
         private readonly ISharedMemoryManager _sharedMemoryManager;
 
         /// <summary>
@@ -28,6 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         /// </summary>
         private readonly Dictionary<FunctionDataCacheKey, SharedMemoryMetadata> _localCache;
 
+        /// <summary>
+        /// Maximum number of bytes of data that can be stored in the cache.
+        /// </summary>
         private readonly long _maximumCapacityBytes;
 
         public FunctionDataCache(ISharedMemoryManager sharedMemoryManager, ILoggerFactory loggerFactory, IEnvironment environment)
@@ -46,6 +52,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
         public bool IsEnabled { get; private set; }
 
+        /// <summary>
+        /// Gets the total free capacity of the cache in number of bytes.
+        /// </summary>
         internal long RemainingCapacityBytes { get; private set; }
 
         /// <summary>
@@ -55,6 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         /// </summary>
         internal LinkedList<FunctionDataCacheKey> LRUList { get; private set; }
 
+        /// <summary>
+        /// Gets the mapping of active reference count for each <see cref="FunctionDataCacheKey"/> in the cache.
+        /// Note: Only <see cref="FunctionDataCacheKey"/> with at least one active reference count are maintained in this data structure.
+        /// </summary>
         internal Dictionary<FunctionDataCacheKey, long> ActiveReferences { get; private set; }
 
         public bool TryPut(FunctionDataCacheKey cacheKey, SharedMemoryMetadata sharedMemoryMeta, bool isIncrementActiveReference, bool isDeleteOnFailure)
@@ -189,6 +202,56 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             _logger.LogTrace("TODO");
         }
 
+        /// <summary>
+        /// Evicts the least recently used object from the cache such that the object has no active references.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
+        /// </summary>
+        /// <returns><see cref="true"/> if an object was evicted, <see cref="false"/> otherwise.</returns>
+        internal bool EvictOne()
+        {
+            // TODO add docstring to mention that this assumes lock is taken
+            FunctionDataCacheKey cacheKey = GetFromFrontOfLRU();
+            if (cacheKey == null)
+            {
+                return false;
+            }
+
+            return TryRemove(cacheKey);
+        }
+
+        /// <summary>
+        /// Evicts objects in an LRU order (with the least recently used first) such that the objects have no active references, until either the specified capacity has been made available or cannot be made available.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
+        /// </summary>
+        /// <param name="capacityRequiredBytes">Capacity (in number of bytes) required.</param>
+        /// <returns><see cref="true"/> if the required capacity has been made available, <see cref="false"/> otherwise.</returns>
+        internal bool EvictUntilCapacityAvailable(long capacityRequiredBytes)
+        {
+            if (capacityRequiredBytes > _maximumCapacityBytes)
+            {
+                return false;
+            }
+
+            while (RemainingCapacityBytes < capacityRequiredBytes)
+            {
+                if (!EvictOne())
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Obtains the maximum capacity that the cache can have from the passed environment.
+        /// If the environment does not have a value specified then a default value of
+        /// <see cref="FunctionDataCacheConstants.FunctionDataCacheDefaultMaximumSizeBytes"/> is used.
+        /// </summary>
+        /// <param name="environment">Environment from which to get the configuration from.</param>
+        /// <returns>Number of bytes of capacity that the cache can have.</returns>
         private long GetMaximumCapacityBytes(IEnvironment environment)
         {
             string capacityVal = environment.GetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName);
@@ -202,6 +265,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             return FunctionDataCacheConstants.FunctionDataCacheDefaultMaximumSizeBytes;
         }
 
+        /// <summary>
+        /// Checks the passed environment to see if the cache is to be enabled or not.
+        /// Looks for the value specified for <see cref="FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName"/>.
+        /// If a value is not specified, the cache is disabled by default.
+        /// </summary>
+        /// <param name="environment">Environment from which to get the configuration from.</param>
+        /// <returns><see cref="true"/> if the cache is to be enabled, <see cref="false"/> otherwise.</returns>
         private bool GetIsEnabled(IEnvironment environment)
         {
             // Check if the environment variable (AppSetting) has this feature enabled
@@ -226,6 +296,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             return envValEnabled;
         }
 
+        /// <summary>
+        /// Increments the active reference count for the given key.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
+        /// </summary>
+        /// <param name="cacheKey">Key for which to increment the active reference count.</param>
         private void IncrementActiveReference(FunctionDataCacheKey cacheKey)
         {
             // TODO mention assumes lock
@@ -237,6 +313,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             ActiveReferences.Add(cacheKey, activeReferences + 1);
         }
 
+        /// <summary>
+        /// Decrements the active reference count for the given key.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
+        /// </summary>
+        /// <param name="cacheKey">Key for which to decrement the active reference count.</param>
         private void DecrementActiveReferenceCore(FunctionDataCacheKey cacheKey)
         {
             long activeReferences = 0;
@@ -250,41 +332,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             }
         }
 
-        internal bool EvictOne()
-        {
-            // TODO add docstring to mention that this assumes lock is taken
-            FunctionDataCacheKey cacheKey = GetFromFrontOfLRU();
-            if (cacheKey == null)
-            {
-                return false;
-            }
-
-            return TryRemove(cacheKey);
-        }
-
-        internal bool EvictUntilCapacityAvailable(long capacityRequiredBytes)
-        {
-            // TODO add docstring to mention that this assumes lock is taken
-            if (capacityRequiredBytes > _maximumCapacityBytes)
-            {
-                return false;
-            }
-
-            while (RemainingCapacityBytes < capacityRequiredBytes)
-            {
-                if (!EvictOne())
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         /// <summary>
         /// Adds the given key to the end of the LRU list.
         /// This key is the most recently used key.
-        /// Assumes that the key is not already present.
         /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
         /// by the caller.)
         /// </summary>
@@ -300,8 +350,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         }
 
         /// <summary>
-        /// Gets the key at the front of the LRU list.
-        /// This key is the least recently used key.
+        /// Gets the first key (least recently used) starting from the front of the LRU list, such that the key does not have any active references.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
         /// </summary>
         /// <returns>The first <see cref="FunctionDataCacheKey"/> from the front of the list which does not have any active references,
         /// or <see cref="null"/> if no such valid key is found.</returns>
@@ -323,6 +374,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             return null;
         }
 
+        /// <summary>
+        /// Removes the given key from the LRU list, if it exists.
+        /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
+        /// by the caller.)
+        /// </summary>
+        /// <param name="cacheKey">Key to remove from the LRU list.</param>
         private void RemoveFromLRU(FunctionDataCacheKey cacheKey)
         {
             LRUList.Remove(cacheKey);

@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Secret management
             services.TryAddSingleton<ISecretManagerProvider, DefaultSecretManagerProvider>();
 
-            // Shared memory data transfer
+            // Shared memory data transfer and function data cache
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();

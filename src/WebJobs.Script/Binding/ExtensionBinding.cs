@@ -22,14 +22,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
     /// </summary>
     public class ExtensionBinding : FunctionBinding
     {
-        private readonly bool _isFunctionDataCacheEnabled;
-
         private ScriptBinding _binding;
 
         public ExtensionBinding(ScriptJobHostOptions config, ScriptBinding binding, BindingMetadata metadata) : base(config, metadata, binding.Context.Access)
         {
             _binding = binding;
-            _isFunctionDataCacheEnabled = config.IsFunctionDataCacheEnabled;
             Attributes = _binding.GetAttributes();
         }
 
@@ -78,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else if (_binding.DefaultType == typeof(Stream))
             {
-                if (_isFunctionDataCacheEnabled)
+                if (ScriptHost.IsFunctionDataCacheEnabled)
                 {
                     await PrepareAttributesAndBindCacheAwareStreamAsync(context, Access);
                 }

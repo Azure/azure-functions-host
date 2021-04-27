@@ -112,10 +112,5 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets retry options to use on function executions on function invocation failures.
         /// </summary>
         public RetryOptions Retry { get; set; }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether <see cref="IFunctionDataCache"/> is enabled or not.
-        /// </summary>
-        public bool IsFunctionDataCacheEnabled { get; set; }
     }
 }

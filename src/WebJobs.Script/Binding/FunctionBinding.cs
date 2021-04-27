@@ -10,11 +10,8 @@ using System.IO;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Description;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
-using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -255,8 +252,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         await sharedMemoryStream.CopyToAsync(blobStream);
                         await blobStream.FlushAsync();
                     }
-
-                    await obj.TryPutToCacheAsync(isDeleteOnFailure: true);
                 }
 
                 context.Value = obj;
@@ -282,14 +277,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
 
         public static void ConvertValueToStream(object value, Stream stream)
         {
-            // If the object is wrapped as a SharedMemoryObject, extract the inner value and
-            // use that value and its corresponding type for further conversion.
-            SharedMemoryObject sharedMemoryObject = value as SharedMemoryObject;
-            if (sharedMemoryObject != null)
-            {
-                value = sharedMemoryObject.Content;
-            }
-
             Stream valueStream = value as Stream;
             if (valueStream == null)
             {
@@ -363,26 +350,11 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     }
                     break;
                 case DataType.Binary:
-                    //if (stream is FunctionDataCacheStream)
-                    //{
-                    //    // TODO explain what is happening here
-                    //    FunctionDataCacheStream cacheStream = stream as FunctionDataCacheStream;
-                    //    converted = cacheStream.SharedMemoryMetadata;
-                    //}
-                    //else if (stream is CacheableObjectStream)
-                    //{
-                    //    // TODO explain what is happening here, delay the reading to the shared memory manager
-                    //    CacheableObjectStream cachableObjStream = stream as CacheableObjectStream;
-                    //    converted = cachableObjStream;
-                    //}
-                    //else
-                    //{
                     using (MemoryStream ms = new MemoryStream())
                     {
                         stream.CopyTo(ms);
                         converted = ms.ToArray();
                     }
-                    //}
                     break;
                 case DataType.Stream:
                     // when the target value is a Stream, we copy the value
@@ -395,21 +367,5 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                     break;
             }
         }
-
-        //public static void ConvertCacheObjectOrBlobStreamToValue(ICacheObjectOrBlobStream obj, DataType dataType, ref object converted)
-        //{
-        //    if (obj == null)
-        //    {
-        //        return;
-        //    }
-
-        //    // TODO raise if unsupported datatype?
-        //    switch (dataType)
-        //    {
-        //        case DataType.Binary:
-        //            converted = obj;
-        //            break;
-        //    }
-        //}
     }
 }

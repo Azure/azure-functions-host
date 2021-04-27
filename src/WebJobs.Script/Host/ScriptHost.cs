@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
+        private readonly IFunctionDataCache _functionDataCache;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
+            IFunctionDataCache functionDataCache,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -149,6 +151,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     HandleHostError(evt.Exception);
                 }));
+
+            _functionDataCache = functionDataCache;
+
+            if (_functionDataCache != null && _functionDataCache.IsEnabled)
+            {
+                IsFunctionDataCacheEnabled = true;
+            }
         }
 
         public event EventHandler HostInitializing;
@@ -168,6 +177,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public ILogger Logger { get; internal set; }
 
         public ScriptJobHostOptions ScriptOptions { get; private set; }
+
+        public static bool IsFunctionDataCacheEnabled { get; set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -299,6 +310,12 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
 
+                if (!IsFunctionDataCacheUseAllowed())
+                {
+                    // TODO log?
+                    IsFunctionDataCacheEnabled = false;
+                }
+
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
 
@@ -312,6 +329,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 ScheduleFileSystemCleanup();
             }
+        }
+
+        /// <summary>
+        /// <see cref="IFunctionDataCache"/> can only be enabled for out-of-proc languages which communicate with the host over shared memory.
+        /// </summary>
+        /// <returns><see cref="true"/> if <see cref="IFunctionDataCache"/> can be used, <see cref="false"/> otherwise.</returns>
+        private bool IsFunctionDataCacheUseAllowed()
+        {
+            if (Utility.IsDotNetLanguageFunction(_workerRuntime) ||
+                ContainsDotNetFunctionDescriptorProvider())
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private async Task LogInitializationAsync()
@@ -515,6 +547,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // In addition to descriptors already added here, we need to ensure all codeless functions
             // also have associated descriptors.
             AddCodelessDescriptors(functionMetadata);
+        }
+
+        /// <summary>
+        /// Checks if the list of descriptors contains any <see cref="DotNetFunctionDescriptorProvider"/>.
+        /// </summary>
+        /// <returns><see cref="true"/> if <see cref="DotNetFunctionDescriptorProvider"/> found, <see cref="false"/> otherwise.</returns>
+        private bool ContainsDotNetFunctionDescriptorProvider()
+        {
+            return _descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider);
         }
 
         /// <summary>

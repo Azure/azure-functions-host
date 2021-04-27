@@ -252,6 +252,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
+
+            if (!_isSharedMemoryDataTransferEnabled)
+            {
+                // If the worker does not support using shared memory data transfer, caching must also be disabled
+                ScriptHost.IsFunctionDataCacheEnabled = false;
+            }
+
             _workerInitTask.SetResult(true);
         }
 

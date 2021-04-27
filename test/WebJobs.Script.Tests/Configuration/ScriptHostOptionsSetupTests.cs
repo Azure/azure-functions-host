@@ -19,30 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ScriptHostOptionsSetupTests
     {
-        private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
-        private readonly IEnvironment _testEnvironment;
-        private readonly IMemoryMappedFileAccessor _mapAccessor;
-        private readonly ISharedMemoryManager _sharedMemoryManager;
-        private readonly IFunctionDataCache _functionDataCache;
-
-        public ScriptHostOptionsSetupTests()
-        {
-            ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
-            _testEnvironment = new TestEnvironment();
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                _mapAccessor = new MemoryMappedFileAccessorWindows(logger);
-            }
-            else
-            {
-                _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
-            }
-
-            _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
-            _functionDataCache = new FunctionDataCache(_sharedMemoryManager, _loggerFactory, _testEnvironment);
-        }
-
         [Fact]
         public void Configure_FileWatching()
         {
@@ -377,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = builder.Build();
 
-            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()), _functionDataCache);
+            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
         }
     }
 }
