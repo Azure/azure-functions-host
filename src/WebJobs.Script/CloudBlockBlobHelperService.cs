@@ -9,13 +9,13 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class CloudBlockBlobHelperService
     {
-        public virtual async Task<bool> BlobExists(string url)
+        public virtual Task<bool> BlobExists(string url)
         {
             if (string.IsNullOrEmpty(url))
             {
-                return false;
+                return Task.FromResult(false);
             }
-            return await BlobExistsAsync(url);
+            return BlobExistsAsync(url);
         }
 
         private static async Task<bool> BlobExistsAsync(string url)
