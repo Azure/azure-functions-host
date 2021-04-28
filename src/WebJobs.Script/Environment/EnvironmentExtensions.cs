@@ -474,6 +474,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
                 StringComparison.OrdinalIgnoreCase);
         }
+
         public static bool IsDrainOnApplicationStopping(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||
