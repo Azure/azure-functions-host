@@ -36,8 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
         {
-            var blobExists = options.ScmRunFromPackageBlobExists;
-            logger.LogDebug($"Checking if {EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: {blobExists}");
+            var blobExists = options.IsScmRunFromPackage;
+            logger.LogDebug($"{EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: {blobExists}");
             return blobExists;
         }
     }

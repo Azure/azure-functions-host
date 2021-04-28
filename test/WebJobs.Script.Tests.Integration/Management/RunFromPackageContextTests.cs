@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var runFromPackageContext = new RunFromPackageContext(environmentVariableName, url, 10, false);
             var options = new ScriptApplicationHostOptions
             {
-                ScmRunFromPackageBlobExists = Url.Equals(url) ? blobExists : false
+                IsScmRunFromPackage = Url.Equals(url) ? blobExists : false
             };
             Assert.Equal(scmRunFromPackageConfigured, runFromPackageContext.IsRunFromPackage(options, NullLogger.Instance));
         }

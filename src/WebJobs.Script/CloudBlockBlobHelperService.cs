@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage.Blob;
 
@@ -9,32 +10,38 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class CloudBlockBlobHelperService
     {
-        public virtual Task<bool> BlobExists(string url)
+        public virtual bool BlobExists(string url)
         {
             if (string.IsNullOrEmpty(url))
             {
-                return Task.FromResult(false);
+                return false;
             }
-            return BlobExistsAsync(url);
-        }
 
-        private static async Task<bool> BlobExistsAsync(string url)
-        {
-            bool exists = false;
-            await Utility.InvokeWithRetriesAsync(async () =>
+            try
             {
-                try
-                {
-                    CloudBlockBlob blob = new CloudBlockBlob(new Uri(url));
-                    exists = await blob.ExistsAsync();
-                }
-                catch (Exception)
-                {
-                    throw;
-                }
-            }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
+                CloudBlockBlob blob = new CloudBlockBlob(new Uri(url));
 
-            return exists;
+                int attempt = 0;
+                while (true)
+                {
+                    try
+                    {
+                        return blob.Exists();
+                    }
+                    catch (Exception ex) when (!ex.IsFatal())
+                    {
+                        if (++attempt > 2)
+                        {
+                            throw;
+                        }
+                        Thread.Sleep(TimeSpan.FromSeconds(0.3));
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
     }
 }

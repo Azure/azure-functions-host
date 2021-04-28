@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         private bool BlobExists()
         {
-            return _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage)).GetAwaiter().GetResult();
+            return _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
         private bool IsZipDeployment(ScriptApplicationHostOptions options)
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // If SCM_RUN_FROM_PACKAGE is set to a valid value and the blob exists, it's a zip deployment.
             // We need to explicitly check if the blob exists because on Linux Consumption the app setting is always added, regardless if it's used or not.
             bool scmRunFromPkgConfigured = IsValidZipSetting(_environment.GetEnvironmentVariable(ScmRunFromPackage)) && BlobExists();
-            options.ScmRunFromPackageBlobExists = scmRunFromPkgConfigured;
+            options.IsScmRunFromPackage = scmRunFromPkgConfigured;
 
             return scmRunFromPkgConfigured;
         }

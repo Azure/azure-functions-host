@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
             // This method is not used in this test case, but it's still called as part of configuration binding step, so we need to define the outcome
-            cloudBlockBlobService.Setup(c => c.BlobExists(It.IsAny<string>())).ReturnsAsync(false);
+            cloudBlockBlobService.Setup(c => c.BlobExists(It.IsAny<string>())).Returns(false);
 
             var zipSettings = new string[]
             {
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 var options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
 
                 Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
-                Assert.Equal(options.ScmRunFromPackageBlobExists, false);
+                Assert.Equal(options.IsScmRunFromPackage, false);
             }
 
             // Test multiple being set
@@ -76,8 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         {
             var environment = new TestEnvironment();
             var cloudBlockBlobService = new Mock<CloudBlockBlobHelperService>(MockBehavior.Strict);
-            cloudBlockBlobService.Setup(c => c.BlobExists(appSettingValue)).ReturnsAsync(true);
-            cloudBlockBlobService.Setup(c => c.BlobExists(It.Is<string>(s => !string.Equals(s, appSettingValue, StringComparison.OrdinalIgnoreCase)))).ReturnsAsync(false);
+            cloudBlockBlobService.Setup(c => c.BlobExists(appSettingValue)).Returns(true);
+            cloudBlockBlobService.Setup(c => c.BlobExists(It.Is<string>(s => !string.Equals(s, appSettingValue, StringComparison.OrdinalIgnoreCase)))).Returns(false);
 
             var options = CreateConfiguredOptions(true, environment, cloudBlockBlobService.Object);
 

@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var options = new ScriptApplicationHostOptions()
             {
                 ScriptPath = Path.GetTempPath(),
-                ScmRunFromPackageBlobExists = true
+                IsScmRunFromPackage = true
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
             var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var options = new ScriptApplicationHostOptions()
             {
                 ScriptPath = Path.GetTempPath(),
-                ScmRunFromPackageBlobExists = false
+                IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
             var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
