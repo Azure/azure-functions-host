@@ -313,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Collection(logs,
                 p => Assert.StartsWith("Starting Assignment", p),
                 p => Assert.StartsWith("Applying 1 app setting(s)", p),
-                p => Assert.StartsWith($"Checking if {EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: False", p),
+                p => Assert.StartsWith($"{EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: False", p),
                 p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
         }
