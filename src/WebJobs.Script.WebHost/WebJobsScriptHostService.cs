@@ -699,11 +699,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     var drainModeManager = _host?.Services.GetService<IDrainModeManager>();
                     if (drainModeManager != null)
                     {
-                        _logger.LogDebug("Application Stopping: enabling drain mode");
+                        _logger.LogDebug("Application Stopping: initiate drain mode");
                         drainModeManager.EnableDrainModeAsync(CancellationToken.None);
                         Thread.Sleep(TimeSpan.FromMinutes(10));
                     }
-                    _logger.LogDebug("Draining completed");
                 }
             });
 
