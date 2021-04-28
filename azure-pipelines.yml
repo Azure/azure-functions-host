@@ -359,6 +359,7 @@ jobs:
         **\WebJobs.Script.Tests.Integration.csproj
     env:
       AzureWebJobsStorage: $(Storage)
+      AzureWebJobsSecondaryStorage: $(SecondaryStorage)
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
@@ -415,11 +416,13 @@ jobs:
       targetType: 'inline'
       script: |
         Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsSeconaryStorage]$env:AzureWebJobsSecondaryStorageSecretMap"
         Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
     env:
       AzureWebJobsStorageSecretMap: $(Storage)
+      AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
       CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
