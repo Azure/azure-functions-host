@@ -39,19 +39,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private string _hostId;
 
         public PrimaryHostCoordinator(IOptions<PrimaryHostCoordinatorOptions> coordinatorOptions, IHostIdProvider hostIdProvider, IDistributedLockManager lockManager,
-            ScriptSettingsManager settingsManager, IPrimaryHostStateProvider primaryHostStateProvider, ILoggerFactory loggerFactory, IEnvironment environment)
+            ScriptSettingsManager settingsManager, IPrimaryHostStateProvider primaryHostStateProvider, ILoggerFactory loggerFactory)
         {
             _leaseTimeout = coordinatorOptions.Value.LeaseTimeout;
             _hostIdProvider = hostIdProvider;
             _websiteInstanceId = settingsManager.AzureWebsiteInstanceId;
 
-            if (environment.IsKubernetesManagedHosting())
-            {
-                _lockManager = new KubernetesDistributedLockManager(loggerFactory);
-            }
-
             _lockManager = lockManager;
-
             if (lockManager == null)
             {
                 throw new ArgumentNullException(nameof(lockManager));

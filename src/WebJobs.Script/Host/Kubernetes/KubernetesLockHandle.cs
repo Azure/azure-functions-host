@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         public string LockId { get; set; }
 
-        public string OwnerId { get; set; }
+        public string Owner { get; set; }
 
         public string LockPeriod { get; set; }
     }
