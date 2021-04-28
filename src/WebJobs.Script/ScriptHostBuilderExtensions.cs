@@ -301,7 +301,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
 
-                // This must go after AddAzureStorageProvider and AddTimers as it overrides implementation
                 services.AddHostOverrides();
             });
 
@@ -313,27 +312,28 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // Custom implementations that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
-            services.AddBlobLockManagerIfAvailable();
+            services.AddSingleton<IDistributedLockManager>(provider => AddLockManager(provider));
         }
 
-        private static void AddBlobLockManagerIfAvailable(this IServiceCollection services)
+        public static IDistributedLockManager AddLockManager(IServiceProvider provider)
         {
-            var provider = services.BuildServiceProvider();
             try
             {
                 var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
                 var container = azureStorageProvider.GetBlobContainerClient();
 
                 if (container != null)
                 {
-                    services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
+                    return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // If we can't get the BlobContainerClient, skip registering a LockManager.
-                // The AddAzureStorageCoreServices should have already registered an InMemoryDistributedLockManager
+                var str = ex.ToString();
             }
+
+            return new InMemoryDistributedLockManager();
         }
 
         public static void AddAzureStorageProvider(this IServiceCollection services)

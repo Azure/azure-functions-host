@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// The default derived implementation is <see cref="CloudBlobContainerDistributedLockManager"/> which is container based.
     /// Hosts can provide a derived implementation to leverage the accountName and allow different hosts to share.
     /// </summary>
-    public class BlobLeaseDistributedLockManager : IDistributedLockManager
+    internal class BlobLeaseDistributedLockManager : IDistributedLockManager
     {
         internal const string FunctionInstanceMetadataKey = "FunctionInstance";
         internal const string SingletonLocks = "locks";
