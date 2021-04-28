@@ -3,6 +3,7 @@
 
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
 {
     internal static class RpcSharedMemoryDataExtensions
     {
-        internal static async Task<RpcSharedMemory> ToRpcSharedMemoryAsync(this object value, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache)
+        internal static async Task<RpcSharedMemory> ToRpcSharedMemoryAsync(this object value, DataType dataType, ILogger logger, string invocationId, ISharedMemoryManager sharedMemoryManager)
         {
             if (value == null)
             {
@@ -79,8 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 return null;
             }
 
-            RpcDataType? dataType = GetRpcDataType(value);
-            if (!dataType.HasValue)
+            RpcDataType? rpcDatType = GetRpcDataType(dataType);
+            if (!rpcDatType.HasValue)
             {
                 logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
                 return null;
@@ -103,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 Name = sharedMemoryMeta.MemoryMapName,
                 Offset = 0,
                 Count = sharedMemoryMeta.Count,
-                Type = dataType.Value
+                Type = rpcDatType.Value
             };
 
             logger.LogTrace("Put object in shared memory for invocation id: {Id}", invocationId);
@@ -118,24 +119,32 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             int count = (int)sharedMem.Count;
             logger.LogTrace("Shared memory data transfer for invocation id: {Id} with shared memory map name: {MapName} and size: {Size} bytes", invocationId, mapName, count);
 
-            switch (sharedMem.Type)
+            // If cache is enabled, we hold a reference (in the host) to the memory map created by the worker
+            // so that the worker can be asked to drop its reference.
+            // We will later add this object into the cache and then the memory map will be freed as per the eviction logic of the cache.
+            if (isFunctionDataCacheEnabled)
             {
-                case RpcDataType.Bytes:
-                    // If cache is enabled, we hold a reference (in the host) to the memory map created by the worker
-                    // so that the worker can be asked to drop its reference.
-                    // We will later add this object into the cache and then the memory map will be freed as per the eviction
-                    // logic of the cache.
-                    if (isFunctionDataCacheEnabled)
-                    {
+                switch (sharedMem.Type)
+                {
+                    case RpcDataType.Bytes:
+                    case RpcDataType.String:
                         // This is where the SharedMemoryManager will hold a reference to the memory map
                         if (sharedMemoryManager.TryTrackSharedMemoryMap(mapName))
                         {
                             return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(SharedMemoryObject));
                         }
-                    }
+                        break;
+                    default:
+                        logger.LogError("Unsupported shared memory data type: {SharedMemDataType} with FunctionDataCache for invocation id: {Id}", sharedMem.Type, invocationId);
+                        throw new InvalidDataException($"Unsupported shared memory data type with FunctionDataCache: {sharedMem.Type}");
+                }
+            }
 
-                    // If the cache is not used, we copy the object content from the memory map so that the worker
-                    // can be asked to drop the reference to the memory map and also free the memory map.
+            // If the cache is not used, we copy the object content from the memory map so that the worker
+            // can be asked to drop the reference to the memory map.
+            switch (sharedMem.Type)
+            {
+                case RpcDataType.Bytes:
                     return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(byte[]));
                 case RpcDataType.String:
                     return await sharedMemoryManager.GetObjectAsync(mapName, offset, count, typeof(string));
@@ -145,23 +154,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             }
         }
 
-        private static RpcDataType? GetRpcDataType(object value)
+        private static RpcDataType? GetRpcDataType(DataType dataType)
         {
-            if (value is byte[])
+            switch (dataType)
             {
-                return RpcDataType.Bytes;
-            }
-            else if (value is ICacheAwareReadObject)
-            {
-                return RpcDataType.Bytes;
-            }
-            else if (value is SharedMemoryMetadata)
-            {
-                return RpcDataType.Bytes;
-            }
-            else if (value is string)
-            {
-                return RpcDataType.String;
+                case DataType.String:
+                    return RpcDataType.String;
+                case DataType.Binary:
+                    return RpcDataType.Bytes;
+                case DataType.Stream:
+                    return RpcDataType.Bytes;
             }
 
             return null;

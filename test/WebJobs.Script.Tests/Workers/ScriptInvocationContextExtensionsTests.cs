@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         private readonly IEnvironment _testEnvironment;
         private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
-        private readonly IFunctionDataCache _functionDataCache;
 
         public ScriptInvocationContextExtensionsTests()
         {
@@ -45,13 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
 
             _sharedMemoryManager = new SharedMemoryManager(_loggerFactory, _mapAccessor);
-            _functionDataCache = new FunctionDataCache(_sharedMemoryManager, _loggerFactory, _testEnvironment);
         }
 
         public void Dispose()
         {
             _sharedMemoryManager.Dispose();
-            _functionDataCache.Dispose();
         }
 
         [Theory]
@@ -176,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             };
             capabilities.UpdateCapabilities(addedCapabilities);
 
-            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager, _functionDataCache);
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager);
             Assert.Equal(1, result.InputData.Count);
             Assert.Equal(2, result.TriggerMetadata.Count);
             Assert.True(result.TriggerMetadata.ContainsKey("headers"));
@@ -286,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             invocationContext.FunctionMetadata = functionMetadata;
 
             GrpcCapabilities capabilities = new GrpcCapabilities(logger);
-            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager, _functionDataCache);
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: false, _sharedMemoryManager);
             Assert.Equal(5, result.InputData.Count);
 
             Assert.Equal("req", result.InputData[0].Name);
@@ -446,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             invocationContext.FunctionMetadata = functionMetadata;
 
             GrpcCapabilities capabilities = new GrpcCapabilities(logger);
-            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: true, _sharedMemoryManager, _functionDataCache);
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: true, _sharedMemoryManager);
             Assert.Equal(3, result.InputData.Count);
 
             Assert.Equal("fooStr", result.InputData[1].Name);
@@ -573,7 +570,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             invocationContext.FunctionMetadata = functionMetadata;
 
             GrpcCapabilities capabilities = new GrpcCapabilities(logger);
-            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: true, _sharedMemoryManager, _functionDataCache);
+            var result = await invocationContext.ToRpcInvocationRequest(logger, capabilities, isSharedMemoryDataTransferEnabled: true, _sharedMemoryManager);
             Assert.Equal(3, result.InputData.Count);
 
             Assert.Equal("fooStr", result.InputData[1].Name);

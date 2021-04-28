@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
-        internal static async Task BindCacheAwareStreamAsync(BindingContext context, FileAccess access)
+        internal static async Task BindCacheAwareAsync(BindingContext context, FileAccess access)
         {
             if (access == FileAccess.Write)
             {
@@ -253,6 +253,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                         await blobStream.FlushAsync();
                     }
                 }
+                else
+                {
+                    throw new NotSupportedException($"Cannot perform cache-aware binding of write object with type: {context.Value.GetType()}");
+                }
 
                 context.Value = obj;
             }
@@ -265,8 +269,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // The extension will check if the object was already in the cache, then no conversion is necessary.
                 // If the object was not in the cache then it will be read directly into shared memory without creating extra
                 // intermediate copies.
-                // TODO IMPORTANT: this needs to be done ONLY for out of language worker processes. ScriptHostOptions should not enable
-                // cache if running for dotnet.
                 context.Value = obj;
             }
             else

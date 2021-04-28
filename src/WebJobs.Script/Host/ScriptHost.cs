@@ -153,11 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }));
 
             _functionDataCache = functionDataCache;
-
-            if (_functionDataCache != null && _functionDataCache.IsEnabled)
-            {
-                IsFunctionDataCacheEnabled = true;
-            }
         }
 
         public event EventHandler HostInitializing;
@@ -310,11 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
 
-                if (!IsFunctionDataCacheUseAllowed())
-                {
-                    // TODO log?
-                    IsFunctionDataCacheEnabled = false;
-                }
+                IsFunctionDataCacheEnabled = GetIsFunctionDataCacheEnabled();
 
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
@@ -332,13 +323,24 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// <see cref="IFunctionDataCache"/> can only be enabled for out-of-proc languages which communicate with the host over shared memory.
+        /// Checks if the conditions to use <see cref="IFunctionDataCache"/> are met (if a valid implementation was found at runtime,
+        /// if the setting was enabled, the app is using out-of-proc languages which communicate with the host over shared memory).
         /// </summary>
         /// <returns><see cref="true"/> if <see cref="IFunctionDataCache"/> can be used, <see cref="false"/> otherwise.</returns>
-        private bool IsFunctionDataCacheUseAllowed()
+        private bool GetIsFunctionDataCacheEnabled()
         {
             if (Utility.IsDotNetLanguageFunction(_workerRuntime) ||
                 ContainsDotNetFunctionDescriptorProvider())
+            {
+                return false;
+            }
+
+            if (_functionDataCache == null)
+            {
+                return false;
+            }
+
+            if (!_functionDataCache.IsEnabled)
             {
                 return false;
             }

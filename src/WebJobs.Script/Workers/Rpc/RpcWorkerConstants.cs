@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string WorkerStatus = "WorkerStatus";
         public const string UseNullableValueDictionaryForHttp = "UseNullableValueDictionaryForHttp";
         public const string SharedMemoryDataTransfer = "SharedMemoryDataTransfer";
+        public const string FunctionDataCache = "FunctionDataCache";
 
         // Host Capabilites
         public const string V2Compatable = "V2Compatable";

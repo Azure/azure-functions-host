@@ -46,8 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
             LRUList = new LinkedList<FunctionDataCacheKey>();
             ActiveReferences = new Dictionary<FunctionDataCacheKey, long>();
             RemainingCapacityBytes = _maximumCapacityBytes;
-            IsEnabled = true; // TODO USE THE BELOW CHECK
-            //IsEnabled = GetIsEnabled(environment);
+            IsEnabled = GetIsEnabled(environment);
         }
 
         public bool IsEnabled { get; private set; }

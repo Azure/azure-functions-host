@@ -162,22 +162,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 _logger.LogTrace("Cannot transfer string over shared memory; size {Size} not supported", strBytes);
                 return false;
             }
-            else if (input is ICacheAwareReadObject stream)
+            else if (input is ICacheAwareReadObject)
             {
-                // TODO check that this object is NOT a cache hit
-                // TODO check the actual length
-                //long streamBytes = stream.Length;
-                long streamBytes = 1024 * 1024 * 10;
-                if (streamBytes >= SharedMemoryConstants.MinObjectBytesForSharedMemoryTransfer && streamBytes <= SharedMemoryConstants.MaxObjectBytesForSharedMemoryTransfer)
-                {
-                    return true;
-                }
-
-                _logger.LogTrace("Cannot transfer bytes over shared memory; size {Size} not supported", streamBytes);
-                return false;
-            }
-            else if (input is SharedMemoryMetadata)
-            {
+                // Regardless of size, if the binding was done in a cache aware manner (i.e. cache is enabled)
+                // then we will use shared memory.
                 return true;
             }
 

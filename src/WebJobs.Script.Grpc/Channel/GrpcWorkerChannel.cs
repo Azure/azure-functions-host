@@ -208,6 +208,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
             }
 
+            if (ScriptHost.IsFunctionDataCacheEnabled)
+            {
+                // FunctionDataCache is available from the host side - we send this to the worker.
+                // As long as the worker replies back with the SharedMemoryDataTransfer capability, the cache
+                // can be used.
+                initRequest.Capabilities.Add(RpcWorkerConstants.FunctionDataCache, "true");
+            }
+
             SendStreamingMessage(new StreamingMessage
             {
                 WorkerInitRequest = initRequest
@@ -426,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         context.ResultSource.SetCanceled();
                         return;
                     }
-                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager, _functionDataCache);
+                    var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -447,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 case ParameterBindingType.RpcSharedMemory:
                     // Data was transferred by the worker using shared memory
-                    return await binding.RpcSharedMemory.ToObjectAsync(_workerChannelLogger, invocationId, _sharedMemoryManager, _functionDataCache.IsEnabled);
+                    return await binding.RpcSharedMemory.ToObjectAsync(_workerChannelLogger, invocationId, _sharedMemoryManager, ScriptHost.IsFunctionDataCacheEnabled);
                 case ParameterBindingType.Data:
                     // Data was transferred by the worker using RPC
                     return binding.Data.ToObject();

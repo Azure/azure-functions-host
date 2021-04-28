@@ -44,17 +44,26 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return attributeBuilders;
         }
 
-        private async Task PrepareAttributesAndBindCacheAwareStreamAsync(BindingContext context, FileAccess access)
+        private async Task<bool> TryPrepareAttributesAndBindCacheAwareAsync(BindingContext context, FileAccess access)
         {
-            if (access == FileAccess.Write && context.Value is SharedMemoryObject sharedMemoryObj)
+            if (access == FileAccess.Write)
             {
-                // First copy the attributes and then add a specific attribute (mapName) for the particular invocation.
-                var currentAttributes = Attributes.ToList();
-                currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count));
-                context.Attributes = currentAttributes.ToArray();
+                if (context.Value is SharedMemoryObject sharedMemoryObj)
+                {
+                    // First copy the attributes and then add a specific attribute (mapName) for the particular invocation.
+                    var currentAttributes = Attributes.ToList();
+                    currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count));
+                    context.Attributes = currentAttributes.ToArray();
+                }
+                else
+                {
+                    // When binding in a cache aware manner, the write object must already be in shared memory
+                    return false;
+                }
             }
 
-            await BindCacheAwareStreamAsync(context, access);
+            await BindCacheAwareAsync(context, access);
+            return true;
         }
 
         public override async Task BindAsync(BindingContext context)
@@ -77,12 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 if (ScriptHost.IsFunctionDataCacheEnabled)
                 {
-                    await PrepareAttributesAndBindCacheAwareStreamAsync(context, Access);
+                    if (await TryPrepareAttributesAndBindCacheAwareAsync(context, Access))
+                    {
+                        return;
+                    }
                 }
-                else
-                {
-                    await BindStreamAsync(context, Access);
-                }
+
+                await BindStreamAsync(context, Access);
             }
             else if (_binding.DefaultType == typeof(JObject))
             {
