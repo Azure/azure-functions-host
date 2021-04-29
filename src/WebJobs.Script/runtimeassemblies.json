@@ -3,6 +3,42 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Azure.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Identity",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Storage.Blobs",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Storage.Common",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.StorageProvider.Blobs",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Bcl.AsyncInterfaces",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Extensions.Azure",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Identity.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Identity.Client.Extensions.Msal",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.KeyVault.Core",
       "resolutionPolicy": "private"
     },
