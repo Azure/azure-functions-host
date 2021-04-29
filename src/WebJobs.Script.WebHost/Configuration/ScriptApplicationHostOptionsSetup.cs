@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -20,10 +19,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnvironment _environment;
-        private readonly CloudBlockBlobHelperService _cloudBlockBlobHelperService;
 
-        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptionsMonitorCache<ScriptApplicationHostOptions> cache,
-            IServiceProvider serviceProvider, IEnvironment environment, CloudBlockBlobHelperService cloudBlockBlobHelperService = null)
+        public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
+            IOptionsMonitorCache<ScriptApplicationHostOptions> cache, IServiceProvider serviceProvider, IEnvironment environment)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -32,7 +30,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // If standby options change, invalidate this options cache.
             _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _cloudBlockBlobHelperService = cloudBlockBlobHelperService ?? new CloudBlockBlobHelperService();
         }
 
         public void Configure(ScriptApplicationHostOptions options)
@@ -68,43 +65,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.IsFileSystemReadOnly = IsZipDeployment(options);
+            options.IsFileSystemReadOnly = IsZipDeployment();
         }
 
-        private bool BlobExists()
+        private bool IsZipDeployment()
         {
-            return _cloudBlockBlobHelperService.BlobExists(_environment.GetEnvironmentVariable(ScmRunFromPackage));
-        }
-
-        private bool IsZipDeployment(ScriptApplicationHostOptions options)
-        {
-            // If the app is using app settings for run from package, we don't need to check further, it must be a zip deployment.
-            bool runFromPkgConfigured = IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage));
-
-            if (runFromPkgConfigured)
-            {
-                return true;
-            }
-
-            // If SCM_RUN_FROM_PACKAGE is set to a valid value and the blob exists, it's a zip deployment.
-            // We need to explicitly check if the blob exists because on Linux Consumption the app setting is always added, regardless if it's used or not.
-            bool scmRunFromPkgConfigured = IsValidZipSetting(_environment.GetEnvironmentVariable(ScmRunFromPackage)) && BlobExists();
-            options.IsScmRunFromPackage = scmRunFromPkgConfigured;
-
-            return scmRunFromPkgConfigured;
-        }
-
-        private static bool IsValidZipSetting(string appSetting)
-        {
-            // valid values are 1 or an absolute URI
-            return string.Equals(appSetting, "1") || IsValidZipUrl(appSetting);
-        }
-
-        private static bool IsValidZipUrl(string appSetting)
-        {
-            return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+            return Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage));
         }
 
         public void Dispose()
