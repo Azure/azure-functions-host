@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -27,10 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
+        private IConfiguration _config;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IConfiguration config)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -40,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _logger = loggerFactory.CreateLogger<WebHostRpcWorkerChannelManager>();
             _applicationHostOptions = applicationHostOptions;
             _lanuageworkerOptions = languageWorkerOptions;
+            _config = config ?? throw new ArgumentNullException(nameof(config));
 
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -131,6 +134,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (!string.IsNullOrEmpty(workerRuntime))
             {
+                // Restart worker process if custom languageWorkers:[runtime]:arguments are passed in
+                var workerArguments = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerRuntime}:{WorkerConstants.WorkerDescriptionArguments}").Value;
+                if (!string.IsNullOrEmpty(workerArguments))
+                {
+                    return false;
+                }
+
                 // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
                 // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534

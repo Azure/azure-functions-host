@@ -26,7 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             "Microsoft.Azure.WebJobs.Extensions.dll",
             "Microsoft.Azure.WebJobs.Extensions.Http.dll",
             "Microsoft.Azure.WebJobs.Host.Storage.dll",
-            "Microsoft.Azure.WebJobs.Logging.dll"
+            "Microsoft.Azure.WebJobs.Logging.dll",
+            "Microsoft.Azure.AppService.Middleware.dll",
+            "Microsoft.Azure.AppService.Middleware.Modules.dll",
+            "Microsoft.Azure.AppService.Middleware.Functions.dll",
+            "Microsoft.Azure.AppService.Middleware.NetCore.dll",
         };
 
         private readonly DependencyContextJsonReader _reader = new DependencyContextJsonReader();
