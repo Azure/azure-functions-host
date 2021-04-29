@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEvent : TableEntity
     {
+        public DiagnosticEvent() { }
         public DiagnosticEvent(string hostId, DateTime now)
         {
             RowKey = TableStorageHelpers.GetRowKey(now);
@@ -27,7 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public string HelpLink { get; set; }
 
-        public LogLevel Level { get; set; }
+        public int Level { get; set; }
+
+        [IgnoreProperty]
+        public LogLevel LevelEnum
+        {
+            get { return (LogLevel)Level; }
+            set { Level = (int)value; }
+        }
 
         public string Details { get; set; }
     }
