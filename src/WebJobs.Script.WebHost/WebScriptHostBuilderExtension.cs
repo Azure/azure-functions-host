@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -97,16 +98,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
-                    if (environment.IsLinuxConsumption())
-                    {
-                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
-                    }
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
                     if (environment.IsLinuxConsumption())
                     {
                         services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+
+                        // EasyAuth must go after CORS, as CORS preflight requests can happen before authentication
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
 
             var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
-            if (debugStateProvider.InDebugMode)
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDevInDebug, environment) && debugStateProvider.InDebugMode)
             {
                 builder.UseEnvironment(EnvironmentName.Development);
             }

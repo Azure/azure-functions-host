@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddLinuxContainerServices();
 
             // ScriptSettingsManager should be replaced. We're setting this here as a temporary step until
-            // broader configuaration changes are made:
+            // broader configuration changes are made:
             services.AddSingleton<ScriptSettingsManager>();
             services.AddSingleton<IEventGenerator>(p =>
             {
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 else if (environment.IsKubernetesManagedHosting())
                 {
-                    return new KubernetesEventGenerator(environment);
+                    return new KubernetesEventGenerator();
                 }
                 else
                 {
@@ -163,6 +163,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.AddSingleton<IConfigureOptions<ScriptApplicationHostOptions>>(p =>
+            {
+                var environment = p.GetService<IEnvironment>();
+                if (environment.IsLinuxConsumption())
+                {
+                    return new LinuxScriptApplicationHostOptionsSetup(environment);
+                }
+                return LinuxScriptApplicationHostOptionsSetup.NullInstance;
+            });
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
