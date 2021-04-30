@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Config;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -13,15 +14,18 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class KubernetesDistributedLockManager : IDistributedLockManager
     {
         private readonly KubernetesClient _kubernetesClient;
+        private readonly string _websiteInstanceId;
 
-        public KubernetesDistributedLockManager(IEnvironment environment)
-            : this(new KubernetesClient(environment))
+        public KubernetesDistributedLockManager(IEnvironment environment,
+            ScriptSettingsManager settingsManager)
+            : this(new KubernetesClient(environment), settingsManager)
         {
         }
 
-        internal KubernetesDistributedLockManager(KubernetesClient client)
+        internal KubernetesDistributedLockManager(KubernetesClient client, ScriptSettingsManager settingsManager)
         {
             _kubernetesClient = client;
+            _websiteInstanceId = settingsManager.AzureWebsiteInstanceId;
         }
 
         public async Task<string> GetLockOwnerAsync(string account, string lockId, CancellationToken cancellationToken)
@@ -46,7 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<IDistributedLock> TryLockAsync(string account, string lockId, string lockOwnerId, string proposedLeaseId, TimeSpan lockPeriod, CancellationToken cancellationToken)
         {
-            var kubernetesLock = await _kubernetesClient.TryAcquireLock(lockId, lockOwnerId, lockPeriod, cancellationToken);
+            var ownerId = string.IsNullOrEmpty(lockOwnerId) ? _websiteInstanceId : lockOwnerId;
+            var kubernetesLock = await _kubernetesClient.TryAcquireLock(lockId, ownerId, lockPeriod, cancellationToken);
             if (string.IsNullOrEmpty(kubernetesLock.LockId))
             {
                 return null;
