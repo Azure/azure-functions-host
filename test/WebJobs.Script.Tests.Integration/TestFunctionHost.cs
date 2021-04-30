@@ -133,6 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureScriptHostServices(scriptHostServices =>
                 {
                     configureScriptHostServices?.Invoke(scriptHostServices);
+
                     scriptHostServices.AddAzureStorageProvider();
                     // No real parent container so just pass empty ScriptApplicationHostOptions with ParentScope=False
                     ScriptHostBuilderExtensions.AddHostOverrides(scriptHostServices, new ScriptApplicationHostOptions());
