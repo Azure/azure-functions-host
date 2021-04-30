@@ -474,5 +474,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
                 StringComparison.OrdinalIgnoreCase);
         }
+
+        public static string GetHttpLeaderEndpoint(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
+        }
     }
 }

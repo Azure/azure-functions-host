@@ -290,10 +290,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
-                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentSettingNames.PodName)))
+                if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
                 {
                     services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
                 }
+
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 

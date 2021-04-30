@@ -5,7 +5,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -13,12 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script
     // in Kubernetes environments.
     internal class KubernetesDistributedLockManager : IDistributedLockManager
     {
-        private readonly ILogger _logger;
         private readonly KubernetesClient _kubernetesClient;
 
-        public KubernetesDistributedLockManager(ILoggerFactory loggerFactory, IEnvironment environment)
+        public KubernetesDistributedLockManager(IEnvironment environment)
         {
-            _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _kubernetesClient = new KubernetesClient(environment);
         }
 
@@ -38,8 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public async Task<bool> RenewAsync(IDistributedLock lockHandle, CancellationToken cancellationToken)
         {
             var kubernetesLock = (KubernetesLockHandle)lockHandle;
-            await _kubernetesClient.TryAcquireLock(kubernetesLock.LockId, kubernetesLock.Owner, TimeSpan.FromSeconds(Convert.ToDouble(kubernetesLock.LockPeriod)), cancellationToken);
-            return true;
+            var renewedLockHandle = await _kubernetesClient.TryAcquireLock(kubernetesLock.LockId, kubernetesLock.Owner, TimeSpan.Parse(kubernetesLock.LockPeriod), cancellationToken);
+            return !string.IsNullOrEmpty(renewedLockHandle.LockId);
         }
 
         public async Task<IDistributedLock> TryLockAsync(string account, string lockId, string lockOwnerId, string proposedLeaseId, TimeSpan lockPeriod, CancellationToken cancellationToken)

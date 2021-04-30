@@ -11,18 +11,22 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal class KubernetesClient
     {
-        private const string HttpLeaderEndpointKey = "HTTP_LEADER_ENDPOINT";
+        private const int LeaseRenewDeadline = 10;
         private readonly HttpClient _httpClient;
         private readonly string _httpLeaderEndpoint;
 
-        public KubernetesClient(IEnvironment environment, HttpClient httpClient = null)
+        internal KubernetesClient(IEnvironment environment, HttpClient httpClient = null)
         {
             _httpClient = httpClient ?? new HttpClient();
-            _httpLeaderEndpoint = environment.GetEnvironmentVariable(HttpLeaderEndpointKey);
+            _httpLeaderEndpoint = environment.GetHttpLeaderEndpoint();
         }
 
-        public async Task<KubernetesLockHandle> GetLock(string lockName)
+        internal async Task<KubernetesLockHandle> GetLock(string lockName)
         {
+            if (string.IsNullOrEmpty(lockName))
+            {
+                throw new ArgumentNullException(nameof(lockName));
+            }
             var request = new HttpRequestMessage()
             {
                 Method = HttpMethod.Get,
@@ -37,13 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script
             return JsonConvert.DeserializeObject<KubernetesLockHandle>(responseString);
         }
 
-        public async Task<KubernetesLockHandle> TryAcquireLock (string lockId, string ownerId, TimeSpan lockPeriod, CancellationToken cancellationToken)
+        internal async Task<KubernetesLockHandle> TryAcquireLock (string lockId, string ownerId, TimeSpan lockPeriod, CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(lockId))
+            {
+                throw new ArgumentNullException(nameof(lockId));
+            }
+
             var lockHandle = new KubernetesLockHandle();
             var request = new HttpRequestMessage()
             {
                 Method = HttpMethod.Post,
-                RequestUri = GetRequestUri($"/acquire?name={lockId}&owner={ownerId}&duration={lockPeriod.TotalSeconds}&renewDeadline=10"),
+                RequestUri = GetRequestUri($"/acquire?name={lockId}&owner={ownerId}&duration={lockPeriod.TotalSeconds}&renewDeadline={LeaseRenewDeadline}"),
             };
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
@@ -55,9 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script
             return lockHandle;
         }
 
-        public async Task<HttpResponseMessage> ReleaseLock(string lockId, string ownerId)
+        internal async Task<HttpResponseMessage> ReleaseLock(string lockId, string ownerId)
         {
-            var lockHandle = new KubernetesLockHandle();
+            if (string.IsNullOrEmpty(lockId))
+            {
+                throw new ArgumentNullException(nameof(lockId));
+            }
+
             var request = new HttpRequestMessage()
             {
                 Method = HttpMethod.Post,
@@ -67,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return await _httpClient.SendAsync(request);
         }
 
-        public Uri GetRequestUri(string requestStem)
+        internal Uri GetRequestUri(string requestStem)
         {
             return new Uri($"{_httpLeaderEndpoint}/lock{requestStem}");
         }
