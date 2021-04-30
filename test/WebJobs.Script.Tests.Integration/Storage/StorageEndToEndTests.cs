@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Fact]
         public async Task CanUseStorageV12Types()
         {
-            // The point of this test is to verify back compat behavior that a user can still #r and use storage v11 types in CSX, 
+            // The point of this test is to verify back compat behavior that a user can still #r and use storage v12 types in CSX, 
             // even if storage extension is not installed 
 
             _fixture.AssertNoScriptHostErrors();

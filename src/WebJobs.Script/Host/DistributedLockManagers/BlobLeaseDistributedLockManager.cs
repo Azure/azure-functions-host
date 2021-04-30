@@ -19,10 +19,8 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
-    /// Provides a CloudBlob lease-based implementation of the <see cref="IDistributedLockManager"/> service for singleton locking.
-    /// This class can be overridden to control where the container comes from.
-    /// The default derived implementation is <see cref="CloudBlobContainerDistributedLockManager"/> which is container based.
-    /// Hosts can provide a derived implementation to leverage the accountName and allow different hosts to share.
+    /// This is an overriden implementation based off the StorageBaseDistributedLockManager in Microsoft.Azure.WebJobs.Host.Storage package.
+    /// Provides a BlobClient lease-based implementation of the <see cref="IDistributedLockManager"/> service for singleton locking.
     /// </summary>
     internal class BlobLeaseDistributedLockManager : IDistributedLockManager
     {

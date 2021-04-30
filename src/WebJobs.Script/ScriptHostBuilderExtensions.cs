@@ -328,9 +328,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                var str = ex.ToString();
             }
 
             return new InMemoryDistributedLockManager();

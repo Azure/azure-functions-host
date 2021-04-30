@@ -35,17 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>successful client creation</returns>
         public virtual bool TryGetBlobServiceClientFromConnectionString(out BlobServiceClient client, string connectionString = null)
         {
-            try
-            {
-                var connectionStringToUse = connectionString ?? _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                _blobServiceClientProvider.TryGetFromConnectionString(connectionString, out client);
-                return true;
-            }
-            catch
-            {
-                client = default(BlobServiceClient);
-                return false;
-            }
+            var connectionStringToUse = connectionString ?? _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
+            return _blobServiceClientProvider.TryGetFromConnectionString(connectionStringToUse, out client);
         }
 
         /// <summary>
@@ -56,16 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>successful client creation</returns>
         public virtual bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection = null)
         {
-            try
-            {
-                client = _blobServiceClientProvider.Get(connection);
-                return true;
-            }
-            catch
-            {
-                client = default(BlobServiceClient);
-                return false;
-            }
+            return _blobServiceClientProvider.TryGet(connection, out client);
         }
 
         public virtual BlobContainerClient GetBlobContainerClient()
