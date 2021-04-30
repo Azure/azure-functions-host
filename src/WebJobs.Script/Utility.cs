@@ -863,6 +863,17 @@ namespace Microsoft.Azure.WebJobs.Script
             httpContext.Items[ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey] = $"{previousHeaders} '{headerName}'";
         }
 
+        public static bool IsValidZipSetting(string appSetting)
+        {
+            // valid values are 1 or an absolute URI
+            return string.Equals(appSetting, "1") || IsValidZipUrl(appSetting);
+        }
+
+        public static bool IsValidZipUrl(string appSetting)
+        {
+            return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+        }
+
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
         {
             public override bool CanWrite => true;

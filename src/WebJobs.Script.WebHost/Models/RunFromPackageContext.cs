@@ -2,19 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class RunFromPackageContext
     {
-        private readonly RunFromPackageCloudBlockBlobService _runFromPackageCloudBlockBlobService;
-
-        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest, RunFromPackageCloudBlockBlobService runFromPackageCloudBlockBlobService = null)
+        public RunFromPackageContext(string envVarName, string url, long? packageContentLength, bool isWarmupRequest)
         {
-            _runFromPackageCloudBlockBlobService = runFromPackageCloudBlockBlobService ?? new RunFromPackageCloudBlockBlobService();
             EnvironmentVariableName = envVarName;
             Url = url;
             PackageContentLength = packageContentLength;
@@ -31,14 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public bool IsScmRunFromPackage()
         {
-            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage,
-                        StringComparison.OrdinalIgnoreCase);
+            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage, StringComparison.OrdinalIgnoreCase);
         }
 
-        public async Task<bool> IsRunFromPackage(ILogger logger)
+        public bool IsRunFromPackage(ScriptApplicationHostOptions options, ILogger logger)
         {
-            return (IsScmRunFromPackage() && await _runFromPackageCloudBlockBlobService.BlobExists(Url, EnvironmentVariableName, logger)) ||
-                   (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+            return (IsScmRunFromPackage() && ScmRunFromPackageBlobExists(options, logger)) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+        }
+
+        private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
+        {
+            var blobExists = options.IsScmRunFromPackage;
+            logger.LogDebug($"{EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: {blobExists}");
+            return blobExists;
         }
     }
 }

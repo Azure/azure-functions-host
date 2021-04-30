@@ -6,6 +6,7 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
@@ -17,9 +18,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
         private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IEnvironment _environment;
 
         public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
-            IOptionsMonitorCache<ScriptApplicationHostOptions> cache, IServiceProvider serviceProvider)
+            IOptionsMonitorCache<ScriptApplicationHostOptions> cache, IServiceProvider serviceProvider, IEnvironment environment)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
@@ -27,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             _serviceProvider = serviceProvider;
             // If standby options change, invalidate this options cache.
             _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public void Configure(ScriptApplicationHostOptions options)
@@ -61,6 +64,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsSelfHost = options.IsSelfHost;
                 options.IsStandbyConfiguration = true;
             }
+
+            options.IsFileSystemReadOnly = IsZipDeployment();
+        }
+
+        private bool IsZipDeployment()
+        {
+            return Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage));
         }
 
         public void Dispose()
