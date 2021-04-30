@@ -439,7 +439,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 FileUtility.EnsureDirectoryExists(_hostLogPath);
             }
 
-            if (!_environment.IsFileSystemReadOnly())
+            if (!ScriptOptions.IsFileSystemReadOnly)
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }

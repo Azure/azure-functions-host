@@ -264,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Running && currentState == ScriptHostState.Offline)
             {
-                if (_environment.IsFileSystemReadOnly())
+                if (_applicationHostOptions.Value.IsFileSystemReadOnly)
                 {
                     return BadRequest();
                 }
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             else if (desiredState == ScriptHostState.Offline && currentState != ScriptHostState.Offline)
             {
-                if (_environment.IsFileSystemReadOnly())
+                if (_applicationHostOptions.Value.IsFileSystemReadOnly)
                 {
                     return BadRequest();
                 }

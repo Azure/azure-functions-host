@@ -129,6 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void ReadOnlyFileSystem_SkipsDefaultHostJsonCreation()
         {
             Assert.False(File.Exists(_hostJsonFile));
+            _options.IsFileSystemReadOnly = true;
 
             var environment = new TestEnvironment(new Dictionary<string, string>
             {

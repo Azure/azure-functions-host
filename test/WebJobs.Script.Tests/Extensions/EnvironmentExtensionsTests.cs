@@ -219,5 +219,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
             Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount());
         }
+
+        [Theory]
+        [InlineData("test-endpoint", "test-endpoint")]
+        [InlineData(null, "")]
+        [InlineData("", "")]
+        public void Returns_GetHttpLeaderEndpoint(string httpLeaderEndpoint, string expected)
+        {
+            var environment = new TestEnvironment();
+
+            if (!string.IsNullOrEmpty(httpLeaderEndpoint))
+            {
+                environment.SetEnvironmentVariable(HttpLeaderEndpoint, httpLeaderEndpoint);
+            }
+            Assert.Equal(expected, environment.GetHttpLeaderEndpoint());
+        }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("", null, false)]
+        [InlineData("", "", false)]
+        [InlineData("", "false", false)]
+        [InlineData("", "true", true)]
+        [InlineData("10.0.0.1", "", true)]
+        [InlineData("10.0.0.1", "true", true)]
+        [InlineData("10.0.0.1", "false", true)]
+        [InlineData("10.0.0.1", null, true)]
+        public void IsDrainOnApplicationStopping_ReturnsExpectedResult(string serviceHostValue, string drainOnStoppingValue, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(KubernetesServiceHost, serviceHostValue);
+            environment.SetEnvironmentVariable(DrainOnApplicationStopping, drainOnStoppingValue);
+            Assert.Equal(expected, environment.DrainOnApplicationStoppingEnabled());
+        }
     }
 }

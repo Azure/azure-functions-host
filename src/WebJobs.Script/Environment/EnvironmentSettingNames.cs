@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string PodNamespace = "POD_NAMESPACE";
         public const string PodName = "POD_NAME";
         public const string PodEncryptionKey = "POD_ENCRYPTION_KEY";
+        public const string HttpLeaderEndpoint = "HTTP_LEADER_ENDPOINT";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
@@ -120,5 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresComputerName = "COMPUTERNAME";
 
         public const string AppKind = "APP_KIND";
+
+        public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
     }
 }

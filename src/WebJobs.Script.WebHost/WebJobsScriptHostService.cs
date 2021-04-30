@@ -11,6 +11,7 @@ using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -169,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private void CheckFileSystem()
         {
             // Shutdown if RunFromZipFailed
-            if (_environment.IsZipDeployment(validate: false))
+            if (_environment.ZipDeploymentAppSettingsExist())
             {
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
                 if (File.Exists(path))
@@ -693,6 +694,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _applicationLifetime.ApplicationStopping.Register(() =>
             {
                 Interlocked.Exchange(ref _applicationStopping, 1);
+                if (_environment.DrainOnApplicationStoppingEnabled())
+                {
+                    var drainModeManager = _host?.Services.GetService<IDrainModeManager>();
+                    if (drainModeManager != null)
+                    {
+                        _logger.LogDebug("Application Stopping: initiate drain mode");
+                        drainModeManager.EnableDrainModeAsync(CancellationToken.None);
+                        // Workaround until https://github.com/Azure/azure-functions-host/issues/7188 is addressed.
+                        Thread.Sleep(TimeSpan.FromMinutes(10));
+                    }
+                }
             });
 
             _applicationLifetime.ApplicationStopped.Register(() =>

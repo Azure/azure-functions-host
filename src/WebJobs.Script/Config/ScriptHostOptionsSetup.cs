@@ -3,6 +3,7 @@
 
 using System;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Configuration
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             // If we have a read only file system, override any configuration and
             // disable file watching
-            if (_environment.IsFileSystemReadOnly())
+            if (_applicationHostOptions.Value.IsFileSystemReadOnly)
             {
                 options.FileWatchingEnabled = false;
             }
@@ -70,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             options.RootLogPath = webHostOptions.LogPath;
             options.IsSelfHost = webHostOptions.IsSelfHost;
             options.TestDataPath = webHostOptions.TestDataPath;
+            options.IsFileSystemReadOnly = webHostOptions.IsFileSystemReadOnly;
         }
 
         private void ConfigureFunctionTimeout(ScriptJobHostOptions options)
