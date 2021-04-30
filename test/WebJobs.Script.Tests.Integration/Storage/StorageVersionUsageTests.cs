@@ -22,18 +22,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         public async Task StorageV12TypesNotAllowed()
         {
             // The point of this test is to verify that a user CANNOT #r and use storage v12 types in CSX
-            _fixture.AssertNoScriptHostErrors();
+            _fixture.AssertScriptHostErrors();
 
             string testData = Guid.NewGuid().ToString();
-
             await _fixture.Host.BeginFunctionAsync("StorageReferenceV12", testData);
-
-            await TestHelpers.Await(() =>
-            {
-                // make sure the could not execute (logs will be empty)
-                var logs = _fixture.Host.GetScriptHostLogMessages();
-                return !logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
-            }, userMessageCallback: _fixture.Host.GetLog);
         }
 
         public class StorageReferenceNotAllowedTestFixture : EndToEndTestFixture
