@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.TimerTests
             Cleanup().GetAwaiter().GetResult();
         }
 
-        protected AzureStorageScheduleMonitor CreateScheduleMonitor(string hostId = null)
+        AzureStorageScheduleMonitor CreateScheduleMonitor(string hostId = null)
         {
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()

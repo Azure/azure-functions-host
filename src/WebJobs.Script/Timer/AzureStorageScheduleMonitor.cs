@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Timers
     /// This is an overriden implementation based off the StorageScheduleMonitor in Microsoft.Azure.WebJobs.Extensions package.
     /// <see cref="ScheduleMonitor"/> that stores schedule information in blob storage.
     /// </summary>
-    public class AzureStorageScheduleMonitor : ScheduleMonitor
+    internal class AzureStorageScheduleMonitor : ScheduleMonitor
     {
         private readonly IAzureStorageProvider _azureStorageProvider;
 
