@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            return;
         }
     }
 }

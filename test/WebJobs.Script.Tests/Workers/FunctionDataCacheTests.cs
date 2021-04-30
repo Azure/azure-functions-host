@@ -4,14 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
-using Xunit.Abstractions; // TODO remove
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
@@ -26,12 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         private readonly IMemoryMappedFileAccessor _mapAccessor;
 
-        private readonly ITestOutputHelper _output;
-
-        public FunctionDataCacheTests(ITestOutputHelper output)
+        public FunctionDataCacheTests()
         {
-            _output = output;
-
             _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
 
             ILogger<MemoryMappedFileAccessor> logger = NullLogger<MemoryMappedFileAccessor>.Instance;
@@ -48,18 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             }
 
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
-        }
-
-        private void PrintLRU(FunctionDataCache cache)
-        {
-            // TODO delete this function
-            StringBuilder builder = new StringBuilder();
-            foreach (FunctionDataCacheKey key in cache.LRUList)
-            {
-                builder.Append($"{key.Id} -> ");
-            }
-            builder.Append("\n");
-            _output.WriteLine(builder.ToString());
         }
 
         [InlineData(10)]
