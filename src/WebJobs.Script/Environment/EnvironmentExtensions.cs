@@ -452,5 +452,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
         }
+
+        public static bool DrainOnApplicationStoppingEnabled(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||
+                (bool.TryParse(environment.GetEnvironmentVariable(DrainOnApplicationStopping), out bool v) && v);
+        }
     }
 }
