@@ -21,19 +21,20 @@ namespace Microsoft.Azure.WebJobs.Script
             _httpLeaderEndpoint = environment.GetHttpLeaderEndpoint();
         }
 
-        internal async Task<KubernetesLockHandle> GetLock(string lockName)
+        internal async Task<KubernetesLockHandle> GetLock(string lockName, CancellationToken cancellationToken)
         {
             if (string.IsNullOrEmpty(lockName))
             {
                 throw new ArgumentNullException(nameof(lockName));
             }
+
             var request = new HttpRequestMessage()
             {
                 Method = HttpMethod.Get,
                 RequestUri = GetRequestUri($"?name={lockName}")
             };
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
 
             response.EnsureSuccessStatusCode();
 

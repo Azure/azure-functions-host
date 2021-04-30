@@ -15,13 +15,18 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly KubernetesClient _kubernetesClient;
 
         public KubernetesDistributedLockManager(IEnvironment environment)
+            : this(new KubernetesClient(environment))
         {
-            _kubernetesClient = new KubernetesClient(environment);
+        }
+
+        internal KubernetesDistributedLockManager(KubernetesClient client)
+        {
+            _kubernetesClient = client;
         }
 
         public async Task<string> GetLockOwnerAsync(string account, string lockId, CancellationToken cancellationToken)
         {
-            var response = await _kubernetesClient.GetLock(lockId);
+            var response = await _kubernetesClient.GetLock(lockId, cancellationToken);
             return response.Owner;
         }
 
