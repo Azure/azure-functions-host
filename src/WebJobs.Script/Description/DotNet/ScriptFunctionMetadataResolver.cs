@@ -39,38 +39,51 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private MetadataReferenceResolver _scriptResolver;
 
         private static readonly string[] DefaultAssemblyReferences =
-           {
-                typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
-                typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
-                typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
-                typeof(WebJobs.Extensions.ExtensionsWebJobsStartup).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
-                typeof(AspNetCore.Http.HttpRequest).Assembly.Location, /*Microsoft.AspNetCore.Http.Abstractions*/
-                typeof(AspNetCore.Mvc.IActionResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Abstractions*/
-                typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Core*/
-                typeof(AspNetCore.Http.IQueryCollection).Assembly.Location, /*Microsoft.AspNetCore.Http.Features*/
-                typeof(Microsoft.Extensions.Primitives.StringValues).Assembly.Location, /*Microsoft.Extensions.Primitives*/
-                typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
-            };
+        {
+            typeof(ILoggerFactory).Assembly.Location, /*Microsoft.Extensions.Logging.Abstractions*/
+            typeof(IAsyncCollector<>).Assembly.Location, /*Microsoft.Azure.WebJobs*/
+            typeof(JobHost).Assembly.Location, /*Microsoft.Azure.WebJobs.Host*/
+            typeof(WebJobs.Extensions.ExtensionsWebJobsStartup).Assembly.Location, /*Microsoft.Azure.WebJobs.Extensions*/
+            typeof(AspNetCore.Http.HttpRequest).Assembly.Location, /*Microsoft.AspNetCore.Http.Abstractions*/
+            typeof(AspNetCore.Mvc.IActionResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Abstractions*/
+            typeof(AspNetCore.Mvc.RedirectResult).Assembly.Location, /*Microsoft.AspNetCore.Mvc.Core*/
+            typeof(AspNetCore.Http.IQueryCollection).Assembly.Location, /*Microsoft.AspNetCore.Http.Features*/
+            typeof(Microsoft.Extensions.Primitives.StringValues).Assembly.Location, /*Microsoft.Extensions.Primitives*/
+            typeof(System.Net.Http.HttpClientExtensions).Assembly.Location /*System.Net.Http.Formatting*/
+        };
 
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
-            {
-                new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
-                new DirectSharedAssemblyProvider(typeof(Microsoft.WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
-            };
+        {
+            new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
+            new DirectSharedAssemblyProvider(typeof(Microsoft.WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
+        };
 
         private static readonly string[] DefaultNamespaceImports =
-            {
-                "System",
-                "System.Collections.Generic",
-                "System.IO",
-                "System.Linq",
-                "System.Net.Http",
-                "System.Threading.Tasks",
-                "Microsoft.Azure.WebJobs",
-                "Microsoft.Azure.WebJobs.Host",
-                "Microsoft.Extensions.Logging",
-                "Microsoft.AspNetCore.Http"
-            };
+        {
+            "System",
+            "System.Collections.Generic",
+            "System.IO",
+            "System.Linq",
+            "System.Net.Http",
+            "System.Threading.Tasks",
+            "Microsoft.Azure.WebJobs",
+            "Microsoft.Azure.WebJobs.Host",
+            "Microsoft.Extensions.Logging",
+            "Microsoft.AspNetCore.Http"
+        };
+
+        private static readonly string[] PrivateHostAssemblies =
+        {
+            "Azure.Core",
+            "Azure.Identity",
+            "Azure.Storage.Blobs",
+            "Azure.Storage.Common",
+            "Microsoft.Azure.WebJobs.StorageProvider.Blobs",
+            "Microsoft.Bcl.AsyncInterfaces",
+            "Microsoft.Extensions.Azure",
+            "Microsoft.Identity.Client",
+            "Microsoft.Identity.Client.Extensions.Msal"
+        };
 
         public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<IScriptBindingProvider> bindingProviders, ILogger logger)
         {
@@ -157,8 +170,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             if (!HasValidAssemblyFileExtension(reference))
             {
-                // Try to resolve using the default resolver (framework assemblies, e.g. System.Core, System.Xml, etc.)
-                ImmutableArray<PortableExecutableReference> result = _scriptResolver.ResolveReference(reference, baseFilePath, properties);
+                ImmutableArray<PortableExecutableReference> result = ImmutableArray<PortableExecutableReference>.Empty;
+
+                if (!PrivateHostAssemblies.Contains(reference))
+                {
+                    // Try to resolve using the default resolver (framework assemblies, e.g. System.Core, System.Xml, etc.)
+                    result = _scriptResolver.ResolveReference(reference, baseFilePath, properties);
+                }
 
                 // If the default script resolver can't resolve the assembly
                 // check if this is one of host's shared assemblies
