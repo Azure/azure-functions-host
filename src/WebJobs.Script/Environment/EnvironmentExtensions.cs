@@ -448,6 +448,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 StringComparison.OrdinalIgnoreCase);
         }
 
+        public static string GetHttpLeaderEndpoint(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
+        }
+
         public static bool DrainOnApplicationStoppingEnabled(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||

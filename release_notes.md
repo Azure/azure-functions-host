@@ -2,9 +2,11 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+
 - Added a feature flag to opt out of the default behavior where the host sets the environment name to `Development` when running in debug mode. To disable the behavior, set the app setting: `AzureWebJobsFeatureFlags` to `DisableDevModeInDebug`
 - Reorder CORS and EasyAuth middleware to prevent EasyAuth from blocking CORS requests (#7315)
 - Updated PowerShell Worker (PS7) to [3.0.833](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.833)
+- Add IDistributedLockManager for Kubernetes environment (#7327)
 - Call EnableDrainModeAsync on ApplicationStopping (#7262)
 
 **Release sprint:** Sprint 100
