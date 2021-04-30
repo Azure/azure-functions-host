@@ -9,7 +9,7 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    // Borrowed from WebJobs sdk
+    // Borrowed from WebJobs.Host package
     // $$$ An Inmemory implementation of IDistributedLockManager.
     // Can use this when running on a single node and don't need to coordinate across multiple machines.
     internal class InMemoryDistributedLockManager : IDistributedLockManager
