@@ -58,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
+            _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
+
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {

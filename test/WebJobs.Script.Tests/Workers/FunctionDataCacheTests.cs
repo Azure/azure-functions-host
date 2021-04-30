@@ -46,6 +46,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 _mapAccessor = new MemoryMappedFileAccessorUnix(logger, _testEnvironment);
             }
+
+            _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
         }
 
         private void PrintLRU(FunctionDataCache cache)
@@ -266,6 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
@@ -309,6 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
@@ -385,6 +389,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
@@ -441,6 +446,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
@@ -490,6 +496,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
@@ -527,6 +534,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             IEnvironment environment = new TestEnvironment();
             environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSizeVal);
+            environment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
 
             using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
             using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, environment))
