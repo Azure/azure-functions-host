@@ -62,14 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 throw new InvalidOperationException($"Could not create BlobServiceClient to obtain the BlobContainerClient using Connection: {ConnectionStringNames.Storage}");
             }
 
-            if (_storageOptions?.CurrentValue.InternalContainerName != null)
-            {
-                return blobServiceClient.GetBlobContainerClient(_storageOptions.CurrentValue.InternalContainerName);
-            }
-            else
-            {
-                return blobServiceClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
-            }
+            return blobServiceClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
         }
     }
 }
