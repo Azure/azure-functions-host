@@ -3,6 +3,7 @@
 
 using System;
 using System.Configuration;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
@@ -12,7 +13,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
-using System.IO;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.BreakChangeAnalysis
 {

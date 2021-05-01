@@ -64,13 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddTimers()
                     .AddAzureStorageCoreServices();
+                    b.Services.AddHostTimerOverride();
                 })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
 
-                    ScriptHostBuilderExtensions.AddHostOverrides(s, new ScriptApplicationHostOptions());
                     s.AddAzureStorageProvider();
                 });
 

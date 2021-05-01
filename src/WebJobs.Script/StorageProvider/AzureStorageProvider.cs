@@ -47,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>successful client creation</returns>
         public virtual bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection = null)
         {
-            return _blobServiceClientProvider.TryGet(connection, out client);
+            var connectionToUse = connection ?? ConnectionStringNames.Storage;
+            return _blobServiceClientProvider.TryGet(connectionToUse, out client);
         }
 
         public virtual BlobContainerClient GetBlobContainerClient()

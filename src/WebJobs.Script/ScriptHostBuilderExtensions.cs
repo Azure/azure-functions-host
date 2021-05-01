@@ -189,6 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddManualTrigger()
                 .AddWarmup();
 
+                webJobsBuilder.Services.AddHostTimerOverride();
+
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
@@ -306,8 +308,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
-
-                services.AddHostOverrides(applicationHostOptions);
             });
 
             RegisterFileProvisioningService(builder);
@@ -419,11 +419,10 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
-        internal static void AddHostOverrides(this IServiceCollection services, ScriptApplicationHostOptions applicationHostOptions)
+        internal static void AddHostTimerOverride(this IServiceCollection services)
         {
-            // Custom implementations that the Host overrides
+            // Custom implementation that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
-            services.AddLockManagerIfAvailable(applicationHostOptions);
         }
 
         internal static void AddAzureStorageProvider(this IServiceCollection services)
@@ -431,35 +430,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.AddAzureStorageCoreServices();
             services.TryAddSingleton<IAzureStorageProvider, AzureStorageProvider>();
             services.AddAzureStorageBlobs();
-        }
-
-        private static void AddLockManagerIfAvailable(this IServiceCollection services, ScriptApplicationHostOptions applicationHostOptions)
-        {
-            try
-            {
-                IServiceProvider provider;
-                if (applicationHostOptions.HasParentScope)
-                {
-                    provider = applicationHostOptions.RootServiceProvider;
-                }
-                else
-                {
-                    provider = services.BuildServiceProvider();
-                }
-
-                var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
-                var container = azureStorageProvider.GetBlobContainerClient();
-
-                if (container != null)
-                {
-                    services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
-                }
-            }
-            catch
-            {
-                // If there is an error registering or getting the container client, fall back to WebJobs logic
-                // for registering an IDistributedLockManager
-            }
         }
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)

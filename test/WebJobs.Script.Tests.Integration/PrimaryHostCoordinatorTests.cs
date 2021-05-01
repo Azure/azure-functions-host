@@ -37,7 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // By default, all hosted services are removed from the test host
                     s.AddSingleton<IHostedService, PrimaryHostCoordinator>();
-                    s.AddAzureStorageProvider();
                     configure?.Invoke(s);
                 })
                 .ConfigureLogging(b =>
