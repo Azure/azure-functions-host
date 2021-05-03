@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 {
                     LastTimeStamp = timestamp,
                     ErrorCode = errorCode,
-                    Level = level,
+                    LevelEnum = level,
                     Message = message,
                     HelpLink = helpLink,
                     Details = exception?.Message
