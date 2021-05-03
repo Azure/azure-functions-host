@@ -5,6 +5,10 @@ using Azure.Storage.Blobs;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
+    /// <summary>
+    /// TODO: TEMP - implementation should be moved
+    /// Interface to retrieve BlobServiceClient objects
+    /// </summary>
     public interface IAzureStorageProvider
     {
         bool TryGetBlobServiceClientFromConnectionString(out BlobServiceClient client, string connectionString);

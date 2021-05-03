@@ -12,7 +12,10 @@ using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
-    // Borrowed from WebJobs TestCommon
+    /// <summary>
+    /// TODO: TEMP - implementation should be moved
+    /// Borrowed from WebJobs TestCommon
+    /// </summary>
     static class HostTestUtilities
     {
         public static StorageAccount GetStorageAccount(this IHost host)

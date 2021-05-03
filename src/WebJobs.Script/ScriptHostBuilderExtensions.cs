@@ -26,10 +26,10 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddManualTrigger()
                 .AddWarmup();
 
-                webJobsBuilder.Services.AddHostTimerOverride();
+                webJobsBuilder.Services.AddTimerScheduleMonitorOverride();
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
@@ -419,7 +419,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
-        internal static void AddHostTimerOverride(this IServiceCollection services)
+        internal static void AddTimerScheduleMonitorOverride(this IServiceCollection services)
         {
             // Custom implementation that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();

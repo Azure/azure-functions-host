@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
+    /// TODO: TEMP - implementation should be moved
     /// This is an overriden implementation based off the StorageBaseDistributedLockManager in Microsoft.Azure.WebJobs.Host.Storage package.
     /// Provides a BlobClient lease-based implementation of the <see cref="IDistributedLockManager"/> service for singleton locking.
     /// </summary>

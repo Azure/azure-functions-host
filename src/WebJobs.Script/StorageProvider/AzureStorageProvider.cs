@@ -3,13 +3,14 @@
 
 using System;
 using Azure.Storage.Blobs;
-using Microsoft.Azure.WebJobs.StorageProvider.Blobs;
+using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
+    /// TODO: TEMP - implementation should be moved
     /// This serves as a placeholder for a concrete implementation of a storage abstraction.
     /// This StorageProvider provides a wrapper to align all uses of storage by the Functions Host
     /// </summary>

@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Extensions.Timers
 {
     /// <summary>
+    /// TODO: TEMP - implementation should be moved
     /// This is an overriden implementation based off the StorageScheduleMonitor in Microsoft.Azure.WebJobs.Extensions package.
     /// <see cref="ScheduleMonitor"/> that stores schedule information in blob storage.
     /// </summary>

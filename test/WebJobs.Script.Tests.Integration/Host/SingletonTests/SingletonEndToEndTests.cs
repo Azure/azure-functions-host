@@ -28,7 +28,10 @@ using Microsoft.Azure.WebJobs.Host;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 {
-    // Borrowed from WebJobs.Host.EndToEndTests
+    /// <summary>
+    /// TODO: TEMP - implementation should be moved
+    /// Borrowed from WebJobs.Host.EndToEndTests
+    /// </summary>
     public partial class SingletonEndToEndTests : IClassFixture<SingletonEndToEndTests.TestFixture>
     {
         private const string TestHostId = "e2etesthost";

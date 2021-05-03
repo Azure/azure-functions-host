@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.ChangeAnalysis
 
         public async Task SetTimestampAsync(DateTimeOffset timestamp, object handle, CancellationToken cancellationToken)
         {
-            if (handle != null && handle is BlobClient blobClient)
+            if (handle is BlobClient blobClient)
             {
                 try
                 {

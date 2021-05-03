@@ -16,7 +16,10 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.TimerTests
 {
-    // Borrowed From WebJobs Extensions 
+    /// <summary>
+    /// TODO: TEMP - implementation should be moved
+    /// Borrowed From WebJobs Extensions 
+    /// </summary>
     [Trait("Category", "E2E")]
     public class StorageScheduleMonitorTests
     {
