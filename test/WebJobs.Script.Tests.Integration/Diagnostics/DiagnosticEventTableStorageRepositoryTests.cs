@@ -67,9 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
         {
             IEnvironment testEnvironment = new TestEnvironment();
 
-            var hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
             DiagnosticEventTableStorageRepository repository =
-                new DiagnosticEventTableStorageRepository(_configuration, hostIdProviderMock.Object, testEnvironment, _logger);
+                new DiagnosticEventTableStorageRepository(_configuration, null, testEnvironment, _logger);
 
             repository.WriteDiagnosticEvent(DateTime.UtcNow, "eh1", LogLevel.Information, "This is the message", "https://fwlink/", new Exception("exception message"));
 
@@ -179,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             }
 
             // verify tables were created
-            tables = await TableStorageHelpers.ListTablesAsync(repository.TableClient, tablePrefix);
+            tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
             Assert.Equal(3, tables.Count());
 
             // queue the background purge
@@ -188,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
             // wait for the purge to complete
             await TestHelpers.Await(async () =>
             {
-                tables = await TableStorageHelpers.ListTablesAsync(repository.TableClient, tablePrefix);
+                tables = await TableStorageHelpers.ListOldTablesAsync(currentTable, repository.TableClient, tablePrefix);
                 return tables.Count() == 0;
             }, timeout: 5000);
         }
@@ -232,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             var dateTime = DateTime.UtcNow;
             var diagnosticEvent = new DiagnosticEvent("hostId", dateTime);
-
+            diagnosticEvent.LastTimeStamp = dateTime;
             var events = new ConcurrentDictionary<string, DiagnosticEvent>();
             events.TryAdd("EC123", diagnosticEvent);
             await repository.ExecuteBatchAsync(events, table);
