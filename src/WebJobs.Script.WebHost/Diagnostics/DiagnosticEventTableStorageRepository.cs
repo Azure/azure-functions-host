@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 HelpLink = helpLink,
                 LastTimeStamp = timestamp,
                 Message = message,
-                Level = level,
+                LevelEnum = level,
                 Details = exception?.ToFormattedString(),
                 HitCount = 1
             };
