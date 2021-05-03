@@ -188,11 +188,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(4, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+                loggerProviders.OfType<DiagnosticEventLoggerProvider>().Single();
             }
         }
 
@@ -207,12 +208,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ConsoleLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+                loggerProviders.OfType<DiagnosticEventLoggerProvider>().Single();
             }
         }
 
@@ -233,8 +235,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
+                loggerProviders.OfType<DiagnosticEventLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ConsoleLoggerProvider>().Single();
@@ -259,12 +262,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ApplicationInsightsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+                loggerProviders.OfType<DiagnosticEventLoggerProvider>().Single();
             }
         }
 
@@ -293,12 +297,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                int expectedCount = isAzureMonitorEnabled ? 5 : 4;
+                int expectedCount = isAzureMonitorEnabled ? 6 : 5;
 
-                Assert.Equal(4, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
+                loggerProviders.OfType<DiagnosticEventLoggerProvider>().Single();
                 if (isAzureMonitorEnabled)
                 {
                     loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
