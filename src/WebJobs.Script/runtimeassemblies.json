@@ -19,10 +19,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.Azure.WebJobs.StorageProvider.Blobs",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.Bcl.AsyncInterfaces",
       "resolutionPolicy": "private"
     },
