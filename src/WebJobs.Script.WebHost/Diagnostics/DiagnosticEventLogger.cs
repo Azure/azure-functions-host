@@ -14,7 +14,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private const string HelpLink = "helpLink";
         private readonly IDiagnosticEventRepositoryFactory _diagnosticEventRepositoryFactory;
         private readonly IEnvironment _environment;
-        private bool _isSpecialized = false;
         private IDiagnosticEventRepository _diagnosticEventRepository;
 
         public DiagnosticEventLogger(IDiagnosticEventRepositoryFactory diagnosticEventRepositoryFactory, IEnvironment environment)
@@ -42,12 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (!_isSpecialized)
-            {
-                _isSpecialized = !_environment.IsPlaceholderModeEnabled();
-            }
-
-            return _isSpecialized;
+            return !_environment.IsPlaceholderModeEnabled();
         }
 
         private bool IsDiagnosticEvent(IDictionary<string, object> state)

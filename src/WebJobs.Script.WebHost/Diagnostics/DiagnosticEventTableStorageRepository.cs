@@ -45,24 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, ILogger<DiagnosticEventTableStorageRepository> logger)
             : this(configuration, hostIdProvider, environment, logger, LogFlushInterval) { }
 
-        private bool IsSpecialized
-        {
-            get
-            {
-                if (!_isSpecialized)
-                {
-                    _isSpecialized = !_environment.IsPlaceholderModeEnabled();
-                }
-
-                return _isSpecialized;
-            }
-        }
-
         internal CloudTableClient TableClient
         {
             get
             {
-                if (IsSpecialized && _tableClient == null)
+                if (!_environment.IsPlaceholderModeEnabled() && _tableClient == null)
                 {
                     string storageConnectionString = _configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                     if (string.IsNullOrEmpty(storageConnectionString))
@@ -85,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             get
             {
-                if (IsSpecialized && string.IsNullOrEmpty(_hostId))
+                if (!_environment.IsPlaceholderModeEnabled() && string.IsNullOrEmpty(_hostId))
                 {
                     _hostId = _hostIdProvider?.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
                 }
@@ -125,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal virtual async Task FlushLogs(CloudTable table = null)
         {
-            if (!IsSpecialized)
+            if (_environment.IsPlaceholderModeEnabled())
             {
                 return;
             }
@@ -192,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 HelpLink = helpLink,
                 LastTimeStamp = timestamp,
                 Message = message,
-                LevelEnum = level,
+                LogLevel = level,
                 Details = exception?.ToFormattedString(),
                 HitCount = 1
             };

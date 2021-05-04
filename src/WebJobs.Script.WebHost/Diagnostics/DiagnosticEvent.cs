@@ -13,10 +13,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         public DiagnosticEvent() { }
 
-        public DiagnosticEvent(string hostId, DateTime now)
+        public DiagnosticEvent(string hostId, DateTime timestamp)
         {
-            RowKey = TableStorageHelpers.GetRowKey(now);
-            PartitionKey = $"{hostId}-{now:yyyyMMdd}";
+            RowKey = TableStorageHelpers.GetRowKey(timestamp);
+            PartitionKey = $"{hostId}-{timestamp:yyyyMMdd}";
         }
 
         public int HitCount { get; set; }
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int Level { get; set; }
 
         [IgnoreProperty]
-        public LogLevel LevelEnum
+        public LogLevel LogLevel
         {
             get { return (LogLevel)Level; }
             set { Level = (int)value; }
