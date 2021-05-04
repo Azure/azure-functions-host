@@ -128,6 +128,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             scriptHostManager.Verify(s => s.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Once);
 
+            // Let the logic run
+            await Task.Delay(10);
+            
             // Remove BOM
             var memoryStreamContents = Encoding.UTF8.GetString(memoryStream.ToArray()).Trim(new char[] { '\uFEFF' });
 
