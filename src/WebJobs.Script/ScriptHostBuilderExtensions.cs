@@ -470,10 +470,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
                 return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
             }
-            catch (InvalidOperationException)
+            catch
             {
                 // If there is an error getting the container client,
-                // register an InMemoryDistributedLockManager
+                // register an InMemoryDistributedLockManager.
+                // This could be an InvalidOperationException or UriFormatException
                 return new InMemoryDistributedLockManager();
             }
         }
