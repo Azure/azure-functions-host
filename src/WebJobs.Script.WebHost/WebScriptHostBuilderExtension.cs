@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder.AddAzureStorageCoreServices();
-                    webJobsBuilder.Services.AddLockManagerIfAvailable(webHostOptions);
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
@@ -152,35 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             foreach (IConfigureBuilder<TBuilder> configureBuilder in services.GetServices<IConfigureBuilder<TBuilder>>())
             {
                 configureBuilder.Configure(builder);
-            }
-        }
-
-        private static void AddLockManagerIfAvailable(this IServiceCollection services, ScriptApplicationHostOptions applicationHostOptions)
-        {
-            try
-            {
-                IServiceProvider provider;
-                if (applicationHostOptions.HasParentScope)
-                {
-                    provider = applicationHostOptions.RootServiceProvider;
-                }
-                else
-                {
-                    provider = services.BuildServiceProvider();
-                }
-
-                var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
-                var container = azureStorageProvider.GetBlobContainerClient();
-
-                if (container != null)
-                {
-                    services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
-                }
-            }
-            catch
-            {
-                // If there is an error registering or getting the container client, fall back to WebJobs logic
-                // for registering an IDistributedLockManager
             }
         }
 

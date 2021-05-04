@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.StorageProvider
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Abstraction to provide storage clients from the connection names.
     /// This gets the storage account name via the binding attribute's <see cref="IConnectionProvider.Connection"/>
     /// property.

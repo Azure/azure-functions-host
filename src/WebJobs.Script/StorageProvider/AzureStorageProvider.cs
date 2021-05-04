@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// This serves as a placeholder for a concrete implementation of a storage abstraction.
     /// This StorageProvider provides a wrapper to align all uses of storage by the Functions Host
     /// </summary>

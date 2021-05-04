@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace Microsoft.Azure.WebJobs.Script.StorageProvider
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Extension methods for Storage Blobs integration.
     /// </summary>
     internal static class AzureBlobBuilderExtensions

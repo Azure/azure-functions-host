@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.StorageProvider
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Provider to create BlobServiceClient objects
     /// </summary>
     internal class BlobServiceClientProvider : StorageClientProvider<BlobServiceClient, BlobClientOptions>

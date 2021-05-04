@@ -29,7 +29,7 @@ using Microsoft.Azure.WebJobs.Host;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Borrowed from WebJobs.Host.EndToEndTests
     /// </summary>
     public partial class SingletonEndToEndTests : IClassFixture<SingletonEndToEndTests.TestFixture>

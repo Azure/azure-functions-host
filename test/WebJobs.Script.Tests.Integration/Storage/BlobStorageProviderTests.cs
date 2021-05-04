@@ -13,7 +13,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Tests whether the StorageClientProvider can properly create a client and send a request
     /// </summary>
     public class BlobStorageProviderTests

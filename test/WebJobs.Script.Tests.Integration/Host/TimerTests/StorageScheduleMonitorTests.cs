@@ -17,7 +17,7 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.TimerTests
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Borrowed From WebJobs Extensions 
     /// </summary>
     [Trait("Category", "E2E")]

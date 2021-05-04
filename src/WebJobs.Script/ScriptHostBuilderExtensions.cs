@@ -293,6 +293,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddAzureStorageProvider();
                 }
 
+                // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
+                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManagerOverride(provider, applicationHostOptions));
+
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
@@ -456,6 +459,33 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
             }
+        }
+
+        private static IDistributedLockManager GetBlobLockManagerOverride(IServiceProvider provider, ScriptApplicationHostOptions applicationHostOptions)
+        {
+            try
+            {
+                //if (applicationHostOptions.HasParentScope)
+                //{
+                //    provider = applicationHostOptions.RootServiceProvider;
+                //}
+
+                var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+                var container = azureStorageProvider.GetBlobContainerClient();
+
+                if (container != null)
+                {
+                    var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+                    return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
+                }
+            }
+            catch
+            {
+                // If there is an error registering or getting the container client,
+                // register an InMemoryDistributedLockManager
+            }
+
+            return new InMemoryDistributedLockManager();
         }
 
         /// <summary>

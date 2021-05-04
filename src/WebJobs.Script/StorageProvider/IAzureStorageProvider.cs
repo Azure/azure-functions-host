@@ -6,7 +6,7 @@ using Azure.Storage.Blobs;
 namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Interface to retrieve BlobServiceClient objects
     /// </summary>
     public interface IAzureStorageProvider

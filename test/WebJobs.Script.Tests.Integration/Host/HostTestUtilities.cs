@@ -13,7 +13,7 @@ using Microsoft.WebJobs.Script.Tests;
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 {
     /// <summary>
-    /// TODO: TEMP - implementation should be moved
+    /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
     /// Borrowed from WebJobs TestCommon
     /// </summary>
     static class HostTestUtilities
