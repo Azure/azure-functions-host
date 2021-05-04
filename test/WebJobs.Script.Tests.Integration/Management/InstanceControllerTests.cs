@@ -94,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(objectResult.Value, "Specialize MSI sidecar call failed. StatusCode=BadRequest");
         }
 
-        [Fact]
+        [Fact(Skip = "Test seems flaky. Would run fine locally though. Needs investigation. Issue: https://github.com/Azure/azure-functions-host/issues/7340")]
         public async Task Disable_Writes_To_DisableContainerFile_Restarts_ScriptHost()
         {
             var environment = new TestEnvironment();
