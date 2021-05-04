@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private CloudTableClient _tableClient;
         private CloudTable _diagnosticEventsTable;
-        private bool _isSpecialized;
         private string _hostId;
         private object _syncLock = new object();
 
