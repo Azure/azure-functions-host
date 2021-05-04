@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddManualTrigger()
                 .AddWarmup();
 
-                webJobsBuilder.Services.AddTimerScheduleMonitorOverride();
+                webJobsBuilder.Services.AddTimerScheduleMonitor();
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
-                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManagerOverride(provider, applicationHostOptions));
+                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider, applicationHostOptions));
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
@@ -422,7 +422,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
-        internal static void AddTimerScheduleMonitorOverride(this IServiceCollection services)
+        internal static void AddTimerScheduleMonitor(this IServiceCollection services)
         {
             // Custom implementation that the Host overrides
             services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
@@ -461,31 +461,21 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static IDistributedLockManager GetBlobLockManagerOverride(IServiceProvider provider, ScriptApplicationHostOptions applicationHostOptions)
+        private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider, ScriptApplicationHostOptions applicationHostOptions)
         {
             try
             {
-                //if (applicationHostOptions.HasParentScope)
-                //{
-                //    provider = applicationHostOptions.RootServiceProvider;
-                //}
-
                 var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
                 var container = azureStorageProvider.GetBlobContainerClient();
-
-                if (container != null)
-                {
-                    var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-                    return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
-                }
+                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+                return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
             }
-            catch
+            catch (InvalidOperationException)
             {
-                // If there is an error registering or getting the container client,
+                // If there is an error getting the container client,
                 // register an InMemoryDistributedLockManager
+                return new InMemoryDistributedLockManager();
             }
-
-            return new InMemoryDistributedLockManager();
         }
 
         /// <summary>

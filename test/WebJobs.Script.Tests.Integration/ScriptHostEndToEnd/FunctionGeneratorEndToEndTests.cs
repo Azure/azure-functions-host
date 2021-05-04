@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddTimers()
                     .AddAzureStorageCoreServices();
-                    b.Services.AddTimerScheduleMonitorOverride();
+                    b.Services.AddTimerScheduleMonitor();
                 })
                 .ConfigureServices(s =>
                 {
