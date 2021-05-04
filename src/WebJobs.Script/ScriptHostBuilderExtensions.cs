@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
 
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
-                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider, applicationHostOptions));
+                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
@@ -461,20 +461,20 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider, ScriptApplicationHostOptions applicationHostOptions)
+        private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider)
         {
+            var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             try
             {
-                var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
                 var container = azureStorageProvider.GetBlobContainerClient();
-                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
                 return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
             }
-            catch
+            catch (InvalidOperationException)
             {
                 // If there is an error getting the container client,
                 // register an InMemoryDistributedLockManager.
-                // This could be an InvalidOperationException or UriFormatException
+                // This signals a failed validation in connection configuration (i.e. could not create the storage client).
                 return new InMemoryDistributedLockManager();
             }
         }

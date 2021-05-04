@@ -5,6 +5,7 @@ using System;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -18,13 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly BlobServiceClientProvider _blobServiceClientProvider;
         private readonly IConfiguration _configuration;
+        private readonly ILogger _logger;
         private IOptionsMonitor<JobHostInternalStorageOptions> _storageOptions;
 
-        public AzureStorageProvider(IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options)
+        public AzureStorageProvider(IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<AzureStorageProvider> logger)
         {
             _blobServiceClientProvider = blobServiceClientProvider;
             _configuration = configuration;
             _storageOptions = options;
+            _logger = logger;
         }
 
         /// <summary>
@@ -61,7 +64,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (!TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
-                throw new InvalidOperationException($"Could not create BlobServiceClient to obtain the BlobContainerClient using Connection: {ConnectionStringNames.Storage}");
+                var ex = new InvalidOperationException($"Could not create BlobServiceClient to obtain the BlobContainerClient using Connection: {ConnectionStringNames.Storage}");
+                _logger.LogError(ex, "Invalid blob storage connection configuration. Could not create BlobServiceClient.");
+                throw ex;
             }
 
             return blobServiceClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
