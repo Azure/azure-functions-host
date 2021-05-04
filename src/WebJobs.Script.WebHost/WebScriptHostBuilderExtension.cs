@@ -4,6 +4,7 @@
 using System;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
@@ -52,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder.AddAzureStorageCoreServices();
-
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);

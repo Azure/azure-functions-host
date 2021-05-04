@@ -17,6 +17,8 @@ using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -396,6 +398,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sas = container.GetSharedAccessSignature(policy);
 
             return new Uri(container.StorageUri.PrimaryUri, sas);
+        }
+
+        public static IAzureStorageProvider GetAzureStorageProvider(IConfiguration configuration, JobHostInternalStorageOptions storageOptions = null)
+        {
+            IHost tempHost = new HostBuilder()
+                .ConfigureServices(services =>
+                {
+                    // Override configuration
+                    services.AddSingleton(configuration);
+                    services.AddAzureStorageProvider();
+                    if (storageOptions != null)
+                    {
+                        services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));
+                    }
+                }).Build();
+
+            var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureStorageProvider>();
+            return azureStorageProvider;
         }
     }
 }

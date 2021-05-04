@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -132,6 +133,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .ConfigureScriptHostServices(scriptHostServices =>
                 {
                     configureScriptHostServices?.Invoke(scriptHostServices);
+                })
+                .ConfigureAppConfiguration((builderContext, config) =>
+                {
+                    // replace the default environment source with our own
+                    IConfigurationSource envVarsSource = config.Sources.OfType<EnvironmentVariablesConfigurationSource>().FirstOrDefault();
+                    if (envVarsSource != null)
+                    {
+                        config.Sources.Remove(envVarsSource);
+                    }
+
+                    config.Add(new ScriptEnvironmentVariablesConfigurationSource());
+                    config.AddTestSettings();
                 })
                 .UseStartup<TestStartup>();
 

@@ -64,11 +64,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddTimers()
                     .AddAzureStorageCoreServices();
+                    b.Services.AddTimerScheduleMonitor();
                 })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
+
+                    s.AddAzureStorageProvider();
                 });
 
 

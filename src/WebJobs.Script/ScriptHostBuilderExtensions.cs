@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -25,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -187,6 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddManualTrigger()
                 .AddWarmup();
 
+                webJobsBuilder.Services.AddTimerScheduleMonitor();
+
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
 
@@ -286,7 +290,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
+                    services.AddAzureStorageProvider();
                 }
+
+                // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
+                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
@@ -414,6 +422,19 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
+        internal static void AddTimerScheduleMonitor(this IServiceCollection services)
+        {
+            // Custom implementation that the Host overrides
+            services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
+        }
+
+        internal static void AddAzureStorageProvider(this IServiceCollection services)
+        {
+            services.AddAzureStorageCoreServices();
+            services.TryAddSingleton<IAzureStorageProvider, AzureStorageProvider>();
+            services.AddAzureStorageBlobs();
+        }
+
         private static void RegisterFileProvisioningService(IHostBuilder builder)
         {
             if (string.Equals(Environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), "powershell"))
@@ -437,6 +458,24 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
+            }
+        }
+
+        private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider)
+        {
+            var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            try
+            {
+                var container = azureStorageProvider.GetBlobContainerClient();
+                return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
+            }
+            catch (InvalidOperationException)
+            {
+                // If there is an error getting the container client,
+                // register an InMemoryDistributedLockManager.
+                // This signals a failed validation in connection configuration (i.e. could not create the storage client).
+                return new InMemoryDistributedLockManager();
             }
         }
 
