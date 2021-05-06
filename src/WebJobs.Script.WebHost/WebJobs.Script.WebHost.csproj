@@ -71,7 +71,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.3-11847" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.2" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.28-dev637540046502000422" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.28" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
     <!-- The System.Interactive.Async assembly is required to be deployed. See https://github.com/Azure/azure-functions-host/issues/6203 -->
