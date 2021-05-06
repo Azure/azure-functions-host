@@ -117,6 +117,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_Get_WithoutContentType_Succeeds()
+        {
+            await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
+        }
+
+        [Fact]
         public async Task InvokeProxy_GetsResponse()
         {
             string uri = "something";
