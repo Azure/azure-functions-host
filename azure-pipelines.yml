@@ -17,18 +17,10 @@ trigger:
     - dev
     - release/3.0*
     - release/ExtensionsMetadataGenerator/*
-  
-steps:
-- task: PowerShell@2
-  displayName: Set build name
-  inputs:
-    targetType: 'inline'
-    script: 
-      filePath: '$(Build.Repository.LocalPath)\build\SetName.ps1'
-      arguments: '-buildNumber ''$(buildNumber)'''
 
 jobs:
 - job: InitializePipeline
+  dependsOn: InitializePipeline
   pool:
     vmImage: 'windows-2019'
   steps:
@@ -43,7 +35,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -buildNumber "$(buildNumber)"'
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))

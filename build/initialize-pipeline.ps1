@@ -1,3 +1,7 @@
+param (
+  [string]$buildNumber = "0"
+)
+
 $buildReason = $env:BUILD_REASON
 
 if ($buildReason -eq "PullRequest") {
@@ -12,10 +16,14 @@ if ($buildReason -eq "PullRequest") {
 }
 
 # Get major.minorVersion
-#[xml]$XMLContents = [xml](Get-Content -Path ".\build\common.props")
-#$XMLContents.GetElementsByTagName("MajorMinorProductVersion") |  ForEach-Object {
-#  $majorMinorVersion = $_.InnerText
-#  Write-Host "##vso[task.setvariable variable=MajorMinorVersion;isOutput=true]$majorMinorVersion"
-#  Write-Host "Setting 'MajorMinorVersion' to $majorMinorVersion"
-#  break
-#}
+[xml]$XMLContents = [xml](Get-Content -Path ".\build\common.props")
+$XMLContents.GetElementsByTagName("MajorMinorProductVersion") |  ForEach-Object {
+  $majorMinorVersion = $_.InnerText
+  Write-Host "##vso[task.setvariable variable=MajorMinorVersion;isOutput=true]$majorMinorVersion"
+  Write-Host "Setting 'MajorMinorVersion' to $majorMinorVersion"
+  break
+}
+
+# Dynamically set build name
+Write-Host "Setting the name of the build to '$majorMinorVersion'."
+Write-Host "##vso[build.updatebuildnumber]$majorMinorVersion.$buildNumber"
