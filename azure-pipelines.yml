@@ -1,21 +1,19 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
 
-name: 3.0.$(buildNumber)
+name: 4.0.$(buildNumber)
   
 pr:
   branches:
     include:
-    - dev
-    - release/3.0*
-    - release/ExtensionsMetadataGenerator/*
+    - v4.x
+    - release/4.0*
 
 trigger:
   branches:
     include:
-    - dev
-    - release/3.0*
-    - release/ExtensionsMetadataGenerator/*
+    - v4.x
+    - release/4.0*
 
 jobs:
 - job: InitializePipeline
@@ -39,7 +37,7 @@ jobs:
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/3.0' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/4.0' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
       suffixTemp: ci
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
@@ -53,8 +51,9 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -272,8 +271,6 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\V2SiteExtension
-    artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
@@ -292,8 +289,9 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -312,8 +310,9 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: UseNode@1
     inputs:      
       version: '10.x'
@@ -369,8 +368,9 @@ jobs:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
-      version: '3.1.x'
+      version: '6.0.x'
       performMultiLevelLookup: true
+      includePreviewVersions: true
   - task: UseNode@1
     inputs:
       version: '10.x'

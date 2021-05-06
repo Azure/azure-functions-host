@@ -2,13 +2,12 @@
   <Import Project="..\..\build\common.props" />
   <Import Project="..\..\build\python.props" />
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-
+    <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
-
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Tests.Integration</AssemblyName>
-
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Tests.Integration</RootNamespace>
+    <!-- Allow BinaryFormatter for tests -->
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE;DEBUG;SCRIPT_TEST;NETCOREAPP2_0</DefineConstants>
@@ -43,7 +42,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.8.2-SNAPSHOT" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="3.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0-preview.3.21201.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="xunit" Version="2.4.0" />
