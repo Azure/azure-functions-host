@@ -626,6 +626,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
+        public async Task HttpTrigger_Get_WithoutContentType_Succeeds()
+        {
+            await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
+        }
+
+        [Fact]
         public async Task Legacy_RequestTypes_Succeed()
         {
             var vars = new Dictionary<string, string>

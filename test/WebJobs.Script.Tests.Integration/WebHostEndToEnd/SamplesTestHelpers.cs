@@ -33,14 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
             Assert.Equal("Hello Mathew", body);
-
-            // verify request suceeds without any content type set
-            uri = $"api/{functionName}?code={functionKey}&name=Mathew";
-            request = new HttpRequestMessage(HttpMethod.Get, uri);
-            response = await fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("Hello Mathew", body);
         }
 
         public static async Task<HttpResponseMessage> InvokeHttpTrigger(EndToEndTestFixture fixture, string functionName)
@@ -51,6 +43,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task InvokeAndValidateHttpTriggerWithoutContentType(EndToEndTestFixture fixture, string functionName)
+        {
+            string functionKey = await fixture.Host.GetFunctionSecretAsync(functionName);
+            string uri = $"api/{functionName}?code={functionKey}&name=Host";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            HttpResponseMessage response = await fixture.Host.HttpClient.SendAsync(request);
+            string body = await response.Content.ReadAsStringAsync();
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
+            Assert.Equal("Hello Host", body);
         }
     }
 }
