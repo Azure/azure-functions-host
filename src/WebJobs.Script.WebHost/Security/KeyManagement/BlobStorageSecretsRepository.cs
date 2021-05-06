@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -97,10 +96,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("read");
-                throw e;
+                throw;
             }
 
             return string.IsNullOrEmpty(secretsContent) ? null : ScriptSecretSerializer.DeserializeSecrets(type, secretsContent);
@@ -118,10 +117,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("write");
-                throw e;
+                throw;
             }
 
             string filePath = GetSecretsSentinelFilePath(type, functionName);
@@ -142,10 +141,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("write");
-                throw e;
+                throw;
             }
         }
 
@@ -169,10 +168,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     blobList.Add(item.Name);
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 LogErrorMessage("list");
-                throw e;
+                throw;
             }
             return blobList.ToArray();
         }
