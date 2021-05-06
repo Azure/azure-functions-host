@@ -1,7 +1,7 @@
 variables:
   buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
 
-name: 3.0.$(buildNumber)
+name: '3.x.$(buildNumber)'
   
 pr:
   branches:
@@ -34,7 +34,6 @@ jobs:
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
       arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
-
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
@@ -47,6 +46,7 @@ jobs:
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    majorMinorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorMinorVersion']]
   pool:
     vmImage: 'windows-2019' 
   steps:
@@ -59,7 +59,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumber)" -extensionVersion "$(majorMinorVersion).$(buildNumber)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"

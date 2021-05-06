@@ -6,6 +6,7 @@
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Grpc</RootNamespace>
     <Ext Condition="'$(OS)' == 'Windows_NT'">bat</Ext>
     <Ext Condition="'$(OS)' != 'Windows_NT'">sh</Ext>
+    <Deterministic>True</Deterministic>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>

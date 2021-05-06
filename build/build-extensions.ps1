@@ -1,11 +1,13 @@
 param (
   [string]$buildNumber = "0",
-  [string]$extensionVersion = "3.0.$buildNumber",
+  [string]$extensionVersion,
   [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
+
+Write-Host "ExtensionVersion is $extensionVersion"
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
