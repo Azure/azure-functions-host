@@ -1,8 +1,8 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
+  versionNumber: '3.1.0'  # Minor version will be incremented by automation
+  buildNumber: $[ counter(variables['versionNumber'], 0) ]
 
-# name: '3.x.$(buildNumber)'
-name: 'Dynamic'
+name: '$(versionNumber).$(buildNumber)'
 
 pr:
   branches:
@@ -34,7 +34,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'' -buildNumber "$(buildNumber)"'
+      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
@@ -44,10 +44,14 @@ jobs:
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
       artifactSuffix: -ci
+      buildNumberSuffixTemp: $(buildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    majorMinorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorMinorVersion']]
+    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
+    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
+    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
     vmImage: 'windows-2019' 
   steps:
@@ -60,7 +64,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -extensionVersion "$(majorMinorVersion).$(buildNumber)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -extensionVersion "$(majorVersion).$(minorVersion).$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -76,7 +80,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj

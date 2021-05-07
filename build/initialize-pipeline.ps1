@@ -1,7 +1,3 @@
-param (
-  [string]$buildNumber = "0"
-)
-
 $buildReason = $env:BUILD_REASON
 
 if ($buildReason -eq "PullRequest") {
@@ -15,15 +11,25 @@ if ($buildReason -eq "PullRequest") {
   }
 }
 
-# Get major.minorVersion
+# Get major, minor and patchVersions
 [xml]$XMLContents = [xml](Get-Content -Path ".\build\common.props")
-$XMLContents.GetElementsByTagName("MajorMinorProductVersion") |  ForEach-Object {
-  $majorMinorVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=MajorMinorVersion;isOutput=true]$majorMinorVersion"
-  Write-Host "Setting 'MajorMinorVersion' to $majorMinorVersion"
+$XMLContents.GetElementsByTagName("MajorVersion") |  ForEach-Object {
+  $majorVersion = $_.InnerText
+  Write-Host "##vso[task.setvariable variable=MajorVersion;isOutput=true]$majorVersion"
+  Write-Host "Setting 'MajorVersion' to $majorVersion"
   break
 }
 
-# Dynamically set build name
-Write-Host "Setting the name of the build to '$majorMinorVersion'."
-Write-Host "##vso[build.updatebuildnumber]$majorMinorVersion.$buildNumber"
+$XMLContents.GetElementsByTagName("MinorVersion") |  ForEach-Object {
+  $minorVersion = $_.InnerText
+  Write-Host "##vso[task.setvariable variable=MinorVersion;isOutput=true]$minorVersion"
+  Write-Host "Setting 'MinorVersion' to $minorVersion"
+  break
+}
+
+$XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
+  $patchVersion = $_.InnerText
+  Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$patchVersion"
+  Write-Host "Setting 'PatchVersion' to $patchVersion"
+  break
+}

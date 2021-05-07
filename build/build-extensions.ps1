@@ -1,13 +1,19 @@
 param (
-  [string]$buildNumber = "0",
+  [string]$buildNumber,
   [string]$extensionVersion,
-  [string]$v2CompatibleExtensionVersion = "2.1.$buildNumber",  
+  [string]$v2CompatibleExtensionVersion = "2.1.0",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
 Write-Host "ExtensionVersion is $extensionVersion"
+Write-Host "BuildNumber is $buildNumber"
+
+if(-not([string]::IsNullOrEmpty($buildNumber)))
+{
+    $v2CompatibleExtensionVersion = "2.1.$buildNumber"
+}
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
