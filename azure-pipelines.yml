@@ -1,6 +1,6 @@
 variables:
   versionNumber: '3.1.0'  # Minor version will be incremented by automation
-  buildNumber: $[ counter(variables['versionNumber'], 0) ]
+  buildNumber: $[ counter(variables['versionNumber'], 1) ]
 
 name: '$(versionNumber).$(buildNumber)'
 
