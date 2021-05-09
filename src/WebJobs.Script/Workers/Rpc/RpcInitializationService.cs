@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (Utility.CheckAppOffline(_environment, _applicationHostOptions.CurrentValue.ScriptPath))
+            if (Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath))
             {
                 _logger.LogDebug("App is offline. RpcInitializationService will not be started");
                 return;

@@ -675,29 +675,8 @@ namespace Microsoft.Azure.WebJobs.Script
             return indexedFunctions.Where(m => functionDescriptors.Select(fd => fd.Metadata.Name).Contains(m.Name) == true);
         }
 
-        public static async Task MarkContainerDisabled(ILogger logger)
+        public static bool CheckAppOffline(string scriptPath)
         {
-            logger.LogDebug("Setting container instance offline");
-            var disableContainerFilePath = Path.Combine(Path.GetTempPath(), ScriptConstants.DisableContainerFileName);
-            if (!FileUtility.FileExists(disableContainerFilePath))
-            {
-                await FileUtility.WriteAsync(disableContainerFilePath, "This container instance is offline");
-            }
-        }
-
-        public static bool IsContainerDisabled()
-        {
-            return FileUtility.FileExists(Path.Combine(Path.GetTempPath(), ScriptConstants.DisableContainerFileName));
-        }
-
-        public static bool CheckAppOffline(IEnvironment environment, string scriptPath)
-        {
-            // Linux container environments have an additional way of putting a specific worker instance offline.
-            if (environment.IsLinuxConsumptionContainerDisabled())
-            {
-                return true;
-            }
-
             // check if we should be in an offline state
             string offlineFilePath = Path.Combine(scriptPath, ScriptConstants.AppOfflineFileName);
             if (FileUtility.FileExists(offlineFilePath))
