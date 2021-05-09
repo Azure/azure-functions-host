@@ -78,7 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionsMetadataFileName = "extensions.json";
         public const string AppOfflineFileName = "app_offline.htm";
         public const string RunFromPackageFailedFileName = "FAILED TO INITIALIZE RUN FROM PACKAGE.txt";
-        public const string DisableContainerFileName = "container_offline";
         public const string ResourcePath = "Microsoft.Azure.WebJobs.Script.WebHost.Resources";
 
         public const string DefaultMasterKeyName = "master";

@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -569,31 +568,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
             Assert.Empty(validFunctions);
-        }
-
-        [Theory]
-        [InlineData(true, true, true)]
-        [InlineData(true, false, false)]
-        [InlineData(false, true, false)]
-        [InlineData(false, false, false)]
-        public void AppOfflineTests(bool isLinuxContainerEnvironment, bool containerDisabledFileExists, bool appOffline)
-        {
-            var vars = new Dictionary<string, string>
-            {
-                { EnvironmentSettingNames.AzureWebsiteInstanceId, isLinuxContainerEnvironment ? string.Empty : "Website_instance_id" },
-                { EnvironmentSettingNames.ContainerName, isLinuxContainerEnvironment ? "Container-Name" : string.Empty }
-            };
-
-            var fileSystem = new Mock<IFileSystem>();
-            fileSystem.Setup(f =>
-                    f.File.Exists(It.Is<string>(path => path.EndsWith(ScriptConstants.DisableContainerFileName))))
-                .Returns(containerDisabledFileExists);
-            FileUtility.Instance = fileSystem.Object;
-
-            var checkAppOffline = Utility.CheckAppOffline(new TestEnvironment(vars), string.Empty);
-            Assert.Equal(appOffline, checkAppOffline);
-
-            FileUtility.Instance = null;
         }
 
         [Theory]
