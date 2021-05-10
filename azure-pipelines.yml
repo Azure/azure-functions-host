@@ -54,7 +54,7 @@ jobs:
       targetType: 'inline'
       script: |
         Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
-        ./dotnet-install.ps1 -Channel 'release/6.0.1xx-preview4' -Verbose
+        ./dotnet-install.ps1 -Channel 'release/6.0.1xx-preview4' -InstallDir 'C:\Program Files\dotnet' -Verbose
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:

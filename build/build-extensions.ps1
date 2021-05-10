@@ -179,8 +179,9 @@ function WriteHashesFile([string] $directoryPath) {
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
 
-Write-Host ""
-dotnet --version
+Write-Host
+dotnet --info
+Write-Host
 Write-Host "Output directory: $buildOutput"
 if (Test-Path $buildOutput) {
     Write-Host "  Existing build output found. Deleting."
