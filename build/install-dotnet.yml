@@ -5,4 +5,4 @@ steps:
     targetType: 'inline'
     script: |
       Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
-      ./dotnet-install.ps1 -Channel 'release/6.0.1xx-preview4' -InstallDir 'C:\Program Files\dotnet' -Verbose
+      ./dotnet-install.ps1 -InstallDir 'C:\Program Files\dotnet' -Verbose -Version 6.0.100-preview.3.21207.34
