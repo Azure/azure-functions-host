@@ -6,8 +6,8 @@
     <MajorVersion>4</MajorVersion>
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
-    <PreviewVersion>2</PreviewVersion>    
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
+    <PreviewVersion></PreviewVersion>  <!-- Only use Preview version in release branch. Otherwise, leave empty. -->
     <PreviewString Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</PreviewString>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <VersionSuffixWithDash Condition=" '$(VersionSuffix)' != '' ">-$(VersionSuffix)</VersionSuffixWithDash>
