@@ -48,12 +48,7 @@ jobs:
   pool:
     vmImage: 'windows-2019' 
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '6.0.x'
-      performMultiLevelLookup: true
-      includePreviewVersions: true
+  - template: build/install-dotnet.yml
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -286,12 +281,7 @@ jobs:
   pool:
     vmImage: 'windows-2019'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '6.0.x'
-      performMultiLevelLookup: true
-      includePreviewVersions: true
+  - template: build/install-dotnet.yml
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -307,12 +297,7 @@ jobs:
   pool:
     vmImage: 'windows-2019'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '6.0.x'
-      performMultiLevelLookup: true
-      includePreviewVersions: true
+  - template: build/install-dotnet.yml
   - task: UseNode@1
     inputs:      
       version: '10.x'
@@ -365,12 +350,7 @@ jobs:
   pool:
     vmImage: 'windows-2019'
   steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '6.0.x'
-      performMultiLevelLookup: true
-      includePreviewVersions: true
+  - template: build/install-dotnet.yml
   - task: UseNode@1
     inputs:
       version: '10.x'
