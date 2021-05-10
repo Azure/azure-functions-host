@@ -5,14 +5,14 @@ param (
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
+$rootDir = Split-Path -Parent $PSScriptRoot
+$buildOutput = Join-Path $rootDir "buildoutput"
+$hasSuffix = ![string]::IsNullOrEmpty($suffix)
+
 $suffixCmd = ""
 if ($hasSuffix) {
   $suffixCmd = "/p:VersionSuffix=$suffix"
 }
-
-$rootDir = Split-Path -Parent $PSScriptRoot
-$buildOutput = Join-Path $rootDir "buildoutput"
-$hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
 # use the same logic as the projects to generate the site extension version
 $cmd = "build", "$rootDir\build\common.props", "/t:GenerateSiteExtensionVersion", "-restore:False", "-o", "$buildOutput", "/p:BuildNumber=$buildNumber",  "/p:CommitHash=$commitHash", $suffixCmd, "-v", "q", "--nologo", "-clp:NoSummary"
