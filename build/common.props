@@ -6,7 +6,7 @@
     <MajorVersion>4</MajorVersion>
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
-    <PreviewVersion>1</PreviewVersion>    
+    <PreviewVersion>2</PreviewVersion>    
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
     <PreviewString Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</PreviewString>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
