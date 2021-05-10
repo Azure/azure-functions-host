@@ -42,7 +42,7 @@ jobs:
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
       artifactSuffix: -ci
-    # suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
   pool:
