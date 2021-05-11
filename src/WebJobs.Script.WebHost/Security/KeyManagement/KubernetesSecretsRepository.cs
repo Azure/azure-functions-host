@@ -59,6 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
+            functionName = functionName?.ToLowerInvariant();
             return type == ScriptSecretsType.Host ? await ReadHostSecrets() : await ReadFunctionSecrets(functionName);
         }
 
@@ -69,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new InvalidOperationException($"{nameof(KubernetesSecretsRepository)} is readonly when no {EnvironmentSettingNames.AzureWebJobsKubernetesSecretName} is specified.");
             }
 
+            functionName = functionName?.ToLowerInvariant();
             var newKeys = await Mergekeys(type, functionName, secrets);
             await _kubernetesClient.UpdateSecrets(newKeys);
         }
