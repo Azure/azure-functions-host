@@ -17,7 +17,7 @@
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
     <InformationalVersion>$(Version)+$(CommitHash)</InformationalVersion>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <NoWarn>$(NoWarn);NU1701;NU5104</NoWarn>
     <DebugType>embedded</DebugType>
     <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
   </PropertyGroup>
