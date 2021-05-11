@@ -561,7 +561,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var url = default(string);
             if (_environment.IsKubernetesManagedHosting())
             {
-                url = "limaarcncsenv14-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181/api/operations/settriggers";
+                url = "http://limaarcncsenv14-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181/api/operations/settriggers";
                 //         url = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}/operations/settriggers";
             }
             else
