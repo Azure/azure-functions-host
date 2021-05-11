@@ -182,5 +182,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
             Assert.Equal(suffix, testEnvironment.GetStorageSuffix());
         }
+
+        [Theory]
+        [InlineData("Azure", CloudConstants.AzureVaultSuffix)]
+        [InlineData("azuRe", CloudConstants.AzureVaultSuffix)]
+        [InlineData("", CloudConstants.AzureVaultSuffix)]
+        [InlineData(null, CloudConstants.AzureVaultSuffix)]
+        [InlineData("Blackforest", CloudConstants.BlackforestVaultSuffix)]
+        [InlineData("Fairfax", CloudConstants.FairfaxVaultSuffix)]
+        [InlineData("Mooncake", CloudConstants.MooncakeVaultSuffix)]
+        public void GetVaultSuffix_Returns_Suffix_Based_On_CloudType(string cloudNameSetting, string suffix)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
+            Assert.Equal(suffix, testEnvironment.GetVaultSuffix());
+        }
     }
 }

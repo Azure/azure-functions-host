@@ -424,6 +424,25 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static string GetVaultSuffix(this IEnvironment environment)
+        {
+            {
+                switch (GetCloudName(environment))
+                {
+                    case CloudName.Azure:
+                        return CloudConstants.AzureVaultSuffix;
+                    case CloudName.Blackforest:
+                        return CloudConstants.BlackforestVaultSuffix;
+                    case CloudName.Fairfax:
+                        return CloudConstants.FairfaxVaultSuffix;
+                    case CloudName.Mooncake:
+                        return CloudConstants.MooncakeVaultSuffix;
+                    default:
+                        return CloudConstants.AzureVaultSuffix;
+                }
+            }
+        }
+
         public static string GetFunctionsWorkerRuntime(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
