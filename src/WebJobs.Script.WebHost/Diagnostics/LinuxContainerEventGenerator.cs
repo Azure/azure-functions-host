@@ -15,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _containerName;
         private string _stampName;
         private string _tenantId;
+        private static LinuxContainerEventGenerator _eventGenerator = null;
 
         public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
@@ -36,6 +37,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public static string DetailsEventRegex { get; } = $"{ScriptConstants.LinuxFunctionDetailsEventStreamName} (?<AppName>[^,]*),(?<FunctionName>[^,]*),\\\\\"(?<InputBindings>.*)\\\\\",\\\\\"(?<OutputBindings>.*)\\\\\",(?<ScriptType>[^,]*),(?<IsDisabled>[0|1])";
 
         public static string AzureMonitorEventRegex { get; } = $"{ScriptConstants.LinuxAzureMonitorEventStreamName} (?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<ContainerName>[^,\"]*),(?<TenantId>[^,\"]*),(?<EventTimestamp>[^,]+)";
+
+        public static LinuxContainerEventGenerator GetLinuxContainerEventGenerator
+        {
+            get
+            {
+                if (_eventGenerator == null)
+                {
+                    _eventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance);
+                }
+                return _eventGenerator;
+            }
+        }
 
         private string StampName
         {
@@ -112,6 +125,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
                 nameof(LogUnhandledException), e?.ToString(), string.Empty, e?.GetType().ToString() ?? string.Empty,
                 e?.ToString(), string.Empty, string.Empty, string.Empty,
+                SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
+                SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
+                DateTime.UtcNow);
+        }
+
+        public static void LogInfo(string message)
+        {
+            GetLinuxContainerEventGenerator.LogFunctionTraceEvent(LogLevel.Information,
+                SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
+                SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
+                nameof(LogInfo), string.Empty, message, string.Empty,
+                string.Empty, string.Empty, string.Empty, string.Empty,
                 SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 DateTime.UtcNow);

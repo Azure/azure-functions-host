@@ -64,7 +64,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(optionsAllSettings.IsFileSystemReadOnly, expectedOutcome);
         }
 
-        private ScriptApplicationHostOptions CreateConfiguredOptions(bool inStandbyMode, IEnvironment environment = null)
+        [Theory]
+        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
+        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp2.zip", false)]
+        [InlineData("/microsoft/functionapp.zip", false)]
+        public void IsZipDeployment_ChecksScmRunFromPackageBlob(string appSettingValue, bool expectedOutcome)
+        {
+            var environment = new TestEnvironment();
+            // Linux Consumption-specific tests, ensure environment reflects that.
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "test-container");
+
+            var options = CreateConfiguredOptions(true, environment, expectedOutcome);
+
+            // No zip deployment settings set, it's not a zip deployment
+            Assert.Equal(options.IsFileSystemReadOnly, false);
+
+            // SCM_RUN_FROM_PACKAGE is set. If it's a valid URI, it's a zip deployment.
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage, appSettingValue);
+            options = CreateConfiguredOptions(true, environment, expectedOutcome);
+            Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
+        }
+
+        private ScriptApplicationHostOptions CreateConfiguredOptions(bool inStandbyMode, IEnvironment environment = null, bool blobExists = false)
         {
             var builder = new ConfigurationBuilder();
             var configuration = builder.Build();
@@ -73,11 +94,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var mockCache = new Mock<IOptionsMonitorCache<ScriptApplicationHostOptions>>();
             var mockServiceProvider = new Mock<IServiceProvider>();
             var mockEnvironment = environment ?? new TestEnvironment();
-            var setup = new ScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, mockEnvironment);
+            var setup = new TestScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, mockEnvironment)
+            {
+                BlobExistsReturnValue = blobExists
+            };
 
             var options = new ScriptApplicationHostOptions();
             setup.Configure(options);
             return options;
+        }
+
+        private class TestScriptApplicationHostOptionsSetup : ScriptApplicationHostOptionsSetup
+        {
+            public TestScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptionsMonitorCache<ScriptApplicationHostOptions> cache,
+                IServiceProvider serviceProvider, IEnvironment environment) : base(configuration, standbyOptions, cache, serviceProvider, environment) { }
+
+            public bool BlobExistsReturnValue { get; set; }
+
+            public override bool BlobExists(string url)
+            {
+                return BlobExistsReturnValue;
+            }
         }
     }
 }
