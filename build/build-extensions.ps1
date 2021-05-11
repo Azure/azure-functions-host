@@ -23,12 +23,6 @@ $extensionVersion = Get-Content $versionTxt -First 1
 
 Write-Host "Found site extension version in '$versionTxt': $extensionVersion"
 
-$extensionVersionNoSuffix = $extensionVersion
-
-if ($hasSuffix) {
-  $extensionVersion = "$extensionVersion-$suffix"  
-}
-
 function ZipContent([string] $sourceDirectory, [string] $target)
 {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
