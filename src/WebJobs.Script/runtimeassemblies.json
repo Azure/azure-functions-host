@@ -1303,6 +1303,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Text.Encodings.Web",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
       "name": "System.Text.Encoding.CodePages",
       "resolutionPolicy": "minorMatchOrLower"
     },
