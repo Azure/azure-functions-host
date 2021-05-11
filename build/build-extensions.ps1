@@ -192,7 +192,7 @@ if (Test-Path $buildOutput) {
 Write-Host "Extensions version: $extensionVersion"
 Write-Host ""
 
-BuildRuntime "win-x86"
+BuildRuntime "win-x86" $true #temporary
 BuildRuntime "win-x64"
 
 CreateSiteExtensions
