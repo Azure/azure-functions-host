@@ -65,7 +65,6 @@ namespace Microsoft.Azure.WebJobs.Script
             if (!TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
                 var ex = new InvalidOperationException($"Could not create BlobServiceClient to obtain the BlobContainerClient using Connection: {ConnectionStringNames.Storage}");
-                _logger.LogError(ex, "Invalid blob storage connection configuration. Could not create BlobServiceClient.");
                 throw ex;
             }
 
