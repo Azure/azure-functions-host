@@ -139,6 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     }
                     catch (Exception ex) when (!ex.IsFatal())
                     {
+                        LinuxContainerEventGenerator.LogInfo($"Exception when checking if {nameof(ScmRunFromPackage)} blob exists: {ex}");
                         if (++attempt > 2)
                         {
                             return false;
@@ -149,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             }
             catch (Exception)
             {
+                LinuxContainerEventGenerator.LogInfo("BlobExists failed after retry");
                 return false;
             }
         }
