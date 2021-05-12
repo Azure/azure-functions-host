@@ -27,7 +27,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -290,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         if (!string.IsNullOrEmpty(runtimeVersion))
                         {
-                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                            runtimeStack = string.Concat(Sanitizer.Sanitize(runtimeStack), "-", Sanitizer.Sanitize(runtimeVersion));
                         }
                     }
 
