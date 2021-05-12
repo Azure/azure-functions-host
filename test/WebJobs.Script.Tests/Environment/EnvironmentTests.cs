@@ -149,16 +149,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
 
-        [Fact]
-        public void IsBuildServiceHostname_Returns_ConfiguredValue()
+        [Theory]
+        [InlineData("https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181", "https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181")]
+        [InlineData("", "http://" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName + "." + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace + ".svc.cluster.local:" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort)]
+        public void IsBuildServiceHostname_Returns_ConfiguredValue(string buildServiceHostnameValue, string expectedBuildServiceHostname)
         {
-            var buildServiceHostname = "https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181";
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname, buildServiceHostname);
-            Assert.Equal(buildServiceHostname, environment.GetBuildServiceHostname());
-
-            environment = new TestEnvironment();
-            Assert.Equal($"http://{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName}.{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort}", environment.GetBuildServiceHostname());
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname, buildServiceHostnameValue);
+            Assert.Equal(expectedBuildServiceHostname, environment.GetBuildServiceHostname());
         }
 
         [Theory]
