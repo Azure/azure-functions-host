@@ -41,11 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const int MinTaskHubNameSize = 3;
         private const string TaskHubPadding = "Hub";
 
-        //Managed Kubernetes build service variables
-        private const string ManagedKubernetesBuildServicePort = "8181";
-        private const string ManagedKubernetesBuildServiceName = "k8se-build-service";
-        private const string ManagedKubernetesBuildServiceNamespace = "k8se-system";
-
         private readonly Regex versionRegex = new Regex(@"Version=(?<majorversion>\d)\.\d\.\d");
 
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
@@ -561,13 +556,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var url = default(string);
             if (_environment.IsKubernetesManagedHosting())
             {
-                var buildServiceHostname =
-                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname);
-
-                if (string.IsNullOrEmpty(buildServiceHostname))
-                {
-                    buildServiceHostname = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}";
-                }
+                var buildServiceHostname = _environment.GetBuildServiceHostname();
                 url = $"{buildServiceHostname}/api/operations/settriggers";
             }
             else

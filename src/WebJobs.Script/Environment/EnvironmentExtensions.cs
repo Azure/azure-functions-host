@@ -467,5 +467,22 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||
                 (bool.TryParse(environment.GetEnvironmentVariable(DrainOnApplicationStopping), out bool v) && v);
         }
+
+        /// <summary>
+        /// Gets the BuildServiceName for Kubernetes Environment.
+        /// </summary>
+        /// <returns>BuildServiceName</returns>
+        public static string GetBuildServiceHostname(this IEnvironment environment)
+        {
+            var buildServiceHostname =
+                environment.GetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname);
+
+            if (string.IsNullOrEmpty(buildServiceHostname))
+            {
+                buildServiceHostname = $"http://{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName}.{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort}";
+            }
+
+            return buildServiceHostname;
+        }
     }
 }

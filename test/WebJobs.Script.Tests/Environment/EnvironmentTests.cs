@@ -149,6 +149,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(environment.IsPersistentFileSystemAvailable());
         }
 
+        [Fact]
+        public void IsBuildServiceHostname_Returns_ConfiguredValue()
+        {
+            var buildServiceHostname = "https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181";
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname, buildServiceHostname);
+            Assert.Equal(buildServiceHostname, environment.GetBuildServiceHostname());
+
+            environment = new TestEnvironment();
+            Assert.Equal($"http://{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName}.{EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort}", environment.GetBuildServiceHostname());
+        }
+
         [Theory]
         [InlineData("Azure", CloudName.Azure)]
         [InlineData("azuRe", CloudName.Azure)]

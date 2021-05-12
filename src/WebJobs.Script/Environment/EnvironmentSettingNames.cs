@@ -68,6 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HttpLeaderEndpoint = "HTTP_LEADER_ENDPOINT";
         public const string BuildServiceHostname = "BUILD_SERVICE_HOSTNAME";
 
+        public const string DefaultManagedKubernetesBuildServiceName = "k8se-build-service";
+        public const string DefaultManagedKubernetesBuildServiceNamespace = "k8se-system";
+
+        //Managed Kubernetes build service variables
+        public const string DefaultManagedKubernetesBuildServicePort = "8181";
+
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
         /// start specializing the host instance (e.g. file system is ready, etc.)
