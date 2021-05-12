@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
         private const int MaxDetailsLength = 10000;
+        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance));
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
@@ -28,6 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
         }
 
+        private LinuxContainerEventGenerator()
+        {
+        }
+
         // Note: the strange escaping of backslashes in these expressions for string literals (e.g. '\\\\\"') is because
         // of the current JSON serialization our log messages undergoe.
         public static string TraceEventRegex { get; } = $"{ScriptConstants.LinuxLogEventStreamName} (?<Level>[0-6]),(?<SubscriptionId>[^,]*),(?<AppName>[^,]*),(?<FunctionName>[^,]*),(?<EventName>[^,]*),(?<Source>[^,]*),\"(?<Details>.*)\",\"(?<Summary>.*)\",(?<HostVersion>[^,]*),(?<EventTimestamp>[^,]+),(?<ExceptionType>[^,]*),\"(?<ExceptionMessage>.*)\",(?<FunctionInvocationId>[^,]*),(?<HostInstanceId>[^,]*),(?<ActivityId>[^,\"]*),(?<ContainerName>[^,\"]*),(?<StampName>[^,\"]*),(?<TenantId>[^,\"]*),(?<RuntimeSiteName>[^,]*),(?<SlotName>[^,]*)";
@@ -38,17 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public static string AzureMonitorEventRegex { get; } = $"{ScriptConstants.LinuxAzureMonitorEventStreamName} (?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<ContainerName>[^,\"]*),(?<TenantId>[^,\"]*),(?<EventTimestamp>[^,]+)";
 
-        public static LinuxContainerEventGenerator GetLinuxContainerEventGenerator
-        {
-            get
-            {
-                if (_eventGenerator == null)
-                {
-                    _eventGenerator = new LinuxContainerEventGenerator(SystemEnvironment.Instance);
-                }
-                return _eventGenerator;
-            }
-        }
+        public static LinuxContainerEventGenerator LinuxContainerEventGeneratorInstance { get { return _Lazy.Value; } }
 
         private string StampName
         {
@@ -130,16 +125,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 DateTime.UtcNow);
         }
 
-        public static void LogInfo(string message)
+        public static void LogEvent(string message, Exception e = null, LogLevel logLevel = LogLevel.Debug, string source = null)
         {
-            GetLinuxContainerEventGenerator.LogFunctionTraceEvent(LogLevel.Information,
-                SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
-                SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty, string.Empty, string.Empty,
-                nameof(LogInfo), string.Empty, message, string.Empty,
-                string.Empty, string.Empty, string.Empty, string.Empty,
-                SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
-                SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
-                DateTime.UtcNow);
+            LinuxContainerEventGeneratorInstance.LogFunctionTraceEvent(
+                level: logLevel,
+                subscriptionId: SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
+                appName: SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty,
+                functionName: string.Empty,
+                eventName: string.Empty,
+                source: source ?? nameof(LogEvent),
+                details: e?.ToString() ?? string.Empty,
+                summary: message,
+                exceptionType: e?.GetType().ToString() ?? string.Empty,
+                exceptionMessage: e?.ToString() ?? string.Empty,
+                functionInvocationId: string.Empty,
+                hostInstanceId: string.Empty,
+                activityId: string.Empty,
+                runtimeSiteName: SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
+                slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
+                eventTimestamp: DateTime.UtcNow);
         }
     }
 }

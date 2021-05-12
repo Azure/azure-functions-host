@@ -68,10 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.IsFileSystemReadOnly = IsZipDeployment(options);
+            options.IsFileSystemReadOnly = IsZipDeployment(out bool isScmRunFromPackage);
+            options.IsScmRunFromPackage = isScmRunFromPackage;
         }
 
-        private bool IsZipDeployment(ScriptApplicationHostOptions options)
+        private bool IsZipDeployment(out bool isScmRunFromPackage)
         {
             // Check app settings for run from package.
             bool runFromPkgConfigured = Utility.IsValidZipSetting(_environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
@@ -80,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             if (!_environment.IsLinuxConsumption())
             {
+                isScmRunFromPackage = false;
                 // This check is strong enough for SKUs other than Linux Consumption.
                 return runFromPkgConfigured;
             }
@@ -87,6 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             // The following logic only applies to Linux Consumption, since currently SCM_RUN_FROM_PACKAGE is always set even if we are not using it.
             if (runFromPkgConfigured)
             {
+                isScmRunFromPackage = false;
                 return true;
             }
 
@@ -94,28 +97,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             var url = _environment.GetEnvironmentVariable(ScmRunFromPackage);
             if (string.IsNullOrEmpty(url))
             {
-                LinuxContainerEventGenerator.LogInfo($"{nameof(ScmRunFromPackage)} is empty.");
+                LinuxContainerEventGenerator.LogEvent(message: $"{nameof(ScmRunFromPackage)} is empty.", source: nameof(ScriptApplicationHostOptionsSetup));
+                isScmRunFromPackage = false;
+                return false;
             }
-            else
+
+            if (Utility.TryCleanUrl(url, out string cleanedUrl))
             {
-                LinuxContainerEventGenerator.LogInfo($"{nameof(ScmRunFromPackage)} = {url.Substring(0, 25)}");
+                LinuxContainerEventGenerator.LogEvent(message: $"{nameof(ScmRunFromPackage)} = {cleanedUrl}", source: nameof(ScriptApplicationHostOptionsSetup));
             }
 
             var isValidZipSetting = Utility.IsValidZipSetting(url);
-            LinuxContainerEventGenerator.LogInfo($"{nameof(ScmRunFromPackage)} isValidZipSetting = {isValidZipSetting}");
+            LinuxContainerEventGenerator.LogEvent(message: $"{nameof(ScmRunFromPackage)} isValidZipSetting = {isValidZipSetting}", source: nameof(ScriptApplicationHostOptionsSetup));
 
             if (!isValidZipSetting)
             {
+                isScmRunFromPackage = false;
                 // Return early so we don't call storage if it isn't absolutely necessary.
                 return false;
             }
 
             var blobExists = BlobExists(url);
-            LinuxContainerEventGenerator.LogInfo($"{nameof(ScmRunFromPackage)} blobExists = {blobExists}");
+            LinuxContainerEventGenerator.LogEvent(message: $"{nameof(ScmRunFromPackage)} blobExists = {blobExists}", source: nameof(ScriptApplicationHostOptionsSetup));
 
             bool scmRunFromPkgConfigured = isValidZipSetting && blobExists;
-            options.IsScmRunFromPackage = scmRunFromPkgConfigured;
-
+            isScmRunFromPackage = scmRunFromPkgConfigured;
             return scmRunFromPkgConfigured;
         }
 
@@ -139,7 +145,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     }
                     catch (Exception ex) when (!ex.IsFatal())
                     {
-                        LinuxContainerEventGenerator.LogInfo($"Exception when checking if {nameof(ScmRunFromPackage)} blob exists: {ex}");
+                        LinuxContainerEventGenerator.LogEvent(message: $"Exception when checking if {nameof(ScmRunFromPackage)} blob exists",
+                            e: ex, source: nameof(ScriptApplicationHostOptionsSetup));
                         if (++attempt > 2)
                         {
                             return false;
@@ -150,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
             }
             catch (Exception)
             {
-                LinuxContainerEventGenerator.LogInfo("BlobExists failed after retry");
+                LinuxContainerEventGenerator.LogEvent(message: "BlobExists failed after retry", source: nameof(ScriptApplicationHostOptionsSetup));
                 return false;
             }
         }
