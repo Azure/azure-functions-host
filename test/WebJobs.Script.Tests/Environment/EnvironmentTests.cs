@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181", "https://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181")]
+        [InlineData("http://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181", "http://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181")]
         [InlineData("", "http://" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName + "." + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace + ".svc.cluster.local:" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort)]
         public void IsBuildServiceHostname_Returns_ConfiguredValue(string buildServiceHostnameValue, string expectedBuildServiceHostname)
         {
