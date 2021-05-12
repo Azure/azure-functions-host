@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    string runtimeStack = Sanitizer.Sanitize(_workerRuntime);
+                    string runtimeStack = _workerRuntime;
 
                     if (!string.IsNullOrEmpty(runtimeStack))
                     {
@@ -289,11 +289,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         if (!string.IsNullOrEmpty(runtimeVersion))
                         {
-                            runtimeStack = string.Concat(runtimeStack, "-", Sanitizer.Sanitize(runtimeVersion));
+                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
