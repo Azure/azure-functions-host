@@ -657,7 +657,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData("KUBERNETES_SERVICE_HOST", "http://k8se-build-service.k8se-system.svc.cluster.local:8181/operations/settriggers")]
+        [InlineData("KUBERNETES_SERVICE_HOST", "http://k8se-build-service.k8se-system.svc.cluster.local:8181/api/operations/settriggers")]
         [InlineData(null, "https://appname.azurewebsites.net/operations/settriggers")]
         public void Managed_Kubernetes_Environment_SyncTrigger_Url_Validation(string kubernetesServiceHost, string expectedSyncTriggersUri)
         {
