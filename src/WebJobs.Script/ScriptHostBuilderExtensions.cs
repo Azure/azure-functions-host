@@ -298,10 +298,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
-                if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
-                {
-                    services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
-                }
+                // Disabling Kubernetes lock manager until issues are resolved.
+                //if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
+                //{
+                //    services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
+                //}
 
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
