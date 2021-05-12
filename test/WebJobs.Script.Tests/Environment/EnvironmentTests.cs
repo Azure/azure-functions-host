@@ -10,6 +10,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class EnvironmentTests
     {
+        private const string BuildServiceHostname = "http://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181";
+
         [Fact]
         public void IsWindowsAzureManagedHosting_SetAzureWebsiteInstanceId_ReturnsTrue()
         {
@@ -150,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("http://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181", "http://fabrikam-kube-k8se-build-service.appservice-ns.svc.cluster.local:8181")]
+        [InlineData(BuildServiceHostname, BuildServiceHostname)]
         [InlineData("", "http://" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceName + "." + EnvironmentSettingNames.DefaultManagedKubernetesBuildServiceNamespace + ".svc.cluster.local:" + EnvironmentSettingNames.DefaultManagedKubernetesBuildServicePort)]
         public void IsBuildServiceHostname_Returns_ConfiguredValue(string buildServiceHostnameValue, string expectedBuildServiceHostname)
         {
