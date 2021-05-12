@@ -561,7 +561,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var url = default(string);
             if (_environment.IsKubernetesManagedHosting())
             {
-                url = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}/operations/settriggers";
+                var buildServiceHostname =
+                    _environment.GetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname);
+
+                if (string.IsNullOrEmpty(buildServiceHostname))
+                {
+                    buildServiceHostname = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}";
+                }
+                url = $"{buildServiceHostname}/api/operations/settriggers";
             }
             else
             {

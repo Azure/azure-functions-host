@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string PodName = "POD_NAME";
         public const string PodEncryptionKey = "POD_ENCRYPTION_KEY";
         public const string HttpLeaderEndpoint = "HTTP_LEADER_ENDPOINT";
+        public const string BuildServiceHostname = "BUILD_SERVICE_HOSTNAME";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
