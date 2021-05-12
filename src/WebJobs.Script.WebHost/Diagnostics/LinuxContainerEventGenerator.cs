@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private string _containerName;
         private string _stampName;
         private string _tenantId;
-        private static LinuxContainerEventGenerator _eventGenerator = null;
 
         public LinuxContainerEventGenerator(IEnvironment environment, Action<string> writeEvent = null)
         {
@@ -27,10 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _consoleEnabled = false;
             }
             _containerName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)?.ToUpperInvariant();
-        }
-
-        private LinuxContainerEventGenerator()
-        {
         }
 
         // Note: the strange escaping of backslashes in these expressions for string literals (e.g. '\\\\\"') is because

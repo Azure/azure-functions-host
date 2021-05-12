@@ -8,6 +8,7 @@ using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -145,8 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     }
                     catch (Exception ex) when (!ex.IsFatal())
                     {
-                        LinuxContainerEventGenerator.LogEvent(message: $"Exception when checking if {nameof(ScmRunFromPackage)} blob exists",
-                            e: ex, source: nameof(ScriptApplicationHostOptionsSetup));
+                        LinuxContainerEventGenerator.LogEvent(message: $"Exception when checking if {nameof(ScmRunFromPackage)} blob exists", e: ex,
+                            logLevel: LogLevel.Error, source: nameof(ScriptApplicationHostOptionsSetup));
                         if (++attempt > 2)
                         {
                             return false;
@@ -155,9 +156,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                LinuxContainerEventGenerator.LogEvent(message: "BlobExists failed after retry", source: nameof(ScriptApplicationHostOptionsSetup));
+                LinuxContainerEventGenerator.LogEvent(message: $"Failed to check status of {nameof(ScmRunFromPackage)}", e: ex,
+                    logLevel: LogLevel.Error, source: nameof(ScriptApplicationHostOptionsSetup));
                 return false;
             }
         }
