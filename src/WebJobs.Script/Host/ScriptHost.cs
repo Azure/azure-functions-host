@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
-                    string runtimeStack = _workerRuntime;
+                    string runtimeStack = Sanitizer.Sanitize(_workerRuntime);
 
                     if (!string.IsNullOrEmpty(runtimeStack))
                     {
@@ -289,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         if (!string.IsNullOrEmpty(runtimeVersion))
                         {
-                            runtimeStack = string.Concat(Sanitizer.Sanitize(runtimeStack), "-", Sanitizer.Sanitize(runtimeVersion));
+                            runtimeStack = string.Concat(runtimeStack, "-", Sanitizer.Sanitize(runtimeVersion));
                         }
                     }
 
