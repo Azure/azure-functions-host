@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
         private const int MaxDetailsLength = 10000;
+        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance));
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
@@ -36,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public static string DetailsEventRegex { get; } = $"{ScriptConstants.LinuxFunctionDetailsEventStreamName} (?<AppName>[^,]*),(?<FunctionName>[^,]*),\\\\\"(?<InputBindings>.*)\\\\\",\\\\\"(?<OutputBindings>.*)\\\\\",(?<ScriptType>[^,]*),(?<IsDisabled>[0|1])";
 
         public static string AzureMonitorEventRegex { get; } = $"{ScriptConstants.LinuxAzureMonitorEventStreamName} (?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<ContainerName>[^,\"]*),(?<TenantId>[^,\"]*),(?<EventTimestamp>[^,]+)";
+
+        public static LinuxContainerEventGenerator LinuxContainerEventGeneratorInstance { get { return _Lazy.Value; } }
 
         private string StampName
         {
@@ -115,6 +118,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 DateTime.UtcNow);
+        }
+
+        public static void LogEvent(string message, Exception e = null, LogLevel logLevel = LogLevel.Debug, string source = null)
+        {
+            LinuxContainerEventGeneratorInstance.LogFunctionTraceEvent(
+                level: logLevel,
+                subscriptionId: SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
+                appName: SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty,
+                functionName: string.Empty,
+                eventName: string.Empty,
+                source: source ?? nameof(LogEvent),
+                details: e?.ToString() ?? string.Empty,
+                summary: message,
+                exceptionType: e?.GetType().ToString() ?? string.Empty,
+                exceptionMessage: e?.ToString() ?? string.Empty,
+                functionInvocationId: string.Empty,
+                hostInstanceId: string.Empty,
+                activityId: string.Empty,
+                runtimeSiteName: SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
+                slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
+                eventTimestamp: DateTime.UtcNow);
         }
     }
 }
