@@ -12,17 +12,17 @@ $extensionVersion = $majorMinorVersion.$patchVersion
 Write-Host "ExtensionVersion is $extensionVersion"
 Write-Host "BuildNumber is $buildNumber"
 
-if(-not([string]::IsNullOrEmpty($buildNumber)))
-{
-    $v2CompatibleExtensionVersion = "2.1.$buildNumber"
-}
-
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
+$hasBuildNumber = ![string]::IsNullOrEmpty($buildNumber)
 
 $extensionVersionNoSuffix = $extensionVersion
 $v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
+
+if($hasBuildNumber) {
+  $v2CompatibleExtensionVersion = "2.1.$buildNumber"
+}
 
 if ($hasSuffix) {
   $extensionVersion = "$extensionVersion-$suffix"  
@@ -60,13 +60,18 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
       $suffixCmd = "/p:VersionSuffix=$suffix"
     }
 
+    $buildCmd = ""
+    if($hasBuildNumber) {
+      $buildCmd = "/p:BuildNumber=$buildNumber"
+    }
+
     $projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "$buildCmd", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
