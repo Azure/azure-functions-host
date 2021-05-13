@@ -64,7 +64,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -extensionVersion "$(majorVersion).$(minorVersion).$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -extensionVersion "$(majorVersion).$(minorVersion).$(patchVersion)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
