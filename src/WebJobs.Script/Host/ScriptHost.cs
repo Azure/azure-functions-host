@@ -27,7 +27,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -294,7 +293,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
