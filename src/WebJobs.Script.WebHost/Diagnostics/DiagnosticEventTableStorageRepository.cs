@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository
+    public class DiagnosticEventTableStorageRepository : IDiagnosticEventRepository, IDisposable
     {
         internal const string TableNamePrefix = "AzureFunctionsDiagnosticEvents";
         private const int LogFlushInterval = 1000 * 60 * 10; // 10 mins
@@ -31,6 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private CloudTable _diagnosticEventsTable;
         private string _hostId;
         private object _syncLock = new object();
+        private bool _disposed = false;
+        private string _tableName;
 
         internal DiagnosticEventTableStorageRepository(IConfiguration configuration, IHostIdProvider hostIdProvider, IEnvironment environment, ILogger<DiagnosticEventTableStorageRepository> logger, int logFlushInterval)
         {
@@ -89,11 +91,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         internal CloudTable GetDiagnosticEventsTable(DateTime? now = null)
         {
-            if (_diagnosticEventsTable == null && TableClient != null)
+            if (TableClient != null)
             {
                 now = now ?? DateTime.UtcNow;
-                string tableName = GetCurrentTableName(now.Value);
-                _diagnosticEventsTable = TableClient.GetTableReference(tableName);
+                string currentTableName = GetCurrentTableName(now.Value);
+
+                // update the table reference when date rolls over to a new month
+                if (_diagnosticEventsTable == null || currentTableName != _tableName)
+                {
+                    _tableName = currentTableName;
+                    _diagnosticEventsTable = TableClient.GetTableReference(_tableName);
+                }
             }
 
             return _diagnosticEventsTable;
@@ -191,6 +199,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     _events[errorCode].HitCount++;
                 }
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_flushLogsTimer != null)
+                    {
+                        _flushLogsTimer.Dispose();
+                    }
+
+                    FlushLogs().GetAwaiter().GetResult();
+                }
+
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
         }
     }
 }

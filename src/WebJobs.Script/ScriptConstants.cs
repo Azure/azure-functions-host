@@ -111,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
         public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
+        public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
