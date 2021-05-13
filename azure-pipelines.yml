@@ -281,6 +281,8 @@ jobs:
     artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\PatchedSiteExtension
+    artifact: PatchedSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols

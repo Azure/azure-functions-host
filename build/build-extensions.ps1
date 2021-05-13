@@ -138,6 +138,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     New-Item -Itemtype "directory" -path "BaseZipDirectory" -Force > $null
     New-Item -Itemtype "directory" -path "BaseZipDirectory\Extracted" -Force > $null
     $baseZipUrl = $"https://github.com/yojagad/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
+    Invoke-WebRequest -Uri $baseZipUrl -OutFile "BaseZipDirectory\Functions.$majorMinorVersion.0.zip"
 
     # Extract zip
     Expand-Archive -LiteralPath "BaseZipDirectory\Functions.$majorMinorVersion.0.zip" -DestinationPath "BaseZipDirectory\Extracted"
@@ -216,6 +217,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     Remove-Item $patchedContentDirectory -Recurse -Force > $null
   }
   catch {
+    Write-Host $_.Exception
     $statusCode = $_.Exception.Response.StatusCode.Value__
     Write-Host "Invoking url $baseZipUrl returned status code of $statusCode which could mean that no base version exists. The full version needs to be deployed"
   }
