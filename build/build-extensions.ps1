@@ -1,6 +1,5 @@
 param (
   [string]$buildNumber,
-  [string]$extensionVersion,
   [string]$majorMinorVersion,
   [string]$patchVersion,
   [string]$v2CompatibleExtensionVersion = "2.1.0",  
@@ -9,6 +8,7 @@ param (
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
+$extensionVersion = $majorMinorVersion.$patchVersion
 Write-Host "ExtensionVersion is $extensionVersion"
 Write-Host "BuildNumber is $buildNumber"
 
