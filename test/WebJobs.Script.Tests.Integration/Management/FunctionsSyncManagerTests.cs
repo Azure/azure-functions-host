@@ -663,7 +663,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns(kubernetesServiceHost);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("POD_NAMESPACE");
-
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.BuildServiceHostname))
+                .Returns("");
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
