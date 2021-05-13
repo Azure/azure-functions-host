@@ -1,5 +1,5 @@
 variables:
-  versionNumber: '3.1.0'  # Minor version will be incremented by automation
+  versionNumber: '3.1.1'  # Minor version will be incremented by automation
   buildNumber: $[ counter(variables['versionNumber'], 1) ]
 
 name: '$(versionNumber).$(buildNumber)'
@@ -283,6 +283,7 @@ jobs:
     artifact: SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\PatchedSiteExtension
     artifact: PatchedSiteExtension
+    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols

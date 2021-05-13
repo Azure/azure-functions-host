@@ -283,12 +283,15 @@ function CreateSiteExtensions() {
     ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 
     # Construct patch
-    Write-Host "======================================"
-    Write-Host "Generating patch file"
-    CreatePatchedSiteExtension $siteExtensionPath
-    Write-Host "Done generating patch files"
-    Write-Host "======================================"
-    Write-Host
+    if(([int]$patchVersion) -gt 0)
+    {
+      Write-Host "======================================"
+      Write-Host "Generating patch file"
+      CreatePatchedSiteExtension $siteExtensionPath
+      Write-Host "Done generating patch files"
+      Write-Host "======================================"
+      Write-Host
+    }
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null    
     Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
