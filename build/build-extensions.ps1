@@ -138,7 +138,14 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     New-Item -Itemtype "directory" -path "BaseZipDirectory" -Force > $null
     New-Item -Itemtype "directory" -path "BaseZipDirectory\Extracted" -Force > $null
     $baseZipUrl = "https://github.com/yojagad/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
-    Invoke-WebRequest -Uri $baseZipUrl -OutFile "BaseZipDirectory\Functions.$majorMinorVersion.0.zip"
+
+    Write-Host "Downloading from $baseZipUrl"
+    (New-Object System.Net.WebClient).DownloadFile($baseZipUrl, "BaseZipDirectory\Functions.$majorMinorVersion.0.zip")
+    Write-Host "Download complete"
+
+    # Write-Host "Downloading from $baseZipUrl"
+    # Invoke-WebRequest -Uri $baseZipUrl -OutFile "BaseZipDirectory\Functions.$majorMinorVersion.0.zip"
+    # Write-Host "Download complete"
 
     # Extract zip
     Expand-Archive -LiteralPath "BaseZipDirectory\Functions.$majorMinorVersion.0.zip" -DestinationPath "BaseZipDirectory\Extracted"
