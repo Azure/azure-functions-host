@@ -137,7 +137,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     # Try to download base version
     New-Item -Itemtype "directory" -path "BaseZipDirectory" -Force > $null
     New-Item -Itemtype "directory" -path "BaseZipDirectory\Extracted" -Force > $null
-    $baseZipUrl = $"https://github.com/yojagad/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
+    $baseZipUrl = "https://github.com/yojagad/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
     Invoke-WebRequest -Uri $baseZipUrl -OutFile "BaseZipDirectory\Functions.$majorMinorVersion.0.zip"
 
     # Extract zip
