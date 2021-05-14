@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 lockHandle.LockId = lockId;
                 lockHandle.Owner = ownerId;
+                lockHandle.LockPeriod = lockPeriod.TotalSeconds.ToString();
             }
             return lockHandle;
         }
