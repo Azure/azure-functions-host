@@ -46,8 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             if (status == HttpStatusCode.OK)
             {
-                Assert.Equal(expectedLockId, lockHandle.LockId);
-                Assert.Equal(expectedOwnerId, ((KubernetesLockHandle)lockHandle).Owner);
+                Assert.IsType<KubernetesLockHandle> (lockHandle);
+
+                var kubernetesLockHandleResult = (KubernetesLockHandle)lockHandle;
+                Assert.Equal(expectedLockId, kubernetesLockHandleResult.LockId);
+                Assert.Equal(expectedOwnerId, kubernetesLockHandleResult.Owner);
+                Assert.Equal("5", kubernetesLockHandleResult.LockPeriod);
             }
             else
             {
