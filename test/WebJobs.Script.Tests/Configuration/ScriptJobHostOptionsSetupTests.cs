@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
-    public class ScriptHostOptionsSetupTests
+    public class ScriptJobHostOptionsSetupTests
     {
         [Fact]
         public void Configure_FileWatching()
@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled"), "true" }
             };
 
-            ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings);
+            ScriptJobHostOptionsSetup setup = CreateSetupWithConfiguration(settings);
 
             var options = new ScriptJobHostOptions();
 
@@ -114,13 +114,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var options = GetConfiguredOptions(settings, environment);
 
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
 
             // When functionTimeout is set as null
             settings.Add(ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout"), string.Empty);
 
             options = GetConfiguredOptions(settings, environment);
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeoutDynamic, options.FunctionTimeout);
 
             // TODO: DI Need to ensure JobHostOptions is correctly configured
             //var timeoutConfig = options.HostOptions.FunctionTimeout;
@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_TimeoutDefaultsNull_IfNotDynamic()
         {
             var options = GetConfiguredOptions(new Dictionary<string, string>());
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
 
             // When functionTimeout is set as null
             var settings = new Dictionary<string, string>
@@ -232,13 +232,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             };
 
             options = GetConfiguredOptions(settings);
-            Assert.Equal(ScriptHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
+            Assert.Equal(ScriptJobHostOptionsSetup.DefaultFunctionTimeout, options.FunctionTimeout);
         }
 
         [Fact]
         public void Configure_NoMaxTimeoutLimits_IfNotDynamic()
         {
-            var timeout = ScriptHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromMinutes(10);
+            var timeout = ScriptJobHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromMinutes(10);
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
             {
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
             {
-                { configPath, (ScriptHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromSeconds(1)).ToString() }
+                { configPath, (ScriptJobHostOptionsSetup.MaxFunctionTimeoutDynamic + TimeSpan.FromSeconds(1)).ToString() }
             };
 
             var environment = new TestEnvironment();
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var expectedMessage = "FunctionTimeout must be greater than 00:00:01 and less than 00:10:00.";
             Assert.Equal(expectedMessage, ex.Message);
 
-            settings[configPath] = (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
+            settings[configPath] = (ScriptJobHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString();
             ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings, environment));
             Assert.Equal(expectedMessage, ex.Message);
 
@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string configPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "functionTimeout");
             var settings = new Dictionary<string, string>
             {
-                { configPath, (ScriptHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString() }
+                { configPath, (ScriptJobHostOptionsSetup.MinFunctionTimeout - TimeSpan.FromSeconds(1)).ToString() }
             };
 
             var ex = Assert.Throws<ArgumentException>(() => GetConfiguredOptions(settings));
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         private ScriptJobHostOptions GetConfiguredOptions(Dictionary<string, string> settings, IEnvironment environment = null)
         {
-            ScriptHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);
+            ScriptJobHostOptionsSetup setup = CreateSetupWithConfiguration(settings, environment);
 
             var options = new ScriptJobHostOptions();
 
@@ -336,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             return options;
         }
 
-        private ScriptHostOptionsSetup CreateSetupWithConfiguration(Dictionary<string, string> settings = null, IEnvironment environment = null)
+        private ScriptJobHostOptionsSetup CreateSetupWithConfiguration(Dictionary<string, string> settings = null, IEnvironment environment = null)
         {
             var builder = new ConfigurationBuilder();
             environment = environment ?? SystemEnvironment.Instance;
@@ -348,7 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
             var configuration = builder.Build();
 
-            return new ScriptHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
+            return new ScriptJobHostOptionsSetup(configuration, environment, new OptionsWrapper<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions()));
         }
     }
 }

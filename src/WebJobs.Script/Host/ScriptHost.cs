@@ -185,6 +185,8 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public bool IsStandbyHost => ScriptOptions.IsStandbyConfiguration;
+
         public ScriptSettingsManager SettingsManager
         {
             get

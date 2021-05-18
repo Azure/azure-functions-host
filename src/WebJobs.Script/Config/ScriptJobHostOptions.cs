@@ -117,5 +117,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets a value indicating whether the filesystem is read-only.
         /// </summary>
         public bool IsFileSystemReadOnly { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the ScriptHost is in standby mode.
+        /// </summary>
+        public bool IsStandbyConfiguration { get; set; }
     }
 }
