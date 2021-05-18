@@ -142,10 +142,6 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     (New-Object System.Net.WebClient).DownloadFile($baseZipUrl, "BaseZipDirectory\Functions.$majorMinorVersion.0.zip")
     Write-Host "Download complete"
 
-    # Write-Host "Downloading from $baseZipUrl"
-    # Invoke-WebRequest -Uri $baseZipUrl -OutFile "BaseZipDirectory\Functions.$majorMinorVersion.0.zip"
-    # Write-Host "Download complete"
-
     # Extract zip
     Expand-Archive -LiteralPath "BaseZipDirectory\Functions.$majorMinorVersion.0.zip" -DestinationPath "BaseZipDirectory\Extracted"
     
@@ -158,7 +154,6 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
 
     # Copy extensions.xml as is
-    # Copy-Item "$siteExtensionPath\extension.xml" -Destination "$zipOutput\extension.xml"
     Copy-Item "$siteExtensionPath\extension.xml" -Destination "$patchedContentDirectory\extension.xml"
 
     # Read hashes.txt for base
