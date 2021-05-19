@@ -132,25 +132,27 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     Write-Host "SiteExtensionPath is $siteExtensionPath"
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
     $baseVersion = "$majorMinorVersion.0"
+    $baseZipPath = "$buildOutput\BaseZipDirectory"
+    $baseExtractedPath = "$buildOutput\BaseZipDirectory\Extracted"
     
     # Try to download base version
-    New-Item -Itemtype "directory" -path "BaseZipDirectory" -Force > $null
-    New-Item -Itemtype "directory" -path "BaseZipDirectory\Extracted" -Force > $null
+    New-Item -Itemtype "directory" -path "$baseZipPath" -Force > $null
+    New-Item -Itemtype "directory" -path "$baseExtractedPath" -Force > $null
     $baseZipUrl = "https://github.com/Azure/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
 
     Write-Host "Downloading from $baseZipUrl"
-    (New-Object System.Net.WebClient).DownloadFile($baseZipUrl, "BaseZipDirectory\Functions.$majorMinorVersion.0.zip")
+    (New-Object System.Net.WebClient).DownloadFile($baseZipUrl, "$baseZipPath\Functions.$majorMinorVersion.0.zip")
     Write-Host "Download complete"
 
     # Extract zip
-    Expand-Archive -LiteralPath "BaseZipDirectory\Functions.$majorMinorVersion.0.zip" -DestinationPath "BaseZipDirectory\Extracted"
+    Expand-Archive -LiteralPath "$baseZipPath\Functions.$majorMinorVersion.0.zip" -DestinationPath "$baseExtractedPath"
     
     # Create directory for patch
     $zipOutput = "$buildOutput\PatchedSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
 
     # Create directory for content
-    $patchedContentDirectory = "PatchedSiteExtension"
+    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
     New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
 
     # Copy extensions.xml as is
@@ -158,7 +160,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 
     # Read hashes.txt for base
     $hashForBase = @{}
-    foreach($line in Get-Content "BaseZipDirectory\Extracted\$baseVersion\hashesForHardlinks.txt") {
+    foreach($line in Get-Content "$baseExtractedPath\$baseVersion\hashesForHardlinks.txt") {
       $lineContents = $line.Split(" ")
       $hashKey = $lineContents[1].Split(":")[1]
       $hashValue = $lineContents[0].Split(":")[1]
