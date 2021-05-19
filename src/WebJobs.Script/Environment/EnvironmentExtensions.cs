@@ -190,7 +190,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsDynamicSku(this IEnvironment environment)
         {
-            return environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium() || environment.IsLinuxConsumption();
+            return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();
+        }
+
+        public static bool IsConsumptionSku(this IEnvironment environment)
+        {
+            return environment.IsWindowsConsumption() || environment.IsLinuxConsumption();
         }
 
         /// <summary>
