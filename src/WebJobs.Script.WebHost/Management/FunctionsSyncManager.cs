@@ -387,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
             {
-                _logger.LogWarning($"Unable to find host configuration file '{scriptPath}'. : {ex.Message} : {ex.StackTrace}");
+                _logger.LogWarning($"Unable to find host configuration file '{scriptPath}'. : {ex}");
                 return defaultJObject;
             }
         }
