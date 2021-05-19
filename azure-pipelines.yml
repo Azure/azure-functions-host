@@ -281,7 +281,7 @@ jobs:
     artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
-  - publish: $(Build.ArtifactStagingDirectory)\PatchedSiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
     condition: and(succeeded(), ne(variables['patchVersion'], '0'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension

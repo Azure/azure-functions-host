@@ -149,7 +149,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     Expand-Archive -LiteralPath "$baseZipPath\Functions.$majorMinorVersion.0.zip" -DestinationPath "$baseExtractedPath"
     
     # Create directory for patch
-    $zipOutput = "$buildOutput\PatchedSiteExtension"
+    $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
 
     # Create directory for content
