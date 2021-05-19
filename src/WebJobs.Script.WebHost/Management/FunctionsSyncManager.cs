@@ -304,6 +304,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
+            // Add host.json to the pyaload
+            result.Add("host.json", GetHostJson());
+
             // Add functions secrets to the payload
             // Only secret types we own/control can we cache directly
             // Encryption is handled by Antares before storage
@@ -364,6 +367,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Content = json,
                 Count = count
             };
+        }
+
+        internal JObject GetHostJson()
+        {
+            var defaultJObject = new JObject();
+            var scriptPath = _applicationHostOptions.CurrentValue?.ScriptPath;
+            string hostFilePath = Path.Combine(scriptPath, ScriptConstants.HostMetadataFileName);
+            try
+            {
+                _logger.LogInformation("Reading host.json for SyncTrigger.");
+                string json = File.ReadAllText(scriptPath);
+                return JObject.Parse(json);
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning($"Unable to parse host configuration file '{scriptPath}'. : {ex.Message} : {ex.StackTrace}");
+                return defaultJObject;
+            }
+            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                _logger.LogWarning($"Unable to find host configuration file '{scriptPath}'. : {ex.Message} : {ex.StackTrace}");
+                return defaultJObject;
+            }
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
