@@ -197,5 +197,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
             Assert.Equal(suffix, testEnvironment.GetVaultSuffix());
         }
+
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku, true)]
+        [InlineData("test", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void Returns_IsWindowsConsumption(string websiteSku, bool isWindowsElasticPremium)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsWindowsConsumption());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsConsumptionSku());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsDynamicSku());
+        }
+
+        [Theory]
+        [InlineData("website-instance-id", "container-name", false)]
+        [InlineData("website-instance-id", "", false)]
+        [InlineData("website-instance-id", null, false)]
+        [InlineData("", "container-name", true)]
+        [InlineData(null, "container-name", true)]
+        [InlineData("", "", false)]
+        [InlineData(null, "", false)]
+        [InlineData("", null, false)]
+        [InlineData(null, null, false)]
+        public void Returns_IsLinuxConsumption(string websiteInstanceId, string containerName, bool isLinuxConsumption)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsLinuxConsumption());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsConsumptionSku());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsDynamicSku());
+        }
+
+        [Theory]
+        [InlineData(ScriptConstants.ElasticPremiumSku, true)]
+        [InlineData("test", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void Returns_IsWindowsElasticPremium(string websiteSku, bool isWindowsElasticPremium)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsWindowsElasticPremium());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsDynamicSku());
+            Assert.False(testEnvironment.IsConsumptionSku());
+        }
     }
 }
