@@ -54,7 +54,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.3" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.3-11847" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.28" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.29-11848" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.2-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />
