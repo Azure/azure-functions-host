@@ -304,10 +304,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
+            // TODO discuss more about the proper refactoring for GetHostJsonExtensionsAsync()
             // Add host.json to the payload
             if (_environment.IsKubernetesManagedHosting())
             {
-                result.Add("host.json", GetHostJson());
+                result.Add("extensions", await GetHostJsonExtensionsAsync());
             }
 
             // Add functions secrets to the payload
@@ -352,7 +353,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             string json = JsonConvert.SerializeObject(result);
-            if (json.Length > ScriptConstants.MaxTriggersStringLength)
+
+            // TODO Avoiding max request size limit operartion for Kubernetes Environment
+            if (json.Length > ScriptConstants.MaxTriggersStringLength && !_environment.IsKubernetesManagedHosting())
             {
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
@@ -372,7 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal Task<JObject> GetHostJsonAsync()
+        internal async Task<JObject> GetHostJsonExtensionsAsync()
         {
             var defaultJObject = new JObject();
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
@@ -381,7 +384,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 _logger.LogInformation("Reading host.json for SyncTrigger.");
                 return JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
-
             }
             catch (JsonException ex)
             {
