@@ -80,7 +80,7 @@ jobs:
     inputs:
       ConnectedServiceName: 'ESRP Service'
       FolderPath: 'packages'
-      Pattern: 'Microsoft.Azure.Functions.Analyzers*.dll'
+      Pattern: 'Microsoft.Azure.Functions.Analyzers*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
         [
