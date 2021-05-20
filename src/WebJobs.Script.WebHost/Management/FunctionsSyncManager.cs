@@ -304,8 +304,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
-            // Add host.json to the pyaload
-            result.Add("host.json", GetHostJson());
+            // Add host.json to the payload
+            if (_environment.IsKubernetesManagedHosting())
+            {
+                result.Add("host.json", GetHostJson());
+            }
 
             // Add functions secrets to the payload
             // Only secret types we own/control can we cache directly

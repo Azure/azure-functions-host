@@ -145,11 +145,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
         }
 
-        private void CreateDefaultHostJson()
-        {
-            ResetMockFileSystem(new JObject().ToString());
-        }
-
         private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
         {
             var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent);
@@ -216,7 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled)
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
-            CreateDefaultHostJson();
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -281,7 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Console.WriteLine($"***: {message}");
             }
             Console.WriteLine("******************* VerifyResultWithCacheOne Search end");
-            var log = logs[1];
+            var log = logs[0];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
@@ -352,16 +346,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
-                Assert.True(logMessages[1].StartsWith("Making SyncTriggers request"));
-                var startIdx = logMessages[1].IndexOf("Content=") + 8;
-                var endIdx = logMessages[1].LastIndexOf(')');
+                Assert.True(logMessages[0].StartsWith("Making SyncTriggers request"));
+                var startIdx = logMessages[0].IndexOf("Content=") + 8;
+                var endIdx = logMessages[0].LastIndexOf(')');
                 var sanitizedContent = logMessages[1].Substring(startIdx, endIdx - startIdx);
                 var sanitizedObject = JObject.Parse(sanitizedContent);
                 JToken value = null;
                 var secretsLogged = sanitizedObject.TryGetValue("secrets", out value);
                 Assert.False(secretsLogged);
-                Assert.Equal("SyncTriggers call succeeded.", logMessages[2]);
-                Assert.Equal($"SyncTriggers hash updated to '{hash}'", logMessages[3]);
+                Assert.Equal("SyncTriggers call succeeded.", logMessages[1]);
+                Assert.Equal($"SyncTriggers hash updated to '{hash}'", logMessages[2]);
 
                 // now sync again - don't expect a sync triggers call this time
                 _loggerProvider.ClearAllLogMessages();
@@ -390,7 +384,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated()
         {
-            CreateDefaultHostJson();
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
@@ -419,8 +412,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     Console.WriteLine($"***: {message}");
                 }
                 Console.WriteLine("******************* Log Contents Search end");
-                Assert.True(logMessages[1].Contains("Content="));
-                Assert.Equal(expectedErrorMessage, logMessages[1]);
+                Assert.True(logMessages[0].Contains("Content="));
+                Assert.Equal(expectedErrorMessage, logMessages[0]);
             }
         }
 
