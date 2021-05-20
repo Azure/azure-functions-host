@@ -145,6 +145,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
         }
 
+        private void CreateDefaultHostJson()
+        {
+            ResetMockFileSystem(new JObject().ToString());
+        }
+
         private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
         {
             var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent);
@@ -211,6 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         public async Task TrySyncTriggers_PostsExpectedContent(bool cacheEnabled)
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
+            CreateDefaultHostJson();
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
@@ -269,6 +275,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
+            Console.WriteLine("******************* VerifyResultWithCacheOne Search start");
+            foreach (var message in logs)
+            {
+                Console.WriteLine($"***: {message}");
+            }
+            Console.WriteLine("******************* VerifyResultWithCacheOne Search end");
             var log = logs[1];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
@@ -378,6 +390,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated()
         {
+            CreateDefaultHostJson();
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
