@@ -95,6 +95,12 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
                     return new Type[0];
                 }
+
+                if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+                {
+                    // Calling this log statement in the placeholder mode to avoid jitting during specializtion
+                    _logger.ScriptStartNotLoadingExtensionBundle(extensionsPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
+                }
                 _logger.ScriptStartUpLoadingExtensionBundle(extensionsPath);
             }
             else
