@@ -400,6 +400,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
+                Console.WriteLine("******************* Log Contents Search start");
+                foreach (var message in logMessages)
+                {
+                    Console.WriteLine($"***: {message}");
+                }
+                Console.WriteLine("******************* Log Contents Search end");
                 Assert.True(logMessages[1].Contains("Content="));
                 Assert.Equal(expectedErrorMessage, logMessages[1]);
             }
