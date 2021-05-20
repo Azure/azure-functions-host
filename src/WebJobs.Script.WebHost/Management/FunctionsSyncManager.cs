@@ -372,25 +372,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal JObject GetHostJson()
+        internal Task<JObject> GetHostJsonAsync()
         {
             var defaultJObject = new JObject();
-            var scriptPath = _applicationHostOptions.CurrentValue?.ScriptPath;
-            string hostFilePath = Path.Combine(scriptPath, ScriptConstants.HostMetadataFileName);
+            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
+            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
             try
             {
                 _logger.LogInformation("Reading host.json for SyncTrigger.");
-                string json = File.ReadAllText(scriptPath);
-                return JObject.Parse(json);
+                return JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning($"Unable to parse host configuration file '{hostFilePath}'. : {ex}");
+                _logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
                 return defaultJObject;
             }
             catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
             {
-                _logger.LogWarning($"Unable to find host configuration file '{hostFilePath}'. : {ex}");
+                _logger.LogWarning($"Unable to find host configuration file '{hostJsonPath}'. : {ex}");
                 return defaultJObject;
             }
         }
