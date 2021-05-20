@@ -382,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning($"Unable to parse host configuration file '{scriptPath}'. : {ex.Message} : {ex.StackTrace}");
+                _logger.LogWarning($"Unable to parse host configuration file '{scriptPath}'. : {ex}");
                 return defaultJObject;
             }
             catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
