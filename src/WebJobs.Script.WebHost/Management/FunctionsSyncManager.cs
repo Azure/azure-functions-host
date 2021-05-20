@@ -304,11 +304,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
-            // TODO discuss more about the proper refactoring for GetHostJsonExtensionsAsync()
-            // Add host.json to the payload
+            // TEMP: refactor this code to properly add extensions in all scenario(#7394)
+            // Add the host.json extensions to the payload
             if (_environment.IsKubernetesManagedHosting())
             {
-                result.Add("extensions", await GetHostJsonExtensionsAsync());
+                JObject extensionsPayload = await GetHostJsonExtensionsAsync();
+                if (extensionsPayload != null)
+                {
+                    result.Add("extensions", extensionsPayload);
+                }
             }
 
             // Add functions secrets to the payload
@@ -354,7 +358,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             string json = JsonConvert.SerializeObject(result);
 
-            // TODO Avoiding max request size limit operartion for Kubernetes Environment
             if (json.Length > ScriptConstants.MaxTriggersStringLength && !_environment.IsKubernetesManagedHosting())
             {
                 // The settriggers call to the FE enforces a max request size
@@ -377,32 +380,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         internal async Task<JObject> GetHostJsonExtensionsAsync()
         {
-            var defaultJObject = new JObject();
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
-            try
+            if (FileUtility.FileExists(hostJsonPath))
             {
-                _logger.LogInformation("Reading host.json for SyncTrigger.");
-                var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
-                if (hostJson.TryGetValue("extensions", out JToken token))
+                try
                 {
-                    return (JObject)token;
+                    _logger.LogInformation("Reading host.json for SyncTrigger.");
+                    var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+                    if (hostJson.TryGetValue("extensions", out JToken token))
+                    {
+                        return (JObject)token;
+                    }
+                    else
+                    {
+                        return null;
+                    }
                 }
-                else
+                catch (JsonException ex)
                 {
-                    return defaultJObject;
+                    _logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
+                    return null;
                 }
             }
-            catch (JsonException ex)
-            {
-                _logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
-                return defaultJObject;
-            }
-            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
-            {
-                _logger.LogWarning($"Unable to find host configuration file '{hostJsonPath}'. : {ex}");
-                return defaultJObject;
-            }
+
+            return null;
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
