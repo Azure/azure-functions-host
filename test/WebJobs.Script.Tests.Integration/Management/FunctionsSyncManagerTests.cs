@@ -269,7 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-            var log = logs[0];
+            var log = logs[1];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
@@ -340,16 +340,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
-                Assert.True(logMessages[0].StartsWith("Making SyncTriggers request"));
-                var startIdx = logMessages[0].IndexOf("Content=") + 8;
-                var endIdx = logMessages[0].LastIndexOf(')');
-                var sanitizedContent = logMessages[0].Substring(startIdx, endIdx - startIdx);
+                Assert.True(logMessages[1].StartsWith("Making SyncTriggers request"));
+                var startIdx = logMessages[1].IndexOf("Content=") + 8;
+                var endIdx = logMessages[1].LastIndexOf(')');
+                var sanitizedContent = logMessages[1].Substring(startIdx, endIdx - startIdx);
                 var sanitizedObject = JObject.Parse(sanitizedContent);
                 JToken value = null;
                 var secretsLogged = sanitizedObject.TryGetValue("secrets", out value);
                 Assert.False(secretsLogged);
-                Assert.Equal("SyncTriggers call succeeded.", logMessages[1]);
-                Assert.Equal($"SyncTriggers hash updated to '{hash}'", logMessages[2]);
+                Assert.Equal("SyncTriggers call succeeded.", logMessages[2]);
+                Assert.Equal($"SyncTriggers hash updated to '{hash}'", logMessages[3]);
 
                 // now sync again - don't expect a sync triggers call this time
                 _loggerProvider.ClearAllLogMessages();
@@ -400,7 +400,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
-                Assert.True(logMessages[0].Contains("Content="));
+                Assert.True(logMessages[1].Contains("Content="));
                 Assert.Equal(expectedErrorMessage, logMessages[1]);
             }
         }
