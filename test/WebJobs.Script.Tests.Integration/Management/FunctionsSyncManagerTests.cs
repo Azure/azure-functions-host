@@ -344,7 +344,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(logMessages[0].StartsWith("Making SyncTriggers request"));
                 var startIdx = logMessages[0].IndexOf("Content=") + 8;
                 var endIdx = logMessages[0].LastIndexOf(')');
-                var sanitizedContent = logMessages[1].Substring(startIdx, endIdx - startIdx);
+                var sanitizedContent = logMessages[0].Substring(startIdx, endIdx - startIdx);
                 var sanitizedObject = JObject.Parse(sanitizedContent);
                 JToken value = null;
                 var secretsLogged = sanitizedObject.TryGetValue("secrets", out value);
@@ -403,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
 
                 Assert.True(logMessages[0].Contains("Content="));
-                Assert.Equal(expectedErrorMessage, logMessages[0]);
+                Assert.Equal(expectedErrorMessage, logMessages[1]);
             }
         }
 
