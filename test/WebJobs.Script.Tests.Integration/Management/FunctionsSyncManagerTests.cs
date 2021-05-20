@@ -269,12 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-            Console.WriteLine("******************* VerifyResultWithCacheOne Search start");
-            foreach (var message in logs)
-            {
-                Console.WriteLine($"***: {message}");
-            }
-            Console.WriteLine("******************* VerifyResultWithCacheOne Search end");
+
             var log = logs[0];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
@@ -406,12 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
-                Console.WriteLine("******************* Log Contents Search start");
-                foreach (var message in logMessages)
-                {
-                    Console.WriteLine($"***: {message}");
-                }
-                Console.WriteLine("******************* Log Contents Search end");
+
                 Assert.True(logMessages[0].Contains("Content="));
                 Assert.Equal(expectedErrorMessage, logMessages[0]);
             }
