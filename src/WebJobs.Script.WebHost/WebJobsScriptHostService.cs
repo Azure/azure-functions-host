@@ -705,12 +705,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                             }
                         }, cancellationToken);
 
-                        GetHostLogger(instance).LogDebug("Standby ScriptHost marked for disposal");
+                        _logger.LogDebug("Standby ScriptHost marked for disposal");
                     }
                     else
                     {
                         instance.Dispose();
-                        GetHostLogger(instance).LogDebug("ScriptHost disposed");
+                        _logger.LogDebug("ScriptHost disposed");
                     }
                 }
             }
