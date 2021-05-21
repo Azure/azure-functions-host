@@ -69,28 +69,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(HostJsonWithWrongExtensions, true, false, "")]
         public async Task GetHostJsonExtensionsAsyncTest(string hostJsonContents, bool isNull, bool skipWriteFile, string value)
         {
-            var logger = new Mock<ILogger>();
-            var monitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
-            var options = new ScriptApplicationHostOptions();
-            var scriptPath = GetTempDirectory();
-            var hostJsonPath = Path.Combine(scriptPath, "host.json");
-            if (!skipWriteFile)
+            string scriptPath = string.Empty;
+            try
             {
-                await FileUtility.WriteAsync(hostJsonPath, hostJsonContents);
-            }
+                var logger = new Mock<ILogger>();
+                var monitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                var options = new ScriptApplicationHostOptions();
+                scriptPath = GetTempDirectory();
+                var hostJsonPath = Path.Combine(scriptPath, "host.json");
+                if (!skipWriteFile)
+                {
+                    await FileUtility.WriteAsync(hostJsonPath, hostJsonContents);
+                }
 
-            options.ScriptPath = scriptPath;
-            monitor.Setup(x => x.CurrentValue).Returns(options);
-            var json = await FunctionsSyncManager.GetHostJsonExtensionsAsync(monitor.Object, logger.Object);
-            if (isNull)
-            {
-                Assert.Null(json);
+                options.ScriptPath = scriptPath;
+                monitor.Setup(x => x.CurrentValue).Returns(options);
+                var json = await FunctionsSyncManager.GetHostJsonExtensionsAsync(monitor.Object, logger.Object);
+                if (isNull)
+                {
+                    Assert.Null(json);
+                }
+                else
+                {
+                    Assert.Equal(value, json["queues"]?["maxPollingInterval"]);
+                }
             }
-            else
+            finally
             {
-                Assert.Equal(value, json["queues"]?["maxPollingInterval"]);
+                await FileUtility.DeleteDirectoryAsync(scriptPath, true);
             }
-            await FileUtility.DeleteDirectoryAsync(scriptPath, true);
         }
 
         private string GetTempDirectory()
