@@ -87,6 +87,14 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
 
             bool isLegacyExtensionBundle = _extensionBundleManager.IsLegacyExtensionBundle();
+
+            if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
+            {
+                // Do not move this.
+                // Calling this log statement in the placeholder mode to avoid jitting during specializtion
+                _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
+            }
+
             if (bundleConfigured && (!isPrecompiledFunctionApp || _extensionBundleManager.IsLegacyExtensionBundle()))
             {
                 extensionsPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
