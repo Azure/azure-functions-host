@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Add the host.json extensions to the payload
             if (_environment.IsKubernetesManagedHosting())
             {
-                JObject extensionsPayload = await GetHostJsonExtensionsAsync();
+                JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
                 if (extensionsPayload != null)
                 {
                     result.Add("extensions", extensionsPayload);
@@ -378,9 +378,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal async Task<JObject> GetHostJsonExtensionsAsync()
+        internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
         {
-            var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
+            var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
             if (FileUtility.FileExists(hostJsonPath))
             {
@@ -398,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
+                    logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
                     return null;
                 }
             }
