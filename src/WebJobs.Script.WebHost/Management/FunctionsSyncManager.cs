@@ -386,7 +386,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 try
                 {
-                    _logger.LogInformation("Reading host.json for SyncTrigger.");
                     var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
                     if (hostJson.TryGetValue("extensions", out JToken token))
                     {
