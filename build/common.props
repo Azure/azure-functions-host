@@ -4,12 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
     <MajorVersion>3</MajorVersion>
-    <MinorVersion>1</MinorVersion>  <!--This will be incremented by automation-->
+    <MinorVersion>1</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
-    <!--<Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix)-$(VersionSuffix)</Version>-->
-    <!--<Version Condition=" '$(BuildNumber)' != '' ">$(Version).$(BuildNumber)</Version>-->
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
     <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).0</FileVersion>

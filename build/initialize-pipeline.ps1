@@ -30,3 +30,7 @@ $XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
   Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$patchVersion"
   Write-Host "Setting 'PatchVersion' to $patchVersion"
 }
+
+#Update buildnumber with the same (Will be used by release pipelines)
+$customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
+Write-Host "##vso[build.updatebuildnumber]$customBuildNumber"
