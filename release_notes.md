@@ -10,6 +10,7 @@
 - Add IDistributedLockManager for Kubernetes environment (#7327)
 - Call EnableDrainModeAsync on ApplicationStopping (#7262)
 - Added Roslyn analyzer projects and avoid async void analyzer (#5612)
+- Updated Node Worker to [2.1.2](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v2.1.2)
 
 **Release sprint:** Sprint 100
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Afeature+is%3Aclosed) ]
