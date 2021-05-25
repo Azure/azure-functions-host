@@ -1,8 +1,5 @@
-variables:
-  versionNumber: '3.x.0'
-  buildNumber: $[ counter(variables['versionNumber'], 1) ]
-
-name: '$(versionNumber).$(buildNumber)'
+variables:  
+   buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
 
 pr:
   branches:
@@ -34,7 +31,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      arguments: '-buildNumber ''$(buildNumber)'''
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))

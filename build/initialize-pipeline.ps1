@@ -1,4 +1,9 @@
+param (
+  [string]$buildNumber
+)
+
 $buildReason = $env:BUILD_REASON
+$sourceBranch = $env:BUILD_SOURCEBRANCH
 
 if ($buildReason -eq "PullRequest") {
   # parse PR title to see if we should pack this
@@ -33,4 +38,8 @@ $XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
 
 #Update buildnumber with the same (Will be used by release pipelines)
 $customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
+if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
+{
+  $customBuildNumber = "$customBuildNumber-$buildNumber"
+}
 Write-Host "##vso[build.updatebuildnumber]$customBuildNumber"
