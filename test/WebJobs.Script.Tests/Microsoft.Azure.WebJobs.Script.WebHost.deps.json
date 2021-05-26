@@ -531,8 +531,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -555,8 +555,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.ApplicationInsights.AspNetCore.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -571,8 +571,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.DependencyCollector.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -585,8 +585,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.EventCounterCollector.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -601,8 +601,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.PerfCounterCollector.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -635,8 +635,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.WindowsServer.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -650,8 +650,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.ServerTelemetryChannel.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
@@ -2208,8 +2208,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Extensions.Logging.ApplicationInsights.dll": {
-            "assemblyVersion": "2.16.0.18277",
-            "fileVersion": "2.16.0.18277"
+            "assemblyVersion": "2.17.0.146",
+            "fileVersion": "2.17.0.146"
           }
         },
         "compile": {
