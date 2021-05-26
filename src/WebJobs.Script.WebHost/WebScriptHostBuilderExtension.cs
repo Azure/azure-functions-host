@@ -76,6 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging))
                     {
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
+                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
+                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
                     }
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
@@ -113,12 +115,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
-
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging))
-                    {
-                        services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
-                        services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
-                    }
 
                     if (environment.IsWindowsAzureManagedHosting() || environment.IsLinuxAzureManagedHosting())
                     {
