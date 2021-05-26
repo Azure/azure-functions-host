@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 
                 logger.LogDiagnosticEvent(LogLevel.Error, 123, "FN123", "Actionable event occured", "https://fwlink", null);
 
-                logger.LogInformation("Error code: {errorCode}, Error Message: {message}, HelpLink: {helpLink}", "Erro123", "Unknown Error", "http://helpLink");
+                logger.LogInformation("Error code: {MS_errorCode}, Error Message: {message}, HelpLink: {MS_HelpLink}", "Erro123", "Unknown Error", "http://helpLink");
             }
 
             Assert.Equal(repository.Events.Count, 1);
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             using (var provider = new DiagnosticEventLoggerProvider(repositoryFactory, environment))
             {
                 var logger = provider.CreateLogger("MS_DiagnosticEvents");
-                logger.LogInformation("Error code: {errorCode}, Error Message: {message}, HelpLink: {helpLink}", "Erro123", "Unknown Error", "http://helpLink");
+                logger.LogInformation("Error code: {MS_errorCode}, Error Message: {message}, HelpLink: {MS_HelpLink}", "Erro123", "Unknown Error", "http://helpLink");
 
                 environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 

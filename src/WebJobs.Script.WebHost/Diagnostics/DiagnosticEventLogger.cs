@@ -11,12 +11,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     public class DiagnosticEventLogger : ILogger
     {
-        private const string ErrorCode = "errorCode";
-        private const string HelpLink = "helpLink";
         private readonly IDiagnosticEventRepositoryFactory _diagnosticEventRepositoryFactory;
         private readonly IEnvironment _environment;
         private IDiagnosticEventRepository _diagnosticEventRepository;
-        private Lazy<bool> isDiagnosticEventLoggingEnabled = new Lazy<bool>(() => FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging));
 
         public DiagnosticEventLogger(IDiagnosticEventRepositoryFactory diagnosticEventRepositoryFactory, IEnvironment environment)
         {
@@ -31,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            return !_environment.IsPlaceholderModeEnabled() && isDiagnosticEventLoggingEnabled.Value;
+            return !_environment.IsPlaceholderModeEnabled();
         }
 
         private bool IsDiagnosticEvent(IDictionary<string, object> state)
@@ -53,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     _diagnosticEventRepository = _diagnosticEventRepositoryFactory.Create();
                 }
-                _diagnosticEventRepository.WriteDiagnosticEvent(DateTime.UtcNow, stateInfo[ErrorCode].ToString(), logLevel, message, stateInfo[HelpLink].ToString(), exception);
+                _diagnosticEventRepository.WriteDiagnosticEvent(DateTime.UtcNow, stateInfo[ScriptConstants.ErrorCodeKey].ToString(), logLevel, message, stateInfo[ScriptConstants.HelpLinkKey].ToString(), exception);
             }
         }
     }
