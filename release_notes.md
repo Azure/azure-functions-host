@@ -3,6 +3,7 @@
 - My change description (#PR)
 -->
 - Update Python Worker Version to [1.2.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.1)
+- Capture diagnostic events
 
 - Added a feature flag to opt out of the default behavior where the host sets the environment name to `Development` when running in debug mode. To disable the behavior, set the app setting: `AzureWebJobsFeatureFlags` to `DisableDevModeInDebug`
 - Reorder CORS and EasyAuth middleware to prevent EasyAuth from blocking CORS requests (#7315)
