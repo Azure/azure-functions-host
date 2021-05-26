@@ -42,5 +42,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             Assert.Equal(expected, activity1.Equals(activity2));
             Assert.Equal(expected ? 1 : 2, hashSet.Count);
         }
+
+        [Theory]
+        [InlineData(ExecutionStage.Started, true, false)]
+        [InlineData(ExecutionStage.Started, false, false)]
+        [InlineData(ExecutionStage.InProgress, true, true)]
+        [InlineData(ExecutionStage.InProgress, false, true)]
+        [InlineData(ExecutionStage.Finished, true, true)]
+        [InlineData(ExecutionStage.Finished, false, false)]
+        [InlineData(ExecutionStage.Failed, true, false)]
+        [InlineData(ExecutionStage.Failed, false, false)]
+        [InlineData(ExecutionStage.Succeeded, true, false)]
+        [InlineData(ExecutionStage.Succeeded, false, false)]
+        public void Returns_IsFunctionalActivity(ExecutionStage stage, bool isSuccess, bool isFunctionalActivity)
+        {
+            var activity =
+                new ContainerFunctionExecutionActivity(DateTime.UtcNow, string.Empty, stage, string.Empty, isSuccess);
+            Assert.Equal(isFunctionalActivity, activity.IsFunctional());
+        }
     }
 }

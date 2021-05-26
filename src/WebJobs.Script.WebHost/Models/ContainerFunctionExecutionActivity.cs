@@ -69,5 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
                 return hashCode;
             }
         }
+
+        public bool IsFunctional()
+        {
+            return ExecutionStage == ExecutionStage.InProgress ||
+                   (ExecutionStage == ExecutionStage.Finished && Success);
+        }
     }
 }

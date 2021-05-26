@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string BindMountOperation = "bind-mount";
         public const string SquashFsOperation = "squashfs";
         public const string ZipOperation = "zip";
+        private const string AddFES = "add-fes";
         private readonly HttpClient _client;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -67,13 +68,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task PublishContainerActivity(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
-            _logger.LogDebug($"Publishing {activities.Count()} container activities");
+            var activityRequest = new ContainerFunctionExecutionActivityRequest(activities);
+            _logger.LogDebug(
+                $"Publishing {activityRequest.Activities.Count()} container activities. Total functional events = {activityRequest.FunctionalActivitiesCount}");
 
             try
             {
                 await Utility.InvokeWithRetriesAsync(async () =>
                 {
-                    await PublishActivities(activities);
+                    await PublishActivities(activityRequest);
                 }, 2, TimeSpan.FromSeconds(0.5));
             }
             catch (Exception e)
@@ -119,15 +122,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             httpResponseMessage.EnsureSuccessStatusCode();
         }
 
-        private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)
+        private async Task PublishActivities(ContainerFunctionExecutionActivityRequest activityRequest)
         {
             // Log one of the activities being published for debugging.
-            _logger.LogDebug($"Publishing function execution activity {activities.FirstOrDefault()}");
+            _logger.LogDebug($"Publishing function execution activity {activityRequest.Activities.FirstOrDefault()}");
 
             var operation = new[]
             {
-                new KeyValuePair<string, string>(Operation, "add-fes"),
-                new KeyValuePair<string, string>("content", JsonConvert.SerializeObject(activities)),
+                new KeyValuePair<string, string>(Operation, AddFES),
+                new KeyValuePair<string, string>("content", JsonConvert.SerializeObject(activityRequest)),
             };
 
             var response = await SendAsync(operation);

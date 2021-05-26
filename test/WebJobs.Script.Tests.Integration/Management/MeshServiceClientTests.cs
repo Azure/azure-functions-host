@@ -51,15 +51,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                    string.Equals(targetPath, formData["targetPath"]);
         }
 
-        private static bool IsPublishExecutionStatusRequest(HttpRequestMessage request, params ContainerFunctionExecutionActivity[] expectedActivities)
+        private static bool IsPublishExecutionStatusRequest(HttpRequestMessage request, IEnumerable<ContainerFunctionExecutionActivity> expectedActivities, int expectedFunctionalActivitiesCount)
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             if (string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
                 string.Equals("add-fes", formData["operation"]))
             {
                 var activityContent = formData["content"];
-                var activities = JsonConvert.DeserializeObject<IEnumerable<ContainerFunctionExecutionActivity>>(activityContent);
-                return activities.All(expectedActivities.Contains);
+                var activityRequest = JsonConvert.DeserializeObject<ContainerFunctionExecutionActivityRequest>(activityContent);
+                return activityRequest.Activities.All(expectedActivities.Contains) &&
+                       expectedFunctionalActivitiesCount == activityRequest.FunctionalActivitiesCount;
             }
 
             return false;
@@ -122,11 +123,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 "QueueTrigger", false);
 
             var activities = new List<ContainerFunctionExecutionActivity> {activity};
+            var activityRequest = new ContainerFunctionExecutionActivityRequest(activities);
 
             await _meshServiceClient.PublishContainerActivity(activities);
 
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
-                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activity)),
+                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activityRequest.Activities, 1)),
                 ItExpr.IsAny<CancellationToken>());
         }
 
@@ -147,11 +149,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 "QueueTrigger", true);
 
             var activities = new List<ContainerFunctionExecutionActivity> {activity1, activity2};
+            var activityRequest = new ContainerFunctionExecutionActivityRequest(activities);
 
             await _meshServiceClient.PublishContainerActivity(activities);
 
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Exactly(1),
-                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activity1, activity2)),
+                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activityRequest.Activities, 2)),
                 ItExpr.IsAny<CancellationToken>());
 
         }
@@ -167,15 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 "QueueTrigger", false);
 
             var activity2 = new ContainerFunctionExecutionActivity(DateTime.UtcNow, "func2", ExecutionStage.Finished,
-                "QueueTrigger", true);
+                "QueueTrigger", false);
 
             var activities = new List<ContainerFunctionExecutionActivity> { activity1, activity2 };
+            var activityRequest = new ContainerFunctionExecutionActivityRequest(activities);
 
             await _meshServiceClient.PublishContainerActivity(activities);
 
             // total count = 3 (1 set of activities * 3 retries)
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Exactly(3),
-                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activity1, activity2)),
+                ItExpr.Is<HttpRequestMessage>(r => IsPublishExecutionStatusRequest(r, activityRequest.Activities, 1)),
                 ItExpr.IsAny<CancellationToken>());
 
         }
