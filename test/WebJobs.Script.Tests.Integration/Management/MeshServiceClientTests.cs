@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             if (string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                string.Equals("add-fes", formData["operation"]))
+                string.Equals(MeshServiceClient.AddFES, formData["operation"]))
             {
                 var activityContent = formData["content"];
                 var activities = JsonConvert.DeserializeObject<IEnumerable<ContainerFunctionExecutionActivity>>(activityContent);
@@ -208,6 +208,73 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
                 ItExpr.Is<HttpRequestMessage>(r => IsCreateBindMountRequest(r, sourcePath, targetPath)),
                 ItExpr.IsAny<CancellationToken>());
+        }
+
+        [Fact]
+        public async Task IgnoresGlobalSerializer()
+        {
+            Func<JsonSerializerSettings> defaultSettings = null;
+
+            try
+            {
+                defaultSettings = JsonConvert.DefaultSettings;
+
+                JsonConvert.DefaultSettings = () => new JsonSerializerSettings()
+                {
+                    Converters = new JsonConverter[] {new HelloWorldConverter()}
+                };
+
+                _handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK
+                });
+
+                var activity1 = new ContainerFunctionExecutionActivity(DateTime.UtcNow, "func1", ExecutionStage.InProgress,
+                    "QueueTrigger", false);
+
+                var activity2 = new ContainerFunctionExecutionActivity(DateTime.UtcNow, "func2", ExecutionStage.Finished,
+                    "QueueTrigger", true);
+
+                var activities = new List<ContainerFunctionExecutionActivity> { activity1, activity2 };
+
+                await _meshServiceClient.PublishContainerActivity(activities);
+
+                _handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Exactly(1),
+                    ItExpr.Is<HttpRequestMessage>(r => ContainsActivities(r, activity1, activity2)),
+                    ItExpr.IsAny<CancellationToken>());
+            }
+            finally
+            {
+                JsonConvert.DefaultSettings = defaultSettings;
+            }
+        }
+
+        private static bool ContainsActivities(HttpRequestMessage request, params ContainerFunctionExecutionActivity[] expectedActivities)
+        {
+            var formData = request.Content.ReadAsFormDataAsync().Result;
+            var matchesOperation = string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
+                     string.Equals(MeshServiceClient.AddFES, formData["operation"]);
+            return expectedActivities.Aggregate(matchesOperation, (current, activity) => current && formData["content"].Contains(activity.FunctionName));
+        }
+
+        private class HelloWorldConverter : JsonConverter
+        {
+            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                writer.WriteRaw("Hello World");
+            }
+
+            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+            {
+                throw new NotImplementedException();
+            }
+
+            public override bool CanConvert(Type objectType)
+            {
+                return true;
+            }
         }
     }
 }
