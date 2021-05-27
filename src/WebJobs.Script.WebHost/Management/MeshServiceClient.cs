@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -19,9 +20,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string BindMountOperation = "bind-mount";
         public const string SquashFsOperation = "squashfs";
         public const string ZipOperation = "zip";
+        public const string AddFES = "add-fes";
         private readonly HttpClient _client;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+
+        private static readonly JsonSerializer Serializer = JsonSerializer.Create(new JsonSerializerSettings());
 
         public MeshServiceClient(HttpClient client, IEnvironment environment, ILogger<MeshServiceClient> logger)
         {
@@ -92,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Source = source.ToString()
             };
 
-            var healthEventString = JsonConvert.SerializeObject(healthEvent);
+            var healthEventString = Serialize(healthEvent);
 
             _logger.LogInformation($"Posting health event {healthEventString}");
 
@@ -126,8 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var operation = new[]
             {
-                new KeyValuePair<string, string>(Operation, "add-fes"),
-                new KeyValuePair<string, string>("content", JsonConvert.SerializeObject(activities)),
+                new KeyValuePair<string, string>(Operation, AddFES),
+                new KeyValuePair<string, string>("content", Serialize(activities)),
             };
 
             var response = await SendAsync(operation);
@@ -142,6 +146,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new FormUrlEncodedContent(formData));
             _logger.LogDebug($"Mesh response {res.StatusCode}");
             return res;
+        }
+
+        private static string Serialize<T>(T o)
+        {
+            string serialized;
+            using (var stringWriter = new StringWriter())
+            {
+                Serializer.Serialize(stringWriter, o);
+                serialized = stringWriter.ToString();
+            }
+
+            return serialized;
         }
     }
 }
