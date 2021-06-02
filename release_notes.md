@@ -2,9 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [1.2.1](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.1)
 - Capture diagnostic events
-
 - Added a feature flag to opt out of the default behavior where the host sets the environment name to `Development` when running in debug mode. To disable the behavior, set the app setting: `AzureWebJobsFeatureFlags` to `DisableDevModeInDebug`
 - Reorder CORS and EasyAuth middleware to prevent EasyAuth from blocking CORS requests (#7315)
 - Updated PowerShell Worker (PS7) to [3.0.833](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.833)
@@ -12,6 +10,7 @@
 - Call EnableDrainModeAsync on ApplicationStopping (#7262)
 - Added Roslyn analyzer projects and avoid async void analyzer (#5612)
 - Updated Node Worker to [2.1.2](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v2.1.2)
+- Updated Python Worker to [1.2.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.2)
 
 **Release sprint:** Sprint 100
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Afeature+is%3Aclosed) ]
