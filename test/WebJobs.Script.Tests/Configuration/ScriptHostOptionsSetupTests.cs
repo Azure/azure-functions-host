@@ -104,13 +104,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
         }
 
-        [Fact]
-        public void Configure_AppliesDefaults_IfDynamic()
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public void Configure_AppliesDefaults_IfDynamic(bool isLinuxConsumption, bool isWindowsConsumption)
         {
             var settings = new Dictionary<string, string>();
 
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+            if (isLinuxConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isWindowsConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            }
 
             var options = GetConfiguredOptions(settings, environment);
 
