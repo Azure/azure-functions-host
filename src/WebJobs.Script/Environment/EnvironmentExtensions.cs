@@ -162,7 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         /// <param name="environment">The environment to verify</param>
         /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
-        public static bool IsConsumption(this IEnvironment environment)
+        public static bool IsConsumptionSku(this IEnvironment environment)
         {
             return IsWindowsConsumption(environment) || IsLinuxConsumption(environment);
         }

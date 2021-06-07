@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             }
 
-            Assert.Equal(expectedValue, env.IsConsumption());
+            Assert.Equal(expectedValue, env.IsConsumptionSku());
         }
 
         [Theory]
