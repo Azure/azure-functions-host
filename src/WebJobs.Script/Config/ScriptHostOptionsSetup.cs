@@ -78,9 +78,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             if (options.FunctionTimeout == null)
             {
-                options.FunctionTimeout = _environment.IsWindowsConsumption() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+                options.FunctionTimeout = _environment.IsConsumption() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
             }
-            else if (!_environment.IsWindowsConsumption() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
+            else if (!_environment.IsConsumption() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
             {
                 // If a value of -1 is specified on a dedicated host, it should result in an infinite timeout
                 options.FunctionTimeout = null;

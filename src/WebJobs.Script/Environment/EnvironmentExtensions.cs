@@ -157,6 +157,17 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is running in a Windows or Linux Consumption (dynamic)
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
+        public static bool IsConsumption(this IEnvironment environment)
+        {
+            return IsWindowsConsumption(environment) || IsLinuxConsumption(environment);
+        }
+
+        /// <summary>
         /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
