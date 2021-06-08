@@ -3,6 +3,8 @@
 - My change description (#PR)
 -->
 
+Fixes issue with AzureStorageProvider using the wrong configuration in custom startup scenarios (#7424) [ [bug](https://github.com/Azure/azure-functions-host/issues/7440) ]
+
 **Release sprint:** Sprint 101
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+101%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+101%22+label%3Afeature+is%3Aclosed) ]
 

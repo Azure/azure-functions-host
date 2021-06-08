@@ -20,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -407,6 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // Override configuration
                     services.AddSingleton(configuration);
+                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(services);
                     services.AddAzureStorageProvider();
                     if (storageOptions != null)
                     {
