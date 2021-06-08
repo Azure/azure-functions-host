@@ -9,6 +9,7 @@
 - Updated PowerShell Worker (PS7) to [3.0.833](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.833)
 - Add IDistributedLockManager for Kubernetes environment (#7327)
 - Call EnableDrainModeAsync on ApplicationStopping (#7262)
+- Fixes issue with AzureStorageProvider using the wrong configuration in custom startup scenarios (#7424) [ [bug](https://github.com/Azure/azure-functions-host/issues/7440) ]
 
 **Release sprint:** Sprint 100
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+100%22+label%3Afeature+is%3Aclosed) ]
