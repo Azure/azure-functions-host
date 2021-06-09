@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host;
@@ -394,20 +393,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
-                    for (int i = 0; i < builder.Services.Count; i++)
-                    {
-                        // This is to avoid possible race condition during specialization when disposing old AI listeners created during placeholder mode.
-                        if (builder.Services[i].ServiceType == typeof(ITelemetryModule) && builder.Services[i].ImplementationFactory?.Method.ReturnType == typeof(DependencyTrackingTelemetryModule))
-                        {
-                            builder.Services.RemoveAt(i);
-                            break;
-                        }
-                    }
-
-                    // Disable auto-http tracking when in placeholder mode.
+                    // Disable auto-http and dependency tracking when in placeholder mode.
                     builder.Services.Configure<ApplicationInsightsLoggerOptions>(o =>
                     {
                         o.HttpAutoCollectionOptions.EnableHttpTriggerExtendedInfoCollection = false;
+                        o.EnableDependencyTracking = false;
                     });
                 }
             }
