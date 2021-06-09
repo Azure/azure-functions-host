@@ -68,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var tableProvider = LogFactory.NewLogTableProvider(client);
 
                 ILogger logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
+                logger.LogInformation("AzureWebJobsDashboard is configured");
 
                 string hostId = hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult() ?? "default";
                 string containerName = Environment.MachineName;
