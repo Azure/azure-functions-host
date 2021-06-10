@@ -710,7 +710,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     else
                     {
-                        //DisposeDependencyTrackingModule(instance);
+                        DisposeDependencyTrackingModule(instance);
                         instance.Dispose();
                         _logger.LogDebug("ScriptHost disposed");
                     }
