@@ -721,6 +721,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // A temporary fix until we are able to take App Insights 2.18.0. There is a potential
         // race during disposal where new DiagnosticListeners can throw exceptions after TelemetryConfiguration
         // is disposed, but before this module is disposed. This ensures the module disposes first.
+        // Tracking issue: https://github.com/Azure/azure-functions-host/issues/7450
         private void DisposeDependencyTrackingModule(IHost instance)
         {
             try
