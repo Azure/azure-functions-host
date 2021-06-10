@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
@@ -709,10 +710,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     else
                     {
+                        DisposeDependencyTrackingModule(instance);
                         instance.Dispose();
                         _logger.LogDebug("ScriptHost disposed");
                     }
                 }
+            }
+        }
+
+        // A temporary fix until we are able to take App Insights 2.18.0. There is a potential
+        // race during disposal where new DiagnosticListeners can throw exceptions after TelemetryConfiguration
+        // is disposed, but before this module is disposed. This ensures the module disposes first.
+        // Tracking issue: https://github.com/Azure/azure-functions-host/issues/7450
+        private void DisposeDependencyTrackingModule(IHost instance)
+        {
+            try
+            {
+                var module = instance?.Services.GetServices<ITelemetryModule>()
+                                      .SingleOrDefault(m => m is DependencyTrackingTelemetryModule)
+                                      as IDisposable;
+
+                module?.Dispose();
+
+                _logger.LogDebug($"{nameof(DependencyTrackingTelemetryModule)} disposed.");
+            }
+            catch (Exception ex)
+            {
+                // best effort.
+                _logger.LogDebug($"Unable to dispose {nameof(DependencyTrackingTelemetryModule)}. {ex}");
             }
         }
 
