@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -124,6 +125,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 throw new ArgumentNullException(nameof(eventName));
             }
+
+            eventName = Sanitizer.Sanitize(eventName);
 
             string key = GetAggregateKey(eventName, functionName);
             QueuedEvents.AddOrUpdate(key,
