@@ -60,7 +60,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetTI.BreakingChangeAnalysis" Version="1.1.0-preview" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="3.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.0" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.5" />
