@@ -75,14 +75,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "DotNetTI.BreakingChangeAnalysis",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Marklio.Metadata",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.ApplicationInsights",
       "resolutionPolicy": "runtimeVersion"
     },
