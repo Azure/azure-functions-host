@@ -568,6 +568,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Fact]
+        public async Task UpdateHashAsync_Succeeds()
+        {
+            var hashBlobClient = await _functionsSyncManager.GetHashBlobAsync();
+            await hashBlobClient.DeleteIfExistsAsync();
+
+            // add the hash when it doesn't exist
+            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash1");
+
+            // read the hash and make sure the value is what we wrote
+            string result;
+            var downloadResponse = await hashBlobClient.DownloadAsync();
+            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+            {
+                result = reader.ReadToEnd();
+            }
+            Assert.Equal("hash1", result);
+
+            // now update the existing hash to a new value
+            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash2");
+
+            downloadResponse = await hashBlobClient.DownloadAsync();
+            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+            {
+                result = reader.ReadToEnd();
+            }
+            Assert.Equal("hash2", result);
+        }
+
         private void VerifyLoggedInvalidOperationException(string errorMessage)
         {
             Exception[] messages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(p => p.Level == LogLevel.Error).Select(p => p.Exception).ToArray();
