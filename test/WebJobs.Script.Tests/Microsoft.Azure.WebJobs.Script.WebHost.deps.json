@@ -22,22 +22,21 @@
   },
   "targets": {
     ".NETCoreApp,Version=v3.1": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/3.0.1": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/3.1.0": {
         "dependencies": {
-          "DotNetTI.BreakingChangeAnalysis": "1.1.0-preview",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "3.1.0",
           "Microsoft.AspNetCore.Mvc.NewtonsoftJson": "3.1.0",
           "Microsoft.Azure.AppService.Middleware.Functions": "1.4.5",
           "Microsoft.Azure.AppService.Proxy.Client": "2.0.11020001-fabe022e",
-          "Microsoft.Azure.Functions.PythonWorker": "3.1.2.1",
+          "Microsoft.Azure.Functions.PythonWorker": "3.1.2.3",
           "Microsoft.Azure.KeyVault": "3.0.3",
           "Microsoft.Azure.Services.AppAuthentication": "1.0.3",
           "Microsoft.Azure.Storage.File": "11.1.7",
           "Microsoft.Azure.WebJobs": "3.0.29",
           "Microsoft.Azure.WebJobs.Host.Storage": "4.0.3-11847",
           "Microsoft.Azure.WebJobs.Logging": "4.0.2",
-          "Microsoft.Azure.WebJobs.Script": "3.0.1",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "3.0.1",
+          "Microsoft.Azure.WebJobs.Script": "3.1.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "3.1.0",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.CodeAnalysis": "3.3.1",
           "Microsoft.CodeAnalysis.CSharp": "3.3.1",
@@ -253,7 +252,7 @@
           "System.Numerics": "4.0.0.0",
           "System.Numerics.Vectors.Reference": "4.1.6.0",
           "System.ObjectModel.Reference": "4.1.2.0",
-          "System.Reflection.DispatchProxy.Reference": "4.0.6.0",
+          "System.Reflection.DispatchProxy": "4.0.6.0",
           "System.Reflection.Reference": "4.2.2.0",
           "System.Reflection.Emit.Reference": "4.1.2.0",
           "System.Reflection.Emit.ILGeneration.Reference": "4.1.1.0",
@@ -423,21 +422,6 @@
           "lib/netstandard2.0/Azure.Storage.Common.dll": {}
         }
       },
-      "DotNetTI.BreakingChangeAnalysis/1.1.0-preview": {
-        "dependencies": {
-          "Marklio.Metadata": "1.2.20-beta",
-          "protobuf-net": "3.0.0-alpha.122"
-        },
-        "runtime": {
-          "lib/netcoreapp2.2/DotNetTI.BreakingChangeAnalysis.dll": {
-            "assemblyVersion": "1.1.0.0",
-            "fileVersion": "1.1.0.0"
-          }
-        },
-        "compile": {
-          "lib/netcoreapp2.2/DotNetTI.BreakingChangeAnalysis.dll": {}
-        }
-      },
       "Google.Protobuf/3.11.4": {
         "dependencies": {
           "System.Memory": "4.5.3"
@@ -512,17 +496,6 @@
         },
         "compile": {
           "lib/netstandard2.0/Grpc.Core.Api.dll": {}
-        }
-      },
-      "Marklio.Metadata/1.2.20-beta": {
-        "runtime": {
-          "lib/netstandard2.0/Marklio.Metadata.dll": {
-            "assemblyVersion": "1.2.20.0",
-            "fileVersion": "1.2.20.0"
-          }
-        },
-        "compile": {
-          "lib/netstandard2.0/Marklio.Metadata.dll": {}
         }
       },
       "Microsoft.ApplicationInsights/2.17.0": {
@@ -1115,7 +1088,7 @@
           "System.ComponentModel.Annotations": "4.5.0",
           "System.Configuration.ConfigurationManager": "4.7.0",
           "System.Reactive.Linq": "3.1.1",
-          "protobuf-net": "3.0.0-alpha.122"
+          "protobuf-net": "2.3.3"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Proxy.Common.dll": {
@@ -1209,7 +1182,7 @@
       "Microsoft.Azure.Functions.NodeJsWorker/2.1.2": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS6/3.0.630": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7/3.0.833": {},
-      "Microsoft.Azure.Functions.PythonWorker/3.1.2.1": {},
+      "Microsoft.Azure.Functions.PythonWorker/3.1.2.3": {},
       "Microsoft.Azure.KeyVault/3.0.3": {
         "dependencies": {
           "Microsoft.Azure.KeyVault.WebKey": "3.0.3",
@@ -2908,30 +2881,24 @@
           "lib/netstandard1.6/NuGet.Versioning.dll": {}
         }
       },
-      "protobuf-net/3.0.0-alpha.122": {
+      "protobuf-net/2.3.3": {
         "dependencies": {
-          "System.ServiceModel.Primitives": "4.6.0",
-          "protobuf-net.Core": "3.0.0-alpha.122"
+          "NETStandard.Library": "2.0.1",
+          "System.Reflection.Emit": "4.3.0",
+          "System.Reflection.Emit.ILGeneration": "4.3.0",
+          "System.Reflection.Emit.Lightweight": "4.3.0",
+          "System.Reflection.TypeExtensions": "4.3.0",
+          "System.Runtime.Serialization.Primitives": "4.3.0",
+          "System.Xml.XmlSerializer": "4.3.0"
         },
         "runtime": {
-          "lib/netstandard2.1/protobuf-net.dll": {
-            "assemblyVersion": "3.0.0.0",
-            "fileVersion": "3.0.0.0"
+          "lib/netstandard1.3/protobuf-net.dll": {
+            "assemblyVersion": "2.3.3.0",
+            "fileVersion": "2.3.3.0"
           }
         },
         "compile": {
-          "lib/netstandard2.1/protobuf-net.dll": {}
-        }
-      },
-      "protobuf-net.Core/3.0.0-alpha.122": {
-        "runtime": {
-          "lib/netcoreapp3.0/protobuf-net.Core.dll": {
-            "assemblyVersion": "3.0.0.0",
-            "fileVersion": "3.0.0.0"
-          }
-        },
-        "compile": {
-          "lib/netcoreapp3.0/protobuf-net.Core.dll": {}
+          "lib/netstandard1.3/protobuf-net.dll": {}
         }
       },
       "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.2": {},
@@ -3768,19 +3735,6 @@
           "System.Xml.XmlSerializer": "4.3.0"
         }
       },
-      "System.Private.ServiceModel/4.6.0": {
-        "dependencies": {
-          "System.Reflection.DispatchProxy": "4.5.0",
-          "System.Security.Cryptography.Xml": "4.5.0",
-          "System.Security.Principal.Windows": "4.7.0"
-        },
-        "runtime": {
-          "lib/netstandard2.0/System.Private.ServiceModel.dll": {
-            "assemblyVersion": "4.6.0.0",
-            "fileVersion": "4.600.19.47001"
-          }
-        }
-      },
       "System.Reactive.Core/3.1.1": {
         "dependencies": {
           "System.ComponentModel": "4.3.0",
@@ -3852,7 +3806,6 @@
           "System.Runtime": "4.3.0"
         }
       },
-      "System.Reflection.DispatchProxy/4.5.0": {},
       "System.Reflection.Emit/4.3.0": {
         "dependencies": {
           "System.IO": "4.3.0",
@@ -4163,25 +4116,6 @@
           "System.Threading": "4.3.0"
         }
       },
-      "System.ServiceModel.Primitives/4.6.0": {
-        "dependencies": {
-          "System.Private.ServiceModel": "4.6.0"
-        },
-        "runtime": {
-          "lib/netcoreapp2.1/System.ServiceModel.Primitives.dll": {
-            "assemblyVersion": "4.6.0.0",
-            "fileVersion": "4.600.19.47001"
-          },
-          "lib/netcoreapp2.1/System.ServiceModel.dll": {
-            "assemblyVersion": "4.0.0.0",
-            "fileVersion": "4.600.19.47001"
-          }
-        },
-        "compile": {
-          "ref/netcoreapp2.1/System.ServiceModel.Primitives.dll": {},
-          "ref/netcoreapp2.1/System.ServiceModel.dll": {}
-        }
-      },
       "System.Text.Encoding/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "3.1.0",
@@ -4334,7 +4268,7 @@
           "lib/netstandard1.3/Microsoft.WindowsAzure.Storage.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script/3.0.1": {
+      "Microsoft.Azure.WebJobs.Script/3.1.0": {
         "dependencies": {
           "Azure.Core": "1.9.0",
           "Azure.Identity": "1.3.0",
@@ -4384,12 +4318,12 @@
           "Microsoft.Azure.WebJobs.Script.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/3.0.1": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/3.1.0": {
         "dependencies": {
           "Google.Protobuf": "3.11.4",
           "Google.Protobuf.Tools": "3.11.4",
           "Grpc.Core": "2.27.0",
-          "Microsoft.Azure.WebJobs.Script": "3.0.1",
+          "Microsoft.Azure.WebJobs.Script": "3.1.0",
           "Microsoft.CodeAnalysis": "3.3.1",
           "Microsoft.CodeAnalysis.CSharp": "3.3.1",
           "Microsoft.CodeAnalysis.Common": "3.3.1",
@@ -5629,7 +5563,7 @@
         },
         "compileOnly": true
       },
-      "System.Reflection.DispatchProxy.Reference/4.0.6.0": {
+      "System.Reflection.DispatchProxy/4.0.6.0": {
         "compile": {
           "System.Reflection.DispatchProxy.dll": {}
         },
@@ -6094,7 +6028,7 @@
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/3.0.1": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/3.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -6134,13 +6068,6 @@
       "path": "azure.storage.common/12.7.1",
       "hashPath": "azure.storage.common.12.7.1.nupkg.sha512"
     },
-    "DotNetTI.BreakingChangeAnalysis/1.1.0-preview": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-QNx79POq7ICRwLpsxx19UjYVH7R9YqTYGdH4+8c88gBlo2UunkzUTt/uIIkinKMt4vFXj0gFmV9watGqvphzQw==",
-      "path": "dotnetti.breakingchangeanalysis/1.1.0-preview",
-      "hashPath": "dotnetti.breakingchangeanalysis.1.1.0-preview.nupkg.sha512"
-    },
     "Google.Protobuf/3.11.4": {
       "type": "package",
       "serviceable": true,
@@ -6168,13 +6095,6 @@
       "sha512": "sha512-UAHXfV+n6TEMCybML7V+1qWP7G9byGXUE2mtATWpctP7xB8P5J++iYMuyxrprKkC36X/QuUwHJmHpBxlDHzF2g==",
       "path": "grpc.core.api/2.27.0",
       "hashPath": "grpc.core.api.2.27.0.nupkg.sha512"
-    },
-    "Marklio.Metadata/1.2.20-beta": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-/YB6yEAG4U7/W309LvZwKGrjgWbcz8XaWQOChTwph527DWbqYPw7LmhySGx2e3IxRmEbrpAE7rk/ekK8+BVnFg==",
-      "path": "marklio.metadata/1.2.20-beta",
-      "hashPath": "marklio.metadata.1.2.20-beta.nupkg.sha512"
     },
     "Microsoft.ApplicationInsights/2.17.0": {
       "type": "package",
@@ -6606,7 +6526,7 @@
     "Microsoft.Azure.Functions.NodeJsWorker/2.1.2": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rvcdhKDaOUFvL1g86u3mnBHZqdPB5ASODUBhsjLVDUUScT/1igAlkygKWqEcR9UdOvKmBw2Z07qfUX/3+JQLgw==",
+      "sha512": "sha512-zBXdHPHPctRBt1qpHAhA4LrDz6o5cJtFm/Hjkxp9Qt0aY7kPIjpRMixQclH2708LM0n054P/QWbpuzSRSDZ8CA==",
       "path": "microsoft.azure.functions.nodejsworker/2.1.2",
       "hashPath": "microsoft.azure.functions.nodejsworker.2.1.2.nupkg.sha512"
     },
@@ -6624,12 +6544,12 @@
       "path": "microsoft.azure.functions.powershellworker.ps7/3.0.833",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.3.0.833.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PythonWorker/3.1.2.1": {
+    "Microsoft.Azure.Functions.PythonWorker/3.1.2.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ZpD1kGEi5gZgkSD1SjccJdjnZNXU337ndU/PS/nXpYrD2ErCA23f7AztBSuAQcNQN/lZMoKodPowT2tV7BrIsQ==",
-      "path": "microsoft.azure.functions.pythonworker/3.1.2.1",
-      "hashPath": "microsoft.azure.functions.pythonworker.3.1.2.1.nupkg.sha512"
+      "sha512": "sha512-uNN+2D3820mS6UbcfeAfTU9CW9L7rIb79Ryl8zIQJ/5Cd0N7QpQpSQgOkQIVFkhC7O5ynZgXGJCKQwXnhE4Q2A==",
+      "path": "microsoft.azure.functions.pythonworker/3.1.2.3",
+      "hashPath": "microsoft.azure.functions.pythonworker.3.1.2.3.nupkg.sha512"
     },
     "Microsoft.Azure.KeyVault/3.0.3": {
       "type": "package",
@@ -6697,7 +6617,7 @@
     "Microsoft.Azure.WebJobs.Extensions/4.0.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-5XolrOG6AjAOB9v1Z2ejQlJEl6YnuWlrJTHIx25l7Nl76AmqTeya1fPc+TjDTU+rqPiippDCPniCS7P2fY10ZQ==",
+      "sha512": "sha512-6b5eW/D0xj++R3an9XgZ16NFFSbXhgpRPNDoxZGYdiNMHVCRAnTySCBsBijjXf5EmdRLOXTwAx8eXKkydhhZIg==",
       "path": "microsoft.azure.webjobs.extensions/4.0.3",
       "hashPath": "microsoft.azure.webjobs.extensions.4.0.3.nupkg.sha512"
     },
@@ -7373,19 +7293,12 @@
       "path": "nuget.versioning/4.7.0",
       "hashPath": "nuget.versioning.4.7.0.nupkg.sha512"
     },
-    "protobuf-net/3.0.0-alpha.122": {
+    "protobuf-net/2.3.3": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Z6dH2QtNxoIlQgxcvWgmOHfoHc3HElDBzhLVEypfL6dkg+YCXltuShG5Mw7iwWXyqVRPKQYWSWwR6mitFR600g==",
-      "path": "protobuf-net/3.0.0-alpha.122",
-      "hashPath": "protobuf-net.3.0.0-alpha.122.nupkg.sha512"
-    },
-    "protobuf-net.Core/3.0.0-alpha.122": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-kpHlR2L0jbpPj8d9pMs0uX4CId3Qu6Emt24STq5uB6vCmjR8fCQ2fA2fNDeQR1dRWF1AXlwWcRHYG7Ey1NHjlA==",
-      "path": "protobuf-net.core/3.0.0-alpha.122",
-      "hashPath": "protobuf-net.core.3.0.0-alpha.122.nupkg.sha512"
+      "sha512": "sha512-MEuTGpAb1XOZiagzivejRst8njhRFa2OMprlIm753cwhHE1igEQt8aPqVYfw81zlfCZ24SHMjpJv8aNPphSwPQ==",
+      "path": "protobuf-net/2.3.3",
+      "hashPath": "protobuf-net.2.3.3.nupkg.sha512"
     },
     "runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl/4.3.2": {
       "type": "package",
@@ -7940,13 +7853,6 @@
       "path": "system.private.datacontractserialization/4.3.0",
       "hashPath": "system.private.datacontractserialization.4.3.0.nupkg.sha512"
     },
-    "System.Private.ServiceModel/4.6.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-8iD5mvu76p3L9tUzmh1Iwgh51XRGIBKfKZhnfUoORjqDCabKugQOmne0SWzuU0ksNW1d6fTn6zEFmig8AbzI3g==",
-      "path": "system.private.servicemodel/4.6.0",
-      "hashPath": "system.private.servicemodel.4.6.0.nupkg.sha512"
-    },
     "System.Reactive.Core/3.1.1": {
       "type": "package",
       "serviceable": true,
@@ -7981,13 +7887,6 @@
       "sha512": "sha512-KMiAFoW7MfJGa9nDFNcfu+FpEdiHpWgTcS2HdMpDvt9saK3y/G4GwprPyzqjFH9NTaGPQeWNHU+iDlDILj96aQ==",
       "path": "system.reflection/4.3.0",
       "hashPath": "system.reflection.4.3.0.nupkg.sha512"
-    },
-    "System.Reflection.DispatchProxy/4.5.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-+UW1hq11TNSeb+16rIk8hRQ02o339NFyzMc4ma/FqmxBzM30l1c2IherBB4ld1MNcenS48fz8tbt50OW4rVULA==",
-      "path": "system.reflection.dispatchproxy/4.5.0",
-      "hashPath": "system.reflection.dispatchproxy.4.5.0.nupkg.sha512"
     },
     "System.Reflection.Emit/4.3.0": {
       "type": "package",
@@ -8234,13 +8133,6 @@
       "path": "system.security.securestring/4.0.0",
       "hashPath": "system.security.securestring.4.0.0.nupkg.sha512"
     },
-    "System.ServiceModel.Primitives/4.6.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-LwFQqlATMZh5bdL2bZmEhuYGgTeb+GxT0WWkYqA2A+bywYM5Oq3wouHSigm1kRQwk4iQjrfsk5wxBdjmK1ozRQ==",
-      "path": "system.servicemodel.primitives/4.6.0",
-      "hashPath": "system.servicemodel.primitives.4.6.0.nupkg.sha512"
-    },
     "System.Text.Encoding/4.3.0": {
       "type": "package",
       "serviceable": true,
@@ -8374,12 +8266,12 @@
       "path": "windowsazure.storage/9.3.1",
       "hashPath": "windowsazure.storage.9.3.1.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/3.0.1": {
+    "Microsoft.Azure.WebJobs.Script/3.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/3.0.1": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/3.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -9404,7 +9296,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "System.Reflection.DispatchProxy.Reference/4.0.6.0": {
+    "System.Reflection.DispatchProxy/4.0.6.0": {
       "type": "referenceassembly",
       "serviceable": false,
       "sha512": ""
