@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // update the last hash value in storage
                 using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(hash)))
                 {
-                    await hashBlobClient.UploadAsync(stream);
+                    await hashBlobClient.UploadAsync(stream, overwrite: true);
                 }
                 _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
             }
