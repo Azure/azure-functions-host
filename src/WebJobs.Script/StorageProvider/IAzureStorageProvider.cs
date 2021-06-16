@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Azure.Storage.Blobs;
-using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -14,8 +13,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         bool TryGetBlobServiceClientFromConnectionString(out BlobServiceClient client, string connectionString);
 
-        bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection, IConfiguration configurationOverride = null);
+        bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection);
 
-        BlobContainerClient GetBlobContainerClient(IConfiguration configurationOverride = null);
+        BlobContainerClient GetBlobContainerClient();
     }
 }

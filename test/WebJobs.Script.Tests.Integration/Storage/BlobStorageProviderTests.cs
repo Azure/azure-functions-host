@@ -36,14 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Fact]
         public async Task TestBlobStorageProvider_TryConnectionName()
         {
-            Assert.True(_blobServiceClientProvider.TryGet(StorageConnection, _configuration, out BlobServiceClient client));
+            Assert.True(_blobServiceClientProvider.TryGet(StorageConnection, out BlobServiceClient client));
             await VerifyServiceAvailable(client);
         }
 
         [Fact]
         public async Task TestBlobStorageProvider_ConnectionName()
         {
-            BlobServiceClient client = _blobServiceClientProvider.Get(StorageConnection, _configuration);
+            BlobServiceClient client = _blobServiceClientProvider.Get(StorageConnection);
             await VerifyServiceAvailable(client);
         }
 
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         {
             var resolver = new DefaultNameResolver(_configuration);
 
-            BlobServiceClient client = _blobServiceClientProvider.Get(StorageConnection, resolver, _configuration);
+            BlobServiceClient client = _blobServiceClientProvider.Get(StorageConnection, resolver);
             await VerifyServiceAvailable(client);
         }
 

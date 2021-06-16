@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
     /// </summary>
     internal abstract class StorageClientProvider<TClient, TClientOptions> where TClientOptions : ClientOptions
     {
+        private readonly IConfiguration _configuration;
         private readonly AzureComponentFactory _componentFactory;
         private readonly AzureEventSourceLogForwarder _logForwarder;
         private readonly ILogger _logger;
@@ -31,8 +32,9 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
         /// <param name="configuration">The configuration to use when creating Client-specific objects. <see cref="IConfiguration"/></param>
         /// <param name="componentFactory">The Azure factory responsible for creating clients. <see cref="AzureComponentFactory"/></param>
         /// <param name="logForwarder">Log forwarder that forwards events to ILogger. <see cref="AzureEventSourceLogForwarder"/></param>
-        public StorageClientProvider(AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<TClient> logger)
+        public StorageClientProvider(IConfiguration configuration, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<TClient> logger)
         {
+            _configuration = configuration;
             _componentFactory = componentFactory;
             _logForwarder = logForwarder;
             _logger = logger;
@@ -51,14 +53,13 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
         /// Gets the storage client specified by <paramref name="name"/>
         /// </summary>
         /// <param name="name">Name of the connection to use</param>
-        /// <param name="configuration">Configuration to use</param>
         /// <param name="client">Client that was created if the connection was valid; otherwise, the default value for the type of <paramref name="client"/>.</param>
         /// <returns>true if the client could be created; false otherwise</returns>
-        public virtual bool TryGet(string name, IConfiguration configuration, out TClient client)
+        public virtual bool TryGet(string name, out TClient client)
         {
             try
             {
-                client = Get(name, configuration);
+                client = Get(name);
                 return true;
             }
             catch (Exception ex)
@@ -95,21 +96,19 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
         /// </summary>
         /// <param name="name">Name of the connection to use</param>
         /// <param name="resolver">A resolver to interpret the provided connection <paramref name="name"/>.</param>
-        /// <param name="configuration">Configuration to use</param>
         /// <returns>Client that was created.</returns>
-        public virtual TClient Get(string name, INameResolver resolver, IConfiguration configuration)
+        public virtual TClient Get(string name, INameResolver resolver)
         {
             var resolvedName = resolver.ResolveWholeString(name);
-            return this.Get(resolvedName, configuration);
+            return this.Get(resolvedName);
         }
 
         /// <summary>
         /// Gets the storage client specified by <paramref name="name"/>
         /// </summary>
         /// <param name="name">Name of the connection to use</param>
-        /// <param name="configuration">Configuration to use</param>
         /// <returns>Client that was created.</returns>
-        public virtual TClient Get(string name, IConfiguration configuration)
+        public virtual TClient Get(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -117,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
             }
 
             // $$$ Where does validation happen?
-            IConfigurationSection connectionSection = configuration.GetWebJobsConnectionStringSection(name);
+            IConfigurationSection connectionSection = _configuration.GetWebJobsConnectionStringSection(name);
             if (!connectionSection.Exists())
             {
                 // Not found
@@ -149,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
         /// <returns>Storage client</returns>
         public virtual TClient GetHost()
         {
-            return this.Get(null, null);
+            return this.Get(null);
         }
 
         /// <summary>

@@ -454,15 +454,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider)
         {
             var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
-            var configuration = provider.GetRequiredService<IConfiguration>();
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             try
             {
-                // BlobLeaseDistributedLockManager is created during ScriptHost service registration since it is
-                // conditioned on having a valid storage connection. The configuration should be from the IServiceProvider
-                // that registers the IDistributedLockManager.
-                // The configuration used by AzureStorageProvider will be updated through the IScriptHostManager.HostInitializing event handler
-                var container = azureStorageProvider.GetBlobContainerClient(configuration);
+                var container = azureStorageProvider.GetBlobContainerClient();
                 return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
             }
             catch (InvalidOperationException)
