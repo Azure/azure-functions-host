@@ -117,6 +117,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
+        [Route("admin/host/test")]
+        public IActionResult TestAPI()
+        {
+            return Ok("Test API works");
+        }
+
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
