@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         internal ISecretsRepository CreateSecretsRepository()
         {
             string secretStorageType = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
-            var storageConnection = _configuration.GetWebJobsConnectionStringSection(ConnectionStringNames.Storage);
+            var storageConnection = _azureStorageProvider.Configuration.GetWebJobsConnectionStringSection(ConnectionStringNames.Storage);
             string secretStorageSas = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageSas);
             if (secretStorageType != null && secretStorageType.Equals(FileStorage, StringComparison.OrdinalIgnoreCase))
             {

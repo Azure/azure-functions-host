@@ -3,9 +3,10 @@
 
 using System;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -22,20 +23,34 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IServiceProvider _serviceProvider;
         private IOptionsMonitor<JobHostInternalStorageOptions> _storageOptions;
         private IConfiguration _configuration;
+        private ILogger _logger;
 
-        public AzureStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options)
+        public AzureStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<AzureStorageProvider> logger)
         {
             _blobServiceClientProvider = blobServiceClientProvider;
-            _configuration = configuration;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _storageOptions = options;
+            _logger = logger;
 
-            // Every time script host is re-intializing, we also need to re-initialize
-            // services that change with the scope of the script host.
-            scriptHostManager.HostInitializing += (s, e) =>
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableMergedWebHostScriptHostConfiguration))
             {
-                InitializeServices();
-            };
+                _configuration = configuration;
+            }
+            else
+            {
+                _configuration = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .Add(new ActiveHostConfigurationSource(_serviceProvider))
+                .Build();
+            }
+        }
+
+        public IConfiguration Configuration
+        {
+            get
+            {
+                return _configuration;
+            }
         }
 
         /// <summary>
@@ -57,30 +72,25 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <param name="client">client to instantiate</param>
         /// <param name="connection">Name of the connection to use</param>
         /// <returns>successful client creation</returns>
-        public virtual bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection = null, IConfiguration configurationOverride = null)
+        public virtual bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection = null)
         {
             var connectionToUse = connection ?? ConnectionStringNames.Storage;
-            return _blobServiceClientProvider.TryGet(connectionToUse, configurationOverride ?? _configuration, out client);
+            return _blobServiceClientProvider.TryGet(connectionToUse, _configuration, out client);
         }
 
-        public virtual BlobContainerClient GetBlobContainerClient(IConfiguration configurationOverride = null)
+        public virtual BlobContainerClient GetBlobContainerClient()
         {
             if (_storageOptions?.CurrentValue.InternalSasBlobContainer != null)
             {
                 return new BlobContainerClient(new Uri(_storageOptions.CurrentValue.InternalSasBlobContainer));
             }
 
-            if (!TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage, configurationOverride))
+            if (!TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage))
             {
                 throw new InvalidOperationException($"Could not create BlobServiceClient to obtain the BlobContainerClient using Connection: {ConnectionStringNames.Storage}");
             }
 
             return blobServiceClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
-        }
-
-        private void InitializeServices()
-        {
-            _configuration = _serviceProvider.GetService<IConfiguration>();
         }
     }
 }
