@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
     /// </summary>
     internal class BlobServiceClientProvider : StorageClientProvider<BlobServiceClient, BlobClientOptions>
     {
-        public BlobServiceClientProvider(IConfiguration configuration, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<BlobServiceClient> logger)
+        public BlobServiceClientProvider(IConfiguration configuration, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<BlobServiceClientProvider> logger)
             : base(configuration, componentFactory, logForwarder, logger) { }
 
         /// <inheritdoc/>

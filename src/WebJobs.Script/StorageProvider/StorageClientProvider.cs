@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
         /// <param name="configuration">The configuration to use when creating Client-specific objects. <see cref="IConfiguration"/></param>
         /// <param name="componentFactory">The Azure factory responsible for creating clients. <see cref="AzureComponentFactory"/></param>
         /// <param name="logForwarder">Log forwarder that forwards events to ILogger. <see cref="AzureEventSourceLogForwarder"/></param>
-        public StorageClientProvider(IConfiguration configuration, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<TClient> logger)
+        public StorageClientProvider(IConfiguration configuration, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder, ILogger<StorageClientProvider<TClient, TClientOptions>> logger)
         {
             _configuration = configuration;
             _componentFactory = componentFactory;
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
             catch (Exception ex)
             {
                 client = default(TClient);
-                _logger.LogError(ex, "Could not create Storage Client");
+                _logger.LogDebug("Could not create Storage Client. Exception: {0}", ex.ToString());
                 return false;
             }
         }
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
             catch (Exception ex)
             {
                 client = default(TClient);
-                _logger.LogError(ex, "Could not create Storage Client from a connection string.");
+                _logger.LogDebug("Could not create Storage Client from a connection string. Exception: {0}", ex.ToString());
                 return false;
             }
         }
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Could not parse serviceUri from the configuration.");
+                _logger.LogDebug("Could not parse serviceUri from the configuration. Exception: {0}", ex.ToString());
             }
 
             serviceUri = default(Uri);
