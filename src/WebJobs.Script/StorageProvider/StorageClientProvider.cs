@@ -117,8 +117,8 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
             }
 
             // $$$ Where does validation happen?
-            IConfigurationSection connectionSection = configuration.GetWebJobsConnectionStringSection(name);
-            if (!connectionSection.Exists())
+            IConfigurationSection connectionSection = configuration?.GetWebJobsConnectionStringSection(name);
+            if (connectionSection == null || !connectionSection.Exists())
             {
                 // Not found
                 throw new InvalidOperationException($"Storage account connection string '{IConfigurationExtensions.GetPrefixedConnectionStringName(name)}' does not exist. Make sure that it is a defined App Setting.");
@@ -178,12 +178,12 @@ namespace Microsoft.Azure.WebJobs.Script.StorageProvider
 
                 string accountName;
                 string uriStr;
-                if ((accountName = configuration.GetValue<string>("accountName")) != null)
+                if ((accountName = configuration?.GetValue<string>("accountName")) != null)
                 {
                     serviceUri = FormatServiceUri(accountName);
                     return true;
                 }
-                else if ((uriStr = configuration.GetValue<string>(serviceUriConfig)) != null)
+                else if ((uriStr = configuration?.GetValue<string>(serviceUriConfig)) != null)
                 {
                     serviceUri = new Uri(uriStr);
                     return true;
