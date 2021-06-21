@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class AzureStorageProvider : IAzureStorageProvider
     {
         private readonly BlobServiceClientProvider _blobServiceClientProvider;
-        private readonly IServiceProvider _serviceProvider;
         private IOptionsMonitor<JobHostInternalStorageOptions> _storageOptions;
         private IConfiguration _configuration;
         private ILogger _logger;
@@ -28,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public AzureStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<AzureStorageProvider> logger)
         {
             _blobServiceClientProvider = blobServiceClientProvider;
-            _serviceProvider = scriptHostManager as IServiceProvider;
             _storageOptions = options;
             _logger = logger;
 
@@ -40,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _configuration = new ConfigurationBuilder()
                     .AddConfiguration(configuration)
-                    .Add(new ActiveHostConfigurationSource(_serviceProvider))
+                    .Add(new ActiveHostConfigurationSource(scriptHostManager))
                     .Build();
             }
         }

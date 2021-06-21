@@ -9,51 +9,51 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class ActiveHostConfigurationSource : IConfigurationSource
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IScriptHostManager _scriptHostManager;
 
-        public ActiveHostConfigurationSource(IServiceProvider serviceProvider)
+        public ActiveHostConfigurationSource(IScriptHostManager scriptHostManager)
         {
-            _serviceProvider = serviceProvider;
+            _scriptHostManager = scriptHostManager;
         }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return new ActiveHostConfigurationProvider(_serviceProvider);
+            return new ActiveHostConfigurationProvider(_scriptHostManager);
         }
 
         private class ActiveHostConfigurationProvider : ConfigurationProvider
         {
-            private readonly IServiceProvider _serviceProvider;
+            private readonly IScriptHostManager _scriptHostManager;
+            private IDisposable _changeTokenRegistration;
 
-            public ActiveHostConfigurationProvider(IServiceProvider serviceProvider)
+            public ActiveHostConfigurationProvider(IScriptHostManager scriptHostManager)
             {
-                _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+                _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                _scriptHostManager.ActiveHostChanged += ScriptHostManager_ActiveHostChanged;
             }
 
-            public override bool TryGet(string key, out string value)
+            public override void Load()
             {
-                if (_serviceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
+                if ((_scriptHostManager as IServiceProvider)?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
                 {
-                    return (value = activeHostConfiguration.GetValue<string>(key)) != null;
-                }
-
-                value = default;
-                return false;
-            }
-
-            public override IEnumerable<string> GetChildKeys(IEnumerable<string> earlierKeys, string parentPath)
-            {
-                var keys = new HashSet<string>();
-                if (_serviceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
-                {
-                    foreach (var config in activeHostConfiguration.GetSection(parentPath).GetChildren())
+                    Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in activeHostConfiguration.AsEnumerable())
                     {
-                        keys.Add(config.Key);
+                        if (!Data.ContainsKey(kvp.Key))
+                        {
+                            Data[kvp.Key] = kvp.Value;
+                        }
                     }
-                }
 
-                keys.UnionWith(earlierKeys);
-                return keys;
+                    _changeTokenRegistration?.Dispose();
+                    _changeTokenRegistration = activeHostConfiguration.GetReloadToken().RegisterChangeCallback(_ => Load(), null);
+                    OnReload();
+                }
+            }
+
+            private void ScriptHostManager_ActiveHostChanged(object sender, ActiveHostChangedEventArgs e)
+            {
+                Load();
             }
         }
     }

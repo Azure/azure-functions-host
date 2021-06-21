@@ -208,6 +208,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 }
             }
 
+            public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+
+            public void OnActiveHostChanged()
+            {
+                ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(null, null));
+            }
+
             object IServiceProvider.GetService(Type serviceType)
             {
                 if (serviceType == typeof(IConfiguration))

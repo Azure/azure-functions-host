@@ -13,11 +13,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
     public class ActiveHostConfigurationSourceTests
     {
-        private Mock<IServiceProvider> _mockServiceProvider;
+        private Mock<IScriptHostManager> _mockScriptHostManager;
 
         public ActiveHostConfigurationSourceTests()
         {
-            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockScriptHostManager = new Mock<IScriptHostManager>();
         }
 
         [Fact]
@@ -37,13 +37,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (new TestScopedEnvironmentVariable(testData))
             {
                 var testActiveHostConfig = new ConfigurationBuilder()
-                .AddEnvironmentVariables()
-                .Build();
+                    .AddEnvironmentVariables()
+                    .Build();
 
-                _mockServiceProvider.Setup(p => p.GetService(typeof(IConfiguration))).Returns(testActiveHostConfig);
+                _mockScriptHostManager.As<IServiceProvider>().Setup(p => p.GetService(typeof(IConfiguration))).Returns(testActiveHostConfig);
 
                 var configurationToTest = new ConfigurationBuilder()
-                    .Add(new ActiveHostConfigurationSource(_mockServiceProvider.Object))
+                    .Add(new ActiveHostConfigurationSource(_mockScriptHostManager.Object))
                     .Build();
 
                 Assert.Equal("str1", configurationToTest.GetWebJobsConnectionStringSection("connStr1").Value);
@@ -69,6 +69,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                                 configurationToTest.GetWebJobsConnectionStringSection("TestSection1").GetValue<string>("someKey"));
                 Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("SectionA:SectionB:SectionC").Value,
                                 configurationToTest.GetWebJobsConnectionStringSection("SectionA:SectionB:SectionC").Value);
+            }
+        }
+
+        [Fact]
+        public void ReloadDataOnUnderlyingConfigurationChange()
+        {
+            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Key1", "testValue1" }
+            };
+
+            using (new TestScopedEnvironmentVariable(testData))
+            {
+                var testActiveHostConfig = new ConfigurationBuilder()
+                    .AddEnvironmentVariables()
+                    .Build();
+
+                _mockScriptHostManager.As<IServiceProvider>().Setup(p => p.GetService(typeof(IConfiguration))).Returns(testActiveHostConfig);
+
+                var configurationToTest = new ConfigurationBuilder()
+                    .Add(new ActiveHostConfigurationSource(_mockScriptHostManager.Object))
+                    .Build();
+
+                Assert.Equal("testValue1", configurationToTest.GetValue<string>("key1"));
+
+                using (new TestScopedEnvironmentVariable("Key2", "testValue2"))
+                {
+                    testActiveHostConfig.Reload();
+                    Assert.Equal("testValue2", testActiveHostConfig.GetValue<string>("key2"));
+                    Assert.Equal("testValue2", configurationToTest.GetValue<string>("key2"));
+                }
             }
         }
     }
