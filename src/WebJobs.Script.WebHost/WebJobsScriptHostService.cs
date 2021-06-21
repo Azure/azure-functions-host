@@ -95,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public event EventHandler HostInitializing;
 
+        public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+
         [Flags]
         private enum JobHostStartupMode
         {
@@ -118,7 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             set
             {
                 _logger?.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
+
+                var previousHost = _host;
                 _host = value;
+
+                OnActiveHostChanged(previousHost, _host);
             }
         }
 
@@ -528,6 +534,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             // We invoke any registered event delegates during Host Initialization
             HostInitializing?.Invoke(sender, e);
+        }
+
+        private void OnActiveHostChanged(IHost previousHost, IHost newHost)
+        {
+            ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(previousHost, _host));
         }
 
         /// <summary>
