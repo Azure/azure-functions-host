@@ -1,12 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
@@ -18,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         private TestLogger _testLogger = new TestLogger("test");
         private WorkerConsoleLogService _workerConsoleLogService;
         private WorkerConsoleLogSource _workerConsoleLogSource;
+        private Mock<IServiceProvider> _serviceProviderMock;
 
         [Theory]
         [InlineData(false)]
@@ -28,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _eventManager = new ScriptEventManager();
             _processRegistry = new EmptyProcessRegistry();
             _workerConsoleLogService = new WorkerConsoleLogService(_testLogger, _workerConsoleLogSource);
-            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testLogger, _workerConsoleLogSource, null, useStdErrForErroLogsOnly);
+            _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErroLogsOnly);
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");

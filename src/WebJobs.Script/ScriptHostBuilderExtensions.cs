@@ -8,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -284,7 +285,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
-                services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
 
                 if (!applicationHostOptions.HasParentScope)
                 {
@@ -295,6 +295,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
                 services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
 
+                // TODO (TEMP) : override the default SDK provided implementatio with our own
+                // this is temporary until https://github.com/Azure/azure-webjobs-sdk/issues/2710 is addressed.
+                services.AddSingleton<IConcurrencyStatusRepository, BlobStorageConcurrencyStatusRepository>();
+
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
@@ -302,7 +306,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
                 }
 
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
                 if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())

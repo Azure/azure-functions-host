@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
             if (file.Exists)
             {
-                JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
+                JitTraceRuntime.Prepare(file, out List<string> successfulPrepares, out List<string> failedPrepares);
 
                 // We will need to monitor failed vs success prepares and if the failures increase, it means code paths have diverged or there have been updates on dotnet core side.
                 // When this happens, we will need to regenerate the coldstart.jittrace file.

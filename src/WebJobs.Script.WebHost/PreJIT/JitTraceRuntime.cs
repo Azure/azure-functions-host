@@ -31,9 +31,9 @@ namespace Microsoft.Diagnostics.JitTrace
         /// Prepare all the methods specified in a .jittrace file for execution
         /// </summary>
         /// <param name="fileName">Filename of .jittrace file</param>
-        /// <param name="successfulPrepares">count of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        /// <param name="failedPrepares">count of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        public static void Prepare(FileInfo fileName, out int successfulPrepares, out int failedPrepares)
+        /// <param name="successfulPrepares">List of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        /// <param name="failedPrepares">List of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        public static void Prepare(FileInfo fileName, out List<string> successfulPrepares, out List<string> failedPrepares)
         {
             using (StreamReader sr = new StreamReader(fileName.FullName))
             {
@@ -61,9 +61,9 @@ namespace Microsoft.Diagnostics.JitTrace
         /// for execution. Useful for embedding via data via resource.
         /// </summary>
         /// <param name="jittraceString">string with .jittrace data</param>
-        /// <param name="successfulPrepares">count of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        /// <param name="failedPrepares">count of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        public static void Prepare(string jittraceString, out int successfulPrepares, out int failedPrepares)
+        /// <param name="successfulPrepares">List of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        /// <param name="failedPrepares">List of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        public static void Prepare(string jittraceString, out List<string> successfulPrepares, out List<string> failedPrepares)
         {
             MemoryStream strStream = new MemoryStream();
             using (var writer = new StreamWriter(strStream, encoding: null, bufferSize: -1, leaveOpen: true))
@@ -80,16 +80,16 @@ namespace Microsoft.Diagnostics.JitTrace
         /// for execution. Handles general purpose stream data.
         /// </summary>
         /// <param name="jittraceStream">Stream with .jittrace data</param>
-        /// <param name="successfulPrepares">count of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        /// <param name="failedPrepares">count of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
-        public static void Prepare(StreamReader jittraceStream, out int successfulPrepares, out int failedPrepares)
+        /// <param name="successfulPrepares">List of successful prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        /// <param name="failedPrepares">List of failed prepare operations. May exceed the could of lines in the jittrace file due to fuzzy matching</param>
+        public static void Prepare(StreamReader jittraceStream, out List<string> successfulPrepares, out List<string> failedPrepares)
         {
             const string outerCsvEscapeChar = "~";
             const string innerCsvEscapeChar = ":";
             char[] outerCsvEscapeCharArray = new char[] { '~' };
             char[] innerCsvEscapeCharArray = new char[] { ':' };
-            successfulPrepares = 0;
-            failedPrepares = 0;
+            successfulPrepares = new List<string>();
+            failedPrepares = new List<string>();
 
             while (true)
             {
@@ -113,7 +113,7 @@ namespace Microsoft.Diagnostics.JitTrace
                     // owningType failed to load above. Skip rest of method discovery
                     if (owningType == null)
                     {
-                        failedPrepares++;
+                        failedPrepares.Add(methodString);
                         LogOnFailure(methodString);
                         continue;
                     }
@@ -138,7 +138,7 @@ namespace Microsoft.Diagnostics.JitTrace
 
                     if (abortMethodDiscovery)
                     {
-                        failedPrepares++;
+                        failedPrepares.Add(methodString);
                         LogOnFailure(methodString);
                         continue;
                     }
@@ -155,7 +155,7 @@ namespace Microsoft.Diagnostics.JitTrace
                         if (genericMethodArgCount != 0)
                         {
                             // Ctors with generic args don't make sense
-                            failedPrepares++;
+                            failedPrepares.Add(methodString);
                             LogOnFailure(methodString);
                             continue;
                         }
@@ -190,7 +190,7 @@ namespace Microsoft.Diagnostics.JitTrace
                         if (mi == null)
                         {
                             // This type no longer has a type initializer
-                            failedPrepares++;
+                            failedPrepares.Add(methodString);
                             LogOnFailure(methodString);
                             continue;
                         }
@@ -248,23 +248,23 @@ namespace Microsoft.Diagnostics.JitTrace
                         try
                         {
                             System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(memberHandle);
-                            successfulPrepares++;
+                            successfulPrepares.Add(methodString);
                         }
                         catch
                         {
-                            failedPrepares++;
+                            failedPrepares.Add(methodString);
                             LogOnFailure(methodString);
                         }
                     }
                     if (!foundAtLeastOneEntry)
                     {
-                        failedPrepares++;
+                        failedPrepares.Add(methodString);
                         LogOnFailure(methodString);
                     }
                 }
                 catch
                 {
-                    failedPrepares++;
+                    failedPrepares.Add(methodString);
                     LogOnFailure(methodString);
                 }
             }
