@@ -9,34 +9,32 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 {
     public class ActiveHostConfigurationSource : IConfigurationSource
     {
+        private readonly IServiceProvider _serviceProvider;
+
         public ActiveHostConfigurationSource(IServiceProvider serviceProvider)
         {
-            ServiceProvider = serviceProvider;
+            _serviceProvider = serviceProvider;
         }
-
-        public IServiceProvider ServiceProvider { get; set; }
 
         public IConfigurationProvider Build(IConfigurationBuilder builder)
         {
-            return new ActiveHostConfigurationProvider(this);
+            return new ActiveHostConfigurationProvider(_serviceProvider);
         }
 
         private class ActiveHostConfigurationProvider : ConfigurationProvider
         {
-            private readonly ActiveHostConfigurationSource _configurationSource;
+            private readonly IServiceProvider _serviceProvider;
 
-            public ActiveHostConfigurationProvider(ActiveHostConfigurationSource configurationSource)
+            public ActiveHostConfigurationProvider(IServiceProvider serviceProvider)
             {
-                _configurationSource = configurationSource ?? throw new ArgumentNullException(nameof(configurationSource));
+                _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             }
 
             public override bool TryGet(string key, out string value)
             {
-                if (_configurationSource?.ServiceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
+                if (_serviceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
                 {
-                    return
-                        (value = activeHostConfiguration.GetValue<string>(key)) != null ||
-                        (value = activeHostConfiguration.GetValue<string>(NormalizeKey(key))) != null;
+                    return (value = activeHostConfiguration.GetValue<string>(key)) != null;
                 }
 
                 value = default;
@@ -45,10 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             public override IEnumerable<string> GetChildKeys(IEnumerable<string> earlierKeys, string parentPath)
             {
-                var activeHostConfiguration = _configurationSource?.ServiceProvider?.GetService(typeof(IConfiguration)) as IConfigurationRoot;
                 var keys = new HashSet<string>();
-
-                if (activeHostConfiguration != null)
+                if (_serviceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
                 {
                     foreach (var config in activeHostConfiguration.GetSection(parentPath).GetChildren())
                     {
@@ -58,14 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
                 keys.UnionWith(earlierKeys);
                 return keys;
-            }
-
-            private static string NormalizeKey(string key)
-            {
-                // For hierarchical config values specified in environment variables,
-                // a colon(:) may not work on all platforms. Double underscore(__) is
-                // supported by all platforms.
-                return key.Replace(ConfigurationPath.KeyDelimiter, "__");
             }
         }
     }

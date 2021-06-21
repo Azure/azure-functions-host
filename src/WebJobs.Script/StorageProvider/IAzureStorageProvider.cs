@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// </summary>
     public interface IAzureStorageProvider
     {
-        IConfiguration Configuration { get; }
+        bool ConnectionExists(string connection);
 
         bool TryGetBlobServiceClientFromConnectionString(out BlobServiceClient client, string connectionString);
 

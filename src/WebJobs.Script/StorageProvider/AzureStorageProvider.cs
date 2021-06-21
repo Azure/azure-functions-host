@@ -39,18 +39,20 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 _configuration = new ConfigurationBuilder()
-                .AddConfiguration(configuration)
-                .Add(new ActiveHostConfigurationSource(_serviceProvider))
-                .Build();
+                    .AddConfiguration(configuration)
+                    .Add(new ActiveHostConfigurationSource(_serviceProvider))
+                    .Build();
             }
         }
 
-        public IConfiguration Configuration
+        /// <summary>
+        /// Checks if a BlobServiceClient can be created (indicates the specified connection can be parsed)
+        /// </summary>
+        /// <param name="connection">connection to use for the BlobServiceClient</param>
+        /// <returns>true if successful; false otherwise</returns>
+        public bool ConnectionExists(string connection)
         {
-            get
-            {
-                return _configuration;
-            }
+            return TryGetBlobServiceClientFromConnection(out _, connection);
         }
 
         /// <summary>

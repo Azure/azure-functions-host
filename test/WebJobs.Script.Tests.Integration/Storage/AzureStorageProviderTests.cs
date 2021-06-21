@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
@@ -99,13 +100,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             }
         }
 
-        [Fact]
-        public void TestAzureStorageProvider_JobHostConfigurationWinsConflict()
+        [Theory]
+        [InlineData("ConnectionStrings:AzureWebJobsStorage1")]
+        [InlineData("AzureWebJobsStorage1")]
+        [InlineData("Storage1")]
+        public void TestAzureStorageProvider_JobHostConfigurationWinsConflict(string connectionName)
         {
+            var bytes = Encoding.UTF8.GetBytes("someKey");
+            var encodedString = Convert.ToBase64String(bytes);
+
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "TestConnection1", "webHostValue1" },
-                { "SectionA__TestConnection2", "webHostValue2" },
+                { connectionName, $"DefaultEndpointsProtocol=https;AccountName=webHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
             };
 
             using (new TestScopedEnvironmentVariable(testData))
@@ -117,8 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
                 var inMemory = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    { "TestConnection1", "jobHostValue1" },
-                    { "SectionA:TestConnection2", "jobHostValue2" },
+                    { connectionName, $"DefaultEndpointsProtocol=https;AccountName=jobHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
                 };
                 var jobHostConfiguration = new ConfigurationBuilder()
                     .AddInMemoryCollection(inMemory)
@@ -126,9 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     .Build();
 
                 var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-                Assert.Equal("jobHostValue1", azureStorageProvider.Configuration.GetSection("TestConnection1").Value);
-                Assert.Equal("jobHostValue1", azureStorageProvider.Configuration.GetValue<string>("TestConnection1"));
-                Assert.Equal("jobHostValue2", azureStorageProvider.Configuration.GetSection("SectionA").GetSection("TestConnection2").Value);
+                Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient client, "Storage1"));
+                Assert.Equal("jobHostAccount", client.AccountName, ignoreCase: true);
             }
         }
 
