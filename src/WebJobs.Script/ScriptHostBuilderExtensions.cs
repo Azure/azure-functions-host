@@ -174,6 +174,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     return NullHostedService.Instance;
                 });
+
+                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -294,8 +296,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
                 services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
-
-                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
                 {
