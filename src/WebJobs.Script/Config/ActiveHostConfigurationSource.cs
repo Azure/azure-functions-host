@@ -28,7 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             public ActiveHostConfigurationProvider(IScriptHostManager scriptHostManager)
             {
-                _serviceProvider = scriptHostManager as IServiceProvider ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                _ = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                _serviceProvider = scriptHostManager as IServiceProvider;
                 scriptHostManager.ActiveHostChanged += HandleActiveHostChange;
             }
 
