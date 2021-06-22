@@ -23,18 +23,18 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
         private class ActiveHostConfigurationProvider : ConfigurationProvider
         {
-            private readonly IScriptHostManager _scriptHostManager;
+            private readonly IServiceProvider _serviceProvider;
             private IDisposable _changeTokenRegistration;
 
             public ActiveHostConfigurationProvider(IScriptHostManager scriptHostManager)
             {
-                _scriptHostManager = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
-                _scriptHostManager.ActiveHostChanged += ScriptHostManager_ActiveHostChanged;
+                _serviceProvider = scriptHostManager as IServiceProvider ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                scriptHostManager.ActiveHostChanged += HandleActiveHostChange;
             }
 
             public override void Load()
             {
-                if ((_scriptHostManager as IServiceProvider)?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
+                if (_serviceProvider?.GetService(typeof(IConfiguration)) is IConfigurationRoot activeHostConfiguration)
                 {
                     Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var kvp in activeHostConfiguration.AsEnumerable())
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private void ScriptHostManager_ActiveHostChanged(object sender, ActiveHostChangedEventArgs e)
+            private void HandleActiveHostChange(object sender, ActiveHostChangedEventArgs e)
             {
                 Load();
             }
