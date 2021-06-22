@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_LoadWebHookProviderAndRetrieveSecrets()
         {
-            var storageValue = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
             // We can't assume the placeholder has any environment variables specified by the customer.
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
@@ -345,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_CustomStartupRemovesAzureWebJobsStorage()
         {
-            var storageValue = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
             // We can't assume the placeholder has any environment variables specified by the customer.
             // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
@@ -395,7 +395,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_CustomStartupAddsWebJobsStorage()
         {
-            var storageValue = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
             // No AzureWebJobsStorage set in environment variables (App Settings from portal)
             using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))

@@ -22,82 +22,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         [Fact]
         public async Task TestAzureStorageProvider_ConnectionInWebHostConfiguration()
         {
+            var testConfiguration = TestHelpers.GetTestConfiguration();
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "ConnectionStrings:AzureWebJobsStorage", Environment.GetEnvironmentVariable(StorageConnection) },
+                { "ConnectionStrings:AzureWebJobsStorage", testConfiguration.GetWebJobsConnectionString(StorageConnection) },
                 { "AzureWebJobsStorage", "" }
             };
 
-            using (new TestScopedEnvironmentVariable(testData))
-            {
-                var webHostConfiguration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddTestSettings()
-                    .Build();
+            var webHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(testData)
+                .Build();
 
-                var jobHostConfiguration = new ConfigurationBuilder().Build();
+            var jobHostConfiguration = new ConfigurationBuilder().Build();
 
-                var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-                var container = azureStorageProvider.GetBlobContainerClient();
-                await VerifyContainerClientAvailable(container);
+            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            var container = azureStorageProvider.GetBlobContainerClient();
+            await VerifyContainerClientAvailable(container);
 
-                Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
-                await VerifyBlobServiceClientAvailable(blobServiceClient);
-            }
+            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
+            await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
         [Fact]
         public async Task TestAzureStorageProvider_ConnectionInJobHostConfiguration()
         {
+            var testConfiguration = TestHelpers.GetTestConfiguration();
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "ConnectionStrings:AzureWebJobsStorage", Environment.GetEnvironmentVariable(StorageConnection) },
+                { "ConnectionStrings:AzureWebJobsStorage", testConfiguration.GetWebJobsConnectionString(StorageConnection) },
                 { "AzureWebJobsStorage", "" }
             };
 
-            using (new TestScopedEnvironmentVariable(testData))
-            {
-                var webHostConfiguration = new ConfigurationBuilder().Build();
+            var webHostConfiguration = new ConfigurationBuilder().Build();
+            var jobHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(testData)
+                .Build();
 
-                var jobHostConfiguration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddTestSettings()
-                    .Build();
+            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            var container = azureStorageProvider.GetBlobContainerClient();
+            await VerifyContainerClientAvailable(container);
 
-                var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-                var container = azureStorageProvider.GetBlobContainerClient();
-                await VerifyContainerClientAvailable(container);
-
-                Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
-                await VerifyBlobServiceClientAvailable(blobServiceClient);
-            }
+            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
+            await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
         [Fact]
         public void TestAzureStorageProvider_NoConnectionThrowsException()
         {
-            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "AzureWebJobsStorage", "" }
-            };
+            var webHostConfiguration = new ConfigurationBuilder()
+                .Build();
+            var jobHostConfiguration = new ConfigurationBuilder()
+                .Build();
 
-            using (new TestScopedEnvironmentVariable(testData))
-            {
-                var webHostConfiguration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddTestSettings()
-                    .Build();
+            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.Throws<InvalidOperationException>(() => azureStorageProvider.GetBlobContainerClient());
 
-                var jobHostConfiguration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddTestSettings()
-                    .Build();
-
-                var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-                Assert.Throws<InvalidOperationException>(() => azureStorageProvider.GetBlobContainerClient());
-
-                Assert.False(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
-            }
+            Assert.False(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
         }
 
         [Theory]
@@ -109,31 +89,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             var bytes = Encoding.UTF8.GetBytes("someKey");
             var encodedString = Convert.ToBase64String(bytes);
 
-            var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            var webHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { connectionName, $"DefaultEndpointsProtocol=https;AccountName=webHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
             };
+            var webHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(webHostConfigData)
+                .Build();
 
-            using (new TestScopedEnvironmentVariable(testData))
+            var jobHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                var webHostConfiguration = new ConfigurationBuilder()
-                    .AddEnvironmentVariables()
-                    .AddTestSettings()
-                    .Build();
+                { connectionName, $"DefaultEndpointsProtocol=https;AccountName=jobHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
+            };
+            var jobHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(jobHostConfigData)
+                .Build();
 
-                var inMemory = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    { connectionName, $"DefaultEndpointsProtocol=https;AccountName=jobHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
-                };
-                var jobHostConfiguration = new ConfigurationBuilder()
-                    .AddInMemoryCollection(inMemory)
-                    .AddTestSettings()
-                    .Build();
-
-                var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-                Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient client, "Storage1"));
-                Assert.Equal("jobHostAccount", client.AccountName, ignoreCase: true);
-            }
+            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient client, "Storage1"));
+            Assert.Equal("jobHostAccount", client.AccountName, ignoreCase: true);
         }
 
         private async Task VerifyBlobServiceClientAvailable(BlobServiceClient client)
