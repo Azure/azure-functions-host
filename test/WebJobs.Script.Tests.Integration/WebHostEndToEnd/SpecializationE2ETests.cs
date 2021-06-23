@@ -443,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        [Theory]
+        [Theory(Skip = "Will be enforced as part of release build")]
         [InlineData(WarmUpConstants.JitTraceFileName)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)
