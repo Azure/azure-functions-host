@@ -132,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StartWorkerProcessAsync()
         {
-            _workerConfig.ProcessStartupTimeout = TimeSpan.FromDays(1);
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(_workerConfig.ProcessStartupTimeout)
                 .Take(1)
