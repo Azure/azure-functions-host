@@ -110,6 +110,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             Assert.Equal("jobHostAccount", client.AccountName, ignoreCase: true);
         }
 
+        [Fact]
+        public void TestAzureStorageProvider_ConnectionExistsWorksProperly()
+        {
+            var bytes = Encoding.UTF8.GetBytes("someKey");
+            var encodedString = Convert.ToBase64String(bytes);
+
+            // Connection exists in WebHost configuration
+            var webHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { StorageConnection, $"DefaultEndpointsProtocol=https;AccountName=webHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
+            };
+            var webHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(webHostConfigData)
+                .Build();
+
+            var jobHostConfiguration = new ConfigurationBuilder()
+                .Build();
+
+            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage));
+
+            // Connection exists in JobHost configuration
+            webHostConfiguration = new ConfigurationBuilder()
+                .Build();
+
+            var jobHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { StorageConnection, $"DefaultEndpointsProtocol=https;AccountName=webHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
+            };
+            jobHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(jobHostConfigData)
+                .Build();
+
+            azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage));
+
+            // Connection doesn't exist
+            webHostConfiguration = new ConfigurationBuilder()
+                .Build();
+            jobHostConfiguration = new ConfigurationBuilder()
+                .Build();
+
+            azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.False(azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage));
+
+            // Connection is a set of configuration settings
+            webHostConfiguration = new ConfigurationBuilder()
+                .Build();
+
+            jobHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorAGE:accountName", "testAccount" },
+            };
+            jobHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(jobHostConfigData)
+                .Build();
+
+            azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage));
+
+            // Connection is a set of configuration settings
+            webHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "AzureWebJobsStorage:blobServiceUri", "https://testAccount.blob.core.windows.net" },
+                { "AzureWebJobsStorage:queueServiceUri", "https://testAccount.queue.core.windows.net" }
+            };
+            webHostConfiguration = new ConfigurationBuilder()
+                .AddInMemoryCollection(webHostConfigData)
+                .Build();
+
+            jobHostConfiguration = new ConfigurationBuilder()
+                .Build();
+
+            azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage));
+        }
+
         private async Task VerifyBlobServiceClientAvailable(BlobServiceClient client)
         {
             try

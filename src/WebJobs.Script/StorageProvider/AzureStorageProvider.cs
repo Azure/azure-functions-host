@@ -5,6 +5,7 @@ using System;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -50,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>true if successful; false otherwise</returns>
         public bool ConnectionExists(string connection)
         {
-            return TryGetBlobServiceClientFromConnection(out _, connection);
+            var section = _configuration.GetWebJobsConnectionStringSection(connection);
+            return section != null && section.Exists();
         }
 
         /// <summary>
