@@ -175,6 +175,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     return NullHostedService.Instance;
                 });
 
+                // Wire this up early so that any early worker logs are guaranteed to be flushed if any other
+                // IHostedService has a slow startup.
                 services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
