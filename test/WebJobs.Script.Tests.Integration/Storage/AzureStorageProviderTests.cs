@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
             var jobHostConfigData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { StorageConnection, $"DefaultEndpointsProtocol=https;AccountName=webHostAccount;AccountKey={encodedString};EndpointSuffix=core.windows.net" },
+                { StorageConnection, "someValueThatWouldn'tParse" },
             };
             jobHostConfiguration = new ConfigurationBuilder()
                 .AddInMemoryCollection(jobHostConfigData)
