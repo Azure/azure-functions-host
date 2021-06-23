@@ -10,9 +10,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -52,6 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private TimeSpan _processStartupInterval;
         private TimeSpan _restartWait;
         private TimeSpan _shutdownTimeout;
+        private bool _workerIndexing;
+        private ConcurrentBag<IRpcWorkerChannel> _channels = new ConcurrentBag<IRpcWorkerChannel>();
+        private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -110,12 +115,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount)
         {
             var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _workerConfigs);
-            rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             await rpcWorkerChannel.StartWorkerProcessAsync();
             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-            rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-            SetFunctionDispatcherStateToInitializedAndLog();
+            _channels.Add(rpcWorkerChannel);
+
+            // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
+            if (!_workerIndexing)
+            {
+                rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }
         }
 
         private void SetFunctionDispatcherStateToInitializedAndLog()
@@ -129,8 +140,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
-            workerChannel.SetupFunctionInvocationBuffers(_functions);
-            workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+            _channels.Add(workerChannel);
+
+            // if the worker is indexing, we will not have function metadata yet so we cannot perform the next two lines
+            if (!_workerIndexing)
+            {
+                workerChannel.SetupFunctionInvocationBuffers(_functions);
+                workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+            }
         }
 
         internal async void ShutdownWebhostLanguageWorkerChannels()
@@ -192,8 +209,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
-            _functions = functions;
+            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (workerConfig == null)
+            {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
+                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+            }
+
+            // if worker indexing feature flag is enabled and worker is capable of indexing, go down worker indexing code path
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
+            {
+                _workerIndexing = true;
+            }
+
+            if ((functions == null || functions.Count() == 0) && !_workerIndexing)
+            {
+                // do not initialize function dispatcher if there are no functions, unless the worker is indexing
+                return;
+            }
+
+            _functions = functions ?? new List<FunctionMetadata>();
+
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Shutdown any placeholder channels for empty function apps or dotnet function apps.
@@ -203,19 +241,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            if (functions == null || functions.Count() == 0)
-            {
-                // do not initialize function dispatcher if there are no functions
-                return;
-            }
-
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            if (workerConfig == null)
-            {
-                // Only throw if workerConfig is null AND some functions have been found.
-                // With .NET out-of-proc, worker config comes from functions.
-                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
-            }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
             _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
@@ -236,8 +261,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             try
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                                initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+
+                                // if worker is not indexing, then _functions is populated and we can set up invocation buffers and send load requests
+                                if (!_workerIndexing)
+                                {
+                                    initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                                    initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                                }
                             }
                             catch (Exception ex)
                             {
@@ -250,8 +280,57 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
-                    StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                    // if _workerIndexing, initialize a single channel and let the rest start up the background
+                    if (_workerIndexing)
+                    {
+                        await InitializeJobhostLanguageWorkerChannelAsync();
+                        StartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannelAsync);
+                    }
+                    else
+                    {
+                        StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                    }
                 }
+            }
+        }
+
+        // Gets metadata from worker
+        public async Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata()
+        {
+            var channels = _channels.ToList();
+            if (channels.Count > 0)
+            {
+                return await channels[0].WorkerGetFunctionMetadata();
+            }
+            return null;
+        }
+
+        // Second part of split InitializeAsync
+        public void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                return;
+            }
+
+            _functions = functions;
+
+            if (functions == null || functions.Count() == 0)
+            {
+                // do not setup invocation buffers or send load requests if there are no valid functions
+                return;
+            }
+
+            if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
+            {
+                foreach (IRpcWorkerChannel initializedLanguageWorkerChannel in _channels)
+                {
+                    initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                    initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                }
+                SetFunctionDispatcherStateToInitializedAndLog();
             }
         }
 

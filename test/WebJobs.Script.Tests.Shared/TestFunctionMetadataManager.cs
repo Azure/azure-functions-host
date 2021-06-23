@@ -3,7 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -37,7 +40,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
 
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions);
+            ScriptApplicationHostOptions scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\python");
+            scriptApplicationHostOptions.ScriptPath = functionsPath;
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+
+            IFunctionMetadataProviderFactory providerFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger());
+            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IFunctionMetadataProviderFactory))).Returns(providerFactory);
+
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, providerFactory);
         }
     }
 }
