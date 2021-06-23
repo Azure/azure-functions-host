@@ -12,9 +12,11 @@
     <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
-    <PublishReadyToRun>false</PublishReadyToRun>
-    <PublishReadyToRunEmitSymbols>false</PublishReadyToRunEmitSymbols>
-    <PublishReadyToRunShowWarnings>false</PublishReadyToRunShowWarnings>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
+    <PublishReadyToRunComposite>false</PublishReadyToRunComposite> <!-- Setting to 'true' currently throws exception -->
+    <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
+    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
   </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -60,9 +62,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- These assemblies throw an error with ReadyToRun -->
+    <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.dll" />
+    <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.Workspaces.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DotNetTI.BreakingChangeAnalysis" Version="1.1.0-preview" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="3.1.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="3.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0-preview.4.21253.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0-preview.4.21253.5" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.5" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.11020001-fabe022e" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
