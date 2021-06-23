@@ -152,5 +152,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _executingInvocations = new HashSet<string>();
             return true;
         }
+
+        public void SendWorkerMetadataRequest()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool GetTestValue()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -24,6 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         Task SendFunctionEnvironmentReloadRequest();
 
+        void SendWorkerMetadataRequest();
+
+        bool GetTestValue();
+
         Task StartWorkerProcessAsync();
 
         Task<WorkerStatus> GetWorkerStatusAsync();

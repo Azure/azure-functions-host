@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
+        private readonly IWorkerFunctionMetadataManager _workerFunctionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
@@ -103,7 +104,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
-            ScriptSettingsManager settingsManager = null)
+            ScriptSettingsManager settingsManager = null,
+            IWorkerFunctionMetadataManager workerFunctionMetadataManager = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
@@ -116,6 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
+            _workerFunctionMetadataManager = workerFunctionMetadataManager;
             _fileLoggingStatusManager = fileLoggingStatusManager;
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
@@ -274,44 +277,77 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
-
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
-
-                if (!_environment.IsPlaceholderModeEnabled())
+                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) != null)
                 {
-                    string runtimeStack = _workerRuntime;
-
-                    if (!string.IsNullOrEmpty(runtimeStack))
+                    // assume this was the capability check
+                    _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                    _logger.LogInformation("workerRuntime = " + _workerRuntime + " okay that's it");
+                    if (!_environment.IsPlaceholderModeEnabled())
                     {
-                        // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
-                        // Windows Consumption as well.
-                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+                        string runtimeStack = _workerRuntime;
 
-                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        if (!string.IsNullOrEmpty(runtimeStack))
                         {
-                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                            // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
+                            // Windows Consumption as well.
+                            string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
+
+                            if (!string.IsNullOrEmpty(runtimeVersion))
+                            {
+                                runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                            }
                         }
+
+                        _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
+
+                        Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
-
-                    Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
+                    await _functionDispatcher.InitializeAsync(null, cancellationToken);
+                    ScheduleFileSystemCleanup();
                 }
+                else
+                {
+                    // App doesn't have environment variable, perform host indexing
+                    // Generate Functions
+                    IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
 
-                var directTypes = GetDirectTypes(functionMetadataList);
-                await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+                    _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
 
-                // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Dispatcher not needed for non-proxy codeless function.
-                // Disptacher needed for non-dotnet codeless functions
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        string runtimeStack = _workerRuntime;
 
-                GenerateFunctions(directTypes);
+                        if (!string.IsNullOrEmpty(runtimeStack))
+                        {
+                            // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
+                            // Windows Consumption as well.
+                            string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                ScheduleFileSystemCleanup();
+                            if (!string.IsNullOrEmpty(runtimeVersion))
+                            {
+                                runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
+                            }
+                        }
+
+                        _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
+
+                        Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
+                    }
+
+                    var directTypes = GetDirectTypes(functionMetadataList);
+                    await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+
+                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
+                    // Dispatcher not needed for non-proxy codeless function.
+                    // Disptacher needed for non-dotnet codeless functions
+                    var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+
+                    GenerateFunctions(directTypes);
+
+                    ScheduleFileSystemCleanup();
+                }
             }
         }
 

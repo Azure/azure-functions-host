@@ -65,8 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<List<FunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
+        private bool _testingReceivedWorkerResponse;
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -247,6 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _state = _state | RpcWorkerChannelState.Initialized;
+            _initMessage.Capabilities.Add("CanIndex", "true"); // manually add capability for now without touching worker. Assume it is true.
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _workerInitTask.SetResult(true);
@@ -326,6 +329,59 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             return request;
         }
+
+        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        {
+            SendWorkerMetadataRequest();
+            return _functionsIndexingTask.Task;
+        }
+
+        internal void SendWorkerMetadataRequest()
+        {
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
+                        .Timeout(_functionLoadTimeout)
+                        .Take(1) // could be a problem if this only selects the first result in MetadataResponse
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerFunctionLoadError));
+
+            _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerMetadataRequest = new WorkerMetadataRequest()
+                {
+                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
+                }
+            });
+        }
+
+        internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
+        {
+            _testingReceivedWorkerResponse = true;
+
+            var functions = new List<FunctionMetadata>();
+
+            foreach (var metadata in workerMetadataResponse.Results)
+            {
+                var functionMetadata = new FunctionMetadata()
+                {
+                    FunctionDirectory = metadata.Directory,
+                    ScriptFile = metadata.ScriptFile,
+                    EntryPoint = metadata.EntryPoint,
+                    Name = metadata.Name
+                };
+
+                functionMetadata.SetFunctionId(metadata.Id);
+
+                /*foreach (var binding in metadata.Bindings)
+                {
+                    var functionBinding = BindingMetadata.Create(JobObjectInfoType.Parse(binding.Key)); //figure the bindings out later...
+                }*/
+                functions.Add(functionMetadata);
+            }
+            _functionsIndexingTask.SetResult(functions);
+        }
+
+        public bool GetTestValue() { return _testingReceivedWorkerResponse; }
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
