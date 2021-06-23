@@ -514,11 +514,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
 
-                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs
-                    .FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+
+                // If there's no worker config, use the default (for legacy behavior).
+                TimeSpan initializationTimeout = workerConfig?.InitializationTimeout ?? new RpcWorkerConfig().InitializationTimeout;
 
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
-                    _functionDispatcher, _loggerFactory, _applicationLifetime, workerConfig.InitializationTimeout));
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
             }
 
             // Codeless functions run side by side with regular functions.

@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -258,12 +259,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1)
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,
+            TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null)
         {
+            var defaultCountOptions = new WorkerProcessCountOptions();
+            var defaultWorkerOptions = new RpcWorkerConfig();
+            TimeSpan startupInterval = processStartupInterval ?? defaultCountOptions.ProcessStartupInterval;
+            TimeSpan restartInterval = processRestartInterval ?? defaultWorkerOptions.ProcessRestartInterval;
+            TimeSpan shutdownTimeout = processShutdownTimeout ?? defaultWorkerOptions.ProcessShutdownTimeout;
+
             var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } },
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } }
+                new RpcWorkerConfig
+                {
+                    Description = GetTestWorkerDescription("node", ".js"),
+                    ProcessRestartInterval = restartInterval,
+                    ProcessShutdownTimeout = shutdownTimeout,
+                    CountOptions = new WorkerProcessCountOptions
+                    {
+                        ProcessCount = processCountValue,
+                        ProcessStartupInterval = startupInterval
+                    }
+                },
+                new RpcWorkerConfig
+                {
+                    Description = GetTestWorkerDescription("java", ".jar"),
+                    ProcessRestartInterval = restartInterval,
+                    ProcessShutdownTimeout = shutdownTimeout,
+                    CountOptions = new WorkerProcessCountOptions
+                    {
+                        ProcessCount = processCountValue,
+                        ProcessStartupInterval = startupInterval
+                    }
+                }
             };
 
             // Allow tests to have a worker that claims the .dll extension.

@@ -28,8 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
-        private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _restartWait = TimeSpan.FromSeconds(10);
         private readonly SemaphoreSlim _restartWorkerProcessSLock = new SemaphoreSlim(1, 1);
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
@@ -51,7 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
         private CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private int _processStartupInterval;
+        private TimeSpan _processStartupInterval;
+        private TimeSpan _restartWait;
+        private TimeSpan _shutdownTimeout;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -193,7 +193,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
             }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
-            _processStartupInterval = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
+            _restartWait = workerConfig.ProcessRestartInterval;
+            _shutdownTimeout = workerConfig.ProcessShutdownTimeout;
             ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))

@@ -26,9 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
-        /// Gets or sets the worker initialization timeout. This is the time from when the FunctionEnvironmentReloadRequest
+        /// Gets or sets the worker environment reload timeout. This is the time from when the FunctionEnvironmentReloadRequest
         /// is sent to when the FunctionEnvironmentReloadResponse is received.
         /// </summary>
         public TimeSpan EnvironmentReloadTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Gets or sets interval between process restarts. Default 10secs
+        /// </summary>
+        public TimeSpan ProcessRestartInterval { get; set; } = TimeSpan.FromSeconds(10);
+
+        /// <summary>
+        /// Gets or sets the process shutdown timeout. Default 10secs
+        /// </summary>
+        public TimeSpan ProcessShutdownTimeout { get; set; } = TimeSpan.FromSeconds(10);
     }
 }
