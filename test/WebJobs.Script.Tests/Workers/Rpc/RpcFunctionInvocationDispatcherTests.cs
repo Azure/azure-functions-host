@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -86,6 +87,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             // ignore first start as we added a WebhostChannel on GetTestFunctionDispatcher call
             VerifyStartIntervals(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15), true);
+        }
+
+        [Fact]
+        public async Task Starting_MultipleWebhostChannels_WorkerIndexing_Succeeds()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, true, runtime: "java", workerIndexing: true);
+            await functionDispatcher.InitializeAsync(null);
+            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedProcessCount, "java");
+            Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
+
+            var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
+            Assert.Equal(0, finalJobhostChannelCount);
         }
 
         [Fact]
@@ -495,8 +510,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(testLogs.Any(m => m.FormattedMessage.Contains("Removing errored webhost language worker channel for runtime")));
         }
 
-        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false, Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null,
-            bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null)
+        private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false,
+            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null, string runtime = null, bool workerIndexing = false)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -505,6 +520,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
 
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue.ToString());
+            if (runtime != null)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, runtime);
+            }
+            if (workerIndexing)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
 
             var options = new ScriptJobHostOptions
             {

@@ -228,6 +228,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _initMessage.Capabilities.Add("WorkerIndexing", "true"); // manually add capability for now without touching worker. Assume it is true.
             _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -392,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
-                // do not send invocation requests for functions that failed to load or for functions that could not be indexed by the worker
+                // do not send invocation requests for functions that failed to load or could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
