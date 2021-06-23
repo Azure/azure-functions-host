@@ -54,6 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public string SanitizeRuntimeVersionRegex { get; set; }
 
         /// <summary>
+        /// Gets or sets the worker indexing ability for this worker.
+        /// </summary>
+        [JsonProperty(PropertyName = "workerIndexing")]
+        public string WorkerIndexing { get; set; }
+
+        /// <summary>
         /// Gets or sets the supported file extension type. Functions are registered with workers based on extension.
         /// </summary>
         [JsonProperty(PropertyName = "extensions")]
