@@ -263,33 +263,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null)
         {
             var defaultCountOptions = new WorkerProcessCountOptions();
-            var defaultWorkerOptions = new RpcWorkerConfig();
             TimeSpan startupInterval = processStartupInterval ?? defaultCountOptions.ProcessStartupInterval;
-            TimeSpan restartInterval = processRestartInterval ?? defaultWorkerOptions.ProcessRestartInterval;
-            TimeSpan shutdownTimeout = processShutdownTimeout ?? defaultWorkerOptions.ProcessShutdownTimeout;
+            TimeSpan restartInterval = processRestartInterval ?? defaultCountOptions.ProcessRestartInterval;
+            TimeSpan shutdownTimeout = processShutdownTimeout ?? defaultCountOptions.ProcessShutdownTimeout;
 
             var workerConfigs = new List<RpcWorkerConfig>
             {
                 new RpcWorkerConfig
                 {
                     Description = GetTestWorkerDescription("node", ".js"),
-                    ProcessRestartInterval = restartInterval,
-                    ProcessShutdownTimeout = shutdownTimeout,
                     CountOptions = new WorkerProcessCountOptions
                     {
                         ProcessCount = processCountValue,
-                        ProcessStartupInterval = startupInterval
+                        ProcessStartupInterval = startupInterval,
+                        ProcessRestartInterval = restartInterval,
+                        ProcessShutdownTimeout = shutdownTimeout
                     }
                 },
                 new RpcWorkerConfig
                 {
                     Description = GetTestWorkerDescription("java", ".jar"),
-                    ProcessRestartInterval = restartInterval,
-                    ProcessShutdownTimeout = shutdownTimeout,
                     CountOptions = new WorkerProcessCountOptions
                     {
                         ProcessCount = processCountValue,
-                        ProcessStartupInterval = startupInterval
+                        ProcessStartupInterval = startupInterval,
+                        ProcessRestartInterval = restartInterval,
+                        ProcessShutdownTimeout = shutdownTimeout
                     }
                 }
             };

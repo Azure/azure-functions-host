@@ -194,8 +194,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
-            _restartWait = workerConfig.ProcessRestartInterval;
-            _shutdownTimeout = workerConfig.ProcessShutdownTimeout;
+            _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
+            _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
             ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))

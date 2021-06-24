@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
-            _testWorkerConfig.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
-            _testWorkerConfig.InitializationTimeout = TimeSpan.FromSeconds(5);
-            _testWorkerConfig.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
+            _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
+            _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
+            _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
