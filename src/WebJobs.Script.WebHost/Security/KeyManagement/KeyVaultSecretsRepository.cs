@@ -31,6 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private readonly Lazy<KeyVaultClient> _keyVaultClient;
         private readonly string _vaultName;
+        private readonly IEnvironment _environment;
 
         public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultName, string connectionString, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
         {
@@ -47,6 +48,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     : new AzureServiceTokenProvider(connectionString);
                 return new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
             });
+
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
         public override bool IsEncryptionSupported
@@ -239,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private string GetVaultBaseUrl()
         {
-            return $"https://{_vaultName}.vault.azure.net";
+            return $"https://{_vaultName}{_environment.GetVaultSuffix()}";
         }
 
         public static Dictionary<string, string> GetDictionaryFromScriptSecrets(ScriptSecrets secrets, string functionName)

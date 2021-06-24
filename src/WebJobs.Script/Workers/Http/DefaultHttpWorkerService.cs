@@ -254,7 +254,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
         public async Task<bool> IsWorkerReady(CancellationToken cancellationToken)
         {
-            bool continueWaitingForWorker = await Utility.DelayAsync(WorkerConstants.WorkerInitTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, async () =>
+            TimeSpan pollingInterval = TimeSpan.FromMilliseconds(WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds);
+            bool continueWaitingForWorker = await Utility.DelayAsync(_httpWorkerOptions.InitializationTimeout, pollingInterval, async () =>
             {
                 string requestUri = BuildAndGetUri();
                 try

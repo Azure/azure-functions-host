@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.AspNetCore.Extensions;
+using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
@@ -94,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public event EventHandler HostInitializing;
 
+        public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+
         [Flags]
         private enum JobHostStartupMode
         {
@@ -117,7 +120,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             set
             {
                 _logger?.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
+
+                var previousHost = _host;
                 _host = value;
+
+                OnActiveHostChanged(previousHost, _host);
             }
         }
 
@@ -230,7 +237,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     State = ScriptHostState.Default;
                 }
 
-                bool isOffline = Utility.CheckAppOffline(_environment, _applicationHostOptions.CurrentValue.ScriptPath);
+                bool isOffline = Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath);
                 State = isOffline ? ScriptHostState.Offline : State;
                 bool hasNonTransientErrors = startupMode.HasFlag(JobHostStartupMode.HandlingNonTransientError);
                 bool handlingError = startupMode.HasFlag(JobHostStartupMode.HandlingError);
@@ -529,6 +536,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HostInitializing?.Invoke(sender, e);
         }
 
+        private void OnActiveHostChanged(IHost previousHost, IHost newHost)
+        {
+            ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(previousHost, _host));
+        }
+
         /// <summary>
         /// Called after the host has been fully initialized, but before it
         /// has been started.
@@ -656,6 +668,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
         private async Task Orphan(IHost instance, CancellationToken cancellationToken = default)
         {
+            var isStandbyHost = false;
             try
             {
                 var scriptHost = (ScriptHost)instance?.Services.GetService<ScriptHost>();
@@ -663,6 +676,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     scriptHost.HostInitializing -= OnHostInitializing;
                     scriptHost.HostInitialized -= OnHostInitialized;
+                    isStandbyHost = scriptHost.IsStandbyHost;
                 }
             }
             catch (ObjectDisposedException)
@@ -684,8 +698,57 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (instance != null)
                 {
                     GetHostLogger(instance).LogDebug("Disposing ScriptHost.");
-                    instance.Dispose();
+
+                    if (isStandbyHost && !_scriptWebHostEnvironment.InStandbyMode)
+                    {
+                        // For cold start reasons delay disposing script host if specializing out of placeholder mode
+                        Utility.ExecuteAfterColdStartDelay(_environment, () =>
+                        {
+                            try
+                            {
+                                GetHostLogger(instance).LogDebug("Starting Standby ScriptHost dispose");
+                                instance.Dispose();
+                                _logger.LogDebug("Standby ScriptHost disposed");
+                            }
+                            catch (Exception e)
+                            {
+                                _logger.LogError(e, "Failed to dispose Standby ScriptHost instance");
+                                throw;
+                            }
+                        }, cancellationToken);
+
+                        _logger.LogDebug("Standby ScriptHost marked for disposal");
+                    }
+                    else
+                    {
+                        DisposeDependencyTrackingModule(instance);
+                        instance.Dispose();
+                        _logger.LogDebug("ScriptHost disposed");
+                    }
                 }
+            }
+        }
+
+        // A temporary fix until we are able to take App Insights 2.18.0. There is a potential
+        // race during disposal where new DiagnosticListeners can throw exceptions after TelemetryConfiguration
+        // is disposed, but before this module is disposed. This ensures the module disposes first.
+        // Tracking issue: https://github.com/Azure/azure-functions-host/issues/7450
+        private void DisposeDependencyTrackingModule(IHost instance)
+        {
+            try
+            {
+                var module = instance?.Services.GetServices<ITelemetryModule>()
+                                      .SingleOrDefault(m => m is DependencyTrackingTelemetryModule)
+                                      as IDisposable;
+
+                module?.Dispose();
+
+                _logger.LogDebug($"{nameof(DependencyTrackingTelemetryModule)} disposed.");
+            }
+            catch (Exception ex)
+            {
+                // best effort.
+                _logger.LogDebug($"Unable to dispose {nameof(DependencyTrackingTelemetryModule)}. {ex}");
             }
         }
 

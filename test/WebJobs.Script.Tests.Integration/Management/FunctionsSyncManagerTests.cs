@@ -269,6 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
+
             var log = logs[0];
             int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
             int endIdx = log.FormattedMessage.LastIndexOf(')');
@@ -400,6 +401,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 // verify log statements
                 var logMessages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
+
                 Assert.True(logMessages[0].Contains("Content="));
                 Assert.Equal(expectedErrorMessage, logMessages[1]);
             }
@@ -566,6 +568,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Fact]
+        public async Task UpdateHashAsync_Succeeds()
+        {
+            var hashBlobClient = await _functionsSyncManager.GetHashBlobAsync();
+            await hashBlobClient.DeleteIfExistsAsync();
+
+            // add the hash when it doesn't exist
+            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash1");
+
+            // read the hash and make sure the value is what we wrote
+            string result;
+            var downloadResponse = await hashBlobClient.DownloadAsync();
+            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+            {
+                result = reader.ReadToEnd();
+            }
+            Assert.Equal("hash1", result);
+
+            // now update the existing hash to a new value
+            await _functionsSyncManager.UpdateHashAsync(hashBlobClient, "hash2");
+
+            downloadResponse = await hashBlobClient.DownloadAsync();
+            using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))
+            {
+                result = reader.ReadToEnd();
+            }
+            Assert.Equal("hash2", result);
+        }
+
         private void VerifyLoggedInvalidOperationException(string errorMessage)
         {
             Exception[] messages = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(p => p.Level == LogLevel.Error).Select(p => p.Exception).ToArray();
@@ -657,13 +688,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Theory]
-        [InlineData("KUBERNETES_SERVICE_HOST", "http://k8se-build-service.k8se-system.svc.cluster.local:8181/operations/settriggers")]
+        [InlineData("KUBERNETES_SERVICE_HOST", "http://k8se-build-service.k8se-system.svc.cluster.local:8181/api/operations/settriggers")]
         [InlineData(null, "https://appname.azurewebsites.net/operations/settriggers")]
         public void Managed_Kubernetes_Environment_SyncTrigger_Url_Validation(string kubernetesServiceHost, string expectedSyncTriggersUri)
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.KubernetesServiceHost)).Returns(kubernetesServiceHost);
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace)).Returns("POD_NAMESPACE");
-
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME"))
+                .Returns("");
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);

@@ -78,7 +78,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ExtensionsMetadataFileName = "extensions.json";
         public const string AppOfflineFileName = "app_offline.htm";
         public const string RunFromPackageFailedFileName = "FAILED TO INITIALIZE RUN FROM PACKAGE.txt";
-        public const string DisableContainerFileName = "container_offline";
         public const string ResourcePath = "Microsoft.Azure.WebJobs.Script.WebHost.Resources";
 
         public const string DefaultMasterKeyName = "master";
@@ -112,6 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
         public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
+        public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -180,6 +180,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public const string KubernetesManagedAppName = "K8SE_APP_NAME";
         public const string KubernetesManagedAppNamespace = "K8SE_APP_NAMESPACE";
+        public const string DiagnosticEventKey = "MS_DiagnosticEvent";
+        public const string HelpLinkKey = "MS_HelpLink";
+        public const string ErrorCodeKey = "MS_ErrorCode";
 
         public static readonly ImmutableArray<string> HttpMethods = ImmutableArray.Create("get", "post", "delete", "head", "patch", "put", "options");
         public static readonly ImmutableArray<string> AssemblyFileTypes = ImmutableArray.Create(".dll", ".exe");

@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
-        [Theory(Skip = "May not be needed")]
+        [Theory(Skip = "Will be enforced as part of release build")]
         [InlineData(WarmUpConstants.JitTraceFileName)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)

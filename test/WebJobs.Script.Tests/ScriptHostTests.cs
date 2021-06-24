@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -1424,6 +1425,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.False(scriptHost.IsFunction("DoesNotExist"));
             Assert.False(scriptHost.IsFunction(string.Empty));
             Assert.False(scriptHost.IsFunction(null));
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task IsStandbyHost_ReturnsExpectedResult(bool isStandbyHost)
+        {
+            var host = TestHelpers.GetDefaultHost(o =>
+            {
+                o.IsStandbyConfiguration = isStandbyHost;
+            });
+            await host.StartAsync();
+            var scriptHost = host.GetScriptHost();
+
+            Assert.Equal(isStandbyHost, scriptHost.IsStandbyHost);
         }
 
         [Fact]

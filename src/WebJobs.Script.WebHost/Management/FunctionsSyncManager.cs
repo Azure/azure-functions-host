@@ -106,11 +106,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 await _syncSemaphore.WaitAsync();
 
                 var hashBlobClient = await GetHashBlobAsync();
-                if (isBackgroundSync && hashBlobClient == null)
+                if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
                 {
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
-                    // storage access
+                    // storage access in non-Kubernetes environments.
                     return result;
                 }
 
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
-                if (isBackgroundSync)
+                if (isBackgroundSync && !_environment.IsKubernetesManagedHosting())
                 {
                     newHash = await CheckHashAsync(hashBlobClient, payload.Content);
                     shouldSyncTriggers = newHash != null;
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // update the last hash value in storage
                 using (Stream stream = new MemoryStream(Encoding.UTF8.GetBytes(hash)))
                 {
-                    await hashBlobClient.UploadAsync(stream);
+                    await hashBlobClient.UploadAsync(stream, overwrite: true);
                 }
                 _logger.LogDebug($"SyncTriggers hash updated to '{hash}'");
             }
@@ -304,6 +304,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
+            // TEMP: refactor this code to properly add extensions in all scenario(#7394)
+            // Add the host.json extensions to the payload
+            if (_environment.IsKubernetesManagedHosting())
+            {
+                JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+                if (extensionsPayload != null)
+                {
+                    result.Add("extensions", extensionsPayload);
+                }
+            }
+
             // Add functions secrets to the payload
             // Only secret types we own/control can we cache directly
             // Encryption is handled by Antares before storage
@@ -346,7 +357,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             string json = JsonConvert.SerializeObject(result);
-            if (json.Length > ScriptConstants.MaxTriggersStringLength)
+
+            if (json.Length > ScriptConstants.MaxTriggersStringLength && !_environment.IsKubernetesManagedHosting())
             {
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
@@ -364,6 +376,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Content = json,
                 Count = count
             };
+        }
+
+        internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
+        {
+            var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
+            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            if (FileUtility.FileExists(hostJsonPath))
+            {
+                try
+                {
+                    var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+                    if (hostJson.TryGetValue("extensions", out JToken token))
+                    {
+                        return (JObject)token;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
+                    return null;
+                }
+            }
+
+            return null;
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
@@ -561,7 +601,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var url = default(string);
             if (_environment.IsKubernetesManagedHosting())
             {
-                url = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}/operations/settriggers";
+                var buildServiceHostname =
+                    _environment.GetEnvironmentVariable("BUILD_SERVICE_HOSTNAME");
+                if (string.IsNullOrEmpty(buildServiceHostname))
+                {
+                    buildServiceHostname = $"http://{ManagedKubernetesBuildServiceName}.{ManagedKubernetesBuildServiceNamespace}.svc.cluster.local:{ManagedKubernetesBuildServicePort}";
+                }
+                url = $"{buildServiceHostname}/api/operations/settriggers";
             }
             else
             {

@@ -22,7 +22,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
@@ -34,7 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
@@ -48,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private RpcWorkerChannelState _state;
-        private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
@@ -136,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public async Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(TimeSpan.FromSeconds(WorkerConstants.ProcessStartTimeoutSeconds))
+                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
@@ -192,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
@@ -294,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.EnvironmentReloadTimeout)
                 .Take(1)
                 .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
 

@@ -39,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sc = host.GetScriptHost();
 
             FunctionMetadata metaData = new FunctionMetadata();
-            _testFunctionInvoker = new TestWorkerFunctionInvoker(sc, null, metaData, NullLoggerFactory.Instance, null, new Collection<FunctionBinding>(), _mockFunctionInvocationDispatcher.Object, _applicationLifetime.Object);
+            _testFunctionInvoker = new TestWorkerFunctionInvoker(sc, null, metaData, NullLoggerFactory.Instance, null, new Collection<FunctionBinding>(),
+                _mockFunctionInvocationDispatcher.Object, _applicationLifetime.Object, TimeSpan.FromSeconds(5));
         }
 
         [Fact]
@@ -48,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             try
             {
                 _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(FunctionInvocationDispatcherState.Initializing);
-                await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), Task.Delay(TimeSpan.FromSeconds(500)));
+                await Task.WhenAny(_testFunctionInvoker.InvokeCore(new object[] { }, null), Task.Delay(TimeSpan.FromSeconds(30)));
             }
             catch (Exception)
             {
@@ -66,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public async Task FunctionDispatcher_DelaysInvoke_WhenNotReady(FunctionInvocationDispatcherState state, bool delaysExecution)
         {
             _mockFunctionInvocationDispatcher.Setup(a => a.State).Returns(state);
-            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(2));
             var invokeCoreTask = _testFunctionInvoker.InvokeCore(new object[] { }, null);
             var result = await Task.WhenAny(invokeCoreTask, timeoutTask);
             if (delaysExecution)

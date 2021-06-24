@@ -75,14 +75,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "DotNetTI.BreakingChangeAnalysis",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Marklio.Metadata",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.ApplicationInsights",
       "resolutionPolicy": "runtimeVersion"
     },
@@ -1300,6 +1292,10 @@
     },
     {
       "name": "System.Text.Encoding",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encodings.Web",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

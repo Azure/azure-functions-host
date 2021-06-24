@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsDynamicSku(this IEnvironment environment)
         {
-            return environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium() || environment.IsLinuxConsumption();
+            return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();
         }
 
         /// <summary>
@@ -224,16 +224,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsLinuxConsumption(this IEnvironment environment)
         {
             return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this specific linux consumption container instance is in offline mode.
-        /// </summary>
-        /// <param name="environment">The environment to verify</param>
-        /// <returns><see cref="true"/> if running in a Linux Consumption App Service app and the container is in draining mode; otherwise, false.</returns>
-        public static bool IsLinuxConsumptionContainerDisabled(this IEnvironment environment)
-        {
-            return environment.IsLinuxConsumption() && Utility.IsContainerDisabled();
         }
 
         /// <summary>
@@ -442,6 +432,25 @@ namespace Microsoft.Azure.WebJobs.Script
                     return CloudConstants.USSecStorageSuffix;
                 default:
                     return CloudConstants.AzureStorageSuffix;
+            }
+        }
+
+        public static string GetVaultSuffix(this IEnvironment environment)
+        {
+            {
+                switch (GetCloudName(environment))
+                {
+                    case CloudName.Azure:
+                        return CloudConstants.AzureVaultSuffix;
+                    case CloudName.Blackforest:
+                        return CloudConstants.BlackforestVaultSuffix;
+                    case CloudName.Fairfax:
+                        return CloudConstants.FairfaxVaultSuffix;
+                    case CloudName.Mooncake:
+                        return CloudConstants.MooncakeVaultSuffix;
+                    default:
+                        return CloudConstants.AzureVaultSuffix;
+                }
             }
         }
 
