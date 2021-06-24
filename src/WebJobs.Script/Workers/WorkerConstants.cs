@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
-
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     public static class WorkerConstants
@@ -10,9 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string HostName = "127.0.0.1";
         public const string HttpScheme = "http";
 
-        public const int ProcessStartTimeoutSeconds = 60;
         public const int WorkerReadyCheckPollingIntervalMilliseconds = 25;
-        public const int WorkerInitTimeoutSeconds = 30;
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
 

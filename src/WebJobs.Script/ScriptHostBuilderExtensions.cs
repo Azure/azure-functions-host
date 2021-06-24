@@ -174,6 +174,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     return NullHostedService.Instance;
                 });
+
+                // Wire this up early so that any early worker logs are guaranteed to be flushed if any other
+                // IHostedService has a slow startup.
+                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -294,8 +298,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
                 services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
-
-                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
                 {

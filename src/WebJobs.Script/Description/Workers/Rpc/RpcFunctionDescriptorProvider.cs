@@ -16,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly string _workerRuntime;
 
         public RpcFunctionDescriptorProvider(ScriptHost host, string workerRuntime, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
-            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime)
-            : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime)
+            IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
+            : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
         {
             _workerRuntime = workerRuntime;
         }
