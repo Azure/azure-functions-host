@@ -719,7 +719,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             string result = string.Empty;
             string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
-            SHA256Managed hash = new SHA256Managed();
+            SHA256 hash = SHA256.Create();
 
             if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
             {

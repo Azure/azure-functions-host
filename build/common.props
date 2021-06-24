@@ -7,7 +7,7 @@
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <PreviewVersion></PreviewVersion>  <!-- Only use Preview version in release branch. Otherwise, leave empty. -->
+    <PreviewVersion>2</PreviewVersion>
     <PreviewString Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</PreviewString>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <VersionSuffixWithDash Condition=" '$(VersionSuffix)' != '' ">-$(VersionSuffix)</VersionSuffixWithDash>
@@ -20,6 +20,7 @@
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
     <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile> <!-- https://github.com/dotnet/runtime/issues/54684 -->
   </PropertyGroup>
 
   <Target Name="GenerateSiteExtensionVersion">
