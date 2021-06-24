@@ -7,6 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     public class RpcWorkerConfig
     {
+        internal static readonly TimeSpan DefaultInitializationTimeout = TimeSpan.FromSeconds(10);
+
         public RpcWorkerDescription Description { get; set; }
 
         public WorkerProcessArguments Arguments { get; set; }
@@ -23,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         /// Gets or sets the worker initialization timeout. This is the time from when the WorkerInitRequest
         /// is sent to when the WorkerInitResponse is received.
         /// </summary>
-        public TimeSpan InitializationTimeout { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan InitializationTimeout { get; set; } = DefaultInitializationTimeout;
 
         /// <summary>
         /// Gets or sets the worker environment reload timeout. This is the time from when the FunctionEnvironmentReloadRequest

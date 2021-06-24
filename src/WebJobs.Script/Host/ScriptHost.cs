@@ -516,8 +516,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
 
-                // If there's no worker config, use the default (for legacy behavior).
-                TimeSpan initializationTimeout = workerConfig?.InitializationTimeout ?? new RpcWorkerConfig().InitializationTimeout;
+                // If there's no worker config, use the default (for legacy behavior; mostly for tests).
+                TimeSpan initializationTimeout = workerConfig?.InitializationTimeout ?? RpcWorkerConfig.DefaultInitializationTimeout;
 
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
                     _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
