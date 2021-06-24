@@ -25,6 +25,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 {
@@ -656,6 +657,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host.SingletonTests
 
                     services.AddSingleton<IDistributedLockManager, BlobLeaseDistributedLockManager>();
                     services.AddAzureStorageProvider();
+                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(services);
                 });
 
             extraConfig?.Invoke(hostBuilder); // test hook gets final say to replace. 

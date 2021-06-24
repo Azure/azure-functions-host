@@ -20,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Moq;
 using Xunit;
 
@@ -70,6 +71,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("httptrigger", false)).ReturnsAsync(functionSecrets);
 
             var configurationMock = new Mock<IConfiguration>(MockBehavior.Strict);
+            configurationMock.Setup(p => p.GetReloadToken()).Returns(new Mock<IChangeToken>().Object);
+
             var hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
             var mockWebHostEnvironment = new Mock<IScriptWebHostEnvironment>(MockBehavior.Strict);
             mockWebHostEnvironment.SetupGet(p => p.InStandbyMode).Returns(false);

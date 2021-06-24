@@ -3,6 +3,9 @@
 
 using System;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,16 +21,39 @@ namespace Microsoft.Azure.WebJobs.Script
     internal class AzureStorageProvider : IAzureStorageProvider
     {
         private readonly BlobServiceClientProvider _blobServiceClientProvider;
-        private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
         private IOptionsMonitor<JobHostInternalStorageOptions> _storageOptions;
+        private IConfiguration _configuration;
+        private ILogger _logger;
 
-        public AzureStorageProvider(IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<AzureStorageProvider> logger)
+        public AzureStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, BlobServiceClientProvider blobServiceClientProvider, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<AzureStorageProvider> logger)
         {
             _blobServiceClientProvider = blobServiceClientProvider;
-            _configuration = configuration;
             _storageOptions = options;
             _logger = logger;
+
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableMergedWebHostScriptHostConfiguration))
+            {
+                _configuration = configuration;
+            }
+            else
+            {
+                _ = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                _configuration = new ConfigurationBuilder()
+                    .AddConfiguration(configuration)
+                    .Add(new ActiveHostConfigurationSource(scriptHostManager))
+                    .Build();
+            }
+        }
+
+        /// <summary>
+        /// Checks if a BlobServiceClient can be created (indicates the specified connection can be parsed)
+        /// </summary>
+        /// <param name="connection">connection to use for the BlobServiceClient</param>
+        /// <returns>true if successful; false otherwise</returns>
+        public bool ConnectionExists(string connection)
+        {
+            var section = _configuration.GetWebJobsConnectionStringSection(connection);
+            return section != null && section.Exists();
         }
 
         /// <summary>
@@ -52,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public virtual bool TryGetBlobServiceClientFromConnection(out BlobServiceClient client, string connection = null)
         {
             var connectionToUse = connection ?? ConnectionStringNames.Storage;
-            return _blobServiceClientProvider.TryGet(connectionToUse, out client);
+            return _blobServiceClientProvider.TryGet(connectionToUse, _configuration, out client);
         }
 
         public virtual BlobContainerClient GetBlobContainerClient()
