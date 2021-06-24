@@ -3,12 +3,24 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -162,6 +174,60 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             StreamingMessage responseMessage = new StreamingMessage()
             {
                 StartStream = startStream
+            };
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+        }
+
+        public void PublishWorkerMetadataResponse(string workerId, IEnumerable<FunctionMetadata> functionMetadata)
+        {
+            /*// Worker sends function metadata back to host
+            message WorkerMetadataResponse {
+                // list of function indexing responses
+                repeated WorkerFunctionIndexingResponse results = 1;
+            }
+
+            message WorkerFunctionIndexingResponse {
+                string name = 4;
+                string directory = 1;
+                string script_file = 2;
+                string entry_point = 3;
+                string id = 11;
+                map<string, BindingInfo> bindings = 6;
+                bool is_proxy = 7;
+                StatusResult status = 8;
+                string language = 9;
+            }*/
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+
+            WorkerMetadataResponse overallResponse = new WorkerMetadataResponse();
+            foreach (FunctionMetadata response in functionMetadata)
+            {
+                WorkerFunctionIndexingResponse indexingResponse = new WorkerFunctionIndexingResponse()
+                {
+                    Name = response.Name,
+                    /*Directory = response.FunctionDirectory,
+                    ScriptFile = response.ScriptFile,
+                    EntryPoint = response.EntryPoint,
+                    Id = response.GetFunctionId(),
+                    IsProxy = response.IsProxy(),
+                    Status = statusResult,*/
+                    Language = response.Language
+                };
+
+                /*foreach (var binding in response.Bindings)
+                {
+                    indexingResponse.Bindings.Add(binding);
+                }*/
+
+                overallResponse.Results.Add(indexingResponse);
+            }
+
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                WorkerMetadataResponse = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }

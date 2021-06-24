@@ -162,5 +162,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

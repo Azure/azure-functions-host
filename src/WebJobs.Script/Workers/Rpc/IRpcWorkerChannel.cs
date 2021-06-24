@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         Task SendFunctionEnvironmentReloadRequest();
 
-        void SendWorkerMetadataRequest();
+        Task<List<FunctionMetadata>> WorkerGetFunctionMetadata();
 
         bool GetTestValue();
 

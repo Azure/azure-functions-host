@@ -340,7 +340,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
                         .Timeout(_functionLoadTimeout)
-                        .Take(1) // could be a problem if this only selects the first result in MetadataResponse
+                        .Take(1)
                         .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerFunctionLoadError));
 
             _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
@@ -357,6 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
         {
             _testingReceivedWorkerResponse = true;
+            _workerChannelLogger.LogInformation("Received the worker response");
 
             var functions = new List<FunctionMetadata>();
 
@@ -374,7 +375,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 /*foreach (var binding in metadata.Bindings)
                 {
-                    var functionBinding = BindingMetadata.Create(JobObjectInfoType.Parse(binding.Key)); //figure the bindings out later...
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding.Key)); //figure the bindings out later...
                 }*/
                 functions.Add(functionMetadata);
             }
