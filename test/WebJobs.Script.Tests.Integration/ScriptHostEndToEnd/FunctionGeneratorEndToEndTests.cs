@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -71,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
 
                     s.AddAzureStorageProvider();
+                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(s);
                 });
 
             using (var host = builder.Build())
