@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static byte[] GenerateKeyBytes()
         {
-            using (var aes = new AesManaged())
+            using (var aes = Aes.Create())
             {
                 aes.GenerateKey();
                 return aes.Key;

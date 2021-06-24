@@ -29,8 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                 TryGetEncryptionKey(environment, EnvironmentSettingNames.WebSiteAuthEncryptionKey, out key);
             }
 
-            using (var aes = new AesManaged { Key = key })
+            using (var aes = Aes.Create())
             {
+                aes.Key = key;
+
                 // IV is always generated for the key every time
                 aes.GenerateIV();
                 var input = Encoding.UTF8.GetBytes(value);
@@ -69,8 +71,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
                 throw new InvalidOperationException(string.Format("Key with hash {0} does not exist.", base64KeyHash));
             }
 
-            using (var aes = new AesManaged { Key = encryptionKey })
+            using (var aes = Aes.Create())
             {
+                aes.Key = encryptionKey;
+
                 using (var ms = new MemoryStream())
                 {
                     using (var cs = new CryptoStream(ms, aes.CreateDecryptor(aes.Key, iv), CryptoStreamMode.Write))
@@ -131,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
 
         private static string GetSHA256Base64String(byte[] key)
         {
-            using (var sha256 = new SHA256Managed())
+            using (var sha256 = SHA256.Create())
             {
                 return Convert.ToBase64String(sha256.ComputeHash(key));
             }
