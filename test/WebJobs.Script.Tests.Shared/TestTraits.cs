@@ -17,6 +17,11 @@ namespace Microsoft.WebJobs.Script.Tests
 
         public const string EndToEnd = "E2E";
 
+        /// <summary>
+        /// Release Tests only run in branches: release/*
+        /// </summary>
+        public const string ReleaseTests = "ReleaseTests";
+
         public const string SamplesEndToEnd = "SamplesEndToEndTests";
 
         /// <summary>
