@@ -255,5 +255,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             return Path.GetFullPath(functionPrimary);
         }
+
+        // parse metadata sent from worker
+        public List<FunctionMetadata> ParseWorkerMetadata(List<FunctionMetadata> functions)
+        {
+            return functions;
+        }
     }
 }

@@ -48,23 +48,5 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             throw new NotImplementedException();
         }
-
-        /*public void WorkerGetFunctionMetadata()
-        {
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
-                .Timeout(workerResponseTimeout)
-                .Take(1)
-                .Subscribe(ProccessFunctionMetadata(metadataResponse, HandleWorkerInitError);
-
-            WorkerMetadataRequest metadataRequest = new WorkerMetdataRequest()
-            { HostVersion = ScriptHost.Version, WorkerDirectory = _workerConfig.Description.WorkerDirectory };
-
-            SendStreamingMessage(new StreamingMessage
-            {
-                WorkerMetadataRequest = metadataRequest
-            });
-        }
-
-        public void ProcessFunctionMetadata(Collection<FunctionMetadata> metadataResponse) { }*/
     }
 }

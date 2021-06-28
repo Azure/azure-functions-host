@@ -53,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _processStartupInterval;
         private bool _workerIndexing;
+        private TaskCompletionSource<IRpcWorkerChannel> _workerChannelTask = new TaskCompletionSource<IRpcWorkerChannel>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -118,9 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
                 _functions = await rpcWorkerChannel.WorkerGetFunctionMetadata();
                 _logger.LogInformation("Did the test work? InitializeJobhostLanguageWorkerChannelAsync says: " + _functions);
-                rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                 SetFunctionDispatcherStateToInitializedAndLog();
+                _workerChannelTask.SetResult(rpcWorkerChannel);
             }
             else
             {
@@ -151,8 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // interject here too
                 _functions = await workerChannel.WorkerGetFunctionMetadata();
                 _logger.LogInformation("Did the test work? InitializeWebhostLanguageWorkerChannel says: " + _functions);
-                workerChannel.SetupFunctionInvocationBuffers(_functions);
-                workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                _workerChannelTask.SetResult(workerChannel);
             }
             else
             {
@@ -198,138 +197,167 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            if (functions == null)
+            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
+            _functions = functions;
+            if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
-                _workerIndexing = true;
-                _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
+                // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
+                // Debouce to ensure this does not effect cold start
+                _shutdownStandbyWorkerChannels();
+                return;
+            }
 
-                if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    // Shutdown any placeholder channels for empty function apps or dotnet function apps.
-                    // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
-                    // Debouce to ensure this does not effect cold start
-                    _shutdownStandbyWorkerChannels();
-                    return;
-                }
+            if (functions == null || functions.Count() == 0)
+            {
+                // do not initialize function dispatcher if there are no functions
+                return;
+            }
 
-                var newWorkerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                if (newWorkerConfig == null)
-                {
-                    // Only throw if workerConfig is null AND some functions have been found.
-                    // With .NET out-of-proc, worker config comes from functions.
-                    throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
-                }
-                _maxProcessCount = newWorkerConfig.CountOptions.ProcessCount;
-                _processStartupInterval = (int)newWorkerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
-                ErrorEventsThreshold = 3 * _maxProcessCount;
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (workerConfig == null)
+            {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
+                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+            }
+            _maxProcessCount = workerConfig.CountOptions.ProcessCount;
+            _processStartupInterval = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
 
-                if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
+            if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
+            {
+                State = FunctionInvocationDispatcherState.Initializing;
+                Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+                if (webhostLanguageWorkerChannels != null)
                 {
-                    State = FunctionInvocationDispatcherState.Initializing;
-                    Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-                    if (webhostLanguageWorkerChannels != null)
+                    foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
                     {
-                        foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
+                        if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
                         {
-                            if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
+                            _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                            try
                             {
-                                _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                try
-                                {
-                                    IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                                    _logger.LogInformation("webhostLanguageWorkerChannels is not null somehow even though this is a local build??");
-                                    // send metadata request and receive it here
-                                    _functions = await initializedLanguageWorkerChannel.WorkerGetFunctionMetadata();
-                                    _logger.LogInformation("Did the test work? Dispatcher.InitializeAsync says: " + _functions);
-                                    initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                    initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                    await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
-                                }
+                                IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
+                                initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
                             }
                         }
-                        StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                        if (webhostLanguageWorkerChannels.Any())
-                        {
-                            SetFunctionDispatcherStateToInitializedAndLog();
-                        }
                     }
-                    else
+                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
+                    if (webhostLanguageWorkerChannels.Any())
                     {
-                        _logger.LogInformation("Right before our heyyyyy message???");
-                        StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                        SetFunctionDispatcherStateToInitializedAndLog();
                     }
+                }
+                else
+                {
+                    StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
                 }
             }
-            else
+        }
+
+        public async Task<(List<FunctionMetadata>, IRpcWorkerChannel)> GetWorkerMetadata(CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            List<FunctionMetadata> temp = new List<FunctionMetadata>();
+
+            if (_environment.IsPlaceholderModeEnabled())
             {
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
-                _functions = functions;
-                if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
-                {
-                    // Shutdown any placeholder channels for empty function apps or dotnet function apps.
-                    // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
-                    // Debouce to ensure this does not effect cold start
-                    _shutdownStandbyWorkerChannels();
-                    return;
-                }
+                return (null, null);
+            }
 
-                if (functions == null || functions.Count() == 0)
-                {
-                    // do not initialize function dispatcher if there are no functions
-                    return;
-                }
+            _workerIndexing = true;
+            _workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-                if (workerConfig == null)
-                {
-                    // Only throw if workerConfig is null AND some functions have been found.
-                    // With .NET out-of-proc, worker config comes from functions.
-                    throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
-                }
-                _maxProcessCount = workerConfig.CountOptions.ProcessCount;
-                _processStartupInterval = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
-                ErrorEventsThreshold = 3 * _maxProcessCount;
+            if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
+            {
+                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
+                // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
+                // Debouce to ensure this does not effect cold start
+                _shutdownStandbyWorkerChannels();
+                return (null, null);
+            }
 
-                if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
+            var newWorkerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (newWorkerConfig == null)
+            {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
+                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+            }
+            _maxProcessCount = newWorkerConfig.CountOptions.ProcessCount;
+            _processStartupInterval = (int)newWorkerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            ErrorEventsThreshold = 3 * _maxProcessCount;
+
+            if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
+            {
+                State = FunctionInvocationDispatcherState.Initializing;
+                Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
+                if (webhostLanguageWorkerChannels != null)
                 {
-                    State = FunctionInvocationDispatcherState.Initializing;
-                    Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
-                    if (webhostLanguageWorkerChannels != null)
+                    foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
                     {
-                        foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
+                        if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
                         {
-                            if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
+                            _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                            try
                             {
-                                _logger.LogDebug("Found initialized language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                try
-                                {
-                                    IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
-                                    initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                                    initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
-                                    await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
-                                }
+                                IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
+                                _logger.LogInformation("webhostLanguageWorkerChannels is not null somehow even though this is a local build??");
+                                // send metadata request and receive it here
+                                var rawMetadata = await initializedLanguageWorkerChannel.WorkerGetFunctionMetadata();
+                                _logger.LogInformation("Did the test work? Dispatcher.InitializeAsync says: " + _functions);
+                                /*initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                                initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);*/
+                                return (rawMetadata, initializedLanguageWorkerChannel);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Removing errored webhost language worker channel for runtime: {workerRuntime} workerId:{workerId}", _workerRuntime, workerId);
+                                await _webHostLanguageWorkerChannelManager.ShutdownChannelIfExistsAsync(_workerRuntime, workerId, ex);
                             }
                         }
-                        StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                        if (webhostLanguageWorkerChannels.Any())
-                        {
-                            SetFunctionDispatcherStateToInitializedAndLog();
-                        }
                     }
-                    else
+                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
+                    if (webhostLanguageWorkerChannels.Any())
                     {
-                        StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                        SetFunctionDispatcherStateToInitializedAndLog();
                     }
                 }
+                else
+                {
+                    _logger.LogInformation("Right before our heyyyyy message???");
+                    //StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                    var functionMetadata1 = new FunctionMetadata()
+                    {
+                        FunctionDirectory = "one",
+                        ScriptFile = "two",
+                        EntryPoint = "three",
+                        Name = "HttpTrigger1",
+                        Language = "node"
+                    };
+                    var functionMetadata2 = new FunctionMetadata()
+                    {
+                        FunctionDirectory = "one",
+                        ScriptFile = "two",
+                        EntryPoint = "three",
+                        Name = "HttpTrigger2",
+                        Language = "node"
+                    };
+                    temp.Add(functionMetadata1);
+                    temp.Add(functionMetadata2);
+                    _functions = temp;
+                    _workerChannelTask.SetResult(null);
+                }
+                return ((List<FunctionMetadata>)_functions, _workerChannelTask.Task.Result);
             }
+            return (null, null);
         }
 
         public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()

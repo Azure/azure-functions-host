@@ -73,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
         private string _workerRuntime;
+        private TaskCompletionSource<List<FunctionMetadata>> _rawMetadata = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
@@ -281,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // assume this was the capability check
                     _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-                    _logger.LogInformation("workerRuntime = " + _workerRuntime + " okay that's it");
+                    _logger.LogInformation("workerRuntime = " + _workerRuntime);
                     if (!_environment.IsPlaceholderModeEnabled())
                     {
                         string runtimeStack = _workerRuntime;
@@ -303,7 +304,22 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
 
-                    await _functionDispatcher.InitializeAsync(null, cancellationToken);
+                    // first part of original InitializeAsync
+                    var (rawMetadata, workerChannel) = await _functionDispatcher.GetWorkerMetadata(cancellationToken);
+                    /*foreach (FunctionMetadata metadata in rawMetadata)
+                    {
+                        _logger.LogInformation("RAW METADATA " + metadata.Name + " " + metadata.Language);
+                    }*/
+
+                    // parse metadata
+                    var functions = _functionMetadataManager.SendMetadataForParsing(rawMetadata);
+                    /*_logger.LogInformation("Here are the functions?? " + functions);
+                    foreach (FunctionMetadata metadata in functions)
+                    {
+                        _logger.LogInformation("RAW METADATA " + metadata.Name + " " + metadata.Language);
+                    }*/
+
+                    // second part of original InitializeAsync
                     ScheduleFileSystemCleanup();
                 }
                 else

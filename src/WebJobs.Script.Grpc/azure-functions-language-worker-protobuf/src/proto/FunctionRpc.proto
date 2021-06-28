@@ -296,7 +296,7 @@ message WorkerFunctionIndexingResponse {
   string id = 11;
  
   // Bindings info
-  map<string, BindingInfo> bindings = 6;
+  repeated string bindings = 6;
 
   // Is set to true for proxy
   bool is_proxy = 7;

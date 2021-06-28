@@ -25,6 +25,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -330,6 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return request;
         }
 
+        //WHERE MY CHANGES START
         public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
         {
             SendWorkerMetadataRequest();
@@ -368,21 +370,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     FunctionDirectory = metadata.Directory,
                     ScriptFile = metadata.ScriptFile,
                     EntryPoint = metadata.EntryPoint,
-                    Name = metadata.Name
+                    Name = metadata.Name,
+                    Language = metadata.Language
                 };
 
                 functionMetadata.SetFunctionId(metadata.Id);
 
-                /*foreach (var binding in metadata.Bindings)
+                foreach (string binding in metadata.Bindings)
                 {
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding.Key)); //figure the bindings out later...
-                }*/
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding)); // this will parse the JSON object into BindingMetadata
+                    functionMetadata.Bindings.Add(functionBinding);
+                }
                 functions.Add(functionMetadata);
             }
+            // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);
         }
 
         public bool GetTestValue() { return _testingReceivedWorkerResponse; }
+        // WHERE MY CHANGES END
 
         internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {

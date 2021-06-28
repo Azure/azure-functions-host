@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -13,5 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script
         ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
 
         ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false);
+
+        List<FunctionMetadata> ParseWorkerMetadata(List<FunctionMetadata> functions);
     }
 }

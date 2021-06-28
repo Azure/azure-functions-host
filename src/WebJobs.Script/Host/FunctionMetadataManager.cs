@@ -243,5 +243,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
         }
+
+        // send metadata to be parsed by FunctionMetadataProvider
+        public List<FunctionMetadata> SendMetadataForParsing(List<FunctionMetadata> functions)
+        {
+            if (functions == null)
+            {
+                return null;
+            }
+
+            return _functionMetadataProvider.ParseWorkerMetadata(functions);
+        }
     }
 }
