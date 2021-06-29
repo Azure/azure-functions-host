@@ -207,5 +207,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             throw new NotImplementedException();
         }
+
+        public Task<(List<FunctionMetadata>, List<IRpcWorkerChannel>)> StartInitialization(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void FinishInitialization(List<FunctionMetadata> functions, List<IRpcWorkerChannel> workerChannel, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

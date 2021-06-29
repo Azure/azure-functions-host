@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // first part of original InitializeAsync
-                    var (rawMetadata, workerChannel) = await _functionDispatcher.GetWorkerMetadata(cancellationToken);
+                    var (rawMetadata, workerChannels) = await _functionDispatcher.StartInitialization(cancellationToken);
                     /*foreach (FunctionMetadata metadata in rawMetadata)
                     {
                         _logger.LogInformation("RAW METADATA " + metadata.Name + " " + metadata.Language);
@@ -320,6 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }*/
 
                     // second part of original InitializeAsync
+                    _functionDispatcher.FinishInitialization(functions, workerChannels, cancellationToken);
                     ScheduleFileSystemCleanup();
                 }
                 else
