@@ -258,6 +258,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return _functions.ToImmutableArray();
             }
 
+            public List<FunctionMetadata> GetValidMetadata(List<FunctionMetadata> functions)
+            {
+                throw new NotImplementedException();
+            }
+
             public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)
             {
                 functionMetadata = _functions.FirstOrDefault(p => Utility.FunctionNamesMatch(p.Name, functionName));

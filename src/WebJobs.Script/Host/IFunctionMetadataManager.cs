@@ -15,6 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh = false);
 
-        List<FunctionMetadata> SendMetadataForParsing(List<FunctionMetadata> functions);
+        List<FunctionMetadata> GetValidMetadata(List<FunctionMetadata> functions);
     }
 }

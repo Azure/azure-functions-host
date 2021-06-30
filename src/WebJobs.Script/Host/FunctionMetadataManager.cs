@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         // send metadata to be parsed by FunctionMetadataProvider
-        public List<FunctionMetadata> SendMetadataForParsing(List<FunctionMetadata> functions)
+        public List<FunctionMetadata> GetValidMetadata(List<FunctionMetadata> functions)
         {
             if (functions == null)
             {

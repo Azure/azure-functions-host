@@ -334,11 +334,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         //WHERE MY CHANGES START
         public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
         {
-            SendWorkerMetadataRequest();
+            // for testing purposes
+            List<FunctionMetadata> temp = new List<FunctionMetadata>();
+            var functionMetadata1 = new FunctionMetadata()
+            {
+                FunctionDirectory = "one",
+                ScriptFile = "two",
+                EntryPoint = "three",
+                Name = "HttpTrigger1",
+                Language = "node"
+            };
+            var functionMetadata2 = new FunctionMetadata()
+            {
+                FunctionDirectory = "one",
+                ScriptFile = "two",
+                EntryPoint = "three",
+                Name = "HttpTrigger2",
+                Language = "node"
+            };
+            temp.Add(functionMetadata1);
+            temp.Add(functionMetadata2);
+            _functionsIndexingTask.SetResult(temp);
             return _functionsIndexingTask.Task;
+
+            //return SendWorkerMetadataRequest();
         }
 
-        internal void SendWorkerMetadataRequest()
+        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
         {
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
                         .Timeout(_functionLoadTimeout)
@@ -354,12 +376,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Directory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
             });
+            return _functionsIndexingTask.Task;
         }
 
         internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
         {
             _testingReceivedWorkerResponse = true;
             _workerChannelLogger.LogInformation("Received the worker response");
+
+            var responseStatus = workerMetadataResponse.OverallStatus;
 
             var functions = new List<FunctionMetadata>();
 

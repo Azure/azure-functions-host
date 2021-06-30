@@ -277,6 +277,9 @@ message WorkerMetadataRequest {
 message WorkerMetadataResponse {
   // list of function indexing responses
   repeated WorkerFunctionIndexingResponse results = 1;
+
+  // status of overall metadata request
+  StatusResult overall_status = 2;
 }
 
 message WorkerFunctionIndexingResponse {

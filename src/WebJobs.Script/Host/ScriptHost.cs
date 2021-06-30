@@ -303,24 +303,34 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
-
+                    _logger.LogInformation("is this working??");
                     // first part of original InitializeAsync
-                    var (rawMetadata, workerChannels) = await _functionDispatcher.StartInitialization(cancellationToken);
-                    /*foreach (FunctionMetadata metadata in rawMetadata)
+                    var workerChannels = await _functionDispatcher.StartInitialization(cancellationToken);
+                    List<IRpcWorkerChannel> workerChannelsList = workerChannels.ToList();
+                    foreach (IRpcWorkerChannel channel in workerChannels)
                     {
-                        _logger.LogInformation("RAW METADATA " + metadata.Name + " " + metadata.Language);
-                    }*/
+                        _logger.LogInformation("Channel ID " + channel.Id);
+                    }
 
-                    // parse metadata
-                    var functions = _functionMetadataManager.SendMetadataForParsing(rawMetadata);
-                    /*_logger.LogInformation("Here are the functions?? " + functions);
-                    foreach (FunctionMetadata metadata in functions)
+                    if (workerChannelsList != null && workerChannelsList.Count > 0)
                     {
-                        _logger.LogInformation("RAW METADATA " + metadata.Name + " " + metadata.Language);
-                    }*/
+                        // get metadata from worker
+                        var rawMetadata = _functionDispatcher.GetWorkerMetadata(workerChannelsList[0]).Result;
+                        _logger.LogInformation("Here is the raw metadata?? " + rawMetadata);
 
-                    // second part of original InitializeAsync
-                    _functionDispatcher.FinishInitialization(functions, workerChannels, cancellationToken);
+                        // validate metadata
+                        var functions = _functionMetadataManager.GetValidMetadata(rawMetadata);
+
+                        _logger.LogInformation("Here are the functions?? " + functions);
+                        foreach (FunctionMetadata metadata in functions)
+                        {
+                            _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
+                        }
+
+                        // second part of original InitializeAsync
+                        _functionDispatcher.FinishInitialization(functions, workerChannelsList, cancellationToken);
+                    }
+
                     ScheduleFileSystemCleanup();
                 }
                 else

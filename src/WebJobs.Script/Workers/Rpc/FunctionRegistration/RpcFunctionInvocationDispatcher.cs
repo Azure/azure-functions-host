@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private CancellationTokenSource _disposeToken = new CancellationTokenSource();
         private int _processStartupInterval;
         private bool _workerIndexing;
-        private List<IRpcWorkerChannel> _channels = new List<IRpcWorkerChannel>();
+        private ConcurrentBag<IRpcWorkerChannel> _channels = new ConcurrentBag<IRpcWorkerChannel>();
         private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -119,10 +119,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 await rpcWorkerChannel.StartWorkerProcessAsync();
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
                 _channels.Add(rpcWorkerChannel);
-                if (_rawMetadata.Count == 0)
+                /*if (_rawMetadata.Count == 0)
                 {
                     _rawMetadata = await rpcWorkerChannel.WorkerGetFunctionMetadata();
-                }
+                }*/
                 SetFunctionDispatcherStateToInitializedAndLog();
             }
             else
@@ -151,10 +151,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
                 IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
                 _channels.Add(workerChannel);
-                if (_rawMetadata.Count == 0)
+                /*if (_rawMetadata.Count == 0)
                 {
                     _rawMetadata = await workerChannel.WorkerGetFunctionMetadata();
-                }
+                }*/
                 _logger.LogInformation("Did the test work? InitializeWebhostLanguageWorkerChannel says: " + _functions);
             }
             else
@@ -172,9 +172,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
-        private void StartWorkerProcesses(int startIndex, Func<Task> startAction)
+        private async Task StartWorkerProcesses(int startIndex, Func<Task> startAction)
         {
-            Task.Run(async () =>
+            await Task.Run(async () =>
             {
                 for (var count = startIndex; count < _maxProcessCount // start from however many worker channels exist and continue adding until we hit maxProcessCount
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
+                    await StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
                     if (webhostLanguageWorkerChannels.Any())
                     {
                         SetFunctionDispatcherStateToInitializedAndLog();
@@ -261,12 +261,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
-                    StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
+                    await StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
                 }
             }
         }
 
-        public async Task<(List<FunctionMetadata>, List<IRpcWorkerChannel>)> StartInitialization(CancellationToken cancellationToken = default)
+        public async Task<ConcurrentBag<IRpcWorkerChannel>> StartInitialization(CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             List<FunctionMetadata> temp = new List<FunctionMetadata>();
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_environment.IsPlaceholderModeEnabled())
             {
-                return (_rawMetadata, _channels);
+                return _channels;
             }
 
             _workerIndexing = true;
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
                 // Debouce to ensure this does not effect cold start
                 _shutdownStandbyWorkerChannels();
-                return (_rawMetadata, _channels);
+                return _channels;
             }
 
             var newWorkerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
@@ -315,10 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             {
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
                                 _channels.Add(initializedLanguageWorkerChannel);
-                                if (_rawMetadata.Count == 0)
+                                /*if (_rawMetadata.Count == 0)
                                 {
                                     _rawMetadata = await initializedLanguageWorkerChannel.WorkerGetFunctionMetadata();
-                                }
+                                }*/
                             }
                             catch (Exception ex)
                             {
@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
+                    await StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
                     if (webhostLanguageWorkerChannels.Any())
                     {
                         SetFunctionDispatcherStateToInitializedAndLog();
@@ -335,29 +335,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
-                    StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
-                    /*var functionMetadata1 = new FunctionMetadata()
-                    {
-                        FunctionDirectory = "one",
-                        ScriptFile = "two",
-                        EntryPoint = "three",
-                        Name = "HttpTrigger1",
-                        Language = "node"
-                    };
-                    var functionMetadata2 = new FunctionMetadata()
-                    {
-                        FunctionDirectory = "one",
-                        ScriptFile = "two",
-                        EntryPoint = "three",
-                        Name = "HttpTrigger2",
-                        Language = "node"
-                    };
-                    temp.Add(functionMetadata1);
-                    temp.Add(functionMetadata2);
-                    _functions = temp;*/
+                    await StartWorkerProcesses(0, InitializeJobhostLanguageWorkerChannelAsync);
                 }
             }
-            return (_rawMetadata, _channels);
+            // Thread.Sleep(5000);
+            // check for at least one channel --> incremental sleeps until _channels gets at least one
+            return _channels;
+        }
+
+        // Gets metadata from worker
+        public async Task<List<FunctionMetadata>> GetWorkerMetadata(IRpcWorkerChannel workerChannel)
+        {
+            if (_channels.ToList().Count > 0)
+            {
+                return await workerChannel.WorkerGetFunctionMetadata();
+            }
+            return null;
         }
 
         // Second part of split InitializeAsync

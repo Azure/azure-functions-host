@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,8 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
 
-        Task<(List<FunctionMetadata>, List<IRpcWorkerChannel>)> StartInitialization(CancellationToken cancellationToken = default);
+        Task<ConcurrentBag<IRpcWorkerChannel>> StartInitialization(CancellationToken cancellationToken = default);
 
         void FinishInitialization(List<FunctionMetadata> functions, List<IRpcWorkerChannel> workerChannel, CancellationToken cancellationToken = default);
+
+        Task<List<FunctionMetadata>> GetWorkerMetadata(IRpcWorkerChannel workerChannel);
     }
 }
