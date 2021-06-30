@@ -466,7 +466,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // If there is an error getting the container client,
                 // register an InMemoryDistributedLockManager.
-                // This signals a failed validation in connection configuration (i.e. could not create the storage client).
                 logger.LogDebug("Using InMemoryDistributedLockManager in Functions Host.");
                 return new InMemoryDistributedLockManager();
             }
