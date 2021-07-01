@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.DependencyInjection;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
@@ -249,7 +248,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IFunctionInvocationDispatcherFactory, FunctionInvocationDispatcherFactory>();
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
-                services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();

@@ -13,13 +13,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.EventHubs;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
         }
 
-        [Fact]
+        [Fact(Skip = "Proxies disabled")]
         public async Task InvokeProxy_GetsResponse()
         {
             string uri = "something";

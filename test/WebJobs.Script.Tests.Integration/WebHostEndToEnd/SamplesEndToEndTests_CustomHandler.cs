@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await InvokeHttpTrigger("HttpTrigger");
         }
 
-        [Fact]
+        [Fact(Skip = "Proxies disabled")]
         public async Task Proxy_CustomHandler_Get_Succeeds()
         {
             await InvokeProxy();
