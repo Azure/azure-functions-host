@@ -84,7 +84,7 @@ namespace ExtensionsMetadataGenerator.BuildTasks
                     // Dump any debug output if there is an error. This may have been hidden due to the msbuild verbosity level.
                     Log.LogMessage(MessageImportance.High, "Debug output from extension.json generator:");
                     Log.LogMessage(MessageImportance.High, outputString.ToString());
-                    Log.LogError($"Metadata generation failed. Exit code: '{process.ExitCode}' Error: '{errorString.ToString()}'");
+                    Log.LogError($"Metadata generation failed. Exit code: '{process.ExitCode}' Error: '{errorString}'");
                     return false;
                 }
 

@@ -13,6 +13,8 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -288,23 +290,157 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("7", rpcChannelAfterSpecialization.Config.Description.DefaultRuntimeVersion);
         }
 
-        [Theory(Skip = "Will be enforced as part of release build")]
-        [InlineData(WarmUpConstants.JitTraceFileName)]
-        [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
-        public void ColdStart_JitFailuresTest(string fileName)
+        /// <summary>
+        /// Loads an extension that requires Host secrets and needs connection to storage.
+        /// This happens when the ActiveHost changes as a new JobHost is initialized
+        /// </summary>
+        [Fact]
+        public async Task Specialization_LoadWebHookProviderAndRetrieveSecrets()
         {
-            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
 
-            var file = new FileInfo(path);
+            // We can't assume the placeholder has any environment variables specified by the customer.
+            // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
+            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
+            {
+                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                .ConfigureScriptHostWebJobsBuilder(s =>
+                {
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        // Add an extension that calls GetUrl(), which can cause secrets to be loaded
+                        // before the host is initialized.
+                        s.Services.AddSingleton<IExtensionConfigProvider, TestWebHookExtension>();
+                    }
+                });
 
-            Assert.True(file.Exists, $"Expected PGO file '{file.FullName}' does not exist. The file was either renamed or deleted.");
+                // This is required to force secrets to load.
+                _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
 
-            JitTraceRuntime.Prepare(file, out int successfulPrepares, out int failedPrepares);
+                using (var testServer = new TestServer(builder))
+                {
+                    var client = testServer.CreateClient();
+                    var response = await client.GetAsync("api/warmup");
+                    response.EnsureSuccessStatusCode();
 
-            var failurePercentage = (double)failedPrepares / successfulPrepares * 100;
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
-            // using 1% as approximate number of allowed failures before we need to regenrate a new PGO file.
-            Assert.True(failurePercentage < 1.0, $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
+                    // This value is available now
+                    using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", storageValue))
+                    {
+                        // Now that we're specialized, set up the expected env var, which will be loaded internally
+                        // when the config is refreshed during specialization.
+                        // This request will force specialization.
+                        response = await client.GetAsync("api/functionexecutioncontext");
+                        response.EnsureSuccessStatusCode();
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// This scenario tests that storage can still be used 
+        /// </summary>
+        [Fact]
+        public async Task Specialization_CustomStartupRemovesAzureWebJobsStorage()
+        {
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+
+            // We can't assume the placeholder has any environment variables specified by the customer.
+            // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
+            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
+            {
+                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                .ConfigureScriptHostWebJobsBuilder(s =>
+                {
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        // Add an extension that calls GetUrl(), which can cause secrets to be loaded
+                        // before the host is initialized.
+                        s.Services.AddSingleton<IExtensionConfigProvider, TestWebHookExtension>();
+                    }
+                })
+                .ConfigureScriptHostServices(s =>
+                {
+                    // Override the IConfiguration of the ScriptHost to empty configuration
+                    s.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+                });
+
+                // This is required to force secrets to load.
+                _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
+
+                using (var testServer = new TestServer(builder))
+                {
+                    var client = testServer.CreateClient();
+                    var response = await client.GetAsync("api/warmup");
+                    response.EnsureSuccessStatusCode();
+
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                    // This value is available now
+                    using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", storageValue))
+                    {
+                        // Now that we're specialized, set up the expected env var, which will be loaded internally
+                        // when the config is refreshed during specialization.
+                        // This request will force specialization.
+                        response = await client.GetAsync("api/functionexecutioncontext");
+                        response.EnsureSuccessStatusCode();
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Specialization_CustomStartupAddsWebJobsStorage()
+        {
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+
+            // No AzureWebJobsStorage set in environment variables (App Settings from portal)
+            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
+            {
+                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                .ConfigureScriptHostWebJobsBuilder(s =>
+                {
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        // Add an extension that calls GetUrl(), which can cause secrets to be loaded
+                        // before the host is initialized.
+                        s.Services.AddSingleton<IExtensionConfigProvider, TestWebHookExtension>();
+                    }
+                })
+                .ConfigureScriptHostAppConfiguration(c =>
+                {
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        var inMemoryCollection = new Dictionary<string, string>()
+                        {
+                            { "AzureWebJobsStorage", storageValue }
+                        };
+                        c.AddInMemoryCollection(inMemoryCollection);
+                    }
+                });
+
+                // This is required to force secrets to load.
+                _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
+
+                using (var testServer = new TestServer(builder))
+                {
+                    var client = testServer.CreateClient();
+                    var response = await client.GetAsync("api/warmup");
+                    response.EnsureSuccessStatusCode();
+
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                    // Now that we're specialized, set up the expected env var, which will be loaded internally
+                    // when the config is refreshed during specialization.
+                    // This request will force specialization.
+                    response = await client.GetAsync("api/functionexecutioncontext");
+                    response.EnsureSuccessStatusCode();
+                }
+            }
         }
 
         private IWebHostBuilder CreateStandbyHostBuilder(params string[] functions)
@@ -390,6 +526,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _buildCount.Release();
 
                 return host;
+            }
+        }
+
+        private class TestWebHookExtension : IExtensionConfigProvider, IAsyncConverter<HttpRequestMessage, HttpResponseMessage>
+        {
+            private readonly IWebHookProvider _webHookProvider;
+            public TestWebHookExtension(IWebHookProvider webHookProvider)
+            {
+                _webHookProvider = webHookProvider;
+            }
+            public void Initialize(ExtensionConfigContext context)
+            {
+                _webHookProvider.GetUrl(this);
+            }
+            public Task<HttpResponseMessage> ConvertAsync(HttpRequestMessage input, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
             }
         }
     }

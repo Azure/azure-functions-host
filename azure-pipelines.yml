@@ -1,5 +1,6 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
+  buildNumber: $[ counter('constant', 13000) ] 
+  isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
 name: 4.0.$(buildNumber)
   
@@ -493,6 +494,15 @@ jobs:
       command: 'test'
       testRunTitle: "Linux container end to end tests Windows"
       arguments: '--filter "Group=ContainerInstanceTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Release verification tests"    
+    condition: eq(variables['isReleaseBranch'], 'True')
+    inputs:
+      command: 'test'
+      testRunTitle: "Release verification tests"
+      arguments: '--filter "Group=ReleaseTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: PowerShell@2
