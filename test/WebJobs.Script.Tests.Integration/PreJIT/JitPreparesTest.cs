@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
     public class JitPreparesTest
     {
-        [Theory]
+        [Theory(Skip = "Currently disabled in v4")]
         [InlineData(WarmUpConstants.JitTraceFileName)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)
