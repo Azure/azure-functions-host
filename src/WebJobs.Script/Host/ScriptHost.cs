@@ -303,33 +303,29 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
-                    _logger.LogInformation("is this working??");
+
                     // first part of original InitializeAsync
-                    var workerChannels = await _functionDispatcher.StartInitialization(cancellationToken);
-                    List<IRpcWorkerChannel> workerChannelsList = workerChannels.ToList();
-                    foreach (IRpcWorkerChannel channel in workerChannels)
+                    await _functionDispatcher.StartInitialization(cancellationToken);
+
+                    // get metadata from worker
+                    var rawMetadata = _functionDispatcher.GetWorkerMetadata().Result;
+                    _logger.LogInformation("Here is the raw metadata?? " + rawMetadata);
+                    foreach (FunctionMetadata metadata in rawMetadata)
                     {
-                        _logger.LogInformation("Channel ID " + channel.Id);
+                        _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
                     }
 
-                    if (workerChannelsList != null && workerChannelsList.Count > 0)
+                    // validate metadata
+                    var functions = _functionMetadataManager.GetValidMetadata(rawMetadata);
+
+                    _logger.LogInformation("Here are the functions?? " + functions);
+                    foreach (FunctionMetadata metadata in functions)
                     {
-                        // get metadata from worker
-                        var rawMetadata = _functionDispatcher.GetWorkerMetadata(workerChannelsList[0]).Result;
-                        _logger.LogInformation("Here is the raw metadata?? " + rawMetadata);
-
-                        // validate metadata
-                        var functions = _functionMetadataManager.GetValidMetadata(rawMetadata);
-
-                        _logger.LogInformation("Here are the functions?? " + functions);
-                        foreach (FunctionMetadata metadata in functions)
-                        {
-                            _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
-                        }
-
-                        // second part of original InitializeAsync
-                        _functionDispatcher.FinishInitialization(functions, workerChannelsList, cancellationToken);
+                        _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
                     }
+
+                    // second part of original InitializeAsync
+                    _functionDispatcher.FinishInitialization(functions, cancellationToken);
 
                     ScheduleFileSystemCleanup();
                 }

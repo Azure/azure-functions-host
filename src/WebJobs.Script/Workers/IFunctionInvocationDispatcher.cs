@@ -27,10 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
 
-        Task<ConcurrentBag<IRpcWorkerChannel>> StartInitialization(CancellationToken cancellationToken = default);
+        Task StartInitialization(CancellationToken cancellationToken = default);
 
-        void FinishInitialization(List<FunctionMetadata> functions, List<IRpcWorkerChannel> workerChannel, CancellationToken cancellationToken = default);
+        void FinishInitialization(List<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 
-        Task<List<FunctionMetadata>> GetWorkerMetadata(IRpcWorkerChannel workerChannel);
+        Task<List<FunctionMetadata>> GetWorkerMetadata();
     }
 }
