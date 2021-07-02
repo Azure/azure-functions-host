@@ -3,6 +3,7 @@
 - My change description (#PR)
 -->
 - Update Azure.Storage.Blobs to 12.9.0 (#7456)
+- Update Python Worker Version to [1.2.4](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.4)
 
 **Release sprint:** Sprint 104
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+<successiveSprint>%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+104%22+label%3Afeature+is%3Aclosed) ]
