@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [1.2.2](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.2)
 - Update Azure.Storage.Blobs to 12.9.0 (#7456)
 
 **Release sprint:** Sprint 104
