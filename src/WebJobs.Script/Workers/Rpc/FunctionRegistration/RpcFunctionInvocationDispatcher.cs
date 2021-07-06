@@ -330,6 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
+                    // should go behind feature flag, otherwise go with original code of passing in 0
                     await InitializeJobhostLanguageWorkerChannelAsync();
                     StartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannelAsync);
                 }

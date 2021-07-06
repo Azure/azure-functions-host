@@ -48,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
-        private readonly IWorkerFunctionMetadataManager _workerFunctionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
@@ -74,6 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ILogger _logger = null;
         private string _workerRuntime;
         private TaskCompletionSource<List<FunctionMetadata>> _rawMetadata = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private bool _workerIndexing = false;
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
@@ -105,8 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
-            ScriptSettingsManager settingsManager = null,
-            IWorkerFunctionMetadataManager workerFunctionMetadataManager = null)
+            ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
@@ -119,7 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
-            _workerFunctionMetadataManager = workerFunctionMetadataManager;
             _fileLoggingStatusManager = fileLoggingStatusManager;
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
@@ -278,11 +276,19 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) != null)
+                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) == null)
                 {
                     // assume this was the capability check
+                    _workerIndexing = true;
                     _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                     _logger.LogInformation("workerRuntime = " + _workerRuntime);
+                    IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                    _logger.LogInformation("here is the list " + functionMetadataList);
+                    foreach (FunctionMetadata data in functionMetadataList)
+                    {
+                        _logger.LogInformation("how did this get here?? " + data.FunctionDirectory);
+                    }
+
                     if (!_environment.IsPlaceholderModeEnabled())
                     {
                         string runtimeStack = _workerRuntime;
@@ -304,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
 
-                    // first part of original InitializeAsync
+                    /*// first part of original InitializeAsync
                     await _functionDispatcher.StartInitialization(cancellationToken);
 
                     // get metadata from worker
@@ -325,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // second part of original InitializeAsync
-                    _functionDispatcher.FinishInitialization(functions, cancellationToken);
+                    _functionDispatcher.FinishInitialization(functions, cancellationToken);*/
 
                     ScheduleFileSystemCleanup();
                 }
@@ -403,7 +409,15 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns>A metadata collection of functions and proxies configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
+            IEnumerable<FunctionMetadata> functionMetadata;
+            if (_workerIndexing)
+            {
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher, workerIndexing: true);
+            }
+            else
+            {
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
+            }
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());

@@ -8,10 +8,14 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,34 +23,53 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FunctionMetadataProvider : IFunctionMetadataProvider
+    public class WorkerFunctionMetadataProvider : IFunctionMetadataProvider
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
+        private bool _enabled;
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public WorkerFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _enabled = true;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
         {
+            return GetFunctionMetadataAsync(workerConfigs, forceRefresh, dispatcher).Result;
+        }
+
+        internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
+        {
+            List<FunctionMetadata> functions = new List<FunctionMetadata>();
+            _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                _logger.FunctionMetadataProviderParsingFunctions();
-                Collection<FunctionMetadata> functionMetadata = ReadFunctionsMetadata(workerConfigs);
-                _logger.FunctionMetadataProviderFunctionFound(functionMetadata.Count);
-                _functions = functionMetadata.ToImmutableArray();
-            }
+                if (dispatcher != null)
+                {
+                    await dispatcher.StartInitialization();
+                    functions = await dispatcher.GetWorkerMetadata();
+                    // add validation call here
 
+                    /*FunctionMetadata one = new FunctionMetadata()
+                    {
+                        Name = "hello there",
+                        FunctionDirectory = "somethingRandom"
+                    };*/
+                    //functions.Add(one);
+                }
+            }
+            _logger.FunctionMetadataProviderFunctionFound(functions.Count);
+            _functions = functions.ToImmutableArray();
             return _functions;
         }
 
@@ -260,6 +283,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public List<FunctionMetadata> ParseWorkerMetadata(List<FunctionMetadata> functions)
         {
             return functions;
+        }
+
+        public bool IsEnabled()
+        {
+            return _enabled;
         }
     }
 }
