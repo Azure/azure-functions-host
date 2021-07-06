@@ -363,12 +363,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
                 _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
-                
-                //return new SyncTriggersPayload
-                //{
-                //    Content = JsonConvert.SerializeObject(triggersArray),
-                //    Count = count
-                //};
             }
 
             return new SyncTriggersPayload
