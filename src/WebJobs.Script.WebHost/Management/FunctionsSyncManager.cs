@@ -362,12 +362,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
-                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
-                return new SyncTriggersPayload
-                {
-                    Content = JsonConvert.SerializeObject(triggersArray),
-                    Count = count
-                };
+                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
+                
+                //return new SyncTriggersPayload
+                //{
+                //    Content = JsonConvert.SerializeObject(triggersArray),
+                //    Count = count
+                //};
             }
 
             return new SyncTriggersPayload
