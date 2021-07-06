@@ -334,13 +334,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // TEMP: refactor this code to properly add extensions in all scenario(#7394)
             // Add the host.json extensions to the payload
-            if (_environment.IsKubernetesManagedHosting())
+
+            // Glenna testing: Include the extensions payload for all apps
+            JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+            if (extensionsPayload != null)
             {
-                JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
-                if (extensionsPayload != null)
-                {
-                    result.Add("extensions", extensionsPayload);
-                }
+                result.Add("extensions", extensionsPayload);
             }
 
             if (_secretManagerProvider.SecretsEnabled)
