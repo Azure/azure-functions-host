@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functions;
         private bool _enabled;
 
-        public WorkerFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger, IMetricsLogger metricsLogger)
+        public WorkerFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<WorkerFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;

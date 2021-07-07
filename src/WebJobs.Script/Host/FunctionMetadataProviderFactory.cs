@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly ILogger _logger;
+        private readonly ILoggerFactory _loggerFactory;
+        //private readonly ILogger _workerLogger;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
         private IFunctionMetadataProvider _workerFunctionMetadataProvider;
 
@@ -34,25 +35,25 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
-            _logger = loggerFactory.CreateLogger(LogCategories.Startup);
+            _loggerFactory = loggerFactory;
         }
 
         public void Create()
         {
-            _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(_applicationHostOptions, _logger, _metricsLogger);
+            _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(_applicationHostOptions, _loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), _metricsLogger);
 
-            _hostFunctionMetadataProvider = new HostFunctionMetadataProvider(_applicationHostOptions, _logger, _metricsLogger);
+            _hostFunctionMetadataProvider = new HostFunctionMetadataProvider(_applicationHostOptions, _loggerFactory.CreateLogger<HostFunctionMetadataProvider>(), _metricsLogger);
         }
 
         public IFunctionMetadataProvider GetProvider()
         {
-            /*// return host-indexing provider if placeholder mode is enabled or feature flag is disabled
-            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) == "1")
+            // return host-indexing provider if placeholder mode is enabled or feature flag is disabled
+            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
             {
                 return _hostFunctionMetadataProvider;
             }
-            return _workerFunctionMetadataProvider;*/
-            return _hostFunctionMetadataProvider;
+            return _workerFunctionMetadataProvider;
+            //return _hostFunctionMetadataProvider;
         }
     }
 }

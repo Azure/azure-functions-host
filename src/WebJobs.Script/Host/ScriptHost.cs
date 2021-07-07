@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) == null)
+                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) != null)
                 {
                     // assume this was the capability check
                     _workerIndexing = true;

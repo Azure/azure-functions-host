@@ -32,10 +32,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
-        //private IFunctionMetadataProviderFactory _functionMetadataProviderFactory;
+        private IFunctionMetadataProviderFactory _functionMetadataProviderFactory;
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IFunctionMetadataProviderFactory functionMetadataProviderFactory)
         {
             _scriptOptions = scriptOptions;
             _languageWorkerOptions = languageWorkerOptions;
@@ -44,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
-            //_functionMetadataProviderFactory = functionMetadataProviderFactory;
-            //functionMetadataProviderFactory.Create();
+            _functionMetadataProviderFactory = functionMetadataProviderFactory;
+            functionMetadataProviderFactory.Create();
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -129,8 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.FunctionMetadataManagerLoadingFunctionsMetadata();
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
-            //_functionMetadataProvider = _functionMetadataProviderFactory.GetProvider();
+            _functionMetadataProvider = _functionMetadataProviderFactory.GetProvider();
             immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(_languageWorkerOptions.Value.WorkerConfigs, forceRefresh, dispatcher);
+            _logger.LogInformation("how many functions are there?: " + immutableFunctionMetadata.Length);
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
