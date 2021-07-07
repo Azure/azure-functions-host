@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<ISharedMemoryManager>(p =>
             {
                 var environment = p.GetService<IEnvironment>();
-                if (environment.IsCoreTools())
+                if (!environment.SupportsSharedMemoryTransfer())
                 {
                     return new NullSharedMemoryManager();
                 }
