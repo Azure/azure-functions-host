@@ -276,7 +276,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                if (_environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) != null)
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing))
                 {
                     // assume this was the capability check
                     _workerIndexing = true;
@@ -286,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     _logger.LogInformation("here is the list " + functionMetadataList);
                     foreach (FunctionMetadata data in functionMetadataList)
                     {
-                        _logger.LogInformation("how did this get here?? " + data.FunctionDirectory);
+                        _logger.LogInformation("Directory for function: " + data.FunctionDirectory);
                     }
 
                     if (!_environment.IsPlaceholderModeEnabled())

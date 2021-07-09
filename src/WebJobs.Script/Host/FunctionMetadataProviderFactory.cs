@@ -10,6 +10,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -27,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILoggerFactory _loggerFactory;
-        //private readonly ILogger _workerLogger;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
         private IFunctionMetadataProvider _workerFunctionMetadataProvider;
 
@@ -48,12 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public IFunctionMetadataProvider GetProvider()
         {
             // return host-indexing provider if placeholder mode is enabled or feature flag is disabled
-            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1")
+            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1" || !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing))
             {
                 return _hostFunctionMetadataProvider;
             }
             return _workerFunctionMetadataProvider;
-            //return _hostFunctionMetadataProvider;
         }
     }
 }

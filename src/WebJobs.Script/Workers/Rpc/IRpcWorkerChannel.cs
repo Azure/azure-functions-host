@@ -26,8 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         Task<List<FunctionMetadata>> WorkerGetFunctionMetadata();
 
-        bool GetTestValue();
-
         Task StartWorkerProcessAsync();
 
         Task<WorkerStatus> GetWorkerStatusAsync();

@@ -282,8 +282,9 @@ message WorkerMetadataResponse {
   StatusResult overall_status = 2;
 }
 
+// Message type that holds function metadata information
 message WorkerFunctionIndexingResponse {
-  // function name?
+  // function name
   string name = 4;
 
   // base directory for the Function

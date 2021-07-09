@@ -51,6 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private RpcWorkerChannelState _state;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, Messages.RpcException> _metadataRequestErrors = new Dictionary<string, Messages.RpcException>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -69,7 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<FunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
-        private bool _testingReceivedWorkerResponse;
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -242,6 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _initMessage.Capabilities.Add("CanIndex", "true"); // manually add capability for now without touching worker. Assume it is true.
             _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -250,7 +251,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return;
             }
             _state = _state | RpcWorkerChannelState.Initialized;
-            _initMessage.Capabilities.Add("CanIndex", "true"); // manually add capability for now without touching worker. Assume it is true.
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _workerInitTask.SetResult(true);
@@ -331,90 +331,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return request;
         }
 
-        //WHERE MY CHANGES START
-        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
-        {
-            // for testing purposes
-            List<FunctionMetadata> temp = new List<FunctionMetadata>();
-            var functionMetadata1 = new FunctionMetadata()
-            {
-                FunctionDirectory = "one",
-                ScriptFile = "two",
-                EntryPoint = "three",
-                Name = "HttpTrigger1",
-                Language = "node"
-            };
-            var functionMetadata2 = new FunctionMetadata()
-            {
-                FunctionDirectory = "one",
-                ScriptFile = "two",
-                EntryPoint = "three",
-                Name = "HttpTrigger2",
-                Language = "node"
-            };
-            temp.Add(functionMetadata1);
-            temp.Add(functionMetadata2);
-            _functionsIndexingTask.SetResult(temp);
-            return _functionsIndexingTask.Task;
-
-            //return SendWorkerMetadataRequest();
-        }
-
-        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
-        {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerFunctionLoadError));
-
-            _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
-
-            SendStreamingMessage(new StreamingMessage
-            {
-                WorkerMetadataRequest = new WorkerMetadataRequest()
-                {
-                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
-                }
-            });
-            return _functionsIndexingTask.Task;
-        }
-
-        internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
-        {
-            _testingReceivedWorkerResponse = true;
-            _workerChannelLogger.LogInformation("Received the worker response");
-
-            var responseStatus = workerMetadataResponse.OverallStatus;
-
-            var functions = new List<FunctionMetadata>();
-
-            foreach (var metadata in workerMetadataResponse.Results)
-            {
-                var functionMetadata = new FunctionMetadata()
-                {
-                    FunctionDirectory = metadata.Directory,
-                    ScriptFile = metadata.ScriptFile,
-                    EntryPoint = metadata.EntryPoint,
-                    Name = metadata.Name,
-                    Language = metadata.Language
-                };
-
-                functionMetadata.SetFunctionId(metadata.Id);
-
-                foreach (string binding in metadata.Bindings)
-                {
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding)); // this will parse the JSON object into BindingMetadata
-                    functionMetadata.Bindings.Add(functionBinding);
-                }
-                functions.Add(functionMetadata);
-            }
-            // set it as task result because we cannot directly return from SendWorkerMetadataRequest
-            _functionsIndexingTask.SetResult(functions);
-        }
-
-        public bool GetTestValue() { return _testingReceivedWorkerResponse; }
-        // WHERE MY CHANGES END
-
         internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
@@ -491,10 +407,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
+                // do not send invocation requests for functions that failed to load or functions that could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
                     context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.GetFunctionId()]);
+                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                }
+                else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
+                {
+                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
+                    context.ResultSource.TrySetException(new Exception(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()].Message));
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
                 else
@@ -518,6 +441,93 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 context.ResultSource.TrySetException(invokeEx);
             }
         }
+
+        //WHERE MY CHANGES START
+        // gets metadata from worker
+        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        {
+            // for testing purposes
+            /*List<FunctionMetadata> temp = new List<FunctionMetadata>();
+            var functionMetadata1 = new FunctionMetadata()
+            {
+                FunctionDirectory = "one",
+                ScriptFile = "two",
+                EntryPoint = "three",
+                Name = "HttpTrigger1",
+                Language = "node"
+            };
+            var functionMetadata2 = new FunctionMetadata()
+            {
+                FunctionDirectory = "one",
+                ScriptFile = "two",
+                EntryPoint = "three",
+                Name = "HttpTrigger2",
+                Language = "node"
+            };
+            temp.Add(functionMetadata1);
+            temp.Add(functionMetadata2);
+            _functionsIndexingTask.SetResult(temp);
+            return _functionsIndexingTask.Task;*/
+
+            return SendWorkerMetadataRequest();
+        }
+
+        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
+        {
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
+                        .Timeout(_functionLoadTimeout)
+                        .Take(1)
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerMetadataRequestError));
+
+            _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+
+            // sends the function app directory path to worker for indexing
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerMetadataRequest = new WorkerMetadataRequest()
+                {
+                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
+                }
+            });
+            return _functionsIndexingTask.Task;
+        }
+
+        internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
+        {
+            _workerChannelLogger.LogInformation("Received the worker response");
+
+            var responseStatus = workerMetadataResponse.OverallStatus;
+
+            var functions = new List<FunctionMetadata>();
+
+            foreach (var metadata in workerMetadataResponse.Results)
+            {
+                if (metadata.Status != null && metadata.Status.Status == 0)
+                {
+                    _metadataRequestErrors[metadata.Id] = metadata.Status.Exception;
+                }
+                var functionMetadata = new FunctionMetadata()
+                {
+                    FunctionDirectory = metadata.Directory,
+                    ScriptFile = metadata.ScriptFile,
+                    EntryPoint = metadata.EntryPoint,
+                    Name = metadata.Name,
+                    Language = metadata.Language
+                };
+
+                functionMetadata.SetFunctionId(metadata.Id);
+
+                foreach (string binding in metadata.Bindings)
+                {
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding)); // this will parse the JSON object into BindingMetadata
+                    functionMetadata.Bindings.Add(functionBinding);
+                }
+                functions.Add(functionMetadata);
+            }
+            // set it as task result because we cannot directly return from SendWorkerMetadataRequest
+            _functionsIndexingTask.SetResult(functions);
+        }
+        // WHERE MY CHANGES END
 
         private async Task<object> GetBindingDataAsync(ParameterBinding binding, string invocationId)
         {
@@ -718,6 +728,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private void PublishWorkerErrorEvent(Exception exc)
         {
             _workerInitTask.SetException(exc);
+            if (_disposing || _disposed)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        internal void HandleWorkerMetadataRequestError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             if (_disposing || _disposed)
             {
                 return;

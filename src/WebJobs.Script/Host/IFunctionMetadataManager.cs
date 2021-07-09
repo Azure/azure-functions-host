@@ -15,7 +15,5 @@ namespace Microsoft.Azure.WebJobs.Script
         ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null, bool workerIndexing = false);
 
         bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh = false);
-
-        List<FunctionMetadata> GetValidMetadata(List<FunctionMetadata> functions);
     }
 }

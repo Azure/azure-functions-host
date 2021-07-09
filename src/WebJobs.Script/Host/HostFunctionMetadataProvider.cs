@@ -27,14 +27,12 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
-        private bool _enabled;
 
         public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
-            _enabled = false;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -257,17 +255,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 return null;
             }
             return Path.GetFullPath(functionPrimary);
-        }
-
-        // parse metadata sent from worker
-        public List<FunctionMetadata> ParseWorkerMetadata(List<FunctionMetadata> functions)
-        {
-            return functions;
-        }
-
-        public bool IsEnabled()
-        {
-            return _enabled;
         }
     }
 }
