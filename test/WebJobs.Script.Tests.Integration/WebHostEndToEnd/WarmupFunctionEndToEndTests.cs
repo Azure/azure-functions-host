@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerConfigs = TestHelpers.GetTestWorkerConfigs()
                 };
 
-                var provider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+                var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
                    .UseStartup<Startup>()
