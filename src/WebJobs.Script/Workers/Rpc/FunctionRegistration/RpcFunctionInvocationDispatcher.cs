@@ -119,10 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 await rpcWorkerChannel.StartWorkerProcessAsync();
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
                 _channels.Add(rpcWorkerChannel);
-                /*if (_rawMetadata.Count == 0)
-                {
-                    _rawMetadata = await rpcWorkerChannel.WorkerGetFunctionMetadata();
-                }*/
             }
             else
             {
@@ -150,11 +146,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
                 IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
                 _channels.Add(workerChannel);
-                /*if (_rawMetadata.Count == 0)
-                {
-                    _rawMetadata = await workerChannel.WorkerGetFunctionMetadata();
-                }*/
-                _logger.LogInformation("Did the test work? InitializeWebhostLanguageWorkerChannel says: " + _functions);
             }
             else
             {
@@ -175,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             Task.Run(async () =>
             {
-                for (var count = startIndex; count < _maxProcessCount // start from however many worker channels exist and continue adding until we hit maxProcessCount
+                for (var count = startIndex; count < _maxProcessCount
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
                     try
