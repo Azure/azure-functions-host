@@ -310,29 +310,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
 
-                    /*// first part of original InitializeAsync
-                    await _functionDispatcher.StartInitialization(cancellationToken);
-
-                    // get metadata from worker
-                    var rawMetadata = _functionDispatcher.GetWorkerMetadata().Result;
-                    _logger.LogInformation("Here is the raw metadata?? " + rawMetadata);
-                    foreach (FunctionMetadata metadata in rawMetadata)
-                    {
-                        _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
-                    }
-
-                    // validate metadata
-                    var functions = _functionMetadataManager.GetValidMetadata(rawMetadata);
-
-                    _logger.LogInformation("Here are the functions?? " + functions);
-                    foreach (FunctionMetadata metadata in functions)
-                    {
-                        _logger.LogInformation("Function " + metadata.Name + " " + metadata.Language);
-                    }
-
-                    // second part of original InitializeAsync
-                    _functionDispatcher.FinishInitialization(functions, cancellationToken);*/
-
                     ScheduleFileSystemCleanup();
                 }
                 else

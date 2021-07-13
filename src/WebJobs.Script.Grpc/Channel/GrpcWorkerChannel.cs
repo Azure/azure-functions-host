@@ -450,22 +450,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             /*List<FunctionMetadata> temp = new List<FunctionMetadata>();
             var functionMetadata1 = new FunctionMetadata()
             {
-                FunctionDirectory = "one",
-                ScriptFile = "two",
-                EntryPoint = "three",
+                FunctionDirectory = "C:\\Users\\t - anjanan\\Documents\\powershellFunctionApp\\.git",
+                ScriptFile = "C:\\Users\\t-anjanan\\Documents\\powershellFunctionApp\\HttpTrigger1\\run.ps1",
+                EntryPoint = null,
                 Name = "HttpTrigger1",
-                Language = "node"
-            };
-            var functionMetadata2 = new FunctionMetadata()
-            {
-                FunctionDirectory = "one",
-                ScriptFile = "two",
-                EntryPoint = "three",
-                Name = "HttpTrigger2",
-                Language = "node"
+                Language = "powershell"
             };
             temp.Add(functionMetadata1);
-            temp.Add(functionMetadata2);
             _functionsIndexingTask.SetResult(temp);
             return _functionsIndexingTask.Task;*/
 
@@ -519,7 +510,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 foreach (string binding in metadata.Bindings)
                 {
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding)); // this will parse the JSON object into BindingMetadata
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
                     functionMetadata.Bindings.Add(functionBinding);
                 }
                 functions.Add(functionMetadata);
