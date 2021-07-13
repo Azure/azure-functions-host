@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
             Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient client, "Storage1"));
-            Assert.Equal("jobHostAccount", client.AccountName, ignoreCase: true);
+            Assert.Equal("webHostAccount", client.AccountName, ignoreCase: true);
         }
 
         [Fact]
