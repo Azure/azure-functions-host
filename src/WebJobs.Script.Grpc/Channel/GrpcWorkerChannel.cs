@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private string _workerId;
         private RpcWorkerChannelState _state;
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
-        private IDictionary<string, Messages.RpcException> _metadataRequestErrors = new Dictionary<string, Messages.RpcException>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -413,7 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
-                    context.ResultSource.TrySetException(new Exception(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()].Message));
+                    context.ResultSource.TrySetException(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
                 else
@@ -465,19 +465,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // parse metadata response into FunctionMetadata objects
-        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerMetadataResponse)
+        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerFunctionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
-            var responseStatus = workerMetadataResponse.OverallStatus;
+            var responseStatus = workerFunctionMetadataResponse.OverallStatus;
 
             var functions = new List<FunctionMetadata>();
 
-            foreach (var metadata in workerMetadataResponse.Results)
+            foreach (var metadata in workerFunctionMetadataResponse.Results)
             {
-                if (metadata.Status != null && metadata.Status.Status == 0)
+                if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                 {
-                    _metadataRequestErrors[metadata.Id] = metadata.Status.Exception;
+                    _metadataRequestErrors[metadata.Id] = metadataRequestEx;
                 }
                 var functionMetadata = new FunctionMetadata()
                 {
