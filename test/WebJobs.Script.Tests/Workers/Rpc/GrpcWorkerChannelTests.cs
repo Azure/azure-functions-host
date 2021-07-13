@@ -441,7 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functions = _workerChannel.WorkerGetFunctionMetadata();
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionMetadata);
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received the worker response")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
         }
 
         [Fact]

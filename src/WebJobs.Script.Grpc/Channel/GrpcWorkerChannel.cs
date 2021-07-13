@@ -412,7 +412,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
-                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
+                    _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
                     context.ResultSource.TrySetException(new Exception(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()].Message));
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
@@ -446,17 +446,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerFunctionMetadataResponse)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerMetadataRequestError));
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerFunctionMetadataResponse), HandleWorkerMetadataRequestError));
 
-            _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+            _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
             // sends the function app directory path to worker for indexing
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerMetadataRequest = new WorkerMetadataRequest()
+                WorkerFunctionMetadataRequest = new WorkerFunctionMetadataRequest()
                 {
                     Directory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
@@ -465,9 +465,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // parse metadata response into FunctionMetadata objects
-        internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
+        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerMetadataResponse)
         {
-            _workerChannelLogger.LogInformation("Received the worker response");
+            _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
             var responseStatus = workerMetadataResponse.OverallStatus;
 
