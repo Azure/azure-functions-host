@@ -477,6 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                 {
+                    _workerChannelLogger.LogDebug($"Worker failed to index function {metadata.Id}");
                     _metadataRequestErrors[metadata.Id] = metadataRequestEx;
                 }
                 var functionMetadata = new FunctionMetadata()
