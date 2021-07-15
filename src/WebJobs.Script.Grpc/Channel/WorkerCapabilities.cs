@@ -1,7 +1,11 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using Google.Protobuf.Collections;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
@@ -11,25 +15,33 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public WorkerCapabilities()
         {
-            _workerCapabilities = new Dictionary<string, IDictionary<string, string>>();
+            _workerCapabilities = new ConcurrentDictionary<string, IDictionary<string, string>>();
         }
 
-        public IDictionary<string, string> GetCapabilities(string runtime)
+        public string GetCapabilityValue(string runtime, string capability)
         {
-            IDictionary<string, string> capabilities = new Dictionary<string, string>();
-            if (_workerCapabilities.TryGetValue(runtime, out capabilities))
+            string capabilityValue = string.Empty;
+            IDictionary<string, string> runtimeCapabilities = new MapField<string, string>();
+            _workerCapabilities.TryGetValue(runtime, out runtimeCapabilities);
+
+            if (runtimeCapabilities != null)
             {
-                return capabilities;
+                runtimeCapabilities.TryGetValue(capability, out capabilityValue);
+            }
+
+            return capabilityValue;
+        }
+
+        public void UpdateCapabilities(string runtime, IDictionary<string, string> capabilities)
+        {
+            if (_workerCapabilities.ContainsKey(runtime))
+            {
+                _workerCapabilities[runtime] = capabilities;
             }
             else
             {
-                return null;
+                _workerCapabilities.Add(runtime, capabilities);
             }
-        }
-
-        public void SetCapabilities(string runtime, IDictionary<string, string> capabilities)
-        {
-            _workerCapabilities.Add(runtime, capabilities);
         }
     }
 }

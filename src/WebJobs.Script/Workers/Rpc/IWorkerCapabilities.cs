@@ -7,8 +7,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public interface IWorkerCapabilities
     {
-        IDictionary<string, string> GetCapabilities(string runtime);
+        string GetCapabilityValue(string runtime, string capability);
 
-        void SetCapabilities(string runtime, IDictionary<string, string> capabilities);
+        void UpdateCapabilities(string runtime, IDictionary<string, string> capabilities);
     }
 }
