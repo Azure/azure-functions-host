@@ -173,17 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            // get the process stats for the worker
-            var workerProcessStats = _rpcWorkerProcess.GetStats();
-            workerStatus.ProcessStats = workerProcessStats;
-
-            if (workerProcessStats.CpuLoadHistory.Any())
-            {
-                string formattedLoadHistory = string.Join(",", workerProcessStats.CpuLoadHistory);
-                int executingFunctionCount = FunctionInputBuffers.Sum(p => p.Value.Count);
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker process stats: EffectiveCores={_environment.GetEffectiveCoresCount()}, ProcessId={_rpcWorkerProcess.Id}, ExecutingFunctions={executingFunctionCount}, CpuLoadHistory=({formattedLoadHistory}), AvgLoad={workerProcessStats.CpuLoadHistory.Average()}, MaxLoad={workerProcessStats.CpuLoadHistory.Max()}");
-            }
-
             return workerStatus;
         }
 

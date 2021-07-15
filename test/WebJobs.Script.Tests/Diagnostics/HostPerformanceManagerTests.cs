@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.Options;
@@ -18,7 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
 {
     public class HostPerformanceManagerTests
     {
-        private Mock<ProcessMonitor> _mockProcessMonitor;
         private string _performanceCountersValue;
         private TestLogger _logger;
         private HostPerformanceManager _performanceManager;
@@ -34,173 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteAppCountersName)).Returns(() => _performanceCountersValue);
             var options = new HostHealthMonitorOptions();
             _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-            _mockProcessMonitor = new Mock<ProcessMonitor>(MockBehavior.Strict);
-            _mockProcessMonitor.Setup(p => p.Start());
-            _performanceManager = new HostPerformanceManager(mockEnvironment.Object, new OptionsWrapper<HostHealthMonitorOptions>(options), _serviceProviderMock.Object, _mockProcessMonitor.Object);
+            _performanceManager = new HostPerformanceManager(mockEnvironment.Object, new OptionsWrapper<HostHealthMonitorOptions>(options), _serviceProviderMock.Object);
         }
-
-        public static IEnumerable<object[]> InProcStats =>
-            new List<object[]>
-            {
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 75, 80, 100, 95 }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 50, 100, 85, 95, 80, 70, 70, 50, 30, 20 }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 0, 0, 5, 10, 0, 0, 3, 1, 0, 5 }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 50, 100, 85, 95, 80, 70, 80, 90, 95, 100 }
-                    },
-                    true
-                },
-            };
-
-        public static IEnumerable<object[]> OutOfProcStats =>
-            new List<object[]>
-            {
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 5, 10, 20, 15 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 75, 80, 100, 95 }
-                        }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 10, 15, 20, 20, 20, 20, 25, 10, 5, 5 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 50, 100, 85, 95, 80, 70, 70, 50, 30, 20 }
-                        }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 0, 0, 5, 10, 0, 0, 3, 1, 0, 5 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 0, 0, 5, 10, 0, 0, 3, 1, 0, 5 }
-                        }
-                    },
-                    false
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 10, 15, 20, 20, 20, 20, 25, 10, 5, 5 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 50, 100, 85, 95, 80, 70, 80, 90, 95, 100 }
-                        }
-                    },
-                    true
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 10, 15, 20, 20, 20, 20, 30, 25, 30, 30 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 50, 100, 85, 95, 80, 70, 50, 70, 60, 50 }
-                        }
-                    },
-                    true
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 20, 20, 20, 20, 20, 20, 20, 20, 20, 20 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 25, 25, 25, 25, 25, 25, 25, 25, 25, 25 }
-                        },
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 20, 20, 20, 20, 20, 20, 20, 20, 20, 20 }
-                        },
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 25, 25, 25, 25, 25, 25, 25, 25, 25, 25 }
-                        }
-                    },
-                    true
-                },
-                new object[]
-                {
-                    new ProcessStats
-                    {
-                        CpuLoadHistory = new List<double> { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 }
-                    },
-                    new List<ProcessStats>
-                    {
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 20, 20, 20, 20, 20, 20, 20, 20, 20, 20 }
-                        },
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 }
-                        },
-                        new ProcessStats
-                        {
-                            CpuLoadHistory = new List<double> { 25, 25, 25, 25, 25, 25, 25, 25, 25, 25 }
-                        }
-                    },
-                    false
-                }
-            };
 
         [Fact]
         public void HostHealthMonitorOptions_FormatsCorrectly()
@@ -234,28 +69,56 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         }
 
         [Theory]
-        [MemberData(nameof(InProcStats))]
-        public async Task ProcessThresholdsExceeded_InProc_ReturnsExpectedResult(ProcessStats hostProcessStats, bool expected)
+        [InlineData(ThrottleState.Disabled, false)]
+        [InlineData(ThrottleState.Unknown, false)]
+        [InlineData(ThrottleState.Enabled, true)]
+        public async Task ProcessThresholdsExceeded_InProc_ReturnsExpectedResult(ThrottleState throttleState, bool expected)
         {
-            _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(null);
+            var status = new ConcurrencyThrottleAggregateStatus
+            {
+                State = throttleState
+            };
+            if (throttleState == ThrottleState.Enabled)
+            {
+                status.EnabledThrottles = new List<string> { "CPU", "Memory" }.AsReadOnly();
+            }
+            var mockConcurrencyThrottleManager = new Mock<IConcurrencyThrottleManager>(MockBehavior.Strict);
+            mockConcurrencyThrottleManager.Setup(p => p.GetStatus()).Returns(status);
 
-            _mockProcessMonitor.Setup(p => p.GetStats()).Returns(hostProcessStats);
+            var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var scriptHostManagerServiceProviderMock = mockScriptHostManager.As<IServiceProvider>();
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IFunctionInvocationDispatcherFactory))).Returns(null);
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IConcurrencyThrottleManager))).Returns(mockConcurrencyThrottleManager.Object);
+            _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(mockScriptHostManager.Object);
 
             Collection<string> exceededCounters = new Collection<string>();
-            bool result = await _performanceManager.ProcessThresholdsExceeded(exceededCounters, _logger);
+            bool result = await _performanceManager.ProcessThresholdsExceeded(_logger);
             Assert.Equal(expected, result);
         }
 
         [Theory]
-        [MemberData(nameof(OutOfProcStats))]
-        public async Task ProcessThresholdsExceeded_OutOfProc_ReturnsExpectedResult(ProcessStats hostProcessStats, List<ProcessStats> allWorkerProcessStats, bool expected)
+        [InlineData(ThrottleState.Disabled, false)]
+        [InlineData(ThrottleState.Unknown, false)]
+        [InlineData(ThrottleState.Enabled, true)]
+        public async Task ProcessThresholdsExceeded_OutOfProc_ReturnsExpectedResult(ThrottleState throttleState, bool expected)
         {
+            var status = new ConcurrencyThrottleAggregateStatus
+            {
+                State = throttleState
+            };
+            if (throttleState == ThrottleState.Enabled)
+            {
+                status.EnabledThrottles = new List<string> { "CPU", "Memory" }.AsReadOnly();
+            }
+            var mockConcurrencyThrottleManager = new Mock<IConcurrencyThrottleManager>(MockBehavior.Strict);
+            mockConcurrencyThrottleManager.Setup(p => p.GetStatus()).Returns(status);
+
             var workerStatuses = new Dictionary<string, WorkerStatus>();
-            foreach (var workerProcessStats in allWorkerProcessStats)
+            for (int i = 0; i < 3; i++)
             {
                 var workerStatus = new WorkerStatus
                 {
-                    ProcessStats = workerProcessStats
+                    Latency = TimeSpan.FromMilliseconds(25)
                 };
                 workerStatuses.Add(Guid.NewGuid().ToString(), workerStatus);
             }
@@ -268,13 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var mockScriptHostManager = new Mock<IScriptHostManager>(MockBehavior.Strict);
             var scriptHostManagerServiceProviderMock = mockScriptHostManager.As<IServiceProvider>();
             scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IFunctionInvocationDispatcherFactory))).Returns(mockDispatcherFactory.Object);
+            scriptHostManagerServiceProviderMock.Setup(p => p.GetService(typeof(IConcurrencyThrottleManager))).Returns(mockConcurrencyThrottleManager.Object);
             _serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(mockScriptHostManager.Object);
 
-            _mockProcessMonitor.Setup(p => p.GetStats()).Returns(hostProcessStats);
-
             Collection<string> exceededCounters = new Collection<string>();
-            bool result = await _performanceManager.ProcessThresholdsExceeded(exceededCounters, _logger);
+            bool result = await _performanceManager.ProcessThresholdsExceeded(_logger);
             Assert.Equal(expected, result);
+
+            mockDispatcher.VerifyAll();
         }
 
         [Theory]

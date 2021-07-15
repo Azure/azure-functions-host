@@ -4,7 +4,6 @@
 using System;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Http
@@ -18,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IEnvironment _environment;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IServiceProvider _serviceProvider;
 
         public HttpWorkerProcessFactory(IScriptEventManager eventManager,
                                        ILoggerFactory loggerFactory,
@@ -25,7 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        IProcessRegistry processRegistry,
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IEnvironment environment,
-                                       IMetricsLogger metricsLogger)
+                                       IMetricsLogger metricsLogger,
+                                       IServiceProvider serviceProvider)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));
@@ -34,12 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
             _processRegistry = processRegistry ?? throw new ArgumentNullException(nameof(processRegistry));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _environment = environment;
+            _serviceProvider = serviceProvider;
         }
 
         public IWorkerProcess Create(string workerId, string scriptRootPath, HttpWorkerOptions httpWorkerOptions)
         {
             ILogger workerProcessLogger = _loggerFactory.CreateLogger($"Worker.HttpWorkerProcess.{workerId}");
-            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _environment, _metricsLogger);
+            return new HttpWorkerProcess(workerId, scriptRootPath, httpWorkerOptions, _eventManager, _workerProcessFactory, _processRegistry, workerProcessLogger, _consoleLogSource, _environment, _metricsLogger, _serviceProvider);
         }
     }
 }

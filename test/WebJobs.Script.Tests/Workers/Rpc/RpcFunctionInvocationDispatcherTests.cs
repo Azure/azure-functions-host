@@ -53,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             foreach (var status in result.Values)
             {
                 Assert.Equal(TimeSpan.FromMilliseconds(10), status.Latency);
-                Assert.Equal(26, status.ProcessStats.CpuLoadHistory.Average());
             }
         }
 
