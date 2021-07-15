@@ -90,6 +90,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task Starting_MultipleWebhostChannels_WorkerIndexing_Succeeds()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, true);
+            await functionDispatcher.StartInitialization();
+            var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedProcessCount, "java");
+            Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
+
+            var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
+            Assert.Equal(0, finalJobhostChannelCount);
+        }
+
+        [Fact]
         public async Task Starting_MultipleJobhostChannels_Failed()
         {
             _testLoggerProvider.ClearAllLogMessages();
@@ -503,6 +517,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var metricsLogger = new Mock<IMetricsLogger>();
             var mockApplicationLifetime = new Mock<IApplicationLifetime>();
             var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "java");
             TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
 
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue.ToString());

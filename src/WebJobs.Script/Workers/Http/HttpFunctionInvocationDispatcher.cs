@@ -201,5 +201,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             await DisposeAndRestartWorkerChannel(_httpWorkerChannel.Id);    // Since there's only one channel for httpworker
             return true;
         }
+
+        public Task StartInitialization(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void FinishInitialization(List<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<FunctionMetadata>> GetWorkerMetadata()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
