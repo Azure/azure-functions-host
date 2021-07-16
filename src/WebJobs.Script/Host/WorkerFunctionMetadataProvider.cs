@@ -48,32 +48,42 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
         {
-            List<FunctionMetadata> functions = new List<FunctionMetadata>();
+            IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
+            List<FunctionMetadata> validatedFunctions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
                 if (dispatcher != null)
                 {
-                    await dispatcher.StartInitialization();
+                    await dispatcher.InitializeAsync(null);
                     functions = await dispatcher.GetWorkerMetadata();
-                    // add validation call here
-
-                    /*FunctionMetadata one = new FunctionMetadata()
+                    functions = ValidateMetadata(functions);
+                    if (functions.Count() == 0)
                     {
-                        Name = "hello there",
-                        FunctionDirectory = "somethingRandom"
-                    };*/
-                    //functions.Add(one);
+                        FunctionMetadata one = new FunctionMetadata()
+                        {
+                            Name = "hello there",
+                            FunctionDirectory = "somethingRandom"
+                        };
+                        validatedFunctions = functions.ToList();
+                        validatedFunctions.Add(one);
+                        functions = validatedFunctions;
+                    }
+                    dispatcher.FinishInitialization(functions);
                 }
             }
-            _logger.FunctionMetadataProviderFunctionFound(functions.Count);
-            functions = ValidateMetadata(functions);
+            _logger.FunctionMetadataProviderFunctionFound(functions.Count());
             _functions = functions.ToImmutableArray();
             return _functions;
         }
 
-        internal List<FunctionMetadata> ValidateMetadata(List<FunctionMetadata> functions)
+        internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<FunctionMetadata> functions)
         {
+            if (functions == null)
+            {
+                _logger.LogError("There is no metadata to be validated.");
+                return null;
+            }
             _functionErrors.Clear();
             List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
             foreach (FunctionMetadata function in functions)
@@ -121,28 +131,21 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal bool ValidateLanguage(string language)
         {
-            // can use switch case instead
-            if (language == RpcWorkerConstants.DotNetLanguageWorkerName)
+            switch (language)
             {
-                return true;
+                case RpcWorkerConstants.DotNetLanguageWorkerName:
+                    return true;
+                case RpcWorkerConstants.NodeLanguageWorkerName:
+                    return true;
+                case RpcWorkerConstants.JavaLanguageWorkerName:
+                    return true;
+                case RpcWorkerConstants.PythonLanguageWorkerName:
+                    return true;
+                case RpcWorkerConstants.PowerShellLanguageWorkerName:
+                    return true;
+                default:
+                    return false;
             }
-            else if (language == RpcWorkerConstants.NodeLanguageWorkerName)
-            {
-                return true;
-            }
-            else if (language == RpcWorkerConstants.JavaLanguageWorkerName)
-            {
-                return true;
-            }
-            else if (language == RpcWorkerConstants.PythonLanguageWorkerName)
-            {
-                return true;
-            }
-            else if (language == RpcWorkerConstants.PowerShellLanguageWorkerName)
-            {
-                return true;
-            }
-            return false;
         }
 
         internal void ValidateName(string name, bool isProxy = false)

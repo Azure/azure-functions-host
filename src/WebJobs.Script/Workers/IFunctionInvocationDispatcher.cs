@@ -27,10 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
 
-        Task StartInitialization(CancellationToken cancellationToken = default);
+        void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 
-        void FinishInitialization(List<FunctionMetadata> functions, CancellationToken cancellationToken = default);
-
-        Task<List<FunctionMetadata>> GetWorkerMetadata();
+        Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata();
     }
 }

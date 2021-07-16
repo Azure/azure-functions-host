@@ -5,6 +5,7 @@ using System;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -30,7 +31,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
-            IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer)
+            IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
+            IWorkerCapabilities workerCapabilities)
         {
             if (httpWorkerOptions.Value == null)
             {
@@ -53,7 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 webHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 managedDependencyOptions,
-                functionDispatcherLoadBalancer);
+                functionDispatcherLoadBalancer,
+                workerCapabilities);
         }
 
         public IFunctionInvocationDispatcher GetFunctionDispatcher() => _functionDispatcher;

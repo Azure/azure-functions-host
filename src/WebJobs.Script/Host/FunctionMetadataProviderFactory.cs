@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -30,12 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
         private IFunctionMetadataProvider _workerFunctionMetadataProvider;
+        private IWorkerCapabilities _workerCapabilities;
 
-        public FunctionMetadataProviderFactory(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public FunctionMetadataProviderFactory(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IWorkerCapabilities workerCapabilities)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _loggerFactory = loggerFactory;
+            _workerCapabilities = workerCapabilities;
         }
 
         public void Create()
@@ -47,8 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public IFunctionMetadataProvider GetProvider()
         {
-            // return host-indexing provider if placeholder mode is enabled or feature flag is disabled
-            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1" || !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing))
+            // return host-indexing provider if placeholder mode is enabled, feature flag is disabled, or worker is not capable of indexing
+            if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1" ||
+                    !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) /*|| !(_workerCapabilities.GetCapabilityValue(_workerRuntime, "WorkerIndexing") == "true")*/)
             {
                 return _hostFunctionMetadataProvider;
             }

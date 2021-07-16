@@ -213,17 +213,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             throw new NotImplementedException();
         }
 
-        public void FinishInitialization(List<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        Task IFunctionInvocationDispatcher.StartInitialization(CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<FunctionMetadata>> GetWorkerMetadata()
+        public Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata()
         {
             throw new NotImplementedException();
         }
