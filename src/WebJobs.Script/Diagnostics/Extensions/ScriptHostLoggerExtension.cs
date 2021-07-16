@@ -94,24 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
            "Adding Function descriptor provider for HttpWorker.");
 
-        private static readonly Action<ILogger, int, string, double, double, Exception> _hostProcessCpuStats =
-           LoggerMessage.Define<int, string, double, double>(
-           LogLevel.Debug,
-           new EventId(415, nameof(HostProcessCpuStats)),
-           "[HostMonitor] Host process CPU stats: EffectiveCores={effectiveCores}, CpuLoadHistory=({formattedCpuLoadHistory}), AvgCpuLoad={avgCpuLoad}, MaxCpuLoad={maxCpuLoad}");
-
-        private static readonly Action<ILogger, double, Exception> _hostAggregateCpuLoad =
-           LoggerMessage.Define<double>(
-           LogLevel.Debug,
-           new EventId(416, nameof(HostAggregateCpuLoad)),
-           "[HostMonitor] Host aggregate CPU load {aggregateCpuLoad}");
-
-        private static readonly Action<ILogger, double, float, Exception> _hostCpuThresholdExceeded =
-           LoggerMessage.Define<double, float>(
-           LogLevel.Debug,
-           new EventId(417, nameof(HostCpuThresholdExceeded)),
-           "[HostMonitor] Host overloaded ({aggregateCpuLoad} >= {cpuThreshold})");
-
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
@@ -143,21 +125,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void AddingDescriptorProviderForHttpWorker(this ILogger logger)
         {
             _addingDescriptorProviderForHttpWorker(logger, null);
-        }
-
-        public static void HostProcessCpuStats(this ILogger logger, int effectiveCores, string formattedCpuLoadHistory, double avgCpuLoad, double maxCpuLoad)
-        {
-            _hostProcessCpuStats(logger, effectiveCores, formattedCpuLoadHistory, avgCpuLoad, maxCpuLoad, null);
-        }
-
-        public static void HostAggregateCpuLoad(this ILogger logger, double aggregateCpuLoad)
-        {
-            _hostAggregateCpuLoad(logger, aggregateCpuLoad, null);
-        }
-
-        public static void HostCpuThresholdExceeded(this ILogger logger, double aggregateCpuLoad, float cpuThreshold)
-        {
-            _hostCpuThresholdExceeded(logger, aggregateCpuLoad, cpuThreshold, null);
         }
 
         public static void CreatingDescriptors(this ILogger logger)
