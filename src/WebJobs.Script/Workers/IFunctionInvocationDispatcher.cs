@@ -2,10 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -25,10 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         Task<bool> RestartWorkerWithInvocationIdAsync(string invocationId);
 
-        Task StartInitialization(CancellationToken cancellationToken = default);
+        void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 
-        void FinishInitialization(List<FunctionMetadata> functions, CancellationToken cancellationToken = default);
-
-        Task<List<FunctionMetadata>> GetWorkerMetadata();
+        Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata();
     }
 }
