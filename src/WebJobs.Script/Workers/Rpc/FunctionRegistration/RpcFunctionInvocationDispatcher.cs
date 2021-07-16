@@ -327,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 else
                 {
-                    // should go behind feature flag, otherwise go with original code of passing in 0
+                    // wait for one channel to start up, then allow the rest to start up in the background
                     await InitializeJobhostLanguageWorkerChannelAsync();
                     StartWorkerProcesses(1, InitializeJobhostLanguageWorkerChannelAsync);
                 }
