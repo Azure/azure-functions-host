@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private TimeSpan _shutdownTimeout;
         private bool _workerIndexing;
         private ConcurrentBag<IRpcWorkerChannel> _channels = new ConcurrentBag<IRpcWorkerChannel>();
-        private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
+        private IEnumerable<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -114,9 +114,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, _workerRuntime, _metricsLogger, attemptCount, _workerConfigs);
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
+            _channels.Add(rpcWorkerChannel);
             await rpcWorkerChannel.StartWorkerProcessAsync();
             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-            _channels.Add(rpcWorkerChannel);
 
             // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
             if (!_workerIndexing)
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var channels = _channels.ToList();
             if (channels.Count > 0)
             {
-                return await channels[0].WorkerGetFunctionMetadata();
+                return await channels.First().WorkerGetFunctionMetadata();
             }
             return null;
         }
