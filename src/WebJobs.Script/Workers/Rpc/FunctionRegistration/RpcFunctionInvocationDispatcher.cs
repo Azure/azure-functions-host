@@ -188,14 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functions = functions;
 
             // feature flag and capability check will determine the value of _workerIndexing in a future worker indexing PR
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing))
-            {
-                _workerIndexing = true;
-            }
-            else
-            {
-                _workerIndexing = false;
-            }
+            _workerIndexing = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing);
 
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
