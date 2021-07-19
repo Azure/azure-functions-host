@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return true;
         }
 
-        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        public Task<IEnumerable<FunctionMetadata>> WorkerGetFunctionMetadata()
         {
             throw new NotImplementedException();
         }

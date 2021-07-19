@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -187,7 +188,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _functions = functions;
 
             // feature flag and capability check will determine the value of _workerIndexing in a future worker indexing PR
-            _workerIndexing = false;
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing))
+            {
+                _workerIndexing = true;
+            }
+            else
+            {
+                _workerIndexing = false;
+            }
 
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
