@@ -325,7 +325,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         //[Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public IActionResult Profiler(string traceName, int duration)
         {
-            // ok to push these providers?
             // reference: https://github.com/dotnet/diagnostics/blob/main/documentation/diagnostics-client-library-instructions.md
             var allProviders = new List<EventPipeProvider>()
             {
