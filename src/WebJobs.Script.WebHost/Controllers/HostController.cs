@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.Tracing;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Filters;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
+using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -171,7 +174,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/log")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Log([FromBody]IEnumerable<HostLogEntry> logEntries)
+        public IActionResult Log([FromBody] IEnumerable<HostLogEntry> logEntries)
         {
             if (logEntries == null)
             {
@@ -307,6 +310,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
 
             return NotFound();
+        }
+
+        private async Task WriteTraceAsync(string traceName, EventPipeSession traceSession)
+        {
+            using (FileStream fs = new FileStream(traceName, FileMode.Create, FileAccess.Write))
+            {
+                await traceSession.EventStream.CopyToAsync(fs);
+            }
+        }
+
+        [HttpGet]
+        [Route("admin/host/Profile/{duration}/{traceName}")]
+        //[Authorize(Policy = PolicyNames.AdminAuthLevel)]
+        public IActionResult Profiler(string traceName, int duration)
+        {
+            // ok to push these providers?
+            // reference: https://github.com/dotnet/diagnostics/blob/main/documentation/diagnostics-client-library-instructions.md
+            var allProviders = new List<EventPipeProvider>()
+            {
+                new EventPipeProvider("Microsoft-Windows-DotNETRuntime", EventLevel.Verbose, keywords: 0x4c14fccbd, arguments: null),
+                new EventPipeProvider("Microsoft-Windows-DotNETRuntimePrivate", EventLevel.Verbose, keywords: 0x4002000b, arguments: null),
+                new EventPipeProvider("Microsoft-DotNETCore-SampleProfiler", EventLevel.Verbose, keywords: 0x0, arguments: null),
+                new EventPipeProvider("System.Threading.Tasks.TplEventSource", EventLevel.Verbose, keywords: 0x1 | 0x2 | 0x4 | 0x40 | 0x80, arguments: null),
+                // Microsoft-ApplicationInsights-DataRelay
+                new EventPipeProvider("Microsoft-ApplicationInsights-Data", EventLevel.Verbose, keywords: 0xffffffff, arguments: null),
+            };
+            var client = new DiagnosticsClient(Process.GetCurrentProcess().Id);
+            using (var newSession = client.StartEventPipeSession(allProviders))
+            {
+                Task trace = WriteTraceAsync(traceName, newSession);
+
+                // wait for trace to be copied for duration in millisseconds
+                trace.Wait(duration * 1000);
+                newSession.Stop();
+            }
+            return Accepted();
         }
     }
 }

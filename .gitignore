@@ -7,6 +7,7 @@ csx
 edge
 Publish
 
+*.nettrace
 *.user
 *.suo
 *.cscfg
