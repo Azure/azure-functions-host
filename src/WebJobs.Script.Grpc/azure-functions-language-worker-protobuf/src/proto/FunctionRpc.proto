@@ -77,9 +77,8 @@ message StreamingMessage {
     CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
 
     // Worker indexing message types
-    WorkerMetadataRequest worker_metadata_request = 29;
-    WorkerMetadataResponse worker_metadata_response = 30;
-    WorkerFunctionIndexingResponse worker_function_indexing_result = 31;
+    FunctionsLoadRequest functions_load_request = 29;
+    FunctionLoadResponses function_load_responses = 30;
   }
 }
 
@@ -222,6 +221,7 @@ message CloseSharedMemoryResourcesResponse {
 }
 
 // Host tells the worker to load a Function
+// Or worker sends metadata to host along with indexing status
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
@@ -231,6 +231,9 @@ message FunctionLoadRequest {
 
   // A flag indicating if managed dependency is enabled or not
   bool managed_dependency_enabled = 3;
+
+  // indexing status
+  StatusResult status = 4;
 }
 
 // Worker tells host result of reload
@@ -265,51 +268,24 @@ message RpcFunctionMetadata {
 
   // Is set to true for proxy
   bool is_proxy = 7;
+
+  // Function language
+  string language = 8;
 }
 
 // Host tells worker it is ready to receive metadata
-message WorkerMetadataRequest {
+message FunctionsLoadRequest {
   // base directory for function app
   string directory = 1;
 }
 
 // Worker sends function metadata back to host
-message WorkerMetadataResponse {
+message FunctionLoadResponses {
   // list of function indexing responses
-  repeated WorkerFunctionIndexingResponse results = 1;
+  repeated FunctionLoadRequest results = 1;
 
   // status of overall metadata request
   StatusResult overall_status = 2;
-}
-
-// Message type that holds function metadata information
-message WorkerFunctionIndexingResponse {
-  // function name
-  string name = 4;
-
-  // base directory for the Function
-  string directory = 1;
-  
-  // Script file specified
-  string script_file = 2;
-
-  // Entry point specified
-  string entry_point = 3;
-
-  // Function id
-  string id = 11;
- 
-  // Bindings info
-  repeated string bindings = 6;
-
-  // Is set to true for proxy
-  bool is_proxy = 7;
-
-  // Function indexing status
-  StatusResult status = 8;
-
-  // Function language
-  string language = 9;
 }
 
 // Host requests worker to invoke a Function
@@ -484,6 +460,9 @@ message BindingInfo {
   Direction direction = 3;
 
   DataType data_type = 4;
+  
+  // raw JSON binding representation to become BindingMetadata
+  string raw = 5;
 }
 
 // Used to send logs back to the Host 

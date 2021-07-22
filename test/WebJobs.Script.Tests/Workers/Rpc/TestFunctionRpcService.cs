@@ -202,10 +202,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Status = StatusResult.Types.Status.Success
             };
 
-            WorkerMetadataResponse overallResponse = new WorkerMetadataResponse();
+            FunctionLoadResponses overallResponse = new FunctionLoadResponses();
             foreach (FunctionMetadata response in functionMetadata)
             {
-                WorkerFunctionIndexingResponse indexingResponse = new WorkerFunctionIndexingResponse()
+                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
                 {
                     Name = response.Name,
                     /*Directory = response.FunctionDirectory,
@@ -221,13 +221,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     indexingResponse.Bindings.Add(binding);
                 }*/
+                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
+                {
+                    Metadata = indexingResponse,
+                    Status = statusResult
+                };
 
-                overallResponse.Results.Add(indexingResponse);
+                overallResponse.Results.Add(loadRequest);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                WorkerMetadataResponse = overallResponse
+                FunctionLoadResponses = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }

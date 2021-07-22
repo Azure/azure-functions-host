@@ -469,17 +469,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerMetadataResponse)
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponses)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerMetadataResponse), HandleWorkerMetadataRequestError));
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.FunctionLoadResponses), HandleFunctionsLoadRequestError));
 
             _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
             // sends the function app directory path to worker for indexing
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerMetadataRequest = new WorkerMetadataRequest()
+                FunctionsLoadRequest = new FunctionsLoadRequest()
                 {
                     Directory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
@@ -487,20 +487,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        internal void ProcessMetadata(WorkerMetadataResponse workerMetadataResponse)
+        internal void ProcessMetadata(FunctionLoadResponses functionLoadResponses)
         {
             _workerChannelLogger.LogInformation("Received the worker response");
 
-            var responseStatus = workerMetadataResponse.OverallStatus;
+            var responseStatus = functionLoadResponses.OverallStatus;
 
             var functions = new List<FunctionMetadata>();
 
-            foreach (var metadata in workerMetadataResponse.Results)
+            foreach (var functionLoadRequest in functionLoadResponses.Results)
             {
-                if (metadata.Status != null && metadata.Status.Status == 0)
+                var metadata = functionLoadRequest.Metadata;
+                var status = functionLoadRequest.Status;
+                var id = functionLoadRequest.FunctionId;
+                if (status != null && status.Status == 0)
                 {
-                    _workerChannelLogger.LogError($"Worker failed to index function {metadata.Id}");
-                    _metadataRequestErrors[metadata.Id] = metadata.Status.Exception;
+                    _workerChannelLogger.LogError($"Worker failed to index function {id}");
+                    _metadataRequestErrors[id] = status.Exception;
                 }
                 var functionMetadata = new FunctionMetadata()
                 {
@@ -511,11 +514,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Language = metadata.Language
                 };
 
-                functionMetadata.SetFunctionId(metadata.Id);
+                functionMetadata.SetFunctionId(id);
 
-                foreach (string binding in metadata.Bindings)
+                foreach (var binding in metadata.Bindings)
                 {
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+                    var temp = binding.Value;
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(temp.Raw));
                     functionMetadata.Bindings.Add(functionBinding);
                 }
                 functions.Add(functionMetadata);
@@ -731,7 +735,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
-        internal void HandleWorkerMetadataRequestError(Exception exc)
+        internal void HandleFunctionsLoadRequestError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             if (_disposing || _disposed)
