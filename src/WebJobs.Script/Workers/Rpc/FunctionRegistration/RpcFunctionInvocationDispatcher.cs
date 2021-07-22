@@ -150,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         await startAction();
 
+                        // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above modifies this collection.
                         if (initializeDispatcher
                             && State != FunctionInvocationDispatcherState.Initialized
                             && (webhostLanguageWorkerChannel != null && webhostLanguageWorkerChannel.Any()))
