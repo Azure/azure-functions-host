@@ -139,7 +139,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
-        private void StartWorkerProcesses(int startIndex, Func<Task> startAction, bool initializeDispatcher = false)
+        private void StartWorkerProcesses(int startIndex, Func<Task> startAction, bool initializeDispatcher = false, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
         {
             Task.Run(async () =>
             {
@@ -150,7 +150,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         await startAction();
 
-                        if (initializeDispatcher && State != FunctionInvocationDispatcherState.Initialized)
+                        if (initializeDispatcher
+                            && State != FunctionInvocationDispatcherState.Initialized
+                            && (webhostLanguageWorkerChannel != null && webhostLanguageWorkerChannel.Any()))
                         {
                             SetFunctionDispatcherStateToInitializedAndLog();
                         }
@@ -228,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel, true);
+                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel, true, webhostLanguageWorkerChannels);
                 }
                 else
                 {
