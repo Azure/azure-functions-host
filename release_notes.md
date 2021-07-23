@@ -2,9 +2,8 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-- Update Python Worker Version to [1.2.5](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.5)
 - Update Azure.Storage.Blobs to 12.9.0 (#7456)
-- Update Python Worker Version to [1.2.4](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.4)
+- Update Python Worker Version to [1.2.5](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.5)
 - Add GRPC messages types to protobuf for worker indexing along with relevant functions and tests (#7541)
 - Updated PowerShell Worker (PS7) to [3.0.912](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.912)
 
