@@ -32,6 +32,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -75,10 +76,10 @@ namespace Microsoft.Azure.WebJobs.Script
         private string _workerRuntime;
         private TaskCompletionSource<List<FunctionMetadata>> _rawMetadata = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private bool _workerIndexing = false;
+        private IOptions<LanguageWorkerOptions> _languageWorkerOptions;
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
-        private IWorkerCapabilities _workerCapabilities;
 
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
@@ -94,7 +95,6 @@ namespace Microsoft.Azure.WebJobs.Script
             ILoggerFactory loggerFactory,
             IFunctionInvocationDispatcherFactory functionDispatcherFactory,
             IFunctionMetadataManager functionMetadataManager,
-            IWorkerCapabilities workerCapabilities,
             IFileLoggingStatusManager fileLoggingStatusManager,
             IMetricsLogger metricsLogger,
             IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -133,7 +133,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _functionDispatcher = functionDispatcherFactory.GetFunctionDispatcher();
             _settingsManager = settingsManager ?? ScriptSettingsManager.Instance;
             ExtensionBundleManager = extensionBundleManager;
-            _workerCapabilities = workerCapabilities;
 
             _metricsLogger = metricsLogger;
 
@@ -282,7 +281,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) /*&& _workerCapabilities.GetCapabilityValue(_workerRuntime, "WorkerIndexing") == "true"*/)
+                // get worker config information
+                IServiceProvider serviceProvider = _scriptHostManager as IServiceProvider;
+                _languageWorkerOptions = serviceProvider.GetService<IOptions<LanguageWorkerOptions>>();
+                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+                RpcWorkerConfig workerConfig = workerConfigs.FirstOrDefault(
+                    config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
+
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
                 {
                     _workerIndexing = true;
                     IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();

@@ -57,7 +57,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private bool _workerIndexing;
         private ConcurrentBag<IRpcWorkerChannel> _channels = new ConcurrentBag<IRpcWorkerChannel>();
         private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
-        private IWorkerCapabilities _workerCapabilities;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -70,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IWebHostRpcWorkerChannelManager webHostLanguageWorkerChannelManager,
             IJobHostRpcWorkerChannelManager jobHostLanguageWorkerChannelManager,
             IOptions<ManagedDependencyOptions> managedDependencyOptions,
-            IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer,
-            IWorkerCapabilities workerCapabilities)
+            IRpcFunctionInvocationDispatcherLoadBalancer functionDispatcherLoadBalancer)
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
@@ -86,7 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
-            _workerCapabilities = workerCapabilities;
             State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
@@ -188,14 +185,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
-            _functions = functions ?? new List<FunctionMetadata>();
+            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            if (workerConfig == null)
+            {
+                // Only throw if workerConfig is null AND some functions have been found.
+                // With .NET out-of-proc, worker config comes from functions.
+                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+            }
 
             // if worker indexing feature flag is enabled and worker is capable of indexing, go down worker indexing code path
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) /*&& _workerCapabilities.GetCapabilityValue(_workerRuntime, "WorkerIndexing") == "true"*/)
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
             {
                 _workerIndexing = true;
             }
+
+            if ((functions == null || functions.Count() == 0) && !_workerIndexing)
+            {
+                // do not initialize function dispatcher if there are no functions, unless the worker is indexing
+                return;
+            }
+
+            _functions = functions ?? new List<FunctionMetadata>();
 
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
@@ -206,19 +217,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            if ((functions == null || functions.Count() == 0) && !_workerIndexing)
-            {
-                // do not initialize function dispatcher if there are no functions, unless the worker is indexing
-                return;
-            }
-
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            if (workerConfig == null)
-            {
-                // Only throw if workerConfig is null AND some functions have been found.
-                // With .NET out-of-proc, worker config comes from functions.
-                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
-            }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _processStartupInterval = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
             ErrorEventsThreshold = 3 * _maxProcessCount;

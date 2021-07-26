@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
 
-            IFunctionMetadataProviderFactory providerFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger(), new WorkerCapabilities());
+            IFunctionMetadataProviderFactory providerFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger());
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IFunctionMetadataProviderFactory))).Returns(providerFactory);
 
             return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, providerFactory);

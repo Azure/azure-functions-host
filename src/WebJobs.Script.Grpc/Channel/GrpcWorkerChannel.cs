@@ -70,7 +70,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<List<FunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
-        private IWorkerCapabilities _capabilitiesDictionary;
 
         internal GrpcWorkerChannel(
            string workerId,
@@ -82,8 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
            int attemptCount,
            IEnvironment environment,
            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           ISharedMemoryManager sharedMemoryManager,
-           IWorkerCapabilities capabilitiesDictionary)
+           ISharedMemoryManager sharedMemoryManager)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -97,7 +95,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _sharedMemoryManager = sharedMemoryManager;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
-            _capabilitiesDictionary = capabilitiesDictionary;
 
             _inboundWorkerEvents = _eventManager.OfType<InboundGrpcEvent>()
                 .Where(msg => msg.WorkerId == _workerId);
@@ -255,7 +252,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
-            _capabilitiesDictionary.UpdateCapabilities(_runtime, _initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
             _workerInitTask.SetResult(true);
         }

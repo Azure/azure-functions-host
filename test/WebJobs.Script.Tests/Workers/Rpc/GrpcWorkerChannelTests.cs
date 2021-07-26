@@ -48,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private GrpcWorkerChannel _workerChannel;
-        private IWorkerCapabilities _workerCapabilities;
 
         public GrpcWorkerChannelTests()
         {
@@ -77,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 HasParentScope = true
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
-            _workerCapabilities = new WorkerCapabilities();
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
@@ -89,8 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                0,
                _testEnvironment,
                _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _workerCapabilities);
+               _sharedMemoryManager);
         }
 
         public void Dispose()
@@ -171,8 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                0,
                _testEnvironment,
                _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _workerCapabilities);
+               _sharedMemoryManager);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync());
         }
 
@@ -284,8 +280,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                0,
                _testEnvironment,
                _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _workerCapabilities);
+               _sharedMemoryManager);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);

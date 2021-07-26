@@ -551,8 +551,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
             var mockFunctionDispatcherLoadBalancer = new Mock<IRpcFunctionInvocationDispatcherLoadBalancer>();
 
-            var workerCapabilities = new WorkerCapabilities();
-
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
             return new RpcFunctionInvocationDispatcher(scriptOptions,
@@ -566,8 +564,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
-                mockFunctionDispatcherLoadBalancer.Object,
-                workerCapabilities);
+                mockFunctionDispatcherLoadBalancer.Object);
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)
