@@ -435,6 +435,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void ReceivesInboundEvent_WorkerMetadataResponse()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.WorkerGetFunctionMetadata();
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionMetadata);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
         public void FunctionLoadRequest_IsExpected()
         {
             FunctionMetadata metadata = new FunctionMetadata()

@@ -3,11 +3,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -162,6 +164,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             StreamingMessage responseMessage = new StreamingMessage()
             {
                 StartStream = startStream
+            };
+            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+        }
+
+        public void PublishWorkerMetadataResponse(string workerId, IEnumerable<FunctionMetadata> functionMetadata)
+        {
+            StatusResult statusResult = new StatusResult()
+            {
+                Status = StatusResult.Types.Status.Success
+            };
+
+            WorkerFunctionMetadataResponse overallResponse = new WorkerFunctionMetadataResponse();
+            foreach (FunctionMetadata response in functionMetadata)
+            {
+                WorkerFunctionMetadata indexingResponse = new WorkerFunctionMetadata()
+                {
+                    Name = response.Name,
+                    Language = response.Language
+                };
+
+                overallResponse.Results.Add(indexingResponse);
+            }
+
+            StreamingMessage responseMessage = new StreamingMessage()
+            {
+                WorkerFunctionMetadataResponse = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }

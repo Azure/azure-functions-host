@@ -39,8 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 _ = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
                 _configuration = new ConfigurationBuilder()
-                    .AddConfiguration(configuration)
                     .Add(new ActiveHostConfigurationSource(scriptHostManager))
+                    .AddConfiguration(configuration)
                     .Build();
             }
         }
