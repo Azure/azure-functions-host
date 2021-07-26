@@ -50,7 +50,7 @@
   <ItemGroup>
     <PackageReference Include="appinsights.testlogger" Version="1.0.0" />
     <PackageReference Include="FluentAssertions" Version="5.9.0" />
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-preview.5.21301.17" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-preview.6.21355.2" />
     <PackageReference Include="Microsoft.Azure.Functions.PythonWorker" Version="3.1.2.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
