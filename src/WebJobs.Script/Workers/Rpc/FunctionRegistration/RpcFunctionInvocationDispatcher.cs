@@ -195,16 +195,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
+            {
+                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
+                // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
+                // Debouce to ensure this does not effect cold start
+                _shutdownStandbyWorkerChannels();
+                return;
+            }
+
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
-            if (workerConfig == null)
+            if (workerConfig == null && (functions == null || functions.Count() == 0))
             {
                 // Only throw if workerConfig is null AND some functions have been found.
                 // With .NET out-of-proc, worker config comes from functions.
-                throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
+                throw new InvalidOperationException($"WorkerConfig for runtime: {_workerRuntime} not found");
             }
 
             // if worker indexing feature flag is enabled and worker is capable of indexing, go down worker indexing code path
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
+            if (workerConfig != null && workerConfig.Description.WorkerIndexing != null &&
+                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase))
             {
                 _workerIndexing = true;
             }
@@ -216,15 +226,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             _functions = functions ?? new List<FunctionMetadata>();
-
-            if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
-            {
-                // Shutdown any placeholder channels for empty function apps or dotnet function apps.
-                // This is needed as specilization does not kill standby placeholder channels if worker runtime is not set.
-                // Debouce to ensure this does not effect cold start
-                _shutdownStandbyWorkerChannels();
-                return;
-            }
 
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
