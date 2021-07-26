@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,
-            TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null)
+            TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null, bool workerIndexing = false)
         {
             var defaultCountOptions = new WorkerProcessCountOptions();
             TimeSpan startupInterval = processStartupInterval ?? defaultCountOptions.ProcessStartupInterval;
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 new RpcWorkerConfig
                 {
-                    Description = GetTestWorkerDescription("node", ".js"),
+                    Description = GetTestWorkerDescription("node", ".js", workerIndexing),
                     CountOptions = new WorkerProcessCountOptions
                     {
                         ProcessCount = processCountValue,
@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 },
                 new RpcWorkerConfig
                 {
-                    Description = GetTestWorkerDescription("java", ".jar"),
+                    Description = GetTestWorkerDescription("java", ".jar", workerIndexing),
                     CountOptions = new WorkerProcessCountOptions
                     {
                         ProcessCount = processCountValue,
@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // Allow tests to have a worker that claims the .dll extension.
             if (includeDllWorker)
             {
-                workerConfigs.Add(new RpcWorkerConfig() { Description = GetTestWorkerDescription("dllWorker", ".dll") });
+                workerConfigs.Add(new RpcWorkerConfig() { Description = GetTestWorkerDescription("dllWorker", ".dll", workerIndexing) });
             }
 
             return workerConfigs;
@@ -345,7 +345,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static RpcWorkerDescription GetTestWorkerDescription(string language, string extension)
+        public static RpcWorkerDescription GetTestWorkerDescription(string language, string extension, bool workerIndexing = false)
         {
             return new RpcWorkerDescription()
             {
@@ -354,7 +354,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                      { extension }
                  },
                 Language = language,
-                WorkerDirectory = "testDir"
+                WorkerDirectory = "testDir",
+                WorkerIndexing = workerIndexing.ToString()
             };
         }
 

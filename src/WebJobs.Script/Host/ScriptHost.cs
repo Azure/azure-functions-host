@@ -288,10 +288,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // get worker config information
                 var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
-                RpcWorkerConfig workerConfig = workerConfigs.FirstOrDefault(
-                    config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
+                RpcWorkerConfig workerConfig = null;
+                if (_workerRuntime != null)
+                {
+                    workerConfig = workerConfigs.FirstOrDefault(
+                        config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
+                }
 
-                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
+                if (workerConfig != null && workerConfig.Description.WorkerIndexing != null && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
                 {
                     _workerIndexing = true;
                     IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();

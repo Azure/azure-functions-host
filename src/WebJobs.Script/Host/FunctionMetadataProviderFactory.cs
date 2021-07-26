@@ -49,12 +49,17 @@ namespace Microsoft.Azure.WebJobs.Script
         public IFunctionMetadataProvider GetProvider(IList<RpcWorkerConfig> workerConfigs)
         {
             var workerRuntime = SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            if (workerRuntime == null)
+            {
+                return _hostFunctionMetadataProvider;
+            }
             RpcWorkerConfig workerConfig = workerConfigs.FirstOrDefault(
                     config => workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
 
             // return host-indexing provider if placeholder mode is enabled, feature flag is disabled, or worker is not capable of indexing
             if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1" ||
-                    !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) || !workerConfig.Description.WorkerIndexing.Equals("true"))
+                    !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) ||
+                    (workerConfig == null || workerConfig.Description.WorkerIndexing != null || !workerConfig.Description.WorkerIndexing.Equals("true")))
             {
                 return _hostFunctionMetadataProvider;
             }
