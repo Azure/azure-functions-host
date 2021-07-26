@@ -34,7 +34,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-preview.5.21301.17" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-preview.6.21355.2" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.10.0" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="2.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="2.1.2" />
@@ -42,7 +42,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.8.2-SNAPSHOT" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
     <PackageReference Include="Microsoft.Azure.ServiceBus" Version="4.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0-preview.5.21301.5" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0-preview.6.21352.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.8.0" />
     <PackageReference Include="Moq" Version="4.9.0" />
     <PackageReference Include="xunit" Version="2.4.0" />
