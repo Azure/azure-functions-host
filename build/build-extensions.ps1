@@ -211,7 +211,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
       $infoKeyValuePairs.Add("HashValue", $hashForBase[$key])
       $informationJson.Add($infoKeyValuePairs)
     }
-    $informationJson | ConvertTo-Json -depth 100 | Out-File "$patchedContentDirectory\Metadata.json"
+    $informationJson | ConvertTo-Json -depth 100 | Out-File "$patchedContentDirectory\$extensionVersionNoSuffix\HardlinksMetadata.json"
 
     # Zip it up
     ZipContent $patchedContentDirectory "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"

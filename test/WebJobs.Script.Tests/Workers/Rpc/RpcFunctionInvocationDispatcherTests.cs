@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -55,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             foreach (var status in result.Values)
             {
                 Assert.Equal(TimeSpan.FromMilliseconds(10), status.Latency);
-                Assert.Equal(26, status.ProcessStats.CpuLoadHistory.Average());
             }
         }
 
@@ -64,13 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _testLoggerProvider.ClearAllLogMessages();
             int expectedProcessCount = 3;
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount);
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, startupIntervals: TimeSpan.FromSeconds(1));
             await functionDispatcher.InitializeAsync(GetTestFunctionsList(RpcWorkerConstants.NodeLanguageWorkerName));
 
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount);
             Assert.Equal(expectedProcessCount, finalChannelCount);
 
-            VerifyStartIntervals(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15));
+            VerifyStartIntervals(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
         }
 
         [Fact]
@@ -116,10 +114,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var finalChannelCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, false);
             Assert.Equal(expectedProcessCount, finalChannelCount);
 
-            var logMessages = _testLoggerProvider.GetAllLogMessages().ToList();
+            await TestHelpers.Await(() =>
+            {
+                var logMessages = _testLoggerProvider.GetAllLogMessages().ToList();
 
-            Assert.Equal(logMessages.Where(x => x.FormattedMessage
-                .Contains("Failed to start a new language worker")).Count(), 3);
+                return logMessages.Where(x => x.FormattedMessage
+                    .Contains("Failed to start a new language worker")).Count() == 3;
+            });
         }
 
         [Fact]
@@ -510,12 +511,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false,
-            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, string runtime = null, bool workerIndexing = false)
+            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null, string runtime = null, bool workerIndexing = false)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
             var mockApplicationLifetime = new Mock<IApplicationLifetime>();
             var testEnv = new TestEnvironment();
+            TimeSpan intervals = startupIntervals ?? TimeSpan.FromMilliseconds(100);
 
             testEnv.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, maxProcessCountValue.ToString());
             if (runtime != null)
@@ -536,7 +538,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var workerConfigOptions = new LanguageWorkerOptions
             {
-                WorkerConfigs = TestHelpers.GetTestWorkerConfigs(processCountValue: maxProcessCountValue)
+                WorkerConfigs = TestHelpers.GetTestWorkerConfigs(processCountValue: maxProcessCountValue, processStartupInterval: intervals,
+                                    processRestartInterval: intervals, processShutdownTimeout: TimeSpan.FromSeconds(1))
             };
             IRpcWorkerChannelFactory testLanguageWorkerChannelFactory = new TestRpcWorkerChannelFactory(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, throwOnProcessStartUp);
             IWebHostRpcWorkerChannelManager testWebHostLanguageWorkerChannelManager = new TestRpcWorkerChannelManager(eventManager, _testLogger, scriptOptions.Value.RootScriptPath, testLanguageWorkerChannelFactory);
@@ -580,7 +583,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     return allReadyForInvocations ? channels.All(ch => ch.IsChannelReadyForInvocations()) : true;
                 }
                 return false;
-            }, pollingInterval: expectedCount * 5 * 1000, timeout: 60 * 1000);
+            });
             return currentChannelCount;
         }
 
@@ -591,7 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 currentChannelCount = channelManager.GetChannels(language).Count();
                 return currentChannelCount == expectedCount;
-            }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
+            });
             return currentChannelCount;
         }
 
@@ -600,7 +603,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await TestHelpers.Await(() =>
             {
                 return functionDispatcher.State == FunctionInvocationDispatcherState.Initialized;
-            }, pollingInterval: 4 * 1000, timeout: 60 * 1000);
+            });
         }
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
@@ -637,7 +640,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             for (int i = 1; i < startTimestamps.Count(); i++)
             {
                 var diff = startTimestamps[i] - startTimestamps[i - 1];
-                Assert.True(diff > from && diff < to);
+                Assert.True(diff > from && diff < to, $"Expected startup intervals between {from.TotalMilliseconds}ms and {to.TotalMilliseconds}ms. Actual: {diff.TotalMilliseconds}ms.");
             }
         }
     }

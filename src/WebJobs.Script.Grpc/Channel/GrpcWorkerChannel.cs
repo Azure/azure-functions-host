@@ -22,7 +22,6 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
-using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -35,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
@@ -49,9 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private RpcWorkerChannelState _state;
-        private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
-        private IDictionary<string, Messages.RpcException> _metadataRequestErrors = new Dictionary<string, Messages.RpcException>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -139,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public async Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(TimeSpan.FromSeconds(WorkerConstants.ProcessStartTimeoutSeconds))
+                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
@@ -176,17 +173,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            // get the process stats for the worker
-            var workerProcessStats = _rpcWorkerProcess.GetStats();
-            workerStatus.ProcessStats = workerProcessStats;
-
-            if (workerProcessStats.CpuLoadHistory.Any())
-            {
-                string formattedLoadHistory = string.Join(",", workerProcessStats.CpuLoadHistory);
-                int executingFunctionCount = FunctionInputBuffers.Sum(p => p.Value.Count);
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker process stats: EffectiveCores={_environment.GetEffectiveCoresCount()}, ProcessId={_rpcWorkerProcess.Id}, ExecutingFunctions={executingFunctionCount}, CpuLoadHistory=({formattedLoadHistory}), AvgLoad={workerProcessStats.CpuLoadHistory.Average()}, MaxLoad={workerProcessStats.CpuLoadHistory.Max()}");
-            }
-
             return workerStatus;
         }
 
@@ -195,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
@@ -298,7 +284,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.EnvironmentReloadTimeout)
                 .Take(1)
                 .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
 
@@ -407,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
-                // do not send invocation requests for functions that failed to load or functions that could not be indexed by the worker
+                // do not send invocation requests for functions that failed to load or could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
@@ -416,8 +402,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
-                    _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
-                    context.ResultSource.TrySetException(new Exception(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()].Message));
+                    _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
+                    context.ResultSource.TrySetException(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
                 else
@@ -442,40 +428,25 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        //WHERE MY CHANGES START
         // gets metadata from worker
         public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
         {
-            // for testing purposes
-            /*List<FunctionMetadata> temp = new List<FunctionMetadata>();
-            var functionMetadata1 = new FunctionMetadata()
-            {
-                FunctionDirectory = "C:\\Users\\t - anjanan\\Documents\\powershellFunctionApp\\.git",
-                ScriptFile = "C:\\Users\\t-anjanan\\Documents\\powershellFunctionApp\\HttpTrigger1\\run.ps1",
-                EntryPoint = null,
-                Name = "HttpTrigger1",
-                Language = "powershell"
-            };
-            temp.Add(functionMetadata1);
-            _functionsIndexingTask.SetResult(temp);
-            return _functionsIndexingTask.Task;*/
-
             return SendWorkerMetadataRequest();
         }
 
         internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponses)
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerFunctionMetadataResponse)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.FunctionLoadResponses), HandleFunctionsLoadRequestError));
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerFunctionMetadataResponse), HandleWorkerMetadataRequestError));
 
-            _workerChannelLogger.LogInformation("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+            _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
             // sends the function app directory path to worker for indexing
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionsLoadRequest = new FunctionsLoadRequest()
+                WorkerFunctionMetadataRequest = new WorkerFunctionMetadataRequest()
                 {
                     Directory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
@@ -483,23 +454,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        internal void ProcessMetadata(FunctionLoadResponses functionLoadResponses)
+        // parse metadata response into FunctionMetadata objects
+        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerFunctionMetadataResponse)
         {
-            _workerChannelLogger.LogInformation("Received the worker response");
+            _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
-            var responseStatus = functionLoadResponses.OverallStatus;
+            var responseStatus = workerFunctionMetadataResponse.OverallStatus;
 
             var functions = new List<FunctionMetadata>();
 
-            foreach (var functionLoadRequest in functionLoadResponses.Results)
+            foreach (var metadata in workerFunctionMetadataResponse.Results)
             {
-                var metadata = functionLoadRequest.Metadata;
-                var status = functionLoadRequest.Status;
-                var id = functionLoadRequest.FunctionId;
-                if (status != null && status.Status == 0)
+                if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                 {
-                    _workerChannelLogger.LogError($"Worker failed to index function {id}");
-                    _metadataRequestErrors[id] = status.Exception;
+                    _workerChannelLogger.LogError($"Worker failed to index function {metadata.Id}");
+                    _metadataRequestErrors[metadata.Id] = metadataRequestEx;
                 }
                 var functionMetadata = new FunctionMetadata()
                 {
@@ -509,13 +478,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Name = metadata.Name,
                     Language = metadata.Language
                 };
+                functionMetadata.SetFunctionId(metadata.Id);
 
-                functionMetadata.SetFunctionId(id);
-
-                foreach (var binding in metadata.Bindings)
+                foreach (string binding in metadata.Bindings)
                 {
-                    var temp = binding.Value;
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(temp.Raw));
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
                     functionMetadata.Bindings.Add(functionBinding);
                 }
                 functions.Add(functionMetadata);
@@ -523,7 +490,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);
         }
-        // WHERE MY CHANGES END
 
         private async Task<object> GetBindingDataAsync(ParameterBinding binding, string invocationId)
         {
@@ -730,8 +696,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
-
-        internal void HandleFunctionsLoadRequestError(Exception exc)
+        
+        internal void HandleWorkerMetadataRequestError(Exception exc)
         {
             _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             if (_disposing || _disposed)

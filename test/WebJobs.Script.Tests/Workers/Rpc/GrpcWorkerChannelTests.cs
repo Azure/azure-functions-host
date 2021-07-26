@@ -54,6 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
+            _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
+            _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
+            _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
+
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
@@ -433,11 +437,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ReceivesInboundEvent_WorkerMetadataResponse()
         {
-            var functionMetadata = GetTestFunctionsList("python"); // this is the metadata
+            var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.WorkerGetFunctionMetadata();
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionMetadata);
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received the worker response")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
         }
 
         [Fact]

@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId)).Returns("testapp");
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName)).Returns("testapp");
 
-            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object, null);
+            var mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object);
 
             mockHostPerformanceManager.Setup(p => p.PerformanceCountersExceeded(It.IsAny<Collection<string>>(), It.IsAny<ILogger>()))
                 .Callback<Collection<string>, ILogger>((c, l) =>

@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -50,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<CorsOptionsSetup>();
                     services.ConfigureOptions<AppServiceOptionsSetup>();
                     services.ConfigureOptions<HostEasyAuthOptionsSetup>();
+                    services.ConfigureOptions<PrimaryHostCoordinatorOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
@@ -116,12 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
-                    if (environment.IsWindowsAzureManagedHosting() || environment.IsLinuxAzureManagedHosting())
-                    {
-                        // Enable breaking change analysis only when hosted in Azure
-                        services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
-                        services.AddSingleton<IHostedService, ChangeAnalysisService>();
-                    }
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();

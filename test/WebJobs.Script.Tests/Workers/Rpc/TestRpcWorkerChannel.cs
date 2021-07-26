@@ -127,11 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var status = new WorkerStatus
             {
-                Latency = TimeSpan.FromMilliseconds(10),
-                ProcessStats = new ProcessStats
-                {
-                    CpuLoadHistory = new List<double> { 10, 20, 30, 40, 50, 40, 30, 20, 10, 10 }
-                }
+                Latency = TimeSpan.FromMilliseconds(10)
             };
             return Task.FromResult(status);
         }

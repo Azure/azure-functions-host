@@ -180,59 +180,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void PublishWorkerMetadataResponse(string workerId, IEnumerable<FunctionMetadata> functionMetadata)
         {
-            /*// Worker sends function metadata back to host
-            message WorkerMetadataResponse {
-                // list of function indexing responses
-                repeated WorkerFunctionIndexingResponse results = 1;
-            }
-
-            message WorkerFunctionIndexingResponse {
-                string name = 4;
-                string directory = 1;
-                string script_file = 2;
-                string entry_point = 3;
-                string id = 11;
-                map<string, BindingInfo> bindings = 6;
-                bool is_proxy = 7;
-                StatusResult status = 8;
-                string language = 9;
-            }*/
             StatusResult statusResult = new StatusResult()
             {
                 Status = StatusResult.Types.Status.Success
             };
 
-            FunctionLoadResponses overallResponse = new FunctionLoadResponses();
+            WorkerFunctionMetadataResponse overallResponse = new WorkerFunctionMetadataResponse();
             foreach (FunctionMetadata response in functionMetadata)
             {
-                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
+                WorkerFunctionMetadata indexingResponse = new WorkerFunctionMetadata()
                 {
                     Name = response.Name,
-                    /*Directory = response.FunctionDirectory,
-                    ScriptFile = response.ScriptFile,
-                    EntryPoint = response.EntryPoint,
-                    Id = response.GetFunctionId(),
-                    IsProxy = response.IsProxy(),
-                    Status = statusResult,*/
                     Language = response.Language
                 };
 
-                /*foreach (var binding in response.Bindings)
-                {
-                    indexingResponse.Bindings.Add(binding);
-                }*/
-                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
-                {
-                    Metadata = indexingResponse,
-                    Status = statusResult
-                };
-
-                overallResponse.Results.Add(loadRequest);
+                overallResponse.Results.Add(indexingResponse);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                FunctionLoadResponses = overallResponse
+                WorkerFunctionMetadataResponse = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
