@@ -404,7 +404,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnumerable<FunctionMetadata> functionMetadata;
             if (_workerIndexing)
             {
-                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher, workerIndexing: true);
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
             }
             else
             {
