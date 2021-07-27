@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -35,6 +36,9 @@ namespace Microsoft.Azure.WebJobs.Script
         // i.e.: "f-<functionname>"
         public const string AssemblyPrefix = "f-";
         public const string AssemblySeparator = "__";
+        private const string BlobServiceDomain = "blob";
+        private const string SasVersionQueryParam = "sv";
+
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
@@ -731,6 +735,50 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return false;
+        }
+
+        public static bool TryGetUriHost(string url, out string host)
+        {
+            host = null;
+            if (Uri.TryCreate(url, UriKind.Absolute, out var resourceUri))
+            {
+                host = $"{resourceUri.Scheme}://{resourceUri.Host}";
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Utility function to validate a blob URL by attempting to retrieve the account name from it.
+        /// Borrowed from https://github.com/Azure/azure-sdk-for-net/blob/e0fd1cd415d8339947b20c3565c7adc7d7f60fbe/sdk/storage/Azure.Storage.Common/src/Shared/UriExtensions.cs
+        /// </summary>
+        private static string GetAccountNameFromDomain(string domain)
+        {
+            var accountEndIndex = domain.IndexOf(".", StringComparison.InvariantCulture);
+            if (accountEndIndex >= 0)
+            {
+                var serviceStartIndex = domain.IndexOf(BlobServiceDomain, accountEndIndex, StringComparison.InvariantCultureIgnoreCase);
+                return serviceStartIndex > -1 ? domain.Substring(0, accountEndIndex) : null;
+            }
+            return null;
+        }
+
+        public static bool IsResourceAzureBlobWithoutSas(Uri resourceUri)
+        {
+            // Screen out URLs that don't have <name>.blob.core... format
+            if (string.IsNullOrEmpty(GetAccountNameFromDomain(resourceUri.Host)))
+            {
+                return false;
+            }
+
+            // Screen out URLs with an SAS token
+            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
+            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasVersionQueryParam]))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public static bool IsHttporManualTrigger(string triggerType)

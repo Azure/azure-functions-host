@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
         private readonly IRunFromPackageHandler _runFromPackageHandler;
+        private readonly Mock<IPackageDownloadHandler> _packageDownloadHandler;
 
         public InstanceManagerTests()
         {
@@ -50,15 +51,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _environment = new TestEnvironmentEx();
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
 
             var metricsLogger = new MetricsLogger();
             var bashCommandHandler = new BashCommandHandler(metricsLogger, new Logger<BashCommandHandler>(_loggerFactory));
             var zipHandler = new UnZipHandler(metricsLogger, NullLogger<UnZipHandler>.Instance);
-            _runFromPackageHandler = new RunFromPackageHandler(_environment, _httpClient, _meshServiceClientMock.Object,
-                bashCommandHandler, zipHandler, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
+            _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
+                bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             InstanceManager.Reset();
         }
@@ -208,8 +210,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = true
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+                .Returns(Task.FromResult(string.Empty));
+
+            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -218,15 +225,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
 
-            if (logs.Length == 12)
+            if (logs.Length == 9)
             {
                 Assert.Collection(logs,
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
-                    p => Assert.StartsWith("Downloading zip contents from", p),
-                    p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
-                    p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Output:", p),
@@ -240,9 +244,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     p => Assert.StartsWith("Starting Assignment", p),
                     p => Assert.StartsWith("Applying 1 app setting(s)", p),
                     p => Assert.EndsWith("points to an existing blob: True", p),
-                    p => Assert.StartsWith("Downloading zip contents from", p),
-                    p => Assert.EndsWith(" bytes downloaded. IsWarmupRequest = False", p),
-                    p => Assert.EndsWith(" bytes written. IsWarmupRequest = False", p),
                     p => Assert.StartsWith("Unsquashing remote zip", p),
                     p => Assert.StartsWith("Running: ", p),
                     p => Assert.StartsWith("Error running bash", p),
@@ -299,8 +300,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler);
+            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+                _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -376,7 +378,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler);
+                new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             var assignmentContext = new HostAssignmentContext
             {
@@ -483,6 +485,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
                 $"Will be using {EnvironmentSettingNames.ScmRunFromPackage} app setting as zip url. IsWarmup: 'False"
+            };
+
+            var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
+
+            for (int i = 0; i < expectedOutputLines.Length; i++)
+            {
+                Assert.StartsWith(expectedOutputLines[i], logs[i]);
+            }
+        }
+
+        [Fact]
+        public async Task ValidateContext_Skips_Validation_For_Urls_With_No_Sas_Token()
+        {
+            var urlWithNoSasToken = "https://notarealstorageaccount.blob.core.windows.net/releases/test.zip";
+            var environment = new Dictionary<string, string>()
+            {
+                { EnvironmentSettingNames.AzureWebsiteRunFromPackage, urlWithNoSasToken }
+            };
+            var assignmentContext = new HostAssignmentContext
+            {
+                SiteId = 1234,
+                SiteName = "TestSite",
+                Environment = environment,
+                IsWarmupRequest = false
+            };
+
+            string error = await _instanceManager.ValidateContext(assignmentContext);
+            Assert.Null(error);
+            Assert.Null(assignmentContext.PackageContentLength);
+
+            string[] expectedOutputLines =
+            {
+                "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
+                $"Will be using {EnvironmentSettingNames.AzureWebsiteRunFromPackage} app setting as zip url. IsWarmup: 'False",
+                $"Skipping validation for {EnvironmentSettingNames.AzureWebsiteRunFromPackage} with no SAS token"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();
@@ -619,7 +656,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 MSIContext = new MSIContext()
             };
 
-            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, null);
+            var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+
+            meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
+
+            var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, meshServiceClient.Object);
 
             string error = await instanceManager.SpecializeMSISidecar(assignmentContext);
             Assert.NotNull(error);
@@ -630,6 +672,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Specializing sidecar at http://localhost:8081", p),
                 p => Assert.StartsWith("Specialize MSI sidecar returned BadRequest", p),
                 p => Assert.StartsWith("Specialize MSI sidecar call failed. StatusCode=BadRequest", p));
+
+            meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
         [Fact]
@@ -652,7 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar")).Returns(Task.CompletedTask);
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty")).Returns(Task.CompletedTask);
 
             var instanceManager = GetInstanceManagerForMSISpecialization(assignmentContext, HttpStatusCode.BadRequest, meshServiceClient.Object);
 
@@ -665,7 +710,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.StartsWith("Skipping specialization of MSI sidecar since MSIContext was absent", p));
 
             meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
-                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar"), Times.Once);
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Could not specialize MSI sidecar since MSIContext was empty"), Times.Once);
         }
 
         [Fact]
@@ -713,7 +758,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
+                _runFromPackageHandler, _packageDownloadHandler.Object);
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -765,7 +811,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
             var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object, _runFromPackageHandler);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
+                _runFromPackageHandler, _packageDownloadHandler.Object);
 
             instanceManager.StartAssignment(hostAssignmentContext);
 
@@ -821,7 +868,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -886,7 +934,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -940,7 +989,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -995,7 +1045,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1045,7 +1096,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1098,7 +1150,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, runFromPackageHandler.Object);
+                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
+                runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
             bool result = instanceManager.StartAssignment(context);
             Assert.True(result);
@@ -1144,8 +1197,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             InstanceManager.Reset();
 
-            return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment, _environment,
-                _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshServiceClient, _runFromPackageHandler);
+            return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment,
+                _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
+                meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object);
         }
 
         public void Dispose()
