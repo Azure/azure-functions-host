@@ -132,7 +132,6 @@ namespace Microsoft.Azure.WebJobs.Script
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
             _functionMetadataProvider = _functionMetadataProviderFactory.GetProvider(workerConfigs);
             immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(workerConfigs, forceRefresh, dispatcher);
-            _logger.LogInformation("how many functions are there?: " + immutableFunctionMetadata.Length);
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
