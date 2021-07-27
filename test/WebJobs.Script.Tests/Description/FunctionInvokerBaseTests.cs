@@ -254,7 +254,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableDictionary<string, ImmutableArray<string>> Errors =>
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
-            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null, bool workerIndexing = false)
+            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null)
             {
                 return _functions.ToImmutableArray();
             }
