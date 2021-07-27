@@ -24,15 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions,
-            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions,
+            ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IFunctionMetadataProviderFactory metadataProviderFactory = null)
         {
             var managerMock = new Mock<IScriptHostManager>();
 
-            return GetFunctionMetadataManager(jobHostOptions, managerMock, functionMetadataProvider, functionProviders, httpOptions, loggerFactory, languageWorkerOptions);
+            return GetFunctionMetadataManager(jobHostOptions, managerMock, functionMetadataProvider, functionProviders, httpOptions, loggerFactory, languageWorkerOptions, metadataProviderFactory);
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions, Mock<IScriptHostManager> managerMock,
-            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IFunctionMetadataProviderFactory metadataProviderFactory = null)
         {
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IEnumerable<IFunctionProvider>))).Returns(functionProviders);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<ScriptJobHostOptions>))).Returns(jobHostOptions);
@@ -40,15 +41,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
 
-            ScriptApplicationHostOptions scriptApplicationHostOptions = new ScriptApplicationHostOptions();
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\python");
-            scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(scriptApplicationHostOptions);
+            if (metadataProviderFactory == null)
+            {
+                var options = new ScriptApplicationHostOptions()
+                {
+                    IsSelfHost = true,
+                    ScriptPath = TestHelpers.FunctionsTestDirectory,
+                    LogPath = TestHelpers.GetHostLogFileDirectory().FullName
+                };
+                var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+                var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
+                var changeTokens = new[] { source };
+                var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            IFunctionMetadataProviderFactory providerFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger());
-            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IFunctionMetadataProviderFactory))).Returns(providerFactory);
+                metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger());
+            }
 
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, providerFactory);
+            managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IFunctionMetadataProviderFactory))).Returns(metadataProviderFactory);
+
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, metadataProviderFactory);
         }
     }
 }
