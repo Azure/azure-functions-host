@@ -53,10 +53,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 var encryptedAssignmentContext = JsonConvert.DeserializeObject<EncryptedHostAssignmentContext>(startContext);
                 var assignmentContext = _startupContextProvider.SetContext(encryptedAssignmentContext);
 
+                var msiError = await _instanceManager.SpecializeMSISidecar(assignmentContext);
+                if (!string.IsNullOrEmpty(msiError))
+                {
+                    // Log and continue specializing even in case of failures.
+                    // There will be other mechanisms to recover the container.
+                    _logger.LogError($"MSI Specialization failed with {msiError}");
+                }
+
                 bool success = _instanceManager.StartAssignment(assignmentContext);
                 _logger.LogInformation($"StartAssignment invoked (Success={success})");
-
-                await _instanceManager.SpecializeMSISidecar(assignmentContext);
             }
             else
             {

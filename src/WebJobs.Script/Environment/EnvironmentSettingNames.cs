@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.AppService.Proxy.Runtime.Configuration.Policies;
-
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class EnvironmentSettingNames
@@ -82,6 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
         public const string AzureWebsiteRunFromPackage = "WEBSITE_RUN_FROM_PACKAGE";
+        public const string RunFromPackageManagedResourceId = "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID";
+        public const string SystemAssignedManagedIdentity = "SystemAssigned";
         public const string RegionName = "REGION_NAME";
 
         // handling server side builds

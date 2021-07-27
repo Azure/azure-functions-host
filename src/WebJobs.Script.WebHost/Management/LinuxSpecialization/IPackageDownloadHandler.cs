@@ -6,11 +6,8 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
-    public interface IRunFromPackageHandler
+    public interface IPackageDownloadHandler
     {
-        Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext);
-
-        Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted,
-            bool throwOnFailure = true);
+        Task<string> Download(RunFromPackageContext pkgContext);
     }
 }
