@@ -55,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private TimeSpan _restartWait;
         private TimeSpan _shutdownTimeout;
         private bool _workerIndexing;
-        private ConcurrentBag<IRpcWorkerChannel> _channels = new ConcurrentBag<IRpcWorkerChannel>();
         private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
@@ -118,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel);
             await rpcWorkerChannel.StartWorkerProcessAsync();
             _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", _workerRuntime, rpcWorkerChannel.Id);
-            _channels.Add(rpcWorkerChannel);
 
             // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
             if (!_workerIndexing)
@@ -140,7 +138,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", _workerRuntime);
             IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
-            _channels.Add(workerChannel);
 
             // if the worker is indexing, we will not have function metadata yet so we cannot perform the next two lines
             if (!_workerIndexing)
@@ -283,16 +280,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // Gets metadata from worker
         public async Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata()
         {
-            var channels = _channels.ToList();
-            if (channels.Count > 0)
+            var channels = (await GetAllWorkerChannelsAsync()).ToArray();
+            if (channels.Length > 0)
             {
-                return await channels[0].WorkerGetFunctionMetadata();
+                return await channels.First().WorkerGetFunctionMetadata();
             }
             return null;
         }
 
         // Second part of split InitializeAsync
-        public void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public async Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -311,7 +308,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
-                foreach (IRpcWorkerChannel initializedLanguageWorkerChannel in _channels)
+                IEnumerable<IRpcWorkerChannel> channels = await GetInitializedWorkerChannelsAsync();
+                foreach (IRpcWorkerChannel initializedLanguageWorkerChannel in channels)
                 {
                     initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
                     initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);

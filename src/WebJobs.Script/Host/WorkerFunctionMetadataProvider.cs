@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
         {
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
-            List<FunctionMetadata> validatedFunctions = new List<FunctionMetadata>();
+            List<FunctionMetadata> validatedFunctions;
             _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         validatedFunctions.Add(one);
                         functions = validatedFunctions;
                     }
-                    dispatcher.FinishInitialization(functions);
+                    await dispatcher.FinishInitialization(functions);
                 }
             }
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());
@@ -92,39 +92,39 @@ namespace Microsoft.Azure.WebJobs.Script
                 try
                 {
                     ValidateName(function.Name);
+
+                    // function directory validation
+                    IFileSystem fileSystem = FileUtility.Instance;
+                    if (!Utility.TryReadFunctionConfig(function.FunctionDirectory, out string json, fileSystem))
+                    {
+                        // not a function directory
+                        continue;
+                    }
+
+                    // skip function ScriptFile validation for now because this involves enumerating file directory
+
+                    // language validation
+                    if (!ValidateLanguage(function.Language))
+                    {
+                        continue;
+                    }
+
+                    // retry option validation
+                    Utility.ValidateRetryOptions(function.Retry);
+
+                    // binding validation
+                    if (function.Bindings == null || function.Bindings.Count == 0)
+                    {
+                        throw new FormatException("At least one binding must be declared.");
+                    }
+
+                    // add validated metadata to validated list if it gets this far
+                    validatedMetadata.Add(function);
                 }
                 catch (Exception ex)
                 {
                     Utility.AddFunctionError(_functionErrors, function.Name, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
-
-                // function directory validation
-                IFileSystem fileSystem = FileUtility.Instance;
-                if (!Utility.TryReadFunctionConfig(function.FunctionDirectory, out string json, fileSystem))
-                {
-                    // not a function directory
-                    continue;
-                }
-
-                // skip function ScriptFile validation for now because this involves enumerating file directory
-
-                // language validation
-                if (!ValidateLanguage(function.Language))
-                {
-                    continue;
-                }
-
-                // retry option validation
-                Utility.ValidateRetryOptions(function.Retry);
-
-                // binding validation
-                if (function.Bindings == null || function.Bindings.Count == 0)
-                {
-                    throw new FormatException("At least one binding must be declared.");
-                }
-
-                // add validated metadata to validated list if it gets this far
-                validatedMetadata.Add(function);
             }
             return validatedMetadata;
         }
