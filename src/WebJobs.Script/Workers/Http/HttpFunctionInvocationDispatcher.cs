@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             throw new NotImplementedException();
         }
 
-        public void FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
