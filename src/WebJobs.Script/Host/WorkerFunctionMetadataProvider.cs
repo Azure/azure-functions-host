@@ -93,13 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     ValidateName(function.Name);
 
-                    // function directory validation
-                    IFileSystem fileSystem = FileUtility.Instance;
-                    if (!Utility.TryReadFunctionConfig(function.FunctionDirectory, out string json, fileSystem))
-                    {
-                        // not a function directory
-                        continue;
-                    }
+                    // skip function directory validation because this involves reading function.json
 
                     // skip function ScriptFile validation for now because this involves enumerating file directory
 

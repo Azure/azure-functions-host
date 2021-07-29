@@ -185,21 +185,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Status = StatusResult.Types.Status.Success
             };
 
-            WorkerFunctionMetadataResponse overallResponse = new WorkerFunctionMetadataResponse();
+            FunctionMetadataResponses overallResponse = new FunctionMetadataResponses();
             foreach (FunctionMetadata response in functionMetadata)
             {
-                WorkerFunctionMetadata indexingResponse = new WorkerFunctionMetadata()
+                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
                 {
                     Name = response.Name,
                     Language = response.Language
                 };
 
-                overallResponse.Results.Add(indexingResponse);
+                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
+                {
+                    Metadata = indexingResponse
+                };
+
+                overallResponse.Results.Add(loadRequest);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                WorkerFunctionMetadataResponse = overallResponse
+                FunctionMetadataResponses = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
