@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
-                IEnumerable<IRpcWorkerChannel> channels = await GetInitializedWorkerChannelsAsync();
+                IEnumerable<IRpcWorkerChannel> channels = await GetAllWorkerChannelsAsync();
                 foreach (IRpcWorkerChannel initializedLanguageWorkerChannel in channels)
                 {
                     initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
