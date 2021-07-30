@@ -435,7 +435,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_WorkerMetadataResponse()
+        public void ReceivesInboundEvent_FunctionMetadataResponse()
         {
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.WorkerGetFunctionMetadata();
