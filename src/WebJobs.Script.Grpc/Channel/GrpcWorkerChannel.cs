@@ -430,15 +430,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         // gets metadata from worker
         public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
         {
-            return SendWorkerMetadataRequest();
+            return SendFunctionMetadataRequest();
         }
 
-        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
+        internal Task<List<FunctionMetadata>> SendFunctionMetadataRequest()
         {
             _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionMetadataResponses)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.FunctionMetadataResponses), HandleWorkerMetadataRequestError));
+                        .Subscribe((msg) => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponses), HandleWorkerMetadataRequestError));
 
             _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
@@ -454,7 +454,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // parse metadata response into FunctionMetadata objects
-        internal void ProcessMetadata(FunctionMetadataResponses functionMetadataResponses)
+        internal void ProcessFunctionMetadataResponses(FunctionMetadataResponses functionMetadataResponses)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 

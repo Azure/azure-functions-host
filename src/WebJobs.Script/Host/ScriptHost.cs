@@ -325,7 +325,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                         Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
-
+                    var directTypes = GetDirectTypes(functionMetadataList);
+                    await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+                    GenerateFunctions(directTypes);
                     ScheduleFileSystemCleanup();
                 }
                 else
