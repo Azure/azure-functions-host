@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -130,8 +131,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
+            var dispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
+            dispatcherFactory.Setup(p => p.GetFunctionDispatcher()).Returns(new Mock<IFunctionInvocationDispatcher>().Object);
+
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new TestMetricsLogger());
+            var metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new TestMetricsLogger(), dispatcherFactory.Object);
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()), metadataProviderFactory);
             var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
 

@@ -25,51 +25,37 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class WorkerFunctionMetadataProvider : IFunctionMetadataProvider
     {
-        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
-        private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IFunctionInvocationDispatcher _dispatcher;
 
-        public WorkerFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<WorkerFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public WorkerFunctionMetadataProvider(ILogger<WorkerFunctionMetadataProvider> logger, IFunctionInvocationDispatcher dispatcher)
         {
-            _applicationHostOptions = applicationHostOptions;
-            _metricsLogger = metricsLogger;
             _logger = logger;
+            _dispatcher = dispatcher;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
+        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
-            return GetFunctionMetadataAsync(workerConfigs, forceRefresh, dispatcher).Result;
+            return GetFunctionMetadataAsync(forceRefresh).Result;
         }
 
-        internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IFunctionInvocationDispatcher dispatcher = null)
+        internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh)
         {
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
-            List<FunctionMetadata> validatedFunctions;
             _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                if (dispatcher != null)
+                if (_dispatcher != null)
                 {
-                    await dispatcher.InitializeAsync(null);
-                    functions = await dispatcher.GetWorkerMetadata();
+                    await _dispatcher.InitializeAsync(null);
+                    functions = await _dispatcher.GetWorkerMetadata();
                     functions = ValidateMetadata(functions);
-                    if (functions.Count() == 0)
-                    {
-                        FunctionMetadata one = new FunctionMetadata()
-                        {
-                            Name = "hello there",
-                            FunctionDirectory = "somethingRandom"
-                        };
-                        validatedFunctions = functions.ToList();
-                        validatedFunctions.Add(one);
-                        functions = validatedFunctions;
-                    }
-                    await dispatcher.FinishInitialization(functions);
+                    await _dispatcher.FinishInitialization(functions);
                 }
             }
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());

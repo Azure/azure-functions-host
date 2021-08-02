@@ -7,6 +7,7 @@ using System.IO;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -54,7 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var changeTokens = new[] { source };
                 var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-                metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger());
+                var dispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
+                dispatcherFactory.Setup(p => p.GetFunctionDispatcher()).Returns(new Mock<IFunctionInvocationDispatcher>().Object);
+
+                metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, loggerFactory, new MetricsLogger(), dispatcherFactory.Object);
             }
 
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IFunctionMetadataProviderFactory))).Returns(metadataProviderFactory);

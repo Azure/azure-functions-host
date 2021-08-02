@@ -3,23 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Configuration;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -30,18 +21,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
         private IFunctionMetadataProvider _workerFunctionMetadataProvider;
+        private IFunctionInvocationDispatcher _dispatcher;
 
-        public FunctionMetadataProviderFactory(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public FunctionMetadataProviderFactory(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, IFunctionInvocationDispatcherFactory dispatcherFactory)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _loggerFactory = loggerFactory;
+            _dispatcher = dispatcherFactory.GetFunctionDispatcher();
         }
 
         public void Create()
         {
-            _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(_applicationHostOptions, _loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), _metricsLogger);
-
+            _workerFunctionMetadataProvider = new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), _dispatcher);
             _hostFunctionMetadataProvider = new HostFunctionMetadataProvider(_applicationHostOptions, _loggerFactory.CreateLogger<HostFunctionMetadataProvider>(), _metricsLogger);
         }
 

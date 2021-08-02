@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -203,7 +204,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            var metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, nullLogger, new TestMetricsLogger());
+
+            var dispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
+            dispatcherFactory.Setup(p => p.GetFunctionDispatcher()).Returns(new Mock<IFunctionInvocationDispatcher>().Object);
+            var metadataProviderFactory = new FunctionMetadataProviderFactory(optionsMonitor, nullLogger, new TestMetricsLogger(), dispatcherFactory.Object);
 
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
                 new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()), metadataProviderFactory);
