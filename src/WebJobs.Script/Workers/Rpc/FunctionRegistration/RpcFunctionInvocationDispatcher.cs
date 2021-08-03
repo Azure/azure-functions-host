@@ -139,6 +139,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
+        private void SetDispatcherStateToInitialized(Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
+        {
+            if (State != FunctionInvocationDispatcherState.Initialized
+                && webhostLanguageWorkerChannel != null
+                && webhostLanguageWorkerChannel.Any())
+            {
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }
+        }
+
         private void StartWorkerProcesses(int startIndex, Func<Task> startAction, bool initializeDispatcher = false, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
         {
             Task.Run(async () =>
@@ -151,11 +161,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         await startAction();
 
                         // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above modifies this collection.
-                        if (initializeDispatcher
-                            && State != FunctionInvocationDispatcherState.Initialized
-                            && (webhostLanguageWorkerChannel != null && webhostLanguageWorkerChannel.Any()))
+                        if (initializeDispatcher)
                         {
-                            SetFunctionDispatcherStateToInitializedAndLog();
+                            SetDispatcherStateToInitialized(webhostLanguageWorkerChannel);
                         }
 
                         await Task.Delay(_processStartupInterval);
@@ -164,6 +172,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     {
                         _logger.LogError(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
                     }
+                }
+
+                // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above can modify this collection.
+                // WebhostLanguageWorkerChannel can be initialized and process started up outside of StartWorkerProcesses as well, hence the statement here.
+                if (initializeDispatcher)
+                {
+                    SetDispatcherStateToInitialized(webhostLanguageWorkerChannel);
                 }
             }, _processStartCancellationToken.Token);
         }
