@@ -2,7 +2,7 @@
   <Import Project=".\package.props" />
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>7.2</LangVersion>    
+    <LangVersion>latest</LangVersion>
     <MajorVersion>4</MajorVersion>
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
@@ -21,6 +21,7 @@
     <DebugType>embedded</DebugType>
     <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile> <!-- https://github.com/dotnet/runtime/issues/54684 -->
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
   </PropertyGroup>
 
   <Target Name="GenerateSiteExtensionVersion">
