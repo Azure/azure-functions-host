@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         private readonly IMetricsLogger _metricsLogger;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
 
+        private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
         public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
@@ -72,6 +75,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             if (bundleConfigured)
             {
+                ExtensionBundleDetails bundleDetails = await _extensionBundleManager.GetExtensionBundleDetails();
+                ValidateBundleRequirements(bundleDetails);
+
                 bindingsSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 // Generate a Hashset of all the binding types used in the function app
@@ -199,6 +205,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 }
             }
 
+            ValidateExtensionRequirements(startupTypes);
+
             return startupTypes;
         }
 
@@ -230,6 +238,88 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                     return Array.Empty<ExtensionReference>();
                 }
+            }
+        }
+
+        private void ValidateBundleRequirements(ExtensionBundleDetails bundleDetails)
+        {
+            if (_extensionRequirements.BundleRequirementsByBundleId.TryGetValue(bundleDetails.Id, out BundleRequirement requirement))
+            {
+                var bundleVersion = new Version(bundleDetails.Version);
+                var minimumVersion = new Version(requirement.MinimumVersion);
+
+                if (bundleVersion < minimumVersion)
+                {
+                    _logger.MinimumBundleVersionNotSatisfied(bundleDetails.Id, bundleDetails.Version, requirement.MinimumVersion);
+                    throw new HostInitializationException($"Referenced bundle {bundleDetails.Id} of version {bundleDetails.Version} does not meet the required minimum version of {requirement.MinimumVersion}. Update your extension bundle reference in host.json to reference {requirement.MinimumVersion} or later. For more information see https://aka.ms/func-min-bundle-versions.");
+                }
+            }
+        }
+
+        private void ValidateExtensionRequirements(List<Type> startupTypes)
+        {
+            var errors = new List<string>();
+
+            void CollectError(Type extensionType, Version minimumVersion, ExtensionStartupTypeRequirement requirement)
+            {
+                _logger.MinimumExtensionVersionNotSatisfied(extensionType.Name, extensionType.Assembly.FullName, minimumVersion, requirement.PackageName, requirement.MinimumPackageVersion);
+                string requirementNotMetError = $"ExtensionStartupType {extensionType.Name} from assembly '{extensionType.Assembly.FullName}' does not meet the required minimum version of {minimumVersion}. Update your NuGet package reference for {requirement.PackageName} to {requirement.MinimumPackageVersion} or later.";
+                errors.Add(requirementNotMetError);
+            }
+
+            foreach (var extensionType in startupTypes)
+            {
+                if (_extensionRequirements.ExtensionRequirementsByStartupType.TryGetValue(extensionType.Name, out ExtensionStartupTypeRequirement requirement))
+                {
+                    Version minimumAssemblyVersion = new Version(requirement.MinimumAssemblyVersion);
+
+                    AssemblyName assemblyName = extensionType.Assembly.GetName();
+                    Version extensionAssemblyVersion = assemblyName.Version;
+                    string extensionAssemblySimpleName = assemblyName.Name;
+
+                    if (extensionAssemblySimpleName != requirement.AssemblyName)
+                    {
+                        // We recognized this type, but it did not come from the assembly that we expect, skipping validation
+                        continue;
+                    }
+
+                    if (requirement.MinimumAssemblyFileVersion != null && !string.IsNullOrEmpty(extensionType.Assembly.Location))
+                    {
+                        Version minimumAssemblyFileVersion = new Version(requirement.MinimumAssemblyFileVersion);
+
+                        try
+                        {
+                            Version extensionAssemblyFileVersion = new Version(System.Diagnostics.FileVersionInfo.GetVersionInfo(extensionType.Assembly.Location).FileVersion);
+                            if (extensionAssemblyFileVersion < minimumAssemblyFileVersion)
+                            {
+                                CollectError(extensionType, minimumAssemblyFileVersion, requirement);
+                                continue;
+                            }
+                        }
+                        catch (FormatException)
+                        {
+                            // We failed to parse the assembly file version as a Version. We can't do a version check - give up
+                            continue;
+                        }
+                    }
+
+                    if (extensionAssemblyVersion < minimumAssemblyVersion)
+                    {
+                        CollectError(extensionType, minimumAssemblyVersion, requirement);
+                    }
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                var builder = new System.Text.StringBuilder();
+                builder.AppendLine("One or more loaded extensions do not meet the minimum requirements. For more information see https://aka.ms/func-min-extension-versions.");
+                foreach (string e in errors)
+                {
+                    builder.AppendLine(e);
+                }
+
+                throw new HostInitializationException(builder.ToString());
             }
         }
 

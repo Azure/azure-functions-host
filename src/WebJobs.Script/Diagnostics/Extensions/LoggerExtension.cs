@@ -197,6 +197,18 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(333, nameof(IncorrectAutorestGeneratedJsonFile)),
             "autorest_generated.json file found is incorrect (https://aka.ms/stencil) | exception:\n{contents}");
 
+        private static readonly Action<ILogger, string, string, Version, string, string, Exception> _minimumExtensionVersionNotSatisfied =
+            LoggerMessage.Define<string, string, Version, string, string>(
+            LogLevel.Error,
+            new EventId(334, nameof(MinimumExtensionVersionNotSatisfied)),
+            "ExtensionStartupType {extensionTypeName} from assembly '{extensionTypeAssemblyFullName}' does not meet the required minimum version of {minimumAssemblyVersion}. Update your NuGet package reference for {requirementPackageName} to {requirementMinimumPackageVersion} or later.");
+
+        private static readonly Action<ILogger, string, string, string, string, Exception> _minimumBundleVersionNotSatisfied =
+            LoggerMessage.Define<string, string, string, string>(
+            LogLevel.Error,
+            new EventId(335, nameof(MinimumBundleVersionNotSatisfied)),
+            "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
+
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -357,6 +369,16 @@ Lock file hash: {currentLockFileHash}";
         public static void IncorrectAutorestGeneratedJsonFile(this ILogger logger, string contents)
         {
             _incorrectAutorestGeneratedJSONFile(logger, contents, null);
+        }
+
+        public static void MinimumExtensionVersionNotSatisfied(this ILogger logger, string extensionTypeName, string extensionTypeAssemblyFullName, Version minimumAssemblyVersion, string requirementPackageName, string requirementMinimumPackageVersion)
+        {
+            _minimumExtensionVersionNotSatisfied(logger, extensionTypeName, extensionTypeAssemblyFullName, minimumAssemblyVersion, requirementPackageName, requirementMinimumPackageVersion, null);
+        }
+
+        public static void MinimumBundleVersionNotSatisfied(this ILogger logger, string bundleId, string bundleVersion, string minimumVersion)
+        {
+            _minimumBundleVersionNotSatisfied(logger, bundleId, bundleVersion, minimumVersion, minimumVersion, null);
         }
     }
 }
