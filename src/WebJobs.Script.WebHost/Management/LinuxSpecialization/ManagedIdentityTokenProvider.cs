@@ -35,18 +35,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             if (string.IsNullOrEmpty(runFromPackageIdentity))
             {
                 _logger.LogDebug(
-                    $"No {EnvironmentSettingNames.RunFromPackageManagedResourceId} specified. Falling back to using {EnvironmentSettingNames.SystemAssignedManagedIdentity}");
+                    "No '{EnvironmentSettingNames.RunFromPackageManagedResourceId}' specified. Falling back to using '{EnvironmentSettingNames.SystemAssignedManagedIdentity}'",
+                    EnvironmentSettingNames.RunFromPackageManagedResourceId,
+                    EnvironmentSettingNames.SystemAssignedManagedIdentity);
                 return string.Empty;
             }
 
             if (string.Equals(EnvironmentSettingNames.SystemAssignedManagedIdentity, runFromPackageIdentity, StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogDebug($"Using {EnvironmentSettingNames.SystemAssignedManagedIdentity} to download package");
+                _logger.LogDebug("Using '{EnvironmentSettingNames.SystemAssignedManagedIdentity}' to download package", EnvironmentSettingNames.SystemAssignedManagedIdentity);
                 // returning empty string defaults to system assigned identity
                 return string.Empty;
             }
 
-            _logger.LogDebug($"Using Managed ResourceId {runFromPackageIdentity} to download package");
+            _logger.LogDebug("Using Managed ResourceId '{runFromPackageIdentity}' to download package", runFromPackageIdentity);
             return runFromPackageIdentity;
         }
 

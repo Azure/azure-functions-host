@@ -179,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     if (Utility.IsResourceAzureBlobWithoutSas(uri))
                     {
                         // Note: this also means we skip validation for publicly available blobs
-                        _logger.LogDebug($"Skipping validation for {pkgContext.EnvironmentVariableName} with no SAS token");
+                        _logger.LogDebug("Skipping validation for '{pkgContext.EnvironmentVariableName}' with no SAS token", pkgContext.EnvironmentVariableName);
                         return null;
                     }
                     else

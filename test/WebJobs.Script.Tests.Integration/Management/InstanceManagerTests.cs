@@ -519,7 +519,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 "Validating host assignment context (SiteId: 1234, SiteName: 'TestSite'. IsWarmup: 'False')",
                 $"Will be using {EnvironmentSettingNames.AzureWebsiteRunFromPackage} app setting as zip url. IsWarmup: 'False",
-                $"Skipping validation for {EnvironmentSettingNames.AzureWebsiteRunFromPackage} with no SAS token"
+                $"Skipping validation for '{EnvironmentSettingNames.AzureWebsiteRunFromPackage}' with no SAS token"
             };
 
             var logs = _loggerProvider.GetAllLogMessages().Select(p => p.FormattedMessage).ToArray();

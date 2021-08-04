@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
                 {
                     // Log and continue specializing even in case of failures.
                     // There will be other mechanisms to recover the container.
-                    _logger.LogError($"MSI Specialization failed with {msiError}");
+                    _logger.LogError("MSI Specialization failed with '{msiError}'", msiError);
                 }
 
                 bool success = _instanceManager.StartAssignment(assignmentContext);
