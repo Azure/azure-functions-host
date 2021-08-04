@@ -1,0 +1,7 @@
+{
+  "extensions":[
+    { "name": "AzureStorage", "typeName":"Microsoft.Azure.WebJobs.Extensions.Storage.AzureStorageWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"},
+    { "name": "ServiceBus", "typeName":"Microsoft.Azure.WebJobs.ServiceBus.ServiceBusWebJobsStartup, Microsoft.Azure.WebJobs.ServiceBus, Version=4.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"},
+    { "name": "DurableTask", "typeName":"Microsoft.Azure.WebJobs.Extensions.DurableTask.DurableTaskWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.DurableTask, Version=2.0.0.0, Culture=neutral, PublicKeyToken=014045d636e89289"}
+  ]
+}

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -87,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
             mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
             using (var directory = new TempDirectory())
             {
@@ -128,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
             TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
 
             using (var directory = new TempDirectory())
@@ -173,6 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
             mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+            mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
             mockExtensionBundleManager.Setup(e => e.GetExtensionBundlePath()).ReturnsAsync(string.Empty);
 
             TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
@@ -231,6 +235,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
@@ -333,7 +338,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
-
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
@@ -361,6 +366,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
@@ -392,6 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
                 var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
@@ -456,6 +463,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        [Fact]
+        public async Task GetExtensionsStartupTypes_RejectsBundleBelowMinimumVersion()
+        {
+            using (var directory = GetTempDirectory())
+            {
+                TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var binPath = Path.Combine(directory.Path, "bin");
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+                mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails("2.1.0")));
+
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+
+                // Act
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                // Assert
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.7.0. Update your extension bundle reference in host.json to reference 2.7.0 or later.")));
+            }
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_RejectsExtensionsBelowMinimumVersion()
+        {
+            var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+            mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
+
+            using (var directory = new TempDirectory())
+            {
+                var binPath = Path.Combine(directory.Path, "bin");
+                Directory.CreateDirectory(binPath);
+
+                void CopyToBin(string path)
+                {
+                    File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+                }
+
+                // create a bin folder that has out of date extensions
+                var extensionBinPath = Path.Combine(Environment.CurrentDirectory, @"TestScripts\OutOfDateExtension\bin");
+                foreach (var f in Directory.GetFiles(extensionBinPath))
+                {
+                    CopyToBin(f);
+                }
+
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+
+                // Act
+                var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
+                var traces = testLoggerProvider.GetAllLogMessages();
+
+                // Assert
+
+                var storageTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType AzureStorageWebJobsStartup"));
+                Assert.NotNull(storageTrace);
+                Assert.Equal("ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.",
+                    storageTrace.FormattedMessage);
+
+                var serviceBusTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType ServiceBusWebJobsStartup"));
+                Assert.NotNull(serviceBusTrace);
+                Assert.Equal("ExtensionStartupType ServiceBusWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.ServiceBus, Version=4.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.3.0.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.ServiceBus to 4.3.0 or later.",
+                    serviceBusTrace.FormattedMessage);
+
+                var durableTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType DurableTaskWebJobsStartup"));
+                Assert.NotNull(durableTrace);
+                Assert.Equal("ExtensionStartupType DurableTaskWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.DurableTask, Version=2.0.0.0, Culture=neutral, PublicKeyToken=014045d636e89289' does not meet the required minimum version of 2.5.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.DurableTask to 2.5.0 or later.",
+                    durableTrace.FormattedMessage);
+            }
+        }
+
         private IFunctionMetadataManager GetTestFunctionMetadataManager(ICollection<FunctionMetadata> metadataColection = null, bool hasPrecompiledFunction = false)
         {
             var functionMetdata = new FunctionMetadata();
@@ -504,6 +597,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
             return directory;
+        }
+
+        private ExtensionBundleDetails GetV2BundleDetails(string version = "2.7.0")
+        {
+            return new ExtensionBundleDetails
+            {
+                Id = "Microsoft.Azure.Functions.ExtensionBundle",
+                Version = version
+            };
         }
 
         private ILogger<ScriptStartupTypeLocator> GetTestLogger()
