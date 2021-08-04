@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         {
             if (Utility.TryCleanUrl(pkgContext.Url, out var cleanedUrl))
             {
-                _logger.LogDebug($"Downloading app contents from '{cleanedUrl}'");
+                _logger.LogDebug("Downloading app contents from '{cleanedUrl}'", cleanedUrl);
             }
             else
             {
@@ -51,7 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             var isWarmupRequest = pkgContext.IsWarmUpRequest;
             var needsManagedIdentityToken = !isWarmupRequest && await IsAuthenticationTokenNecessary(pkgContext.Url);
             _logger.LogDebug(
-                $"{nameof(PackageDownloadHandler)}: Needs ManagedIdentity Token = {needsManagedIdentityToken} IsWarmupRequest = {isWarmupRequest}");
+                "{nameof(PackageDownloadHandler)}: Needs ManagedIdentity Token = '{needsManagedIdentityToken}' IsWarmupRequest = '{isWarmupRequest}'",
+                nameof(PackageDownloadHandler), needsManagedIdentityToken, isWarmupRequest);
 
             var zipUri = new Uri(pkgContext.Url);
             var token = needsManagedIdentityToken
@@ -90,13 +91,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             if (pkgContext.PackageContentLength != null && pkgContext.PackageContentLength > AriaDownloadThreshold && string.IsNullOrEmpty(token) && !pkgContext.IsWarmUpRequest)
             {
                 _logger.LogDebug(
-                    $"Downloading zip contents using aria2c. IsWarmupRequest = {pkgContext.IsWarmUpRequest}. Managed Identity TokenPrefix = {tokenPrefix}");
+                    "Downloading zip contents using aria2c. IsWarmupRequest = '{pkgContext.IsWarmUpRequest}'. Managed Identity TokenPrefix = '{tokenPrefix}'",
+                    pkgContext.IsWarmUpRequest, tokenPrefix);
                 AriaDownload(tmpPath, fileName, zipUri, pkgContext.IsWarmUpRequest, downloadMetricName);
             }
             else
             {
                 _logger.LogDebug(
-                    $"Downloading zip contents using httpclient. IsWarmupRequest = {pkgContext.IsWarmUpRequest}. Managed Identity TokenPrefix = {tokenPrefix}");
+                    "Downloading zip contents using httpclient. IsWarmupRequest = '{pkgContext.IsWarmUpRequest}'. Managed Identity TokenPrefix = '{tokenPrefix}'",
+                    pkgContext.IsWarmUpRequest, tokenPrefix);
                 await HttpClientDownload(filePath, zipUri, pkgContext.IsWarmUpRequest, token, downloadMetricName);
             }
 
@@ -115,7 +118,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 throw new InvalidOperationException(msg);
             }
             var fileInfo = FileUtility.FileInfoFromFileName(Path.Combine(directory, fileName));
-            _logger.LogInformation($"{fileInfo.Length} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
+            _logger.LogInformation("'{fileInfo.Length}' bytes downloaded. IsWarmupRequest = '{isWarmupRequest}'",
+                fileInfo.Length, isWarmupRequest);
         }
 
         private async Task HttpClientDownload(string filePath, Uri zipUri, bool isWarmupRequest, string token, string downloadMetricName)
@@ -145,7 +149,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                     _logger.LogError(e, error);
                     throw;
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes downloaded. IsWarmupRequest = {isWarmupRequest}");
+
+                _logger.LogInformation(
+                    "'{response.Content.Headers.ContentLength}' bytes downloaded. IsWarmupRequest = '{isWarmupRequest}'",
+                    response.Content.Headers.ContentLength, isWarmupRequest);
             }, 2, TimeSpan.FromSeconds(0.5));
 
             using (_metricsLogger.LatencyEvent(isWarmupRequest ? MetricEventNames.LinuxContainerSpecializationZipWriteWarmup : MetricEventNames.LinuxContainerSpecializationZipWrite))
@@ -155,7 +162,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 {
                     await content.CopyToAsync(stream);
                 }
-                _logger.LogInformation($"{response.Content.Headers.ContentLength} bytes written. IsWarmupRequest = {isWarmupRequest}");
+
+                _logger.LogInformation(
+                    "'{response.Content.Headers.ContentLength}' bytes written. IsWarmupRequest = '{isWarmupRequest}'",
+                    response.Content.Headers.ContentLength, isWarmupRequest);
             }
         }
 
