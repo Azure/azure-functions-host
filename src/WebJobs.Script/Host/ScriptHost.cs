@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                // get worker config information
+                // get worker config information and check to see if worker should index or not
                 var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
                 RpcWorkerConfig workerConfig = null;
                 if (_workerRuntime != null)
@@ -293,83 +293,52 @@ namespace Microsoft.Azure.WebJobs.Script
                     workerConfig = workerConfigs.FirstOrDefault(
                         config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
                 }
-
-                if (workerConfig != null && workerConfig.Description.WorkerIndexing != null && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true"))
+                _workerIndexing = Utility.CanWorkerIndex(workerConfig, _environment);
+                if (_workerIndexing)
                 {
-                    _workerIndexing = true;
-                    IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
-
-                    foreach (FunctionMetadata data in functionMetadataList)
-                    {
-                        _logger.LogInformation("Directory for function: " + data.FunctionDirectory);
-                    }
-
-                    if (!_environment.IsPlaceholderModeEnabled())
-                    {
-                        string runtimeStack = _workerRuntime;
-
-                        if (!string.IsNullOrEmpty(runtimeStack))
-                        {
-                            // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
-                            // Windows Consumption as well.
-                            string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-
-                            if (!string.IsNullOrEmpty(runtimeVersion))
-                            {
-                                runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
-                            }
-                        }
-
-                        _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
-
-                        Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
-                    }
-                    var directTypes = GetDirectTypes(functionMetadataList);
-                    await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
-                    GenerateFunctions(directTypes);
-                    ScheduleFileSystemCleanup();
+                    _logger.LogInformation("Switching to worker indexing");
                 }
-                else
+
+                // Generate Functions
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+
+                if (!_workerIndexing)
                 {
-                    // App doesn't have environment variable, perform host indexing
-                    // Generate Functions
-                    IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
-
                     _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
+                }
 
-                    if (!_environment.IsPlaceholderModeEnabled())
+                if (!_environment.IsPlaceholderModeEnabled())
+                {
+                    string runtimeStack = _workerRuntime;
+
+                    if (!string.IsNullOrEmpty(runtimeStack))
                     {
-                        string runtimeStack = _workerRuntime;
+                        // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
+                        // Windows Consumption as well.
+                        string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                        if (!string.IsNullOrEmpty(runtimeStack))
+                        if (!string.IsNullOrEmpty(runtimeVersion))
                         {
-                            // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
-                            // Windows Consumption as well.
-                            string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
-
-                            if (!string.IsNullOrEmpty(runtimeVersion))
-                            {
-                                runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
-                            }
+                            runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
-
-                        _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
-
-                        Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                     }
 
-                    var directTypes = GetDirectTypes(functionMetadataList);
-                    await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
+                    Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
+                }
+                var directTypes = GetDirectTypes(functionMetadataList);
+                await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+                if (!_workerIndexing)
+                {
                     // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                     // Dispatcher not needed for non-proxy codeless function.
                     // Disptacher needed for non-dotnet codeless functions
                     var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
                     await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-                    GenerateFunctions(directTypes);
-
-                    ScheduleFileSystemCleanup();
                 }
+                GenerateFunctions(directTypes);
+                ScheduleFileSystemCleanup();
             }
         }
 

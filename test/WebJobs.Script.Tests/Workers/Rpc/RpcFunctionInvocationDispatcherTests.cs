@@ -90,18 +90,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task Starting_MultipleWebhostChannels_WorkerIndexing_Succeeds()
+        public async Task WorkerIndexing_Starting_MultipleWebhostChannels_Succeeds()
         {
             _testLoggerProvider.ClearAllLogMessages();
             int expectedProcessCount = 3;
-            Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, true, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
-            await functionDispatcher.InitializeAsync(null);
+            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
             var finalWebhostChannelCount = await WaitForWebhostWorkerChannelsToStartup(functionDispatcher.WebHostLanguageWorkerChannelManager, expectedProcessCount, RpcWorkerConstants.JavaLanguageWorkerName);
             Assert.Equal(expectedProcessCount, finalWebhostChannelCount);
 
             var finalJobhostChannelCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
             Assert.Equal(0, finalJobhostChannelCount);
+        }
+
+        [Fact]
+        public async Task WorkerIndexing_Setting_ChannelInitializationState_Succeeds()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
+
+            // create channels and ensure that they aren't ready for invocation requests yet
+            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+            int createdChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, false);
+            Assert.Equal(expectedProcessCount, createdChannelsCount);
+
+            IEnumerable<IRpcWorkerChannel> channels = await functionDispatcher.GetInitializedWorkerChannelsAsync();
+            Assert.Equal(0, channels.Count());
+
+            // set up invocation buffers, send load requests, and ensure that the channels are now set up for invocation requests
+            var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
+            await functionDispatcher.FinishInitialization(functions);
+            int initializedChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, true);
+            Assert.Equal(expectedProcessCount, initializedChannelsCount);
         }
 
         [Fact]
@@ -262,6 +283,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
             Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
             await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+            // Wait longer than debouce action.
+            await Task.Delay(6000);
+            mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShutdownChannels_NullFunctions()
+        {
+            var mockLanguageWorkerChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+            mockLanguageWorkerChannelManager.Setup(m => m.ShutdownChannelsAsync()).Returns(Task.CompletedTask);
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(mockwebHostLanguageWorkerChannelManager: mockLanguageWorkerChannelManager);
+            Assert.Equal(FunctionInvocationDispatcherState.Default, functionDispatcher.State);
+            await functionDispatcher.InitializeAsync(null);
             // Wait longer than debouce action.
             await Task.Delay(6000);
             mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
@@ -524,6 +558,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             if (runtime != null)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, runtime);
+            }
+            if (workerIndexing)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
 
             var options = new ScriptJobHostOptions

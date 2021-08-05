@@ -57,8 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // return host-indexing provider if placeholder mode is enabled, feature flag is disabled, or worker is not capable of indexing
             if (SystemEnvironment.Instance.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode) == "1" ||
-                    !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) ||
-                    (workerConfig == null || workerConfig.Description.WorkerIndexing == null || !workerConfig.Description.WorkerIndexing.Equals("true")))
+                    !Utility.CanWorkerIndex(workerConfig, SystemEnvironment.Instance))
             {
                 return _hostFunctionMetadataProvider;
             }

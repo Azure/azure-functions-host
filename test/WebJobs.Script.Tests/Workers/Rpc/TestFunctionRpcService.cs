@@ -178,12 +178,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, IEnumerable<FunctionMetadata> functionMetadata)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful)
         {
-            StatusResult statusResult = new StatusResult()
+            StatusResult statusResult = new StatusResult();
+            if (successful)
             {
-                Status = StatusResult.Types.Status.Success
-            };
+                statusResult.Status = StatusResult.Types.Status.Success;
+            }
+            else
+            {
+                statusResult.Status = StatusResult.Types.Status.Failure;
+            }
 
             FunctionMetadataResponses overallResponse = new FunctionMetadataResponses();
             foreach (FunctionMetadata response in functionMetadata)
@@ -191,12 +196,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
                 {
                     Name = response.Name,
-                    Language = response.Language
+                    Language = response.Language,
+                    Status = statusResult
                 };
 
                 FunctionLoadRequest loadRequest = new FunctionLoadRequest()
                 {
-                    Metadata = indexingResponse
+                    FunctionId = functionId,
+                    Metadata = indexingResponse,
                 };
 
                 overallResponse.Results.Add(loadRequest);

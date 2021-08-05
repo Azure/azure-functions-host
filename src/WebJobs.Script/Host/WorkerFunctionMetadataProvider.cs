@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 if (dispatcher != null)
                 {
-                    await dispatcher.InitializeAsync(null);
+                    await dispatcher.InitializeAsync(new List<FunctionMetadata>());
                     functions = await dispatcher.GetWorkerMetadata();
                     functions = ValidateMetadata(functions);
                     if (functions.Count() == 0)

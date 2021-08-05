@@ -82,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             _functionDispatcherLoadBalancer = functionDispatcherLoadBalancer;
+            _workerIndexing = CheckForWorkerIndexing();
             State = FunctionInvocationDispatcherState.Default;
 
             _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
@@ -200,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
             if (workerConfig == null && (functions == null || functions.Count() == 0))
             {
                 // Only throw if workerConfig is null AND some functions have been found.
@@ -208,16 +209,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new InvalidOperationException($"WorkerConfig for runtime: {_workerRuntime} not found");
             }
 
-            // if worker indexing feature flag is enabled and worker is capable of indexing, go down worker indexing code path
-            if (workerConfig != null && workerConfig.Description.WorkerIndexing != null &&
-                FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing) && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase))
-            {
-                _workerIndexing = true;
-            }
-
             if ((functions == null || functions.Count() == 0) && !_workerIndexing)
             {
                 // do not initialize function dispatcher if there are no functions, unless the worker is indexing
+                _logger.LogDebug("RpcFunctionInvocationDispatcher received no functions");
                 return;
             }
 
@@ -576,6 +571,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             return false;
+        }
+
+        private bool CheckForWorkerIndexing()
+        {
+            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            return Utility.CanWorkerIndex(workerConfig, _environment);
         }
     }
 }
