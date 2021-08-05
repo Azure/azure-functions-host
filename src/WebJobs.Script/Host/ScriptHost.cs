@@ -76,8 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
         private string _workerRuntime;
-        private TaskCompletionSource<List<FunctionMetadata>> _rawMetadata = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private bool _workerIndexing = false;
 
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
@@ -293,16 +291,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     workerConfig = workerConfigs.FirstOrDefault(
                         config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
                 }
-                _workerIndexing = Utility.CanWorkerIndex(workerConfig, _environment);
-                if (_workerIndexing)
+
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfig, _environment);
+                if (workerIndexing)
                 {
-                    _logger.LogInformation("Switching to worker indexing");
+                    _logger.LogInformation("Worker indexing is enabled");
                 }
 
                 // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
 
-                if (!_workerIndexing)
+                if (!workerIndexing)
                 {
                     _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
                 }
@@ -329,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
-                if (!_workerIndexing)
+                if (!workerIndexing)
                 {
                     // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
                     // Dispatcher not needed for non-proxy codeless function.
@@ -369,10 +368,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
         {
             IEnumerable<FunctionMetadata> functionMetadata;
-            if (_workerIndexing)
+            if (workerIndexing)
             {
                 functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
             }

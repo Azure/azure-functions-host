@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // gets metadata from worker
-        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        public Task<List<FunctionMetadata>> GetFunctionMetadata()
         {
             return SendFunctionMetadataRequest();
         }
@@ -458,17 +458,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
-            var responseStatus = functionMetadataResponses.OverallStatus;
-
             var functions = new List<FunctionMetadata>();
 
-            foreach (var loadRequest in functionMetadataResponses.Results)
+            foreach (var metadataResponse in functionMetadataResponses.Results)
             {
-                var metadata = loadRequest.Metadata;
+                var metadata = metadataResponse.Metadata;
                 if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                 {
-                    _workerChannelLogger.LogError($"Worker failed to index function {loadRequest.FunctionId}");
-                    _metadataRequestErrors[loadRequest.FunctionId] = metadataRequestEx;
+                    _workerChannelLogger.LogError($"Worker failed to index function {metadataResponse.FunctionId}");
+                    _metadataRequestErrors[metadataResponse.FunctionId] = metadataRequestEx;
                 }
                 var functionMetadata = new FunctionMetadata()
                 {
@@ -479,7 +477,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Language = metadata.Language
                 };
 
-                functionMetadata.SetFunctionId(loadRequest.FunctionId);
+                functionMetadata.SetFunctionId(metadataResponse.FunctionId);
 
                 foreach (string binding in metadata.RawBindings)
                 {

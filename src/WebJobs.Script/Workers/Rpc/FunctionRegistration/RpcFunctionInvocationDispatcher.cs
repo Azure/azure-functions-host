@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             var channels = (await GetAllWorkerChannelsAsync()).ToArray();
             if (channels.Length > 0)
             {
-                return await channels.First().WorkerGetFunctionMetadata();
+                return await channels.First().GetFunctionMetadata();
             }
             return null;
         }

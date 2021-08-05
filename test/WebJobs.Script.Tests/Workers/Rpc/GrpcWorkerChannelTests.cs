@@ -438,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ReceivesInboundEvent_Successful_FunctionMetadataResponses()
         {
             var functionMetadata = GetTestFunctionsList("python");
-            var functions = _workerChannel.WorkerGetFunctionMetadata();
+            var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true);
             var traces = _logger.GetLogMessages();
@@ -449,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public void ReceivesInboundEvent_Failed_FunctionMetadataResponses()
         {
             var functionMetadata = GetTestFunctionsList("python");
-            var functions = _workerChannel.WorkerGetFunctionMetadata();
+            var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false);
             var traces = _logger.GetLogMessages();
