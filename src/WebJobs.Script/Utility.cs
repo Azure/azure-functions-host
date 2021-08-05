@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -859,6 +860,17 @@ namespace Microsoft.Azure.WebJobs.Script
                     _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
+        }
+
+        public static bool CanWorkerIndex(RpcWorkerConfig workerConfig, IEnvironment environment)
+        {
+            // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment) &&
+                (workerConfig != null && workerConfig.Description != null && workerConfig.Description.WorkerIndexing != null && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+            return false;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

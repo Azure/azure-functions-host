@@ -14,12 +14,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionMetadataProviderTests
+    public class HostFunctionMetadataProviderTests
     {
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
-        public FunctionMetadataProviderTests()
+        public HostFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
