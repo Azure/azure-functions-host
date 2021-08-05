@@ -4,14 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
-using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -90,8 +88,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 loggingBuilder.Services.AddSingleton<ILoggerProvider, FunctionFileLoggerProvider>();
 
                 loggingBuilder.AddConsoleIfEnabled(context);
-
-                //ConfigureApplicationInsights(context, loggingBuilder);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
@@ -374,38 +370,6 @@ namespace Microsoft.Azure.WebJobs.Script
             });
 
             return builder;
-        }
-
-        internal static void ConfigureApplicationInsights(HostBuilderContext context, ILoggingBuilder builder)
-        {
-            string appInsightsInstrumentationKey = context.Configuration[EnvironmentSettingNames.AppInsightsInstrumentationKey];
-            string appInsightsConnectionString = context.Configuration[EnvironmentSettingNames.AppInsightsConnectionString];
-
-            // Initializing AppInsights services during placeholder mode as well to avoid the cost of JITting these objects during specialization
-            if (!string.IsNullOrEmpty(appInsightsInstrumentationKey) || !string.IsNullOrEmpty(appInsightsConnectionString) || SystemEnvironment.Instance.IsPlaceholderModeEnabled())
-            {
-                builder.AddApplicationInsightsWebJobs(o =>
-                {
-                    o.InstrumentationKey = appInsightsInstrumentationKey;
-                    o.ConnectionString = appInsightsConnectionString;
-                });
-
-                builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
-
-                builder.Services.AddSingleton<ISdkVersionProvider, FunctionsSdkVersionProvider>();
-
-                builder.Services.AddSingleton<ITelemetryInitializer, ScriptTelemetryInitializer>();
-
-                if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
-                {
-                    // Disable auto-http and dependency tracking when in placeholder mode.
-                    builder.Services.Configure<ApplicationInsightsLoggerOptions>(o =>
-                    {
-                        o.HttpAutoCollectionOptions.EnableHttpTriggerExtendedInfoCollection = false;
-                        o.EnableDependencyTracking = false;
-                    });
-                }
-            }
         }
 
         internal static ExtensionBundleOptions GetExtensionBundleOptions(IConfiguration configuration)

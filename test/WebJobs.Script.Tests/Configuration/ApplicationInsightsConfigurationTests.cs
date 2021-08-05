@@ -22,10 +22,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1"))
             {
                 host = new HostBuilder()
-                    .ConfigureLogging((context, builder) =>
-                    {
-                        ScriptHostBuilderExtensions.ConfigureApplicationInsights(context, builder);
-                    })
                     .ConfigureServices(s =>
                     {
                         s.AddSingleton<IEnvironment>(SystemEnvironment.Instance);
