@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 loggingBuilder.AddConsoleIfEnabled(context);
 
-                ConfigureApplicationInsights(context, loggingBuilder);
+                //ConfigureApplicationInsights(context, loggingBuilder);
             })
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
