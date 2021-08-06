@@ -133,11 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            // get worker config for current runtime and check for worker indexing
-            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            var runtimeLanguageWorkerConfig = workerConfigs.Where(c => c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
             IFunctionMetadataProvider metadataProvider;
-            if (Utility.CanWorkerIndex(runtimeLanguageWorkerConfig, _environment))
+            if (Utility.CanWorkerIndex(workerConfigs, _environment))
             {
                 _workerFunctionMetadataProvider ??= new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher);
                 metadataProvider = _workerFunctionMetadataProvider;

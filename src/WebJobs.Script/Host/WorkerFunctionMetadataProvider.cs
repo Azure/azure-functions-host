@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public WorkerFunctionMetadataProvider(ILogger<WorkerFunctionMetadataProvider> logger, IFunctionInvocationDispatcher invocationDispatcher)
         {
             _logger = logger;
-            _dispatcher = invocationDispatcher;
+            _dispatcher = invocationDispatcher ?? throw new ArgumentNullException(nameof(invocationDispatcher));
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors

@@ -285,14 +285,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // get worker config information and check to see if worker should index or not
                 var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
-                RpcWorkerConfig workerConfig = null;
-                if (_workerRuntime != null)
-                {
-                    workerConfig = workerConfigs.FirstOrDefault(
-                        config => _workerRuntime.Equals(config.Description.Language, StringComparison.OrdinalIgnoreCase));
-                }
 
-                bool workerIndexing = Utility.CanWorkerIndex(workerConfig, _environment);
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
                 if (workerIndexing)
                 {
                     _logger.LogInformation("Worker indexing is enabled");

@@ -862,11 +862,17 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static bool CanWorkerIndex(RpcWorkerConfig workerConfig, IEnvironment environment)
+        public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
+            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var workerConfig = workerConfigs.Where(c => c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
             // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment) &&
-                (workerConfig != null && workerConfig.Description != null && workerConfig.Description.WorkerIndexing != null && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
+            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
+                && (workerConfig != null
+                    && workerConfig.Description != null
+                    && workerConfig.Description.WorkerIndexing != null
+                    && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }
