@@ -108,8 +108,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
                           var scriptManager = sp.GetService<IScriptHostManager>();
                           var loggerFactory = sp.GetService<ILoggerFactory>();
+                          var environment = sp.GetService<IEnvironment>();
 
-                          return GetMetadataManager(montior, scriptManager, loggerFactory);
+                          return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
                       }, ServiceLifetime.Singleton));
 
                       // Allows us to configure services as the last step, thereby overriding anything
@@ -398,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory)
+        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory, IEnvironment environment)
         {
             var workerOptions = new LanguageWorkerOptions
             {
@@ -409,7 +410,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), metadataProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), new FunctionMetadataProviderFactory(optionsMonitor, factory, new TestMetricsLogger()));
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), environment);
 
             return metadataManager;
         }

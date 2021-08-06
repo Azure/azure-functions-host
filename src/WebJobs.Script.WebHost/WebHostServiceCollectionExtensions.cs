@@ -119,7 +119,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
-            services.AddSingleton<IFunctionMetadataProviderFactory, FunctionMetadataProviderFactory>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());

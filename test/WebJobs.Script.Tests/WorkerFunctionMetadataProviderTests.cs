@@ -39,11 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, NullLogger<WorkerFunctionMetadataProvider>.Instance, _testMetricsLogger);
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                metadataProvider.ValidateName(functionName);
+                WorkerFunctionMetadataProvider.ValidateName(functionName);
             });
 
             Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
@@ -60,11 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, NullLogger<WorkerFunctionMetadataProvider>.Instance, _testMetricsLogger);
 
             try
             {
-                metadataProvider.ValidateName(functionName);
+                WorkerFunctionMetadataProvider.ValidateName(functionName);
             }
             catch (InvalidOperationException)
             {
@@ -83,8 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, NullLogger<WorkerFunctionMetadataProvider>.Instance, _testMetricsLogger);
-            Assert.True(metadataProvider.ValidateLanguage(language));
+            Assert.True(WorkerFunctionMetadataProvider.ValidateLanguage(language));
         }
 
         [Theory]
@@ -98,8 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new WorkerFunctionMetadataProvider(optionsMonitor, NullLogger<WorkerFunctionMetadataProvider>.Instance, _testMetricsLogger);
-            Assert.False(metadataProvider.ValidateLanguage(language));
+            Assert.False(WorkerFunctionMetadataProvider.ValidateLanguage(language));
         }
     }
 }

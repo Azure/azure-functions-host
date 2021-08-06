@@ -23,8 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILoggerFactory _loggerFactory;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
+        private IEnvironment _environment;
         private bool _servicesReset = false;
         private ILogger _logger;
         private IOptions<ScriptJobHostOptions> _scriptOptions;
@@ -32,20 +34,22 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
-        private IFunctionMetadataProviderFactory _functionMetadataProviderFactory;
+        private WorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IFunctionMetadataProviderFactory functionMetadataProviderFactory)
+            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _languageWorkerOptions = languageWorkerOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
 
+            _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
-            _functionMetadataProviderFactory = functionMetadataProviderFactory;
-            functionMetadataProviderFactory.Create();
+            _environment = environment;
+            //_functionMetadataProviderFactory = functionMetadataProviderFactory;
+            //functionMetadataProviderFactory.Create();
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -130,8 +134,19 @@ namespace Microsoft.Azure.WebJobs.Script
 
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
-            _functionMetadataProvider = _functionMetadataProviderFactory.GetProvider(workerConfigs);
-            immutableFunctionMetadata = _functionMetadataProvider.GetFunctionMetadata(workerConfigs, forceRefresh, dispatcher);
+
+            IFunctionMetadataProvider metadataProvider;
+            if (Utility.CanWorkerIndex(workerConfigs.First(), _environment))
+            {
+                _workerFunctionMetadataProvider ??= new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher);
+                metadataProvider = _workerFunctionMetadataProvider;
+            }
+            else
+            {
+                metadataProvider = _functionMetadataProvider;
+            }
+
+            immutableFunctionMetadata = metadataProvider.GetFunctionMetadata(workerConfigs, forceRefresh);
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
