@@ -730,7 +730,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
-            bool workerShouldIndex = Utility.CanWorkerIndex(workerConfig, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
             Assert.Equal(expected, workerShouldIndex);
         }
 
@@ -759,7 +759,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
             RpcWorkerConfig workerConfig = new RpcWorkerConfig();
-            bool workerShouldIndex = Utility.CanWorkerIndex(workerConfig, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
             Assert.Equal(expected, workerShouldIndex);
         }
 
@@ -783,7 +783,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     WorkerIndexing = null
                 }
             };
-            bool workerShouldIndex = Utility.CanWorkerIndex(workerConfig, testEnv);
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
             Assert.Equal(expected, workerShouldIndex);
         }
 

@@ -14,7 +14,9 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -66,7 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -97,7 +102,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -153,7 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -182,7 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
             var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+            var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -231,8 +239,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
-
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -282,7 +290,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // mock Function metadata
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -333,8 +342,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
-
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -363,7 +372,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(true);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -394,7 +404,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsLegacyExtensionBundle()).Returns(false);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -444,7 +455,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(new LanguageWorkerOptions());
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
