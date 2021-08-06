@@ -48,8 +48,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
             _environment = environment;
-            //_functionMetadataProviderFactory = functionMetadataProviderFactory;
-            //functionMetadataProviderFactory.Create();
 
             // Every time script host is re-intializing, we also need to re-initialize
             // services that change with the scope of the script host.
@@ -135,8 +133,11 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
+            // get worker config for current runtime and check for worker indexing
+            var workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            var runtimeLanguageWorkerConfig = workerConfigs.Where(c => c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
             IFunctionMetadataProvider metadataProvider;
-            if (Utility.CanWorkerIndex(workerConfigs.First(), _environment))
+            if (Utility.CanWorkerIndex(runtimeLanguageWorkerConfig, _environment))
             {
                 _workerFunctionMetadataProvider ??= new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher);
                 metadataProvider = _workerFunctionMetadataProvider;
