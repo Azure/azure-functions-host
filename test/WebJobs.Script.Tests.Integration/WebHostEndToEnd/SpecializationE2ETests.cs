@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerOptionsPlaceholderMode = host.Services.GetService<IOptions<LanguageWorkerOptions>>();
             Assert.Equal(4, workerOptionsPlaceholderMode.Value.WorkerConfigs.Count);
             var rpcChannelInPlaceholderMode = (GrpcWorkerChannel)channelFactory.Create("/", "powershell", null, 0, workerOptionsPlaceholderMode.Value.WorkerConfigs);
-            Assert.Equal("6", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
+            Assert.Equal("7", rpcChannelInPlaceholderMode.Config.Description.DefaultRuntimeVersion);
 
 
             // TestServer will block in the constructor so pull out the StandbyManager and use it
