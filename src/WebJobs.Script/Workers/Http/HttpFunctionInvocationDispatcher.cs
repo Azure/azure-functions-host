@@ -203,22 +203,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return true;
         }
 
-        public Task<(List<FunctionMetadata>, IRpcWorkerChannel)> GetWorkerMetadata(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<(List<FunctionMetadata>, List<IRpcWorkerChannel>)> StartInitialization(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
         public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<FunctionMetadata>> GetWorkerMetadata()
+        public Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
         {
             throw new NotImplementedException();
         }

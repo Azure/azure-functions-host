@@ -69,33 +69,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
         }
-
-        [Theory]
-        [InlineData("node")]
-        [InlineData("java")]
-        [InlineData("dotnet")]
-        [InlineData("powershell")]
-        [InlineData("python")]
-        public void ValidateLanguage_ReturnsTrueForValidLanguage(string language)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            Assert.True(WorkerFunctionMetadataProvider.ValidateLanguage(language));
-        }
-
-        [Theory]
-        [InlineData("NodeJS")]
-        [InlineData("JaVA")]
-        [InlineData("C#")]
-        [InlineData(".NET")]
-        [InlineData("PoWErshell")]
-        public void ValidateLanguage_ReturnsFalseForInvalidLanguage(string language)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            Assert.False(WorkerFunctionMetadataProvider.ValidateLanguage(language));
-        }
     }
 }

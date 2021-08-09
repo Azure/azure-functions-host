@@ -151,12 +151,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public void SendWorkerMetadataRequest()
         {
-            throw new NotImplementedException();
+            return;
         }
 
-        public Task<List<FunctionMetadata>> GetFunctionMetadata()
+        public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }

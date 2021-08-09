@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh)
         {
+            IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             List<FunctionMetadata> validatedFunctions;
             _logger.FunctionMetadataProviderParsingFunctions();
@@ -54,8 +55,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (_dispatcher != null)
                 {
                     await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
-                    functions = await _dispatcher.GetWorkerMetadata();
-                    functions = ValidateMetadata(functions);
+                    rawFunctions = await _dispatcher.GetWorkerMetadata();
+                    functions = ValidateMetadata(rawFunctions);
                     if (functions.Count() == 0)
                     {
                         FunctionMetadata one = new FunctionMetadata()
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _functions;
         }
 
-        internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<FunctionMetadata> functions)
+        internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
         {
             if (functions == null)
             {
@@ -84,25 +85,30 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             _functionErrors.Clear();
             List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
-            foreach (FunctionMetadata function in functions)
+            foreach (RawFunctionMetadata rawFunction in functions)
             {
+                var function = rawFunction.Metadata;
                 // function name validation
                 try
                 {
                     ValidateName(function.Name);
 
+                    function.Language = SystemEnvironment.Instance.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+
                     // skip function directory validation because this involves reading function.json
 
                     // skip function ScriptFile validation for now because this involves enumerating file directory
 
-                    // language validation
-                    if (!ValidateLanguage(function.Language))
-                    {
-                        continue;
-                    }
-
                     // retry option validation
+                    //function.Retry = rawFunction.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
                     Utility.ValidateRetryOptions(function.Retry);
+
+                    // add bindings
+                    foreach (string binding in rawFunction.Bindings)
+                    {
+                        var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+                        function.Bindings.Add(functionBinding);
+                    }
 
                     // binding validation
                     if (function.Bindings == null || function.Bindings.Count == 0)
@@ -119,25 +125,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             return validatedMetadata;
-        }
-
-        internal static bool ValidateLanguage(string language)
-        {
-            switch (language)
-            {
-                case RpcWorkerConstants.DotNetLanguageWorkerName:
-                    return true;
-                case RpcWorkerConstants.NodeLanguageWorkerName:
-                    return true;
-                case RpcWorkerConstants.JavaLanguageWorkerName:
-                    return true;
-                case RpcWorkerConstants.PythonLanguageWorkerName:
-                    return true;
-                case RpcWorkerConstants.PowerShellLanguageWorkerName:
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         internal static void ValidateName(string name, bool isProxy = false)

@@ -725,6 +725,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void VerifyWorkerIndexingDecisionLogic(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool expected)
         {
             var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
             if (workerIndexingFeatureFlag)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
@@ -740,6 +741,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void WorkerIndexingDecisionLogic_NullConfig(bool workerIndexingFeatureFlag, bool expected)
         {
             var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
             if (workerIndexingFeatureFlag)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
@@ -754,6 +756,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void WorkerIndexingDecisionLogic_NullConfigDescription(bool workerIndexingFeatureFlag, bool expected)
         {
             var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
             if (workerIndexingFeatureFlag)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
@@ -769,6 +772,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void WorkerIndexingDecisionLogic_NullWorkerIndexingProperty(bool workerIndexingFeatureFlag, bool expected)
         {
             var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
             if (workerIndexingFeatureFlag)
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
