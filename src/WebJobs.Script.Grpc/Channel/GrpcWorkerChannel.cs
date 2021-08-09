@@ -10,8 +10,10 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -99,6 +101,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && !msg.IsLogOfCategory(RpcLogCategory.System))
                 .Subscribe(Log));
+
+            _eventSubscriptions.Add(_inboundWorkerEvents
+                .Where(msg => msg.IsMessageOfType(MsgType.RpcMetric))
+                .Subscribe(LogMetric));
 
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && msg.IsLogOfCategory(RpcLogCategory.System))
@@ -620,6 +626,27 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     else
                     {
                         context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                    }
+                }, null);
+            }
+        }
+
+        internal void LogMetric(GrpcEvent msg)
+        {
+            var rpcMetric = msg.Message.RpcMetric;
+            if (_executingInvocations.TryGetValue(rpcMetric.InvocationId, out ScriptInvocationContext context))
+            {
+                // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
+                {
+                    var metricDetails = JsonSerializer.Deserialize<IDictionary<string, object>>(rpcMetric.Properties);
+                    if (metricDetails.TryGetValue<JsonElement>(LogConstants.NameKey, out var metricNameElt)
+                        && metricDetails.TryGetValue<JsonElement>(LogConstants.MetricValueKey, out var metricValueElt))
+                    {
+                        // Strip off the name/value entries in the dictionary passed to LogMetric and include the rest as the property bag passed to the backing ILogger
+                        context.Logger.LogMetric(metricNameElt.GetString(), metricValueElt.GetDouble(), metricDetails); /*
+                        .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
+                        .ToDictionary(i => i.Key, i => i.Value)); */
                     }
                 }, null);
             }
