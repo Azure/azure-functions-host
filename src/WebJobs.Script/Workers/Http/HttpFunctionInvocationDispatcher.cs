@@ -205,12 +205,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }

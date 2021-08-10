@@ -287,18 +287,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
                 bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
-                if (workerIndexing)
-                {
-                    _logger.LogInformation("Worker indexing is enabled");
-                }
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
-
-                if (!workerIndexing)
-                {
-                    _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
-                }
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -367,11 +358,13 @@ namespace Microsoft.Azure.WebJobs.Script
             IEnumerable<FunctionMetadata> functionMetadata;
             if (workerIndexing)
             {
+                _logger.LogInformation("Worker indexing is enabled");
                 functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
             }
             else
             {
                 functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
             }
             foreach (var error in _functionMetadataManager.Errors)
             {

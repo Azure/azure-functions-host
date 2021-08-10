@@ -453,24 +453,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into FunctionMetadata objects
+        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
         internal void ProcessFunctionMetadataResponses(FunctionMetadataResponses functionMetadataResponses)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
-            var responseStatus = functionMetadataResponses.OverallStatus;
-
             var functions = new List<RawFunctionMetadata>();
 
-            foreach (var loadRequest in functionMetadataResponses.Results)
+            foreach (var metadataResponse in functionMetadataResponses.Results)
             {
-                var metadata = loadRequest.Metadata;
+                var metadata = metadataResponse.Metadata;
                 if (metadata != null)
                 {
                     if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                     {
-                        _workerChannelLogger.LogError($"Worker failed to index function {loadRequest.FunctionId}");
-                        _metadataRequestErrors[loadRequest.FunctionId] = metadataRequestEx;
+                        _workerChannelLogger.LogError($"Worker failed to index function {metadataResponse.FunctionId}");
+                        _metadataRequestErrors[metadataResponse.FunctionId] = metadataRequestEx;
                     }
                     var functionMetadata = new FunctionMetadata()
                     {
@@ -480,7 +478,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Name = metadata.Name
                     };
 
-                    functionMetadata.SetFunctionId(loadRequest.FunctionId);
+                    functionMetadata.SetFunctionId(metadataResponse.FunctionId);
 
                     var bindings = new List<string>();
                     foreach (string binding in metadata.RawBindings)
@@ -491,7 +489,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     functions.Add(new RawFunctionMetadata()
                     {
                         Metadata = functionMetadata,
-                        Bindings = bindings
+                        Bindings = bindings,
+                        RetryOptions = metadata.RetryOptions,
+                        ConfigurationSource = metadata.ConfigSource
                     });
                 }
             }

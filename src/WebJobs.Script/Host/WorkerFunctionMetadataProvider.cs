@@ -48,26 +48,19 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
-            List<FunctionMetadata> validatedFunctions;
             _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
                 if (_dispatcher != null)
                 {
+                    // start up GRPC channels
                     await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
+
+                    // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
                     functions = ValidateMetadata(rawFunctions);
-                    if (functions.Count() == 0)
-                    {
-                        FunctionMetadata one = new FunctionMetadata()
-                        {
-                            Name = "hello there",
-                            FunctionDirectory = "somethingRandom"
-                        };
-                        validatedFunctions = functions.ToList();
-                        validatedFunctions.Add(one);
-                        functions = validatedFunctions;
-                    }
+
+                    // set up invocation buffers and send load requests
                     await _dispatcher.FinishInitialization(functions);
                 }
             }
@@ -78,17 +71,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
         {
-            if (functions == null)
+            if (functions == null || functions.Count() == 0)
             {
-                _logger.LogError("There is no metadata to be validated.");
-                return null;
+                _logger.LogDebug("There is no metadata to be validated.");
+                return new List<FunctionMetadata>();
             }
             _functionErrors.Clear();
             List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
             foreach (RawFunctionMetadata rawFunction in functions)
             {
                 var function = rawFunction.Metadata;
-                // function name validation
                 try
                 {
                     ValidateName(function.Name);
@@ -99,9 +91,27 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // skip function ScriptFile validation for now because this involves enumerating file directory
 
+                    // configuration source validation
+                    if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource))
+                    {
+                        JToken isDirect = JToken.Parse(rawFunction.ConfigurationSource);
+                        var isDirectValue = isDirect?.ToString();
+                        if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
+                        {
+                            function.SetIsDirect(true);
+                        }
+                        else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {function.Name}'.");
+                        }
+                    }
+
                     // retry option validation
-                    //function.Retry = rawFunction.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
-                    Utility.ValidateRetryOptions(function.Retry);
+                    if (!string.IsNullOrEmpty(rawFunction.RetryOptions))
+                    {
+                        function.Retry = JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>();
+                        Utility.ValidateRetryOptions(function.Retry);
+                    }
 
                     // add bindings
                     foreach (string binding in rawFunction.Bindings)
