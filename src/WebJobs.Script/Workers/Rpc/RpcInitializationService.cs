@@ -49,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             RpcWorkerConstants.JavaLanguageWorkerName,
             RpcWorkerConstants.NodeLanguageWorkerName,
-            RpcWorkerConstants.PowerShellLanguageWorkerName
+            RpcWorkerConstants.PowerShellLanguageWorkerName,
+            RpcWorkerConstants.PythonLanguageWorkerName
         };
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
