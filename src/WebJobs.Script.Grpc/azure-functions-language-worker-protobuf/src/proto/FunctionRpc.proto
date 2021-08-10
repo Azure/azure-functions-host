@@ -284,7 +284,7 @@ message RpcFunctionMetadata {
 // Host tells worker it is ready to receive metadata
 message FunctionsMetadataRequest {
   // base directory for function app
-  string directory = 1;
+  string function_app_directory = 1;
 }
 
 // Worker sends function metadata back to host
