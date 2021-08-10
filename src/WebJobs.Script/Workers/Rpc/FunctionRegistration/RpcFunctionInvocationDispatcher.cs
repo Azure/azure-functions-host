@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private TimeSpan _restartWait;
         private TimeSpan _shutdownTimeout;
         private bool _workerIndexing;
-        private List<FunctionMetadata> _rawMetadata = new List<FunctionMetadata>();
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -297,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             return null;
         }
 
-        // Second part of split InitializeAsync
+        // Second part of split InitializeAsync - can only be done after the host receives function metadata from worker
         public async Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -312,6 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (functions == null || functions.Count() == 0)
             {
                 // do not setup invocation buffers or send load requests if there are no valid functions
+                _logger.LogDebug("RpcFunctionInvocationDispatcher received no functions from WorkerFunctionMetadatProvider.");
                 return;
             }
 

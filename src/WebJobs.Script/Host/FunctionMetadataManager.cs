@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private ImmutableArray<FunctionMetadata> _functionMetadataArray;
         private Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
-        private WorkerFunctionMetadataProvider _workerFunctionMetadataProvider;
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
             IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
@@ -133,16 +132,9 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            IFunctionMetadataProvider metadataProvider;
-            if (Utility.CanWorkerIndex(workerConfigs, _environment))
-            {
-                _workerFunctionMetadataProvider ??= new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher);
-                metadataProvider = _workerFunctionMetadataProvider;
-            }
-            else
-            {
-                metadataProvider = _functionMetadataProvider;
-            }
+            IFunctionMetadataProvider metadataProvider = Utility.CanWorkerIndex(workerConfigs, _environment)
+                ? new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher)
+                : _functionMetadataProvider;
 
             immutableFunctionMetadata = metadataProvider.GetFunctionMetadata(workerConfigs, forceRefresh);
 

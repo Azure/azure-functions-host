@@ -71,13 +71,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
         {
+            List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
             if (functions == null || functions.Count() == 0)
             {
                 _logger.LogDebug("There is no metadata to be validated.");
-                return new List<FunctionMetadata>();
+                return validatedMetadata;
             }
             _functionErrors.Clear();
-            List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
             foreach (RawFunctionMetadata rawFunction in functions)
             {
                 var function = rawFunction.Metadata;

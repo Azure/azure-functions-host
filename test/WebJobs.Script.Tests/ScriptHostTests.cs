@@ -362,56 +362,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        /*private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)
-        {
-            var metadata1 = new FunctionMetadata()
-            {
-                Language = runtime,
-                Name = "js1"
-            };
-
-            metadata1.SetFunctionId("TestFunctionId1");
-
-            var metadata2 = new FunctionMetadata()
-            {
-                Language = runtime,
-                Name = "js2",
-            };
-
-            metadata2.SetFunctionId("TestFunctionId2");
-
-            return new List<FunctionMetadata>()
-            {
-                metadata1,
-                metadata2
-            };
-        }
-
-        // this isn't the correct place for this test, will move once the flow functionality is confirmed
-        [Fact]
-        public async Task TestOverallFlow_WorkerIndexing()
-        {
-            TestLogger logger = new TestLogger("FunctionDispatcherTests");
-            IScriptEventManager eventManager = new ScriptEventManager();
-            TestFunctionRpcService testFunctionRpcService = new TestFunctionRpcService(eventManager, "testWorkerId", logger, "Outbound event subscribe event handler invoked");
-            var functionMetadata = GetTestFunctionsList("python"); // this is the metadata
-
-            string rootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            IHost host = new HostBuilder()
-                    .ConfigureDefaultTestWebScriptHost(o =>
-                    {
-                        o.ScriptPath = rootPath;
-                    })
-                    .Build();
-
-            var scriptHost = host.GetScriptHost();
-            await scriptHost.InitializeAsync();
-
-            testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionMetadata);
-            var traces = logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "how many functions are there?: 0")));
-        }*/
-
         [Theory]
         [InlineData(null)]
         [InlineData("")]
