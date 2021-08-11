@@ -145,7 +145,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
                 if (string.Equals(workerRuntime, RpcWorkerConstants.NodeLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                    || string.Equals(workerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(workerRuntime, RpcWorkerConstants.PythonLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
                 {
                     // Use if readonly and not v2 compatible on ~3 extension
                     return _applicationHostOptions.CurrentValue.IsFileSystemReadOnly && !_environment.IsV2CompatibileOnV3Extension();

@@ -189,9 +189,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal bool ShouldStartAsPlaceholderPool()
         {
             // We are in placeholder mode but a worker runtime IS set
-            return _environment.IsPlaceholderModeEnabled()
+            _logger.LogDebug($"Placeholder mode enabled is {_environment.IsPlaceholderModeEnabled()} for worker {_workerRuntime}");
+
+            var ret = _environment.IsPlaceholderModeEnabled()
                 && !string.IsNullOrEmpty(_workerRuntime)
                 && _placeholderPoolRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogDebug($"Starting language worker in placeholder mode: {ret}");
+            return ret;
         }
 
         // To help with unit tests
