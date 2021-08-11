@@ -447,7 +447,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 FunctionsMetadataRequest = new FunctionsMetadataRequest()
                 {
-                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
+                    FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
             });
             return _functionsIndexingTask.Task;

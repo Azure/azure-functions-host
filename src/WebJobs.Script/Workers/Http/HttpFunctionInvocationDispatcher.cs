@@ -203,14 +203,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return true;
         }
 
-        public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
         public Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
         {
+            // Return null because this method is meant to support the worker indexing pipeline.
+            // This is needed in RpcFunctionInvocationDispatcher to start the GRPC process of
+            // requesting metadata from the worker and receiving metadata from the worker.
             return null;
+        }
+
+        public Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default)
+        {
+            // Return a completed task because this method is meant to support the worker indexing pipeline.
+            // This is needed in RpcFunctionInvocationDispatcher to set up invocation buffers and send load
+            // requests to the worker once the indexed metadata is received from the worker.
+            return Task.CompletedTask;
         }
     }
 }

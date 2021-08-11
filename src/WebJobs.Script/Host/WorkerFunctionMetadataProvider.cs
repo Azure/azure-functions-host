@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class WorkerFunctionMetadataProvider : IFunctionMetadataProvider
     {
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
@@ -113,18 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         Utility.ValidateRetryOptions(function.Retry);
                     }
 
-                    // add bindings
-                    foreach (string binding in rawFunction.Bindings)
-                    {
-                        var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
-                        function.Bindings.Add(functionBinding);
-                    }
-
                     // binding validation
-                    if (function.Bindings == null || function.Bindings.Count == 0)
-                    {
-                        throw new FormatException("At least one binding must be declared.");
-                    }
+                    function = ValidateBindings(rawFunction.Bindings, function);
 
                     // add validated metadata to validated list if it gets this far
                     validatedMetadata.Add(function);
@@ -143,6 +135,49 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
             }
+        }
+
+        internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)
+        {
+            HashSet<string> bindingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string binding in rawBindings)
+            {
+                var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+
+                // validate binding name
+                if (functionBinding.Name == null || !BindingNameValidationRegex.IsMatch(functionBinding.Name))
+                {
+                    throw new ArgumentException($"The binding name {functionBinding.Name} is invalid. Please assign a valid name to the binding.");
+                }
+
+                // validate that output binding direction
+                if (functionBinding.IsReturn && functionBinding.Direction != BindingDirection.Out)
+                {
+                    throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
+                }
+
+                // Ensure no duplicate binding names
+                if (bindingNames.Contains(functionBinding.Name))
+                {
+                    throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", functionBinding.Name));
+                }
+                else
+                {
+                    bindingNames.Add(functionBinding.Name);
+                }
+
+                // add binding to function.Bindings once validation is complete
+                function.Bindings.Add(functionBinding);
+            }
+
+            // binding validation
+            if (function.Bindings == null || function.Bindings.Count == 0)
+            {
+                throw new FormatException("At least one binding must be declared.");
+            }
+
+            return function;
         }
     }
 }

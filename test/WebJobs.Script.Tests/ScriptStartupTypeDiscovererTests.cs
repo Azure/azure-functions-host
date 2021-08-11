@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -465,6 +466,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 AreExpectedMetricsGenerated(testMetricsLogger);
                 Assert.Equal(types.Count(), 2);
                 Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.FirstOrDefault().FullName);
+            }
+        }
+
+        [Fact]
+        public async Task GetExtensionsStartupTypes_WorkerIndexing_BypassesSelectiveLoading()
+        {
+            var storageExtensionReference = new ExtensionReference { Name = "Storage", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            storageExtensionReference.Bindings.Add("blob");
+            var sendGridExtensionReference = new ExtensionReference { Name = "SendGrid", TypeName = typeof(AzureStorageWebJobsStartup).AssemblyQualifiedName };
+            sendGridExtensionReference.Bindings.Add("sendGrid");
+            var references = new[] { storageExtensionReference, sendGridExtensionReference };
+            TestMetricsLogger testMetricsLogger = new TestMetricsLogger();
+
+            var extensions = new JObject
+            {
+                { "extensions", JArray.FromObject(references) }
+            };
+
+            using (var directory = new TempDirectory())
+            {
+                var binPath = Path.Combine(directory.Path, "bin");
+                Directory.CreateDirectory(binPath);
+
+                void CopyToBin(string path)
+                {
+                    File.Copy(path, Path.Combine(binPath, Path.GetFileName(path)));
+                }
+
+                CopyToBin(typeof(AzureStorageWebJobsStartup).Assembly.Location);
+
+                File.WriteAllText(Path.Combine(binPath, "extensions.json"), extensions.ToString());
+
+                TestLoggerProvider testLoggerProvider = new TestLoggerProvider();
+                LoggerFactory factory = new LoggerFactory();
+                factory.AddProvider(testLoggerProvider);
+                var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
+
+                var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
+
+                var mockExtensionBundleManager = new Mock<IExtensionBundleManager>();
+                mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
+                mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
+
+                // mock worker config and environment variables to make host choose worker indexing
+                RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", true) };
+                var tempOptions = new LanguageWorkerOptions();
+                tempOptions.WorkerConfigs = new List<RpcWorkerConfig>();
+                tempOptions.WorkerConfigs.Add(workerConfig);
+
+                var languageWorkerOptions = new OptionsWrapper<LanguageWorkerOptions>(tempOptions);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "python");
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger, languageWorkerOptions);
+
+                // Act
+                var types = await discoverer.GetExtensionsStartupTypesAsync();
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, null);
+                Environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, null);
+
+                //Assert that filtering did not take place because of worker indexing
+                Assert.True(types.Count() == 2);
+                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(0).FullName);
+                Assert.Equal(typeof(AzureStorageWebJobsStartup).FullName, types.ElementAt(1).FullName);
             }
         }
 

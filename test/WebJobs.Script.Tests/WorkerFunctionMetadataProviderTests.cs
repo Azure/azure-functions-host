@@ -36,10 +36,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("function0.1")]
         public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
         {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
                 WorkerFunctionMetadataProvider.ValidateName(functionName);
@@ -56,10 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("myfunction_test")]
         public void ValidateFunctionName_DoesNotThrowOnValidName(string functionName)
         {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-
             try
             {
                 WorkerFunctionMetadataProvider.ValidateName(functionName);
@@ -69,5 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.True(false, $"Valid function name {functionName} failed validation.");
             }
         }
+/*
+        [Fact]
+        public void ValidateBindings_ThrowsOnZeroBindings()
+        {
+        }*/
     }
 }
