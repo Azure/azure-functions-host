@@ -36,8 +36,8 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Dependencies needed for Storage Providers -->
-    <PackageReference Include="Azure.Core" Version="1.15.0" />
-    <PackageReference Include="Azure.Identity" Version="1.4.0" />
+    <PackageReference Include="Azure.Core" Version="1.17.0" />
+    <PackageReference Include="Azure.Identity" Version="1.4.1" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.30-11868" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11868" />

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -55,9 +56,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     StatusCode = HttpStatusCode.BadRequest
                 });
 
+            var meshServiceClient = new Mock<IMeshServiceClient>(MockBehavior.Strict);
+            meshServiceClient.Setup(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar")).Returns(Task.CompletedTask);
+
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+                new TestMetricsLogger(), meshServiceClient.Object, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -89,6 +94,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             Assert.Equal(objectResult.StatusCode, 500);
             Assert.Equal(objectResult.Value, "Specialize MSI sidecar call failed. StatusCode=BadRequest");
+
+            meshServiceClient.Verify(c => c.NotifyHealthEvent(ContainerHealthEventType.Fatal,
+                It.Is<Type>(t => t == typeof(InstanceManager)), "Failed to specialize MSI sidecar"), Times.Once);
         }
 
         [Fact]
@@ -130,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();
@@ -184,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
-                new TestMetricsLogger(), null, _runFromPackageHandler.Object);
+                new TestMetricsLogger(), null, _runFromPackageHandler.Object, new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
             var startupContextProvider = new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>());
 
             InstanceManager.Reset();

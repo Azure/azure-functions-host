@@ -97,6 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
+        public const string AzureVersionHeader = "x-ms-version";
+        public const string XIdentityHeader = "X-IDENTITY-HEADER";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
