@@ -416,7 +416,7 @@
     },
     {
       "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Script",
