@@ -151,13 +151,13 @@ namespace Microsoft.Azure.WebJobs.Script
                     throw new ArgumentException($"The binding name {functionBinding.Name} is invalid. Please assign a valid name to the binding.");
                 }
 
-                // validate that output binding direction
+                // validate that output binding has correct direction
                 if (functionBinding.IsReturn && functionBinding.Direction != BindingDirection.Out)
                 {
                     throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
                 }
 
-                // Ensure no duplicate binding names
+                // Ensure no duplicate binding names exist
                 if (bindingNames.Contains(functionBinding.Name))
                 {
                     throw new InvalidOperationException(string.Format("Multiple bindings with name '{0}' discovered. Binding names must be unique.", functionBinding.Name));
@@ -171,10 +171,17 @@ namespace Microsoft.Azure.WebJobs.Script
                 function.Bindings.Add(functionBinding);
             }
 
-            // binding validation
+            // ensure there is at least one binding after validation
             if (function.Bindings == null || function.Bindings.Count == 0)
             {
                 throw new FormatException("At least one binding must be declared.");
+            }
+
+            // ensure that there is a trigger binding
+            var triggerMetadata = function.InputBindings.FirstOrDefault(p => p.IsTrigger);
+            if (triggerMetadata == null)
+            {
+                throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
             }
 
             return function;
