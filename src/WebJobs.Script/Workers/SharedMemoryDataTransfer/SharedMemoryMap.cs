@@ -161,7 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         public async Task<Stream> GetStreamAsync()
         {
             long contentLength = await GetContentLengthAsync();
-            if (contentLength >= 0)
+
+            if (contentLength > 0)
             {
                 return _memoryMappedFile.CreateViewStream(SharedMemoryConstants.HeaderTotalBytes, contentLength);
             }
@@ -178,9 +179,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <returns><see cref="Stream"/> over the content if successful, <see cref="null"/> otherwise.</returns>
         public async Task<Stream> GetStreamAsync(int offset, int count)
         {
-            // TODO add tests
             long contentLength = await GetContentLengthAsync();
-            if (contentLength >= 0)
+
+            if (count == 0 || contentLength == 0)
+            {
+                return null;
+            }
+
+            if (contentLength > 0)
             {
                 if (count > contentLength || offset < 0)
                 {

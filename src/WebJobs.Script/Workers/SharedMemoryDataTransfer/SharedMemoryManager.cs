@@ -79,7 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             }
             else if (objectType == typeof(SharedMemoryObject))
             {
-                // TODO add tests
                 Stream contentStream = await GetStreamAsync(mapName, offset, count);
                 return new SharedMemoryObject(mapName, count, contentStream);
             }
@@ -373,7 +372,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// </returns>
         private async Task<Stream> GetStreamAsync(string mapName, int offset, int count)
         {
-            // TODO add tests.
             SharedMemoryMap sharedMemoryMap = Open(mapName);
 
             try

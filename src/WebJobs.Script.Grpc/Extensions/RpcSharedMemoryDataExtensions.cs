@@ -80,8 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 return null;
             }
 
-            RpcDataType? rpcDatType = GetRpcDataType(dataType);
-            if (!rpcDatType.HasValue)
+            RpcDataType? rpcDataType = GetRpcDataType(dataType);
+            if (!rpcDataType.HasValue)
             {
                 logger.LogTrace("Cannot get shared memory data type for invocation id: {Id}", invocationId);
                 return null;
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 Name = sharedMemoryMeta.MemoryMapName,
                 Offset = 0,
                 Count = sharedMemoryMeta.Count,
-                Type = rpcDatType.Value
+                Type = rpcDataType.Value
             };
 
             logger.LogTrace("Put object in shared memory for invocation id: {Id}", invocationId);

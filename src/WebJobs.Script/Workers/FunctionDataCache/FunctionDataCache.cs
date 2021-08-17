@@ -155,7 +155,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         {
             lock (_lock)
             {
-                // TODO remove this Get and check if we can do remove with *out*
                 if (!TryGet(cacheKey, isIncrementActiveReference: false, out SharedMemoryMetadata sharedMemoryMeta))
                 {
                     return false;
@@ -198,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
         public void Dispose()
         {
-            _logger.LogTrace("TODO");
+            _logger.LogTrace("Disposing FunctionDataCache");
         }
 
         /// <summary>
@@ -209,7 +208,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         /// <returns><see cref="true"/> if an object was evicted, <see cref="false"/> otherwise.</returns>
         internal bool EvictOne()
         {
-            // TODO add docstring to mention that this assumes lock is taken
             FunctionDataCacheKey cacheKey = GetFromFrontOfLRU();
             if (cacheKey == null)
             {
@@ -220,7 +218,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         }
 
         /// <summary>
-        /// Evicts objects in an LRU order (with the least recently used first) such that the objects have no active references, until either the specified capacity has been made available or cannot be made available.
+        /// Evicts objects in an LRU order (with the least recently used first) such that the objects have no active references,
+        /// until either the specified capacity has been made available or cannot be made available.
         /// Note: Assumes that it is called in a thread-safe manner (i.e. <see cref="_lock"/> is held
         /// by the caller.)
         /// </summary>
@@ -303,7 +302,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         /// <param name="cacheKey">Key for which to increment the active reference count.</param>
         private void IncrementActiveReference(FunctionDataCacheKey cacheKey)
         {
-            // TODO mention assumes lock
             long activeReferences = 0;
             if (ActiveReferences.TryGetValue(cacheKey, out activeReferences))
             {
