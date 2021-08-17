@@ -187,7 +187,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (_environment.IsPlaceholderModeEnabled())
+            var placeholderModeEnabled = _environment.IsPlaceholderModeEnabled();
+            _logger.LogDebug($"Placeholder mode is enabled: {placeholderModeEnabled}");
+
+            if (placeholderModeEnabled)
             {
                 return;
             }

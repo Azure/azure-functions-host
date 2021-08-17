@@ -326,7 +326,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("1", "java", "", true)]
         [InlineData("1", "", "1234", false)]
         [InlineData("1", "dotnet", "1234", false)]
-        [InlineData("1", "python", "1234", false)]
+        [InlineData("1", "python", "1234", true)]
+        [InlineData("0", "python", "1234", false)]
         public void ShouldStartAsPlaceholderPool_Returns_ExpectedValue(string placeholderMode, string workerRuntime, string siteInstanaceId, bool expectedResult)
         {
             Mock<IRpcServer> testRpcServer = new Mock<IRpcServer>();
