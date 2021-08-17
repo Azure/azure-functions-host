@@ -20,31 +20,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimestamp)
         {
-            FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
-            details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
+            using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
+            {
+                details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
-            // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
-            JObject traceLog = new JObject();
-            traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
-            traceLog.Add("Level", (int)ToEventLevel(level));
-            traceLog.Add("SubscriptionId", subscriptionId);
-            traceLog.Add("AppName", appName);
-            traceLog.Add("FunctionName", functionName);
-            traceLog.Add("EventName", eventName);
-            traceLog.Add("Source", source);
-            traceLog.Add("Details", NormalizeString(details));
-            traceLog.Add("Summary", NormalizeString(summary));
-            traceLog.Add("HostVersion", ScriptHost.Version);
-            traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
-            traceLog.Add("ExceptionType", exceptionType);
-            traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage));
-            traceLog.Add("FunctionInvocationId", functionInvocationId);
-            traceLog.Add("HostInstanceId", hostInstanceId);
-            traceLog.Add("ActivityId", activityId);
-            traceLog.Add("RuntimeSiteName", runtimeSiteName);
-            traceLog.Add("SlotName", slotName);
+                // Set event type to MS_FUNCTION_LOGS to send these events as part of infra logs.
+                JObject traceLog = new JObject();
+                traceLog.Add("EventType", ScriptConstants.LinuxLogEventStreamName);
+                traceLog.Add("Level", (int)ToEventLevel(level));
+                traceLog.Add("SubscriptionId", subscriptionId);
+                traceLog.Add("AppName", appName);
+                traceLog.Add("FunctionName", functionName);
+                traceLog.Add("EventName", eventName);
+                traceLog.Add("Source", source);
+                traceLog.Add("Details", NormalizeString(details));
+                traceLog.Add("Summary", NormalizeString(summary));
+                traceLog.Add("HostVersion", ScriptHost.Version);
+                traceLog.Add("EventTimeStamp", eventTimestamp.ToString(EventTimestampFormat));
+                traceLog.Add("ExceptionType", exceptionType);
+                traceLog.Add("ExceptionMessage", NormalizeString(exceptionMessage));
+                traceLog.Add("FunctionInvocationId", functionInvocationId);
+                traceLog.Add("HostInstanceId", hostInstanceId);
+                traceLog.Add("ActivityId", activityId);
+                traceLog.Add("RuntimeSiteName", runtimeSiteName);
+                traceLog.Add("SlotName", slotName);
 
-            _writeEvent(traceLog.ToString(Formatting.None));
+                _writeEvent(traceLog.ToString(Formatting.None));
+            }
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
