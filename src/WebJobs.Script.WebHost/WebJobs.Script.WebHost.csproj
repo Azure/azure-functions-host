@@ -12,7 +12,7 @@
     <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
-    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
     <PublishReadyToRunComposite>false</PublishReadyToRunComposite> <!-- Setting to 'true' currently throws exception -->
     <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
@@ -64,6 +64,9 @@
     <!-- These assemblies throw an error with ReadyToRun -->
     <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.dll" />
     <PublishReadyToRunExclude Include="Microsoft.CodeAnalysis.Workspaces.dll" />
+
+    <!-- Workaround for https://github.com/dotnet/runtime/issues/57535 -->
+    <PublishReadyToRunExclude Include="Grpc.Core.dll" />
   </ItemGroup>
 
   <ItemGroup>
