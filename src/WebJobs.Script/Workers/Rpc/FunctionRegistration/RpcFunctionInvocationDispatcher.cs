@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(countOfReadyChannels, InitializeWebhostLanguageWorkerChannel, true, webhostLanguageWorkerChannels);
+                    StartWorkerProcesses(countOfReadyChannels, InitializeWebhostLanguageWorkerChannel, true, _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime));
                 }
                 else
                 {
