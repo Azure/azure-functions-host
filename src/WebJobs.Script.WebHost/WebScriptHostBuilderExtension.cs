@@ -137,12 +137,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
 
-            var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDevInDebug, environment) && debugStateProvider.InDebugMode)
-            {
-                builder.UseEnvironment(EnvironmentName.Development);
-            }
-
             return builder;
         }
 
