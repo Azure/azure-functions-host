@@ -112,7 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagAllowSynchronousIO = "AllowSynchronousIO";
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
-        public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
 
