@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         private readonly Mock<IWorkerConsoleLogSource> _languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
         private readonly TestLogger _testLogger = new TestLogger("test");
         private readonly HttpWorkerOptions _httpWorkerOptions;
+        private readonly Mock<IServiceProvider> _serviceProviderMock;
 
         public HttpWorkerProcessTests()
         {
@@ -38,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 }
             };
             _settingsManager = ScriptSettingsManager.Instance;
+            _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
         }
 
         [Theory]
@@ -52,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 {
                     Assert.Equal(Environment.GetEnvironmentVariable(HttpWorkerConstants.PortEnvVarName), processEnvValue);
                 }
-                HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger());
+                HttpWorkerProcess httpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, new TestEnvironment(), new TestMetricsLogger(), _serviceProviderMock.Object);
                 Process childProcess = httpWorkerProcess.CreateWorkerProcess();
                 Assert.NotNull(childProcess.StartInfo.EnvironmentVariables);
                 Assert.Equal(childProcess.StartInfo.EnvironmentVariables[HttpWorkerConstants.PortEnvVarName], _workerPort.ToString());
@@ -68,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
         {
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "TestContainer");
-            var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger());
+            var mockHttpWorkerProcess = new HttpWorkerProcess(_testWorkerId, _rootScriptPath, _httpWorkerOptions, _mockEventManager.Object, _defaultWorkerProcessFactory, _processRegistry, _testLogger, _languageWorkerConsoleLogSource.Object, testEnvironment, new TestMetricsLogger(), _serviceProviderMock.Object);
             mockHttpWorkerProcess.CreateWorkerProcess();
             // Verify method invocation
             var testLogs = _testLogger.GetLogMessages();

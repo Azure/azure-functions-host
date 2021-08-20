@@ -19,7 +19,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FunctionMetadataProvider : IFunctionMetadataProvider
+    public class HostFunctionMetadataProvider : IFunctionMetadataProvider
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;

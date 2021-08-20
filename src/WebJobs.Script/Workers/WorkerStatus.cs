@@ -15,10 +15,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// Gets or sets the current latency for worker channel.
         /// </summary>
         public TimeSpan Latency { get; set; }
-
-        /// <summary>
-        /// Gets or sets the process statistics for the worker process.
-        /// </summary>
-        public ProcessStats ProcessStats { get; set; }
     }
 }

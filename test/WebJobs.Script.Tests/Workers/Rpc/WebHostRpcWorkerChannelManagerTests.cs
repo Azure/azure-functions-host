@@ -167,6 +167,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData("Node", RpcWorkerConstants.NodeLanguageWorkerName)]
         [InlineData("PowerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
         [InlineData("pOwerShell", RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        [InlineData("python", RpcWorkerConstants.PythonLanguageWorkerName)]
+        [InlineData("pythoN", RpcWorkerConstants.PythonLanguageWorkerName)]
         public async Task SpecializeAsync_ReadOnly_KeepsProcessAlive(string runtime, string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
@@ -258,6 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData(RpcWorkerConstants.NodeLanguageWorkerName)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName)]
         public async Task SpecializeAsync_NotReadOnly_KillsProcess(string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();
@@ -316,6 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Theory]
         [InlineData(RpcWorkerConstants.NodeLanguageWorkerName)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName)]
         public async Task SpecializeAsync_Node_V2CompatibilityWithV3Extension_KillsProcess(string languageWorkerName)
         {
             var testMetricsLogger = new TestMetricsLogger();

@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -31,8 +30,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                                        ILogger workerProcessLogger,
                                        IWorkerConsoleLogSource consoleLogSource,
                                        IEnvironment environment,
-                                       IMetricsLogger metricsLogger)
-            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
+                                       IMetricsLogger metricsLogger,
+                                       IServiceProvider serviceProvider)
+            : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
             _eventManager = eventManager;

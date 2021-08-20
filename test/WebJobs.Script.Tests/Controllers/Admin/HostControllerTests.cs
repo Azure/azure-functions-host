@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             _hostHealthMonitorOptions = new HostHealthMonitorOptions();
             var wrappedHealthMonitorOptions = new OptionsWrapper<HostHealthMonitorOptions>(_hostHealthMonitorOptions);
-            _mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object, null);
+            _mockHostPerformanceManager = new Mock<HostPerformanceManager>(_mockEnvironment.Object, wrappedHealthMonitorOptions, mockServiceProvider.Object);
             _hostController = new HostController(optionsWrapper, loggerFactory, _mockEnvironment.Object, _mockScriptHostManager.Object, _functionsSyncManager.Object, _mockHostPerformanceManager.Object);
 
             _appOfflineFilePath = Path.Combine(_scriptPath, ScriptConstants.AppOfflineFileName);
@@ -176,7 +176,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             _hostController.ControllerContext.HttpContext = httpContext;
 
-            _mockHostPerformanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<Collection<string>>(), It.IsAny<ILogger>())).ReturnsAsync(() => underHighLoad);
+            _mockHostPerformanceManager.Setup(p => p.IsUnderHighLoadAsync(It.IsAny<ILogger>())).ReturnsAsync(() => underHighLoad);
             if (healthPingEnabled != null)
             {
                 _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.HealthPingEnabled)).Returns(healthPingEnabled);

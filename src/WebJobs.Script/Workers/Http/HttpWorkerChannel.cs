@@ -116,9 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             sw.Stop();
             var workerStatus = new WorkerStatus
             {
-                ProcessStats = _workerProcess.GetStats()
+                Latency = sw.Elapsed
             };
-            workerStatus.Latency = sw.Elapsed;
             _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {sw.ElapsedMilliseconds}ms");
             return workerStatus;
         }

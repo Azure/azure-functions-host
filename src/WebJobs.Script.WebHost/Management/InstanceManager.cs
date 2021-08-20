@@ -28,13 +28,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IMetricsLogger _metricsLogger;
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly IRunFromPackageHandler _runFromPackageHandler;
+        private readonly IPackageDownloadHandler _packageDownloadHandler;
         private readonly IEnvironment _environment;
         private readonly IOptionsFactory<ScriptApplicationHostOptions> _optionsFactory;
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
         public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
-            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler)
+            IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
+            IPackageDownloadHandler packageDownloadHandler)
         {
             _client = client ?? throw new ArgumentNullException(nameof(client));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
@@ -42,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _metricsLogger = metricsLogger;
             _meshServiceClient = meshServiceClient;
             _runFromPackageHandler = runFromPackageHandler ?? throw new ArgumentNullException(nameof(runFromPackageHandler));
+            _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _optionsFactory = optionsFactory ?? throw new ArgumentNullException(nameof(optionsFactory));
         }
@@ -64,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     _logger.LogWarning("Skipping specialization of MSI sidecar since MSIContext was absent");
                     await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
-                        "Could not specialize MSI sidecar");
+                        "Could not specialize MSI sidecar since MSIContext was empty");
                 }
                 else
                 {
@@ -89,6 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                         {
                             var message = $"Specialize MSI sidecar call failed. StatusCode={response.StatusCode}";
                             _logger.LogError(message);
+                            await _meshServiceClient.NotifyHealthEvent(ContainerHealthEventType.Fatal, this.GetType(),
+                                "Failed to specialize MSI sidecar");
                             return message;
                         }
                     }
@@ -120,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 // Based on profiling download code jit-ing holds up cold start.
                 // Pre-jit to avoid paying the cost later.
-                Task.Run(async () => await _runFromPackageHandler.Download(context.GetRunFromPkgContext()));
+                Task.Run(async () => await _packageDownloadHandler.Download(context.GetRunFromPkgContext()));
                 return true;
             }
             else if (_assignmentContext == null)
@@ -169,14 +174,34 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else if (!string.IsNullOrEmpty(pkgContext.Url) && pkgContext.Url != "1")
             {
-                // In AppService, ZipUrl == 1 means the package is hosted in azure files.
-                // Otherwise we expect zipUrl to be a blobUri to a zip or a squashfs image
-                (var error, var contentLength) = await ValidateBlobPackageContext(pkgContext);
-                if (string.IsNullOrEmpty(error))
+                if (Uri.TryCreate(pkgContext.Url, UriKind.Absolute, out var uri))
                 {
-                    assignmentContext.PackageContentLength = contentLength;
+                    if (Utility.IsResourceAzureBlobWithoutSas(uri))
+                    {
+                        // Note: this also means we skip validation for publicly available blobs
+                        _logger.LogDebug("Skipping validation for '{pkgContext.EnvironmentVariableName}' with no SAS token", pkgContext.EnvironmentVariableName);
+                        return null;
+                    }
+                    else
+                    {
+                        // In AppService, ZipUrl == 1 means the package is hosted in azure files.
+                        // Otherwise we expect zipUrl to be a blobUri to a zip or a squashfs image
+                        var (error, contentLength) = await ValidateBlobPackageContext(pkgContext);
+                        if (string.IsNullOrEmpty(error))
+                        {
+                            assignmentContext.PackageContentLength = contentLength;
+                        }
+                        return error;
+                    }
                 }
-                return error;
+                else
+                {
+                    var invalidUrlError = $"Invalid url for specified for {pkgContext.EnvironmentVariableName}";
+                    _logger.LogError(invalidUrlError);
+                    // For now we return null here instead of the actual error since this validation is new.
+                    // Eventually this could return the error message.
+                    return null;
+                }
             }
             else if (!string.IsNullOrEmpty(assignmentContext.AzureFilesConnectionString))
             {

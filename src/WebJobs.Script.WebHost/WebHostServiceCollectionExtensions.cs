@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
+            services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());
@@ -273,6 +273,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             services.AddSingleton<IRunFromPackageHandler, RunFromPackageHandler>();
+            services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
+            services.AddSingleton<IManagedIdentityTokenProvider, ManagedIdentityTokenProvider>();
             services.AddSingleton<IUnZipHandler, UnZipHandler>();
             services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
         }

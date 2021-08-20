@@ -8,8 +8,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
     public interface IRunFromPackageHandler
     {
-        Task<string> Download(RunFromPackageContext pkgContext);
-
         Task<bool> MountAzureFileShare(HostAssignmentContext assignmentContext);
 
         Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted,

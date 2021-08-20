@@ -142,6 +142,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.ContainerManagement
             _instanceManagerMock.Verify(manager => manager.StartAssignment(It.IsAny<HostAssignmentContext>()), Times.Never);
         }
 
+        [Fact]
+        public async Task Assigns_Even_If_MSI_Specialization_Fails()
+        {
+            var containerEncryptionKey = TestHelpers.GenerateKeyHexString();
+            var hostAssignmentContext = GetHostAssignmentContext();
+            var secrets = new FunctionAppSecrets();
+            secrets.Host = new FunctionAppSecrets.HostSecrets
+            {
+                Master = "test-key",
+                Function = new Dictionary<string, string>
+                {
+                    { "host-function-key-1", "test-key" }
+                },
+                System = new Dictionary<string, string>
+                {
+                    { "host-system-key-1", "test-key" }
+                }
+            };
+            hostAssignmentContext.Secrets = secrets;
+            hostAssignmentContext.MSIContext = new MSIContext();
+
+            var encryptedHostAssignmentContext = GetEncryptedHostAssignmentContext(hostAssignmentContext, containerEncryptionKey);
+            var serializedContext = JsonConvert.SerializeObject(new { encryptedContext = encryptedHostAssignmentContext });
+
+            _environment.SetEnvironmentVariable(ContainerStartContext, serializedContext);
+            _environment.SetEnvironmentVariable(ContainerEncryptionKey, containerEncryptionKey);
+            AddLinuxConsumptionSettings(_environment);
+
+            _instanceManagerMock.Setup(m =>
+                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(Task.FromResult("msi-specialization-error"));
+
+            _instanceManagerMock.Setup(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest))).Returns(true);
+
+            var initializationHostService = new LinuxContainerInitializationHostService(_environment, _instanceManagerMock.Object, NullLogger<LinuxContainerInitializationHostService>.Instance, _startupContextProvider);
+            await initializationHostService.StartAsync(CancellationToken.None);
+
+            _instanceManagerMock.Verify(m =>
+                m.SpecializeMSISidecar(It.Is<HostAssignmentContext>(context =>
+                    hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+
+            _instanceManagerMock.Verify(manager => manager.StartAssignment(It.Is<HostAssignmentContext>(context => hostAssignmentContext.Equals(context) && !context.IsWarmupRequest)), Times.Once);
+
+            var hostSecrets = _startupContextProvider.GetHostSecretsOrNull();
+            Assert.Equal("test-key", hostSecrets.MasterKey);
+        }
+
         private static string GetEncryptedHostAssignmentContext(HostAssignmentContext hostAssignmentContext, string containerEncryptionKey)
         {
             using (var env = new TestScopedEnvironmentVariable(WebSiteAuthEncryptionKey, containerEncryptionKey))

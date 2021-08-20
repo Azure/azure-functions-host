@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var environment = SystemEnvironment.Instance;
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             var healthMonitorOptions = new HostHealthMonitorOptions();
-            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, environment, new OptionsWrapper<HostHealthMonitorOptions>(healthMonitorOptions), mockServiceProvider.Object, null);
+            _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, environment, new OptionsWrapper<HostHealthMonitorOptions>(healthMonitorOptions), mockServiceProvider.Object);
             _httpOptions = new HttpOptions();
             _loggerFactory = new LoggerFactory();
             _loggerProvider = new TestLoggerProvider();
