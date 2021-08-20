@@ -298,7 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (!ArmCacheEnabled)
             {
-                _logger.LogTrace($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing");
+                _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing");
             }
 
             // Add triggers to the payload
@@ -316,14 +316,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Add the host.json extensions to the payload
 
             // Glenna testing: Include the extensions payload for all apps
-            JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+            JObject jsonPayload = await GetHostJsonAsync(_applicationHostOptions, _logger);
+
+            JObject extensionsPayload = GetHostJsonSection(jsonPayload, "extensions", _logger);
             if (extensionsPayload != null)
             {
-                _logger.LogTrace($"[GLENNA] Adding extensions!! {extensionsPayload}");
                 result.Add("extensions", extensionsPayload);
             }
 
-            _logger.LogTrace($"[GLENNA] Extensions payload==null: {extensionsPayload != null}");
+            JObject concurrencyPayload = GetHostJsonSection(jsonPayload, "concurrency", _logger);
+            if (concurrencyPayload != null)
+            {
+                result.Add("concurrency", concurrencyPayload);
+            }
+
+            JObject kedaPayload = GetHostJsonSection(jsonPayload, "kedaScalingAlgorithm", _logger);
+            if (kedaPayload != null)
+            {
+                result.Add("kedaScalingAlgorithm", kedaPayload);
+            }
 
             // Add functions secrets to the payload
             // Only secret types we own/control can we cache directly
@@ -373,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
-                _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
+                _logger.LogWarning($"[glenna]: SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
             }
 
             return new SyncTriggersPayload
@@ -383,7 +394,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
+        internal static async Task<JObject> GetHostJsonAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
         {
             var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
@@ -393,23 +404,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     string data = await FileUtility.ReadAsync(hostJsonPath);
                     var hostJson = JObject.Parse(data);
-                    if (hostJson.TryGetValue("extensions", out JToken token))
-                    {
-                        return (JObject)token;
-                    }
-                    else
-                    {
-                        logger.LogError($"[GLENNA]: Could not find extensions in data! Path={hostJsonPath}. Data={data}");
-                        return null;
-                    }
+                    return hostJson;
                 }
                 catch (JsonException ex)
                 {
-                    logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
+                    logger.LogWarning($"[glenna]: Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
                     return null;
                 }
             }
 
+            return null;
+        }
+
+        internal static JObject GetHostJsonSection(JObject hostJson, string section, ILogger logger)
+        {
+            if (hostJson.TryGetValue(section, out JToken token))
+            {
+                return (JObject)token;
+            }
+
+            logger.LogError($"[GLENNA]: Could not find section='{section}' in data!");
             return null;
         }
 
@@ -664,7 +678,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
                 }
 
-                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+                _logger.LogDebug($"[Glenna]: Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
                 var response = await _httpClient.SendAsync(request);
 
