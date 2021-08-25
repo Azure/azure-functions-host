@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else
                 {
-                    if (!TryConvertObjectIfNeeded(input.val, out object val))
+                    if (!TryConvertObjectIfNeeded(input.val, logger, out object val))
                     {
                         // Conversion did not take place, keep the existing value as it is
                         val = input.val;
@@ -157,15 +157,44 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
+        /// Read <see cref="Stream"/> contents into a <see cref="byte[]"/>.
+        /// </summary>
+        /// <param name="stream">Stream to read content from.</param>
+        /// <param name="logger">Logger.</param>
+        /// <param name="readBytes">Array of bytes read from the Stream, if successful.</param>
+        /// <returns><see cref="true"/> if successfully read the content, <see cref="false"/> otherwise.</returns>
+        private static bool TryReadBytes(Stream stream, ILogger logger, out byte[] readBytes)
+        {
+            readBytes = null;
+
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    stream.CopyTo(ms);
+                    byte[] value = ms.ToArray();
+                    readBytes = value;
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError("Unable to read bytes from Stream", e);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Checks if the object being passed is converted into a form that can be sent to the worker.
         /// This is required in cases where an object conversion was being delayed for the <see cref="SharedMemoryManager"/> to handle,
         /// but for some reason (error, out of memory etc.) it was unable to do so.
         /// Therefore, we convert it to a form that can be sent without requiring shared memory.
         /// </summary>
         /// <param name="inputVal">Object to check if it is in a valid form.</param>
+        /// <param name="logger">Logger.</param>
         /// <param name="convertedVal">Output object in a valid form if the input was invalid, <see cref="null"/> otherwise.</param>
         /// <returns><see cref="true"/> if a conversion took place, <see cref="false"/> otherwise.</returns>
-        private static bool TryConvertObjectIfNeeded(object inputVal, out object convertedVal)
+        private static bool TryConvertObjectIfNeeded(object inputVal, ILogger logger, out object convertedVal)
         {
             convertedVal = null;
 
@@ -173,16 +202,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 if (obj.IsCacheHit)
                 {
-                    throw new NotSupportedException("Cannot convert object; it is already cached");
+                    logger.LogError("Cannot convert object; it is already cached");
+                    return false;
                 }
 
                 Stream stream = obj.BlobStream;
-                using (MemoryStream ms = new MemoryStream())
+                if (TryReadBytes(stream, logger, out byte[] readBytes))
                 {
-                    stream.CopyTo(ms);
-                    byte[] value = ms.ToArray();
-                    convertedVal = value;
+                    convertedVal = readBytes;
                     return true;
+                }
+                else
+                {
+                    logger.LogError("Cannot read bytes from Stream");
+                    return false;
                 }
             }
 

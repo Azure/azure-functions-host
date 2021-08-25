@@ -40,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ISharedMemoryManager _sharedMemoryManager;
-        private readonly IFunctionDataCache _functionDataCache;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -91,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
-            _functionDataCache = functionDataCache;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 

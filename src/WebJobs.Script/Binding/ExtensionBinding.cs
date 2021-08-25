@@ -44,6 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return attributeBuilders;
         }
 
+        /// <summary>
+        /// Try to add appropriate attributes into the <see cref="BindingContext"/>, related to the shared memory region that holds the object.
+        /// These attributes are used during the binding process to read/write from shared memory.
+        /// </summary>
         private async Task<bool> TryPrepareAttributesAndBindCacheAwareAsync(BindingContext context, FileAccess access)
         {
             if (access == FileAccess.Write)
@@ -52,7 +56,8 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 {
                     // First copy the attributes and then add a specific attribute (mapName) for the particular invocation.
                     var currentAttributes = Attributes.ToList();
-                    currentAttributes.Add(new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count));
+                    SharedMemoryAttribute sharedMemoryAttribute = new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count);
+                    currentAttributes.Add(sharedMemoryAttribute);
                     context.Attributes = currentAttributes.ToArray();
                 }
                 else

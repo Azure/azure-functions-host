@@ -238,6 +238,12 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
         }
 
+        /// <summary>
+        /// Binds the object based on the given <see cref="BindingContext"/> in a manner that is aware of the presence of <see cref="IFunctionDataCache"/>.
+        /// This means that before reading an object, it will be attempted to be read from the cache. When writing, it will be attempted to be written to the cache.
+        /// In case of a read access (i.e., <see cref="FileAccess.Read"/>), the binding may be delayed as the object could be read either from the cache or storage.
+        /// The actual conversion is thus delayed to <see cref="RpcSharedMemoryDataExtension"/>.
+        /// </summary>
         internal static async Task BindCacheAwareAsync(BindingContext context, FileAccess access)
         {
             if (access == FileAccess.Write)
@@ -286,7 +292,6 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 // to the stream
                 byte[] bytes = null;
                 Type type = value.GetType();
-
                 if (type == typeof(byte[]))
                 {
                     bytes = (byte[])value;
