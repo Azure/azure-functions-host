@@ -6,10 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -22,13 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly int processExitTimeoutInMilliseconds = 1000;
+        private readonly IServiceProvider _serviceProvider;
 
         private Process _process;
         private bool _useStdErrorStreamForErrorsOnly;
-        private ProcessMonitor _processMonitor;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
 
-        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, bool useStdErrStreamForErrorsOnly = false)
+        internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, bool useStdErrStreamForErrorsOnly = false)
         {
             _processRegistry = processRegistry;
             _workerProcessLogger = workerProcessLogger;
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _eventManager = eventManager;
             _metricsLogger = metricsLogger;
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
+            _serviceProvider = serviceProvider;
         }
 
         protected bool Disposing { get; private set; }
@@ -68,8 +70,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     // Register process only after it starts
                     _processRegistry?.Register(_process);
 
-                    _processMonitor = new ProcessMonitor(_process, SystemEnvironment.Instance);
-                    _processMonitor.Start();
+                    var processMonitor = _serviceProvider.GetScriptHostServiceOrNull<IHostProcessMonitor>();
+                    if (processMonitor != null)
+                    {
+                        processMonitor.RegisterChildProcess(_process);
+                    }
 
                     return Task.CompletedTask;
                 }
@@ -79,11 +84,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     return Task.FromException(ex);
                 }
             }
-        }
-
-        public ProcessStats GetStats()
-        {
-            return _processMonitor.GetStats();
         }
 
         private void OnErrorDataReceived(object sender, DataReceivedEventArgs e)
@@ -136,6 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return;
             }
             string exceptionMessage = string.Join(",", _processStdErrDataQueue.Where(s => !string.IsNullOrEmpty(s)));
+
             try
             {
                 if (_process.ExitCode == WorkerConstants.SuccessExitCode)
@@ -159,6 +160,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 _workerProcessLogger?.LogDebug(exc, "Exception on worker process exit.");
                 // ignore process is already disposed
+            }
+            finally
+            {
+                var processMonitor = _serviceProvider.GetScriptHostServiceOrNull<IHostProcessMonitor>();
+                if (processMonitor != null)
+                {
+                    processMonitor.UnregisterChildProcess(_process);
+                }
             }
         }
 
@@ -209,7 +218,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                     _process.Dispose();
                 }
-                _processMonitor.Dispose();
             }
             catch (Exception exc)
             {

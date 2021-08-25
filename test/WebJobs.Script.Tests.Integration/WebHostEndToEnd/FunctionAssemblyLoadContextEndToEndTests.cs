@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             await RunTest(async () =>
             {
                 _launcher = new HostProcessLauncher("AssemblyLoadContextRace");
-                await _launcher.StartHostAsync();
+                await _launcher.StartHostAsync(_output);
 
                 var client = _launcher.HttpClient;
                 var response = await client.GetAsync($"api/Function1");

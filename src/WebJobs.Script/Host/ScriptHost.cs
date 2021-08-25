@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Indexers;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -27,7 +28,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly bool _isHttpWorker;
+        private readonly HttpWorkerOptions _httpWorkerOptions;
         private readonly IConfiguration _configuration;
         private readonly ScriptTypeLocator _typeLocator;
         private readonly IDebugStateProvider _debugManager;
@@ -67,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
         private readonly IFunctionDataCache _functionDataCache;
+        private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
         private IPrimaryHostStateProvider _primaryHostStateProvider;
@@ -74,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
         private string _workerRuntime;
-
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
 
@@ -106,6 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
+            IOptions<LanguageWorkerOptions> languageWorkerOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
@@ -124,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
+            _httpWorkerOptions = httpWorkerOptions.Value;
             ScriptOptions = scriptHostOptions.Value;
             _scriptHostManager = scriptHostManager;
             FunctionErrors = new Dictionary<string, ICollection<string>>(StringComparer.OrdinalIgnoreCase);
@@ -137,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _languageWorkerOptions = languageWorkerOptions;
 
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
@@ -191,6 +195,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 return _primaryHostStateProvider.IsPrimary;
             }
         }
+
+        public bool IsStandbyHost => ScriptOptions.IsStandbyConfiguration;
 
         public ScriptSettingsManager SettingsManager
         {
@@ -464,7 +470,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 FileUtility.EnsureDirectoryExists(_hostLogPath);
             }
 
-            if (!_environment.IsFileSystemReadOnly())
+            if (!ScriptOptions.IsFileSystemReadOnly)
             {
                 FileUtility.EnsureDirectoryExists(ScriptOptions.RootScriptPath);
             }
@@ -523,7 +529,7 @@ namespace Microsoft.Azure.WebJobs.Script
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
-                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
+                _descriptorProviders.Add(new HttpFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime, _httpWorkerOptions.InitializationTimeout));
             }
             else if (string.Equals(_workerRuntime, RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
@@ -533,7 +539,14 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 _logger.AddingDescriptorProviderForLanguage(_workerRuntime);
-                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders, _functionDispatcher, _loggerFactory, _applicationLifetime));
+
+                var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
+
+                // If there's no worker config, use the default (for legacy behavior; mostly for tests).
+                TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
+
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
             }
 
             // Codeless functions run side by side with regular functions.

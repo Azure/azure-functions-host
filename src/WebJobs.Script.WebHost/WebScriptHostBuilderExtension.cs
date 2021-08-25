@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Linq;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
-using Microsoft.Azure.WebJobs.Script.ChangeAnalysis;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Middleware;
@@ -48,11 +48,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.ConfigureOptions<CorsOptionsSetup>();
                     services.ConfigureOptions<AppServiceOptionsSetup>();
                     services.ConfigureOptions<HostEasyAuthOptionsSetup>();
+                    services.ConfigureOptions<PrimaryHostCoordinatorOptionsSetup>();
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    webJobsBuilder.AddAzureStorageCoreServices();
-
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
@@ -71,6 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     if (environment.IsAzureMonitorEnabled())
                     {
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
+                    }
+
+                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging))
+                    {
+                        loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
+                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();
+                        loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepositoryFactory, DiagnosticEventRepositoryFactory>();
                     }
 
                     ConfigureRegisteredBuilders(loggingBuilder, rootServiceProvider);
@@ -97,25 +103,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddSingleton<IScriptWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IWebHookProvider>(p => p.GetService<DefaultScriptWebHookProvider>());
                     services.TryAddSingleton<IJobHostMiddlewarePipeline, DefaultMiddlewarePipeline>();
-                    if (environment.IsLinuxConsumption())
-                    {
-                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
-                    }
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, CustomHttpHeadersMiddleware>());
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, HstsConfigurationMiddleware>());
                     if (environment.IsLinuxConsumption())
                     {
                         services.AddSingleton<ICorsMiddlewareFactory, CorsMiddlewareFactory>();
                         services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostCorsMiddleware>());
+
+                        // EasyAuth must go after CORS, as CORS preflight requests can happen before authentication
+                        services.TryAddEnumerable(ServiceDescriptor.Singleton<IJobHostHttpMiddleware, JobHostEasyAuthMiddleware>());
                     }
                     services.TryAddSingleton<IScaleMetricsRepository, TableStorageScaleMetricsRepository>();
 
-                    if (environment.IsWindowsAzureManagedHosting() || environment.IsLinuxAzureManagedHosting())
-                    {
-                        // Enable breaking change analysis only when hosted in Azure
-                        services.AddSingleton<IChangeAnalysisStateProvider, BlobChangeAnalysisStateProvider>();
-                        services.AddSingleton<IHostedService, ChangeAnalysisService>();
-                    }
+                    services.TryAddEnumerable(ServiceDescriptor.Singleton<IConcurrencyThrottleProvider, WorkerChannelThrottleProvider>());
 
                     // Make sure the registered IHostIdProvider is used
                     IHostIdProvider provider = rootServiceProvider.GetService<IHostIdProvider>();
@@ -138,7 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 });
 
             var debugStateProvider = rootServiceProvider.GetService<IDebugStateProvider>();
-            if (debugStateProvider.InDebugMode)
+            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDevInDebug, environment) && debugStateProvider.InDebugMode)
             {
                 builder.UseEnvironment(EnvironmentName.Development);
             }

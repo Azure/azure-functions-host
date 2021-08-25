@@ -281,6 +281,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
+        public void AssertScriptHostErrors()
+        {
+            var logs = Host.GetScriptHostLogMessages();
+            var errors = logs.Where(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error).ToList();
+            Assert.True(errors.Count > 0);
+        }
+
         private class TestExtensionBundleManager : IExtensionBundleManager
         {
             public Task<string> GetExtensionBundleBinPathAsync() => Task.FromResult<string>(null);

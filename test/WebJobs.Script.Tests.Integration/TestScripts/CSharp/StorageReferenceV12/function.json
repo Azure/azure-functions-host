@@ -1,0 +1,9 @@
+{
+  "bindings": [
+    {
+      "type": "manualTrigger",
+      "name": "input",
+      "direction": "in"
+    }
+  ]
+}

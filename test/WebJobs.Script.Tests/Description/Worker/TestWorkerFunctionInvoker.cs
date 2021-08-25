@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
@@ -14,8 +15,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     internal class TestWorkerFunctionInvoker : WorkerFunctionInvoker
     {
         public TestWorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-        Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
-        : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime)
+        Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime,
+        TimeSpan initializationTimeout)
+        : base(host, bindingMetadata, functionMetadata, loggerFactory, inputBindings, outputBindings, functionDispatcher, applicationLifetime, initializationTimeout)
         {
         }
 

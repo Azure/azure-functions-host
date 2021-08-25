@@ -121,14 +121,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger = new WebHostMetricsLogger(_metricsEventManager);
         }
 
-        [Fact]
-        public void LogEvent_QueuesPendingEvent()
+        [Theory]
+        [InlineData("Event1", "event1")]
+        [InlineData("{ \"AzureWebJobsStorage\": \"DefaultEndpointsProtocol=https;AccountName=testAccount1;AccountKey=mykey1;EndpointSuffix=core.windows.net\", \"AnotherKey\": \"AnotherValue\" }", "{ \"azurewebjobsstorage\": \"[hidden credential]\", \"anotherkey\": \"anothervalue\" }")]
+        public void LogEvent_QueuesPendingEvent(string eventName, string expectedEventName)
         {
-            _metricsLogger.LogEvent("Event1");
+            _metricsLogger.LogEvent(eventName);
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
             SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
-            Assert.Equal("event1", evt.EventName);  // case is normalized to lower
+            Assert.Equal(expectedEventName, evt.EventName);  // case is normalized to lower
             Assert.Equal(1, evt.Count);
             Assert.Equal(0, evt.Average);
             Assert.Equal(0, evt.Minimum);
@@ -473,7 +475,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IEventGenerator> mockGenerator = new Mock<IEventGenerator>();
             var testAppServiceOptions = new Mock<IOptionsMonitor<AppServiceOptions>>();
             testAppServiceOptions.Setup(a => a.CurrentValue).Returns(new AppServiceOptions { AppName = "RandomAppName", SubscriptionId = Guid.NewGuid().ToString() });
-            Mock<MetricsEventManager> mockEventManager = new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, NullLogger<MetricsEventManager>.Instance, flushInterval) { CallBase = true };
+            Mock<MetricsEventManager> mockEventManager =
+                new Mock<MetricsEventManager>(testAppServiceOptions.Object, mockGenerator.Object, flushInterval, null, null, NullLogger<MetricsEventManager>.Instance, flushInterval) { CallBase = true };
             MetricsEventManager eventManager = mockEventManager.Object;
 
             int numFlushes = 0;

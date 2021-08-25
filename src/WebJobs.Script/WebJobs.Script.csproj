@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
     <PackageId>Microsoft.Azure.WebJobs.Script</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script</RootNamespace>
     <NoWarn>NU5104</NoWarn>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <StyleCopTreatErrorsAsWarnings>false</StyleCopTreatErrorsAsWarnings>
@@ -35,19 +36,25 @@
     <EmbeddedResource Include="runtimes.json" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Dependencies needed for Storage Providers -->
+    <PackageReference Include="Azure.Core" Version="1.17.0" />
+    <PackageReference Include="Azure.Identity" Version="1.4.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.30-11868" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11868" />
+    <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.0-beta.2" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="3.1.0" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.11020001-fabe022e" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="1.8.2-SNAPSHOT" />
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="2.1.2" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS6" Version="3.0.630" />
-    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7" Version="3.0.705" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.27" />
+    <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7" Version="3.0.912" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.3" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.0.10" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.27" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.30-11868" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.2-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.3.1" />

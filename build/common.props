@@ -3,12 +3,13 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
-    <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
-    <MajorMinorProductVersion>3.0</MajorMinorProductVersion>
-    <VersionPrefix>$(MajorMinorProductVersion).$(BuildNumber)</VersionPrefix>
-    <Version Condition=" '$(VersionSuffix)' != '' ">$(VersionPrefix)-$(VersionSuffix)</Version>
+    <MajorVersion>3</MajorVersion>
+    <MinorVersion>3</MinorVersion>
+    <PatchVersion>0</PatchVersion>
+    <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
+    <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
-    <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>
+    <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).0</FileVersion>
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
     <InformationalVersion>$(Version) Commit hash: $(CommitHash)</InformationalVersion>
@@ -16,6 +17,7 @@
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <DebugType>embedded</DebugType>
     <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
+	<Deterministic>True</Deterministic>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(UseSourceLink)' == 'true'">

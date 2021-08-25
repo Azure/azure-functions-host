@@ -1,8 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.AppService.Proxy.Runtime.Configuration.Policies;
-
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class EnvironmentSettingNames
@@ -27,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
+        public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
         public const string WebSiteHomeStampName = "WEBSITE_HOME_STAMPNAME";
         public const string WebSiteStampDeploymentId = "WEBSITE_STAMP_DEPLOYMENT_ID";
@@ -64,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string PodNamespace = "POD_NAMESPACE";
         public const string PodName = "POD_NAME";
         public const string PodEncryptionKey = "POD_ENCRYPTION_KEY";
+        public const string HttpLeaderEndpoint = "HTTP_LEADER_ENDPOINT";
 
         /// <summary>
         /// Environment variable dynamically set by the platform when it is safe to
@@ -80,10 +80,14 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteZipDeployment = "WEBSITE_USE_ZIP";
         public const string AzureWebsiteAltZipDeployment = "WEBSITE_RUN_FROM_ZIP";
         public const string AzureWebsiteRunFromPackage = "WEBSITE_RUN_FROM_PACKAGE";
+        public const string RunFromPackageManagedResourceId = "WEBSITE_RUN_FROM_PACKAGE_BLOB_MI_RESOURCE_ID";
+        public const string SystemAssignedManagedIdentity = "SystemAssigned";
         public const string RegionName = "REGION_NAME";
 
         // handling server side builds
         public const string ScmRunFromPackage = "SCM_RUN_FROM_PACKAGE";
+        public const string LocalSitePackages = "LocalSitePackagesPath";
+        public const string DefaultLocalSitePackagesPath = "/local/sitepackages";
 
         public const string LinuxAzureAppServiceStorage = "WEBSITES_ENABLE_APP_SERVICE_STORAGE";
         public const string CoreToolsEnvironment = "FUNCTIONS_CORETOOLS_ENVIRONMENT";
@@ -117,5 +121,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresComputerName = "COMPUTERNAME";
 
         public const string AppKind = "APP_KIND";
+
+        public const string DrainOnApplicationStopping = "FUNCTIONS_ENABLE_DRAIN_ON_APP_STOPPING";
     }
 }

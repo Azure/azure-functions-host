@@ -28,8 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IEnvironment _environment;
         private readonly IApplicationLifetime _applicationLifetime;
-        private readonly TimeSpan _shutdownTimeout = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _restartWait = TimeSpan.FromSeconds(10);
         private readonly SemaphoreSlim _restartWorkerProcessSLock = new SemaphoreSlim(1, 1);
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
 
@@ -51,7 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private ConcurrentStack<WorkerErrorEvent> _languageWorkerErrors = new ConcurrentStack<WorkerErrorEvent>();
         private CancellationTokenSource _processStartCancellationToken = new CancellationTokenSource();
         private CancellationTokenSource _disposeToken = new CancellationTokenSource();
-        private int _processStartupInterval;
+        private TimeSpan _processStartupInterval;
+        private TimeSpan _restartWait;
+        private TimeSpan _shutdownTimeout;
 
         public RpcFunctionInvocationDispatcher(IOptions<ScriptJobHostOptions> scriptHostOptions,
             IMetricsLogger metricsLogger,
@@ -139,7 +139,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             await _webHostLanguageWorkerChannelManager?.ShutdownChannelsAsync();
         }
 
-        private void StartWorkerProcesses(int startIndex, Func<Task> startAction)
+        private void SetDispatcherStateToInitialized(Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
+        {
+            if (State != FunctionInvocationDispatcherState.Initialized
+                && webhostLanguageWorkerChannel != null
+                && webhostLanguageWorkerChannel.Any())
+            {
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }
+        }
+
+        private void StartWorkerProcesses(int startIndex, Func<Task> startAction, bool initializeDispatcher = false, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
         {
             Task.Run(async () =>
             {
@@ -149,12 +159,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     try
                     {
                         await startAction();
+
+                        // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above modifies this collection.
+                        if (initializeDispatcher)
+                        {
+                            SetDispatcherStateToInitialized(webhostLanguageWorkerChannel);
+                        }
+
                         await Task.Delay(_processStartupInterval);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
                     }
+                }
+
+                // It is necessary that webhostLanguageWorkerChannel.Any() happens in this thread since 'startAction()' above can modify this collection.
+                // WebhostLanguageWorkerChannel can be initialized and process started up outside of StartWorkerProcesses as well, hence the statement here.
+                if (initializeDispatcher)
+                {
+                    SetDispatcherStateToInitialized(webhostLanguageWorkerChannel);
                 }
             }, _processStartCancellationToken.Token);
         }
@@ -163,7 +187,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (_environment.IsPlaceholderModeEnabled())
+            var placeholderModeEnabled = _environment.IsPlaceholderModeEnabled();
+            _logger.LogDebug($"Placeholder mode is enabled: {placeholderModeEnabled}");
+
+            if (placeholderModeEnabled)
             {
                 return;
             }
@@ -193,7 +220,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new InvalidOperationException($"WorkerCofig for runtime: {_workerRuntime} not found");
             }
             _maxProcessCount = workerConfig.CountOptions.ProcessCount;
-            _processStartupInterval = (int)workerConfig.CountOptions.ProcessStartupInterval.TotalMilliseconds;
+            _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
+            _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
+            _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
             ErrorEventsThreshold = 3 * _maxProcessCount;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
@@ -220,11 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel);
-                    if (webhostLanguageWorkerChannels.Any())
-                    {
-                        SetFunctionDispatcherStateToInitializedAndLog();
-                    }
+                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel, true, webhostLanguageWorkerChannels);
                 }
                 else
                 {

@@ -4,9 +4,11 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.WebJobs.Extensions.Timers;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -24,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Http;
 using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
+using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -172,6 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     return NullHostedService.Instance;
                 });
+
+                // Wire this up early so that any early worker logs are guaranteed to be flushed if any other
+                // IHostedService has a slow startup.
+                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -185,6 +192,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 .AddTimers()
                 .AddManualTrigger()
                 .AddWarmup();
+
+                webJobsBuilder.Services.AddTimerScheduleMonitor();
 
                 var bundleManager = context.Properties.GetAndRemove<IExtensionBundleManager>(BundleManagerKey);
                 webJobsBuilder.Services.AddSingleton<IExtensionBundleManager>(_ => bundleManager);
@@ -258,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Configuration
                 services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions));
                 services.AddSingleton<IOptionsMonitor<ScriptApplicationHostOptions>>(new ScriptApplicationHostOptionsMonitor(applicationHostOptions));
-                services.ConfigureOptions<ScriptHostOptionsSetup>();
+                services.ConfigureOptions<ScriptJobHostOptionsSetup>();
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
@@ -280,15 +289,25 @@ namespace Microsoft.Azure.WebJobs.Script
                     });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
-                services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
 
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
+                    services.AddAzureStorageProvider();
                 }
 
-                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
+                // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
+                services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
+
+                // TODO (TEMP) : override the default SDK provided implementation with our own
+                // this is temporary until https://github.com/Azure/azure-webjobs-sdk/issues/2710 is addressed.
+                services.AddSingleton<IConcurrencyStatusRepository, BlobStorageConcurrencyStatusRepository>();
+
+                if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
+                {
+                    services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
+                }
+
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
                 if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
@@ -379,20 +398,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (SystemEnvironment.Instance.IsPlaceholderModeEnabled())
                 {
-                    for (int i = 0; i < builder.Services.Count; i++)
-                    {
-                        // This is to avoid possible race condition during specialization when disposing old AI listeners created during placeholder mode.
-                        if (builder.Services[i].ServiceType == typeof(ITelemetryModule) && builder.Services[i].ImplementationFactory?.Method.ReturnType == typeof(DependencyTrackingTelemetryModule))
-                        {
-                            builder.Services.RemoveAt(i);
-                            break;
-                        }
-                    }
-
-                    // Disable auto-http tracking when in placeholder mode.
+                    // Disable auto-http and dependency tracking when in placeholder mode.
                     builder.Services.Configure<ApplicationInsightsLoggerOptions>(o =>
                     {
                         o.HttpAutoCollectionOptions.EnableHttpTriggerExtendedInfoCollection = false;
+                        o.EnableDependencyTracking = false;
                     });
                 }
             }
@@ -405,6 +415,19 @@ namespace Microsoft.Azure.WebJobs.Script
             configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;
+        }
+
+        internal static void AddTimerScheduleMonitor(this IServiceCollection services)
+        {
+            // Custom implementation that the Host overrides
+            services.AddSingleton<ScheduleMonitor, AzureStorageScheduleMonitor>();
+        }
+
+        internal static void AddAzureStorageProvider(this IServiceCollection services)
+        {
+            services.AddAzureStorageCoreServices();
+            services.TryAddSingleton<IAzureStorageProvider, AzureStorageProvider>();
+            services.AddAzureStorageBlobs();
         }
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)
@@ -430,6 +453,26 @@ namespace Microsoft.Azure.WebJobs.Script
             else
             {
                 services.AddSingleton<IProcessRegistry, EmptyProcessRegistry>();
+            }
+        }
+
+        private static IDistributedLockManager GetBlobLockManager(IServiceProvider provider)
+        {
+            var azureStorageProvider = provider.GetRequiredService<IAzureStorageProvider>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger<IDistributedLockManager>();
+            try
+            {
+                var container = azureStorageProvider.GetBlobContainerClient();
+                logger.LogDebug("Using BlobLeaseDistributedLockManager in Functions Host.");
+                return new BlobLeaseDistributedLockManager(loggerFactory, azureStorageProvider);
+            }
+            catch (InvalidOperationException)
+            {
+                // If there is an error getting the container client,
+                // register an InMemoryDistributedLockManager.
+                logger.LogDebug("Using InMemoryDistributedLockManager in Functions Host.");
+                return new InMemoryDistributedLockManager();
             }
         }
 

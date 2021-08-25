@@ -150,42 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData("1", true)]
-        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip", true)]
-        [InlineData("https://functionstest.blob.core.windows.net/microsoft/functionapp.zip?sv=123434234234&other=key", true)]
-        [InlineData("/microsoft/functionapp.zip", false)]
-        [InlineData("functionapp.zip", false)]
-        [InlineData("0", false)]
-        [InlineData("", false)]
-        public void IsZipDeployment_CorrectlyValidatesSetting(string appSettingValue, bool expectedOutcome)
-        {
-            var zipSettings = new string[]
-            {
-                EnvironmentSettingNames.AzureWebsiteZipDeployment,
-                EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
-                EnvironmentSettingNames.AzureWebsiteRunFromPackage
-            };
-
-            // Test each environment variable being set
-            foreach (var setting in zipSettings)
-            {
-                var environment = new TestEnvironment();
-                environment.SetEnvironmentVariable(setting, appSettingValue);
-                Assert.Equal(environment.IsZipDeployment(), expectedOutcome);
-            }
-
-            // Test multiple being set
-            var allSettingsEnvironment = new TestEnvironment();
-
-            foreach (var setting in zipSettings)
-            {
-                allSettingsEnvironment.SetEnvironmentVariable(setting, appSettingValue);
-            }
-
-            Assert.Equal(allSettingsEnvironment.IsZipDeployment(), expectedOutcome);
-        }
-
-        [Theory]
         [InlineData("Azure", CloudName.Azure)]
         [InlineData("azuRe", CloudName.Azure)]
         [InlineData("", CloudName.Azure)]
@@ -217,6 +181,69 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
             Assert.Equal(suffix, testEnvironment.GetStorageSuffix());
+        }
+
+        [Theory]
+        [InlineData("Azure", CloudConstants.AzureVaultSuffix)]
+        [InlineData("azuRe", CloudConstants.AzureVaultSuffix)]
+        [InlineData("", CloudConstants.AzureVaultSuffix)]
+        [InlineData(null, CloudConstants.AzureVaultSuffix)]
+        [InlineData("Blackforest", CloudConstants.BlackforestVaultSuffix)]
+        [InlineData("Fairfax", CloudConstants.FairfaxVaultSuffix)]
+        [InlineData("Mooncake", CloudConstants.MooncakeVaultSuffix)]
+        public void GetVaultSuffix_Returns_Suffix_Based_On_CloudType(string cloudNameSetting, string suffix)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.CloudName, cloudNameSetting);
+            Assert.Equal(suffix, testEnvironment.GetVaultSuffix());
+        }
+
+        [Theory]
+        [InlineData(ScriptConstants.DynamicSku, true)]
+        [InlineData("test", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void Returns_IsWindowsConsumption(string websiteSku, bool isWindowsElasticPremium)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsWindowsConsumption());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsConsumptionSku());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsDynamicSku());
+        }
+
+        [Theory]
+        [InlineData("website-instance-id", "container-name", false)]
+        [InlineData("website-instance-id", "", false)]
+        [InlineData("website-instance-id", null, false)]
+        [InlineData("", "container-name", true)]
+        [InlineData(null, "container-name", true)]
+        [InlineData("", "", false)]
+        [InlineData(null, "", false)]
+        [InlineData("", null, false)]
+        [InlineData(null, null, false)]
+        public void Returns_IsLinuxConsumption(string websiteInstanceId, string containerName, bool isLinuxConsumption)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, containerName);
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsLinuxConsumption());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsConsumptionSku());
+            Assert.Equal(isLinuxConsumption, testEnvironment.IsDynamicSku());
+        }
+
+        [Theory]
+        [InlineData(ScriptConstants.ElasticPremiumSku, true)]
+        [InlineData("test", false)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        public void Returns_IsWindowsElasticPremium(string websiteSku, bool isWindowsElasticPremium)
+        {
+            var testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, websiteSku);
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsWindowsElasticPremium());
+            Assert.Equal(isWindowsElasticPremium, testEnvironment.IsDynamicSku());
+            Assert.False(testEnvironment.IsConsumptionSku());
         }
     }
 }

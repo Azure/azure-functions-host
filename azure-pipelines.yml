@@ -1,8 +1,7 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ] # Start higher than our AppVeyor versions. Every build (pr or branch) will increment.
+  buildNumber: $[ counter('constant', 13000) ] 
+  isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
-name: 3.0.$(buildNumber)
-  
 pr:
   branches:
     include:
@@ -33,8 +32,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
-
+      arguments: '-buildNumber ''$(buildNumber)'''
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
@@ -44,9 +42,14 @@ jobs:
       packSuffixSwitchTemp: --version-suffix ci
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
       artifactSuffix: -ci
+      buildNumberSuffixTemp: $(buildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
+    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
+    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
     vmImage: 'windows-2019' 
   steps:
@@ -59,7 +62,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -68,14 +71,14 @@ jobs:
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
-      Contents: '*.zip'
+      Contents: '**\*.zip'
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
   - task: DotNetCoreCLI@2
     displayName: 'Build host packages'
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -84,12 +87,12 @@ jobs:
   - pwsh: |
       foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
       {    
-        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"    
-        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"        
+        $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
+        $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
         if (-not (test-path $sourcePath))    
-        {        
-          throw "Unable to find '$packageName' at './package'"    
-        }   
+        {
+          throw "Unable to find '$packageName' at './package'"
+        }
         Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: 'Copy package to ArtifactStagingDirectory'
@@ -108,7 +111,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '-o packages\WebJobs.Script.Performance.App'
+      arguments: '-o WebJobs.Script.Performance.App'
       projects: |
         **\WebJobs.Script.Performance.App.csproj
   - task: DotNetCoreCLI@2
@@ -158,14 +161,14 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages\WebJobs.Script.Abstractions'
+      arguments: '--no-build -c Release -o packages'
       projects: |
         **\WebJobs.Script.Abstractions.csproj
   - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages\WebJobs.Script.Abstractions'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.Abstractions*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -239,7 +242,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: '--no-build -c Release -o packages\ExtensionsMetadataGenerator $(emgSuffixSwitch)'
+      arguments: '--no-build -c Release -o packages $(emgSuffixSwitch)'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         steps:
@@ -247,7 +250,7 @@ jobs:
     displayName: 'ESRP CodeSigning: Nupkg'
     inputs:
       ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages\ExtensionsMetadataGenerator'
+      FolderPath: 'packages'
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
@@ -272,28 +275,21 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.3.0.$(buildNumber)${{ variables.artifactSuffix }}.zip
-    artifact: Functions.3.0.$(buildNumber)${{ variables.artifactSuffix }}
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.2.1.$(buildNumber)${{ variables.artifactSuffix }}.zip
-    artifact: Functions.2.1.$(buildNumber)${{ variables.artifactSuffix }}
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Private.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x32.inproc.zip
-    artifact: Functions.Private.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x32.inproc
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x64.zip
-    artifact: Functions.Symbols.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x64
-  - publish: $(Build.ArtifactStagingDirectory)\Functions.Symbols.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x86.zip
-    artifact: Functions.Symbols.3.0.$(buildNumber)${{ variables.artifactSuffix }}.win-x86
-  - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
-    artifact: Microsoft.Azure.WebJobs.Script.3.0.$(buildNumber)${{ variables.artifactSuffix }}
-  - publish: $(Build.Repository.LocalPath)\packages\ExtensionsMetadataGenerator
-    artifact: ExtensionsMetadataGenerator${{ variables.artifactSuffix }}
-  - publish: $(Build.Repository.LocalPath)\packages\WebJobs.Script.Performance.App
-    artifact: WebJobs.Script.Performance.App${{ variables.artifactSuffix }}
-  - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.Grpc.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
-    artifact: Microsoft.Azure.WebJobs.Script.Grpc.3.0.$(buildNumber)${{ variables.artifactSuffix }}
-  - publish: $(Build.Repository.LocalPath)\packages\WebJobs.Script.Abstractions
-    artifact: Microsoft.Azure.WebJobs.Script.Abstractions${{ variables.artifactSuffix }}
-  - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Script.WebHost.3.0.$(buildNumber)${{ variables.artifactSuffix }}.nupkg
-    artifact: Microsoft.Azure.WebJobs.Script.WebHost.3.0.$(buildNumber)${{ variables.artifactSuffix }}
+  - publish: $(Build.ArtifactStagingDirectory)\V2SiteExtension
+    artifact: V2SiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
+    artifact: SiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
+    artifact: PatchedSiteExtension
+    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
+  - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
+    artifact: PrivateSiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\Symbols
+    artifact: Symbols
+  - publish: $(Build.Repository.LocalPath)\packages
+    artifact: NugetPackages
+  - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
+    artifact: Performance
 
 - job: RunUnitTests
   pool:
@@ -359,6 +355,7 @@ jobs:
         **\WebJobs.Script.Tests.Integration.csproj
     env:
       AzureWebJobsStorage: $(Storage)
+      AzureWebJobsSecondaryStorage: $(SecondaryStorage)
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
@@ -415,14 +412,21 @@ jobs:
       targetType: 'inline'
       script: |
         Write-Host "##vso[task.setvariable variable=AzureWebJobsStorage]$env:AzureWebJobsStorageSecretMap"
+        Write-Host "##vso[task.setvariable variable=AzureWebJobsSeconaryStorage]$env:AzureWebJobsSecondaryStorageSecretMap"
         Write-Host "##vso[task.setvariable variable=ConnectionStrings__CosmosDB]$env:CosmosDbSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubSender]$env:AzureWebJobsEventHubSenderSecretMap"
         Write-Host "##vso[task.setvariable variable=AzureWebJobsEventHubReceiver]$env:AzureWebJobsEventHubReceiverSecretMap"
     env:
       AzureWebJobsStorageSecretMap: $(Storage)
+      AzureWebJobsSecondaryStorageSecretMap: $(SecondaryStorage)
       CosmosDbSecretMap: $(CosmosDb)
       AzureWebJobsEventHubSenderSecretMap: $(EventHub)
       AzureWebJobsEventHubReceiverSecretMap: $(EventHub)
+  - task: JavaToolInstaller@0
+    inputs:
+      versionSpec: '11'
+      jdkArchitectureOption: 'x64'
+      jdkSourceOption: 'PreInstalled'
   - task: DotNetCoreCLI@2
     displayName: "C# end to end tests"
     condition: succeededOrFailed()
@@ -520,6 +524,15 @@ jobs:
       command: 'test'
       testRunTitle: "Linux container end to end tests Windows"
       arguments: '--filter "Group=ContainerInstanceTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Release verification tests"    
+    condition: eq(variables['isReleaseBranch'], 'True')
+    inputs:
+      command: 'test'
+      testRunTitle: "Release verification tests"
+      arguments: '--filter "Group=ReleaseTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: PowerShell@2

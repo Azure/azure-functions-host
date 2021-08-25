@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -174,6 +175,82 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(KubernetesServiceHost, kubernetesServiceHost);
             environment.SetEnvironmentVariable(PodNamespace, podNamespace);
             Assert.Equal(expected, environment.IsKubernetesManagedHosting());
+        }
+
+        [Theory]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PowerShellLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.DotNetLanguageWorkerName, RpcWorkerConstants.DotNetLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.JavaLanguageWorkerName, RpcWorkerConstants.JavaLanguageWorkerName)]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName, RpcWorkerConstants.NodeLanguageWorkerName)]
+        [InlineData(null, "")]
+        [InlineData("", "")]
+        public void Returns_WorkerRuntime(string workerRuntime, string expectedWorkerRuntime)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
+            Assert.Equal(expectedWorkerRuntime, environment.GetFunctionsWorkerRuntime());
+        }
+
+        [Theory]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, true, false, true)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, true, true)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, false, true)]
+        [InlineData(RpcWorkerConstants.DotNetLanguageWorkerName, true, false, false)]
+        [InlineData(RpcWorkerConstants.DotNetLanguageWorkerName, false, true, false)]
+        [InlineData(RpcWorkerConstants.DotNetLanguageWorkerName, false, false, false)]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, false, true, false)]
+        [InlineData(RpcWorkerConstants.JavaLanguageWorkerName, false, false, false)]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName, true, false, false)]
+        [InlineData(null, false, false, false)]
+        [InlineData("", false, false, false)]
+        public void Returns_SupportsAzureFileShareMount(string workerRuntime, bool useLowerCase, bool useUpperCase, bool supportsAzureFileShareMount)
+        {
+            var environment = new TestEnvironment();
+            if (useLowerCase && !useUpperCase)
+            {
+                workerRuntime = workerRuntime.ToLowerInvariant();
+            }
+
+            if (useUpperCase && !useLowerCase)
+            {
+                workerRuntime = workerRuntime.ToUpperInvariant();
+            }
+            environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
+            Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount());
+        }
+
+        [Theory]
+        [InlineData("test-endpoint", "test-endpoint")]
+        [InlineData(null, "")]
+        [InlineData("", "")]
+        public void Returns_GetHttpLeaderEndpoint(string httpLeaderEndpoint, string expected)
+        {
+            var environment = new TestEnvironment();
+
+            if (!string.IsNullOrEmpty(httpLeaderEndpoint))
+            {
+                environment.SetEnvironmentVariable(HttpLeaderEndpoint, httpLeaderEndpoint);
+            }
+            Assert.Equal(expected, environment.GetHttpLeaderEndpoint());
+        }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("", null, false)]
+        [InlineData("", "", false)]
+        [InlineData("", "false", false)]
+        [InlineData("", "true", true)]
+        [InlineData("10.0.0.1", "", true)]
+        [InlineData("10.0.0.1", "true", true)]
+        [InlineData("10.0.0.1", "false", true)]
+        [InlineData("10.0.0.1", null, true)]
+        public void IsDrainOnApplicationStopping_ReturnsExpectedResult(string serviceHostValue, string drainOnStoppingValue, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(KubernetesServiceHost, serviceHostValue);
+            environment.SetEnvironmentVariable(DrainOnApplicationStopping, drainOnStoppingValue);
+            Assert.Equal(expected, environment.DrainOnApplicationStoppingEnabled());
         }
     }
 }

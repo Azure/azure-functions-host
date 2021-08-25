@@ -9,6 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     internal class LinuxContainerEventGenerator : LinuxEventGenerator
     {
         private const int MaxDetailsLength = 10000;
+        private static readonly Lazy<LinuxContainerEventGenerator> _Lazy = new Lazy<LinuxContainerEventGenerator>(() => new LinuxContainerEventGenerator(SystemEnvironment.Instance));
         private readonly Action<string> _writeEvent;
         private readonly bool _consoleEnabled = true;
         private readonly IEnvironment _environment;
@@ -36,6 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public static string DetailsEventRegex { get; } = $"{ScriptConstants.LinuxFunctionDetailsEventStreamName} (?<AppName>[^,]*),(?<FunctionName>[^,]*),\\\\\"(?<InputBindings>.*)\\\\\",\\\\\"(?<OutputBindings>.*)\\\\\",(?<ScriptType>[^,]*),(?<IsDisabled>[0|1])";
 
         public static string AzureMonitorEventRegex { get; } = $"{ScriptConstants.LinuxAzureMonitorEventStreamName} (?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<ContainerName>[^,\"]*),(?<TenantId>[^,\"]*),(?<EventTimestamp>[^,]+)";
+
+        public static LinuxContainerEventGenerator LinuxContainerEventGeneratorInstance { get { return _Lazy.Value; } }
 
         private string StampName
         {
@@ -65,10 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             string formattedEventTimeStamp = eventTimestamp.ToString(EventTimestampFormat);
             string hostVersion = ScriptHost.Version;
-            FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
-            details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
+            using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
+            {
+                details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
-            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimeStamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId},{runtimeSiteName},{slotName}");
+                _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimeStamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId},{runtimeSiteName},{slotName}");
+            }
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
@@ -115,6 +120,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
                 SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 DateTime.UtcNow);
+        }
+
+        public static void LogEvent(string message, Exception e = null, LogLevel logLevel = LogLevel.Debug, string source = null)
+        {
+            LinuxContainerEventGeneratorInstance.LogFunctionTraceEvent(
+                level: logLevel,
+                subscriptionId: SystemEnvironment.Instance.GetSubscriptionId() ?? string.Empty,
+                appName: SystemEnvironment.Instance.GetAzureWebsiteUniqueSlotName() ?? string.Empty,
+                functionName: string.Empty,
+                eventName: string.Empty,
+                source: source ?? nameof(LogEvent),
+                details: e?.ToString() ?? string.Empty,
+                summary: message,
+                exceptionType: e?.GetType().ToString() ?? string.Empty,
+                exceptionMessage: e?.ToString() ?? string.Empty,
+                functionInvocationId: string.Empty,
+                hostInstanceId: string.Empty,
+                activityId: string.Empty,
+                runtimeSiteName: SystemEnvironment.Instance.GetRuntimeSiteName() ?? string.Empty,
+                slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
+                eventTimestamp: DateTime.UtcNow);
         }
     }
 }

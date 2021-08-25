@@ -53,9 +53,13 @@ namespace ExtensionsMetadataGenerator
                                 logger.LogMessage($"Found extension: {foundRef.TypeName}");
                             }
                         }
+                        catch (BadImageFormatException)
+                        {
+                            // No need to log here as we can ignore these as extensions.
+                        }
                         catch (Exception ex)
                         {
-                            logger.LogError($"Could not evaluate '{Path.GetFileName(path)}' for extension metadata. Exception message: {ex.Message}");
+                            logger.LogError($"Could not evaluate '{Path.GetFileName(path)}' for extension metadata. Exception message: {ex}");
                         }
                     }
                 }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -352,6 +353,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public async Task DisposesScriptHost()
+        {
+            var metricsLogger = new TestMetricsLogger();
+
+            var services = new ServiceCollection()
+                .AddLogging(l =>
+                {
+                    l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
+                    l.AddFilter(_ => true);
+                })
+                .BuildServiceProvider();
+
+            var host = new Mock<IHost>();
+
+            host.Setup(h => h.Services)
+                .Returns(services);
+
+            host.Setup(h => h.Dispose())
+                .Callback(() =>
+                {
+                    services.Dispose();
+                });
+
+            var hostBuilder = new Mock<IScriptHostBuilder>();
+            hostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                .Returns(host.Object);
+
+            _webHostLoggerProvider = new TestLoggerProvider();
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_webHostLoggerProvider);
+
+            _hostService = new WebJobsScriptHostService(
+                _monitor, hostBuilder.Object, _loggerFactory,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions,
+                metricsLogger, new Mock<IApplicationLifetime>().Object,
+                _mockConfig);
+
+            var hostLogger = host.Object.GetTestLoggerProvider();
+
+            await _hostService.StartAsync(CancellationToken.None);
+            await _hostService.RestartHostAsync(CancellationToken.None);
+
+            Assert.True(AreRequiredMetricsGenerated(metricsLogger));
+
+            host.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));
+            host.Verify(m => m.Dispose(), Times.Exactly(1));
+
+            var allLogMessages = _webHostLoggerProvider.GetAllLogMessages();
+
+            Assert.Contains(allLogMessages,
+                m => m.FormattedMessage != null &&
+                     m.FormattedMessage.Contains("ScriptHost disposed"));
+        }
+
+        [Fact]
         public async Task HostRestart_BeforeStart_WaitsForStartToContinue()
         {
             _host = CreateMockHost();
@@ -427,6 +484,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new Mock<IApplicationLifetime>().Object, config);
 
             Assert.Equal(expectedResult, _hostService.ShouldEnforceSequentialRestart());
+        }
+
+        [Fact]
+        public async Task DependencyTrackingTelemetryModule_Race()
+        {
+            var hostBuilder = new HostBuilder()
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
+                    });
+                })
+                .ConfigureDefaultTestWebScriptHost();
+
+            var scriptHostBuilder = new Mock<IScriptHostBuilder>();
+            scriptHostBuilder.Setup(b => b.BuildHost(It.IsAny<bool>(), It.IsAny<bool>()))
+                    .Returns(hostBuilder.Build());
+
+            bool done = false;
+            var listenerTask = Task.Run(() =>
+            {
+                while (!done)
+                {
+                    using (new DiagnosticListener("Azure.SomeClient"))
+                    {
+                    }
+                }
+            });
+
+            using (_hostService = new WebJobsScriptHostService(
+                            _monitor, scriptHostBuilder.Object, NullLoggerFactory.Instance,
+                            _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                            _hostPerformanceManager, _healthMonitorOptions, new TestMetricsLogger(),
+                            new Mock<IApplicationLifetime>().Object, _mockConfig))
+            {
+                await _hostService.StartAsync(CancellationToken.None);
+
+                await Task.Delay(500);
+
+                await _hostService.StopAsync(CancellationToken.None);
+            }
+
+            done = true;
+            await listenerTask;
         }
 
         public void RestartHost()

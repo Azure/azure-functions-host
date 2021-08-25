@@ -3,15 +3,15 @@
 
 using System;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -64,18 +64,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddTimers()
                     .AddAzureStorageCoreServices();
+                    b.Services.AddTimerScheduleMonitor();
                 })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
-                });
 
+                    s.AddAzureStorageProvider();
+                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(s);
+                });
 
             using (var host = builder.Build())
             {
-
-
                 await host.StartAsync();
                 await Task.Delay(3000);
                 await host.StopAsync();

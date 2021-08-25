@@ -2,8 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
@@ -28,33 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public bool IsScmRunFromPackage()
         {
-            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage,
-                        StringComparison.OrdinalIgnoreCase);
+            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage, StringComparison.OrdinalIgnoreCase);
         }
 
-        public async Task<bool> BlobExistsAsync(ILogger logger)
+        public bool IsRunFromPackage(ScriptApplicationHostOptions options, ILogger logger)
         {
-            bool exists = false;
-            await Utility.InvokeWithRetriesAsync(async () =>
-            {
-                try
-                {
-                    CloudBlockBlob blob = new CloudBlockBlob(new Uri(Url));
-                    exists = await blob.ExistsAsync();
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, $"Failed to check if zip url blob exists");
-                    throw;
-                }
-            }, maxRetries: 2, retryInterval: TimeSpan.FromSeconds(0.3));
+            return (IsScmRunFromPackage() && ScmRunFromPackageBlobExists(options, logger)) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
+        }
 
-            if (!exists)
-            {
-                logger.LogWarning($"{EnvironmentVariableName} points to an empty location. Function app has no content.");
-            }
-
-            return exists;
+        private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
+        {
+            var blobExists = options.IsScmRunFromPackage;
+            logger.LogDebug($"{EnvironmentSettingNames.ScmRunFromPackage} points to an existing blob: {blobExists}");
+            return blobExists;
         }
     }
 }

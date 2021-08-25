@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
@@ -49,10 +50,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
         internal IEnumerable<string> ErrorLogs => _errorLogs;
 
-        public async Task StartHostAsync()
+        public async Task StartHostAsync(ITestOutputHelper outputHelper = null)
         {
-            string workingDir = Path.GetFullPath(@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\netcoreapp3.1\");
+            // WebHost folder name will match this one.
+            var dirPath = Path.GetDirectoryName(typeof(HostProcessLauncher).Assembly.Location);
+            var dirName = new DirectoryInfo(dirPath).Name;
+
+            string workingDir = Path.GetFullPath($@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\{dirName}\");
             string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
+
+            outputHelper?.WriteLine($"Test: {_testPath}");
+            outputHelper?.WriteLine($"  Test host.json exists: {File.Exists(Path.Join(_testPath, "host.json"))}");
+            outputHelper?.WriteLine($"  Exe:                   {filePath}");
+            outputHelper?.WriteLine($"  Exe exists:            {File.Exists(filePath)}");
+            outputHelper?.WriteLine($"  Port:                  {_port}");
 
             _process.StartInfo = new ProcessStartInfo
             {

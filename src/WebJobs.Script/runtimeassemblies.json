@@ -3,6 +3,38 @@
 {
   "runtimeAssemblies": [
     {
+      "name": "Azure.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Identity",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Storage.Blobs",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Storage.Common",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Bcl.AsyncInterfaces",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Extensions.Azure",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Identity.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Identity.Client.Extensions.Msal",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Azure.KeyVault.Core",
       "resolutionPolicy": "private"
     },
@@ -40,14 +72,6 @@
     },
     {
       "name": "Microsoft.Azure.Storage.Queue",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "DotNetTI.BreakingChangeAnalysis",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Marklio.Metadata",
       "resolutionPolicy": "private"
     },
     {
@@ -1268,6 +1292,10 @@
     },
     {
       "name": "System.Text.Encoding",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encodings.Web",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

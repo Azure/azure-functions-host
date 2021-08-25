@@ -24,6 +24,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -33,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal class GrpcWorkerChannel : IRpcWorkerChannel, IDisposable
     {
-        private readonly TimeSpan workerInitTimeout = TimeSpan.FromSeconds(30);
         private readonly IScriptEventManager _eventManager;
         private readonly RpcWorkerConfig _workerConfig;
         private readonly string _runtime;
@@ -47,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private WorkerInitResponse _initMessage;
         private string _workerId;
         private RpcWorkerChannelState _state;
-        private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
         private IDictionary<string, Exception> _functionLoadErrors = new Dictionary<string, Exception>();
+        private IDictionary<string, Exception> _metadataRequestErrors = new Dictionary<string, Exception>();
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
@@ -64,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<List<FunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
 
@@ -136,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public async Task StartWorkerProcessAsync()
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(TimeSpan.FromSeconds(WorkerConstants.ProcessStartTimeoutSeconds))
+                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
@@ -173,17 +174,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
-            // get the process stats for the worker
-            var workerProcessStats = _rpcWorkerProcess.GetStats();
-            workerStatus.ProcessStats = workerProcessStats;
-
-            if (workerProcessStats.CpuLoadHistory.Any())
-            {
-                string formattedLoadHistory = string.Join(",", workerProcessStats.CpuLoadHistory);
-                int executingFunctionCount = FunctionInputBuffers.Sum(p => p.Value.Count);
-                _workerChannelLogger.LogDebug($"[HostMonitor] Worker process stats: EffectiveCores={_environment.GetEffectiveCoresCount()}, ProcessId={_rpcWorkerProcess.Id}, ExecutingFunctions={executingFunctionCount}, CpuLoadHistory=({formattedLoadHistory}), AvgLoad={workerProcessStats.CpuLoadHistory.Average()}, MaxLoad={workerProcessStats.CpuLoadHistory.Max()}");
-            }
-
             return workerStatus;
         }
 
@@ -192,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
                 .Take(1)
                 .Subscribe(WorkerInitResponse, HandleWorkerInitError);
 
@@ -309,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _eventSubscriptions
                 .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(workerInitTimeout)
+                .Timeout(_workerConfig.CountOptions.EnvironmentReloadTimeout)
                 .Take(1)
                 .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
 
@@ -418,10 +408,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
+                // do not send invocation requests for functions that failed to load or for functions that could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
                     context.ResultSource.TrySetException(_functionLoadErrors[context.FunctionMetadata.GetFunctionId()]);
+                    _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
+                }
+                else if (_metadataRequestErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
+                {
+                    _workerChannelLogger.LogDebug($"Worker failed to load metadata for {context.FunctionMetadata.Name}");
+                    context.ResultSource.TrySetException(_metadataRequestErrors[context.FunctionMetadata.GetFunctionId()]);
                     _executingInvocations.TryRemove(context.ExecutionContext.InvocationId.ToString(), out ScriptInvocationContext _);
                 }
                 else
@@ -444,6 +441,70 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 context.ResultSource.TrySetException(invokeEx);
             }
+        }
+
+        // gets metadata from worker
+        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        {
+            return SendWorkerMetadataRequest();
+        }
+
+        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
+        {
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerFunctionMetadataResponse)
+                        .Timeout(_functionLoadTimeout)
+                        .Take(1)
+                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerFunctionMetadataResponse), HandleWorkerMetadataRequestError));
+
+            _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
+
+            // sends the function app directory path to worker for indexing
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerFunctionMetadataRequest = new WorkerFunctionMetadataRequest()
+                {
+                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
+                }
+            });
+            return _functionsIndexingTask.Task;
+        }
+
+        // parse metadata response into FunctionMetadata objects
+        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerFunctionMetadataResponse)
+        {
+            _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
+
+            var responseStatus = workerFunctionMetadataResponse.OverallStatus;
+
+            var functions = new List<FunctionMetadata>();
+
+            foreach (var metadata in workerFunctionMetadataResponse.Results)
+            {
+                if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
+                {
+                    _workerChannelLogger.LogError($"Worker failed to index function {metadata.Id}");
+                    _metadataRequestErrors[metadata.Id] = metadataRequestEx;
+                }
+                var functionMetadata = new FunctionMetadata()
+                {
+                    FunctionDirectory = metadata.Directory,
+                    ScriptFile = metadata.ScriptFile,
+                    EntryPoint = metadata.EntryPoint,
+                    Name = metadata.Name,
+                    Language = metadata.Language
+                };
+
+                functionMetadata.SetFunctionId(metadata.Id);
+
+                foreach (string binding in metadata.Bindings)
+                {
+                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
+                    functionMetadata.Bindings.Add(functionBinding);
+                }
+                functions.Add(functionMetadata);
+            }
+            // set it as task result because we cannot directly return from SendWorkerMetadataRequest
+            _functionsIndexingTask.SetResult(functions);
         }
 
         private async Task<object> GetBindingDataAsync(ParameterBinding binding, string invocationId)
@@ -651,6 +712,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private void PublishWorkerErrorEvent(Exception exc)
         {
             _workerInitTask.SetException(exc);
+            if (_disposing || _disposed)
+            {
+                return;
+            }
+            _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
+        }
+
+        internal void HandleWorkerMetadataRequestError(Exception exc)
+        {
+            _workerChannelLogger.LogError(exc, "Requesting metadata from worker failed.");
             if (_disposing || _disposed)
             {
                 return;

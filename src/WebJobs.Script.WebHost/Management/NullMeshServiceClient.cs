@@ -47,5 +47,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             return Task.CompletedTask;
         }
+
+        public Task CreateBindMount(string sourcePath, string targetPath)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

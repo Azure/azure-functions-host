@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -16,9 +17,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
     public class MeshServiceClient : IMeshServiceClient
     {
         private const string Operation = "operation";
+        private const string BindMountOperation = "bind-mount";
+        public const string SquashFsOperation = "squashfs";
+        public const string ZipOperation = "zip";
+        public const string AddFES = "add-fes";
         private readonly HttpClient _client;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+
+        private static readonly JsonSerializer Serializer = JsonSerializer.Create(new JsonSerializerSettings());
 
         public MeshServiceClient(HttpClient client, IEnvironment environment, ILogger<MeshServiceClient> logger)
         {
@@ -51,12 +58,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         public async Task MountFuse(string type, string filePath, string scriptPath)
-            => await SendAsync(new[]
+        {
+            _logger.LogDebug($"Creating {type} mount from {filePath} to {scriptPath}");
+
+            await SendAsync(new[]
             {
                 new KeyValuePair<string, string>(Operation, type),
                 new KeyValuePair<string, string>("filePath", filePath),
                 new KeyValuePair<string, string>("targetPath", scriptPath),
             });
+        }
 
         public async Task PublishContainerActivity(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
@@ -85,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Source = source.ToString()
             };
 
-            var healthEventString = JsonConvert.SerializeObject(healthEvent);
+            var healthEventString = Serialize(healthEvent);
 
             _logger.LogInformation($"Posting health event {healthEventString}");
 
@@ -98,6 +109,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _logger.LogInformation($"Posted health event status: {responseMessage.StatusCode}");
         }
 
+        public async Task CreateBindMount(string sourcePath, string targetPath)
+        {
+            _logger.LogDebug($"Creating bind mount from {sourcePath} to {targetPath}");
+
+            var httpResponseMessage = await SendAsync(new[]
+            {
+                new KeyValuePair<string, string>(Operation, BindMountOperation),
+                new KeyValuePair<string, string>("sourcePath", sourcePath),
+                new KeyValuePair<string, string>("targetPath", targetPath),
+            });
+
+            httpResponseMessage.EnsureSuccessStatusCode();
+        }
+
         private async Task PublishActivities(IEnumerable<ContainerFunctionExecutionActivity> activities)
         {
             // Log one of the activities being published for debugging.
@@ -105,8 +130,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             var operation = new[]
             {
-                new KeyValuePair<string, string>(Operation, "add-fes"),
-                new KeyValuePair<string, string>("content", JsonConvert.SerializeObject(activities)),
+                new KeyValuePair<string, string>(Operation, AddFES),
+                new KeyValuePair<string, string>("content", Serialize(activities)),
             };
 
             var response = await SendAsync(operation);
@@ -121,6 +146,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 new FormUrlEncodedContent(formData));
             _logger.LogDebug($"Mesh response {res.StatusCode}");
             return res;
+        }
+
+        private static string Serialize<T>(T o)
+        {
+            string serialized;
+            using (var stringWriter = new StringWriter())
+            {
+                Serializer.Serialize(stringWriter, o);
+                serialized = stringWriter.ToString();
+            }
+
+            return serialized;
         }
     }
 }

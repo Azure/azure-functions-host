@@ -57,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
         [HttpPost]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Post([FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
+        public Task<IActionResult> Post([FromBody] ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
-        [HttpPut("{id}")]
+        [HttpPut]
         [Route("admin/host/extensions")]
-        public Task<IActionResult> Put(int id, [FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
+        public Task<IActionResult> Put([FromBody]ExtensionPackageReferenceWithActions package) => InstallExtension(package);
 
         [HttpDelete]
         [Route("admin/host/extensions/{id}")]

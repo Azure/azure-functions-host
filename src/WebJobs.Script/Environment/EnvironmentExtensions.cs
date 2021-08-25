@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -77,34 +78,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(RemoteDebuggingPort));
         }
 
-        public static bool IsZipDeployment(this IEnvironment environment, bool validate = true)
+        public static bool ZipDeploymentAppSettingsExist(this IEnvironment environment)
         {
-            // Run From Package app setting exists
-            if (validate)
-            {
-                return IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                    IsValidZipSetting(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                    IsValidZipUrl(environment.GetEnvironmentVariable(ScmRunFromPackage));
-            }
-            else
-            {
-                return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
-            }
-        }
-
-        public static bool IsValidZipSetting(string appSetting)
-        {
-            // valid values are 1 or an absolute URI
-            return string.Equals(appSetting, "1") || IsValidZipUrl(appSetting);
-        }
-
-        public static bool IsValidZipUrl(string appSetting)
-        {
-            return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
         public static bool IsCoreTools(this IEnvironment environment)
@@ -165,11 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script
             return false;
         }
 
-        public static bool IsFileSystemReadOnly(this IEnvironment environment)
-        {
-            return environment.IsZipDeployment();
-        }
-
         /// <summary>
         /// Gets a value indicating whether the application is running in a Windows Consumption (dynamic)
         /// App Service environment.
@@ -216,7 +190,12 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsDynamicSku(this IEnvironment environment)
         {
-            return environment.IsWindowsConsumption() || environment.IsWindowsElasticPremium() || environment.IsLinuxConsumption();
+            return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();
+        }
+
+        public static bool IsConsumptionSku(this IEnvironment environment)
+        {
+            return environment.IsWindowsConsumption() || environment.IsLinuxConsumption();
         }
 
         /// <summary>
@@ -239,16 +218,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsLinuxConsumption(this IEnvironment environment)
         {
             return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether this specific linux consumption container instance is in offline mode.
-        /// </summary>
-        /// <param name="environment">The environment to verify</param>
-        /// <returns><see cref="true"/> if running in a Linux Consumption App Service app and the container is in draining mode; otherwise, false.</returns>
-        public static bool IsLinuxConsumptionContainerDisabled(this IEnvironment environment)
-        {
-            return environment.IsLinuxConsumption() && Utility.IsContainerDisabled();
         }
 
         /// <summary>
@@ -458,6 +427,50 @@ namespace Microsoft.Azure.WebJobs.Script
                 default:
                     return CloudConstants.AzureStorageSuffix;
             }
+        }
+
+        public static string GetVaultSuffix(this IEnvironment environment)
+        {
+            {
+                switch (GetCloudName(environment))
+                {
+                    case CloudName.Azure:
+                        return CloudConstants.AzureVaultSuffix;
+                    case CloudName.Blackforest:
+                        return CloudConstants.BlackforestVaultSuffix;
+                    case CloudName.Fairfax:
+                        return CloudConstants.FairfaxVaultSuffix;
+                    case CloudName.Mooncake:
+                        return CloudConstants.MooncakeVaultSuffix;
+                    default:
+                        return CloudConstants.AzureVaultSuffix;
+                }
+            }
+        }
+
+        public static string GetFunctionsWorkerRuntime(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
+        /// </summary>
+        public static bool SupportsAzureFileShareMount(this IEnvironment environment)
+        {
+            return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string GetHttpLeaderEndpoint(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
+        }
+
+        public static bool DrainOnApplicationStoppingEnabled(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||
+                (bool.TryParse(environment.GetEnvironmentVariable(DrainOnApplicationStopping), out bool v) && v);
         }
     }
 }

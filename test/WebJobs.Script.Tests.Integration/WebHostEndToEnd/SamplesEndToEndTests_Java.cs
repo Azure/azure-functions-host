@@ -34,17 +34,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task HttpTrigger_Java_Get_Succeeds()
         {
-            await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger");
+            var result = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger");
+            Assert.Equal(HttpStatusCode.OK, result.StatusCode);
         }
 
         [Fact]
         public async Task JavaProcess_Same_AfterHostRestart()
         {
             IEnumerable<int> javaProcessesBefore = Process.GetProcessesByName("java").Select(p => p.Id);
+            Assert.True(javaProcessesBefore.Count() > 0);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
             await HttpTrigger_Java_Get_Succeeds();
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
+            Assert.True(javaProcessesAfter.Count() > 0);
             // Verify number of java processes before and after restart are the same.
             Assert.Equal(javaProcessesBefore.Count(), javaProcessesAfter.Count());
             // Verify Java same java process is used after host restart
