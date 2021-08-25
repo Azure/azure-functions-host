@@ -44,6 +44,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
         }
 
+        [InlineData("1")]
+        [InlineData("true")]
+        [InlineData("True")]
+        [Theory]
+        public void ToggleEnabled_VerifyIsEnabled(string envVal)
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, envVal);
+
+            using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, testEnvironment))
+            {
+                Assert.True(cache.IsEnabled);
+            }
+        }
+
+        [InlineData("")]
+        [InlineData("0")]
+        [InlineData("false")]
+        [InlineData("False")]
+        [Theory]
+        public void ToggleDisabled_VerifyIsEnabled(string envVal)
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, envVal);
+
+            using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, testEnvironment))
+            {
+                Assert.False(cache.IsEnabled);
+            }
+        }
+
+        [InlineData(1)] // 1B
+        [InlineData(1 * 1024)] // 1KB
+        [InlineData(15 * 1024 * 1024)] // 15MB
+        [InlineData(256 * 1024 * 1024)] // 256MB
+        [Theory]
+        public void SetValidCacheSizeInEnvironment_VerifyMaximumCapacityBytes(long cacheSize)
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
+
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, $"{cacheSize}");
+
+            using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, testEnvironment))
+            {
+                Assert.Equal(cacheSize, cache.RemainingCapacityBytes);
+            }
+        }
+
+        [InlineData("-1")]
+        [InlineData("0")]
+        [InlineData("")]
+        [Theory]
+        public void SetInvalidCacheSizeInEnvironment_VerifyMaximumCapacityBytes(string cacheSize)
+        {
+            IEnvironment testEnvironment = new TestEnvironment();
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
+
+            testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName, cacheSize);
+
+            using (ISharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (FunctionDataCache cache = new FunctionDataCache(manager, _loggerFactory, testEnvironment))
+            {
+                Assert.Equal(FunctionDataCacheConstants.FunctionDataCacheDefaultMaximumSizeBytes, cache.RemainingCapacityBytes);
+            }
+        }
+
         [InlineData(10)]
         [InlineData(100)]
         [InlineData(1024)] // 1KB

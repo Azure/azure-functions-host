@@ -330,22 +330,13 @@ namespace Microsoft.Azure.WebJobs.Script
         private bool GetIsFunctionDataCacheEnabled()
         {
             if (Utility.IsDotNetLanguageFunction(_workerRuntime) ||
-                ContainsDotNetFunctionDescriptorProvider())
+                ContainsDotNetFunctionDescriptorProvider() ||
+                _functionDataCache == null)
             {
                 return false;
             }
 
-            if (_functionDataCache == null)
-            {
-                return false;
-            }
-
-            if (!_functionDataCache.IsEnabled)
-            {
-                return false;
-            }
-
-            return true;
+            return _functionDataCache.IsEnabled;
         }
 
         private async Task LogInitializationAsync()

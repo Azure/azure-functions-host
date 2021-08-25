@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 return PutStreamAsync(stream);
             }
 
-            return null;
+            return Task.FromResult<SharedMemoryMetadata>(null);
         }
 
         public void AddSharedMemoryMapForInvocation(string invocationId, string mapName)
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
                 return await GetStringAsync(mapName, offset, count);
             }
 
-            return null;
+            return await Task.FromResult<object>(null);
         }
 
         public bool TryFreeSharedMemoryMapsForInvocation(string invocationId)
@@ -222,6 +222,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <returns>Metadata of the shared memory map into which data is written if successful, <see cref="null"/> otherwise.</returns>
         private async Task<SharedMemoryMetadata> PutBytesAsync(byte[] content)
         {
+            if (content.Length == 0)
+            {
+                return await Task.FromResult<SharedMemoryMetadata>(null);
+            }
+
             // Generate name of shared memory map to write content into
             string mapName = Guid.NewGuid().ToString();
 
@@ -233,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             if (sharedMemoryMap == null)
             {
                 _logger.LogError("Cannot write content into shared memory");
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Write content into shared memory map
@@ -243,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             if (bytesWritten != contentSize)
             {
                 _logger.LogError("Cannot write complete content into shared memory map: {MapName}; wrote: {BytesWritten} bytes out of total: {ContentSize} bytes", mapName, bytesWritten, contentSize);
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Track the shared memory map (to keep a reference open so that the OS does not free the memory)
@@ -251,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             {
                 _logger.LogError("Cannot add shared memory map: {MapName} to list of allocated maps", mapName);
                 sharedMemoryMap.Dispose();
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Respond back with metadata about the created and written shared memory map
@@ -268,6 +273,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
         /// <returns>Metadata of the shared memory map into which data is written if successful, <see cref="null"/> otherwise.</returns>
         private Task<SharedMemoryMetadata> PutStringAsync(string content)
         {
+            if (content.Length == 0)
+            {
+                return Task.FromResult<SharedMemoryMetadata>(null);
+            }
+
             byte[] contentBytes = Encoding.UTF8.GetBytes(content);
             return PutBytesAsync(contentBytes);
         }
@@ -292,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             if (sharedMemoryMap == null)
             {
                 _logger.LogError("Cannot write content into shared memory");
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Write content into shared memory map
@@ -302,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             if (bytesWritten != contentSize)
             {
                 _logger.LogError("Cannot write complete content into shared memory map: {MapName}; wrote: {BytesWritten} bytes out of total: {ContentSize} bytes", mapName, bytesWritten, contentSize);
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Track the shared memory map (to keep a reference open so that the OS does not free the memory)
@@ -310,7 +320,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             {
                 _logger.LogError("Cannot add shared memory map: {MapName} to list of allocated maps", mapName);
                 sharedMemoryMap.Dispose();
-                return null;
+                return await Task.FromResult<SharedMemoryMetadata>(null);
             }
 
             // Respond back with metadata about the created and written shared memory map

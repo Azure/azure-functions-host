@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 return null;
             }
 
-            SharedMemoryMetadata sharedMemoryMeta;
+            SharedMemoryMetadata sharedMemoryMetadata;
             bool needToFreeAfterInvocation = true;
 
             // Check if the cache is being used or not.
@@ -35,30 +35,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                 {
                     // Content was already present in shared memory (cache hit)
                     logger.LogTrace("Object already present in shared memory for invocation id: {Id}", invocationId);
-                    sharedMemoryMeta = obj.CacheObject;
+                    sharedMemoryMetadata = obj.CacheObject;
                     needToFreeAfterInvocation = false;
                 }
                 else
                 {
                     // Put the content into shared memory and get the name of the shared memory map written to.
                     // This will make the SharedMemoryManager keep an active reference to the memory map.
-                    sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(obj.BlobStream);
-                    if (sharedMemoryMeta != null)
+                    sharedMemoryMetadata = await sharedMemoryManager.PutObjectAsync(obj.BlobStream);
+                    if (sharedMemoryMetadata != null)
                     {
                         FunctionDataCacheKey cacheKey = obj.CacheKey;
 
                         // Try to add the object into the cache and keep an active ref-count for it so that it does not get
                         // evicted while it is still being used by the invocation.
-                        if (obj.TryPutToCache(sharedMemoryMeta, isIncrementActiveReference: true))
+                        if (obj.TryPutToCache(sharedMemoryMetadata, isIncrementActiveReference: true))
                         {
-                            logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
+                            logger.LogTrace("Put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMetadata, invocationId);
                             // We don't need to free the object after the invocation; it will be freed as part of the cache's
                             // eviction policy.
                             needToFreeAfterInvocation = false;
                         }
                         else
                         {
-                            logger.LogTrace("Cannot put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMeta, invocationId);
+                            logger.LogTrace("Cannot put object: {CacheKey} in cache with metadata: {SharedMemoryMetadata} for invocation id: {Id}", cacheKey, sharedMemoryMetadata, invocationId);
                             // Since we could not add this object to the cache (and therefore the cache will not be able to evict
                             // it as part of its eviction policy) we will need to free it after the invocation is done.
                             needToFreeAfterInvocation = true;
@@ -69,12 +69,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             else
             {
                 // Put the content into shared memory and get the name of the shared memory map written to
-                sharedMemoryMeta = await sharedMemoryManager.PutObjectAsync(value);
+                sharedMemoryMetadata = await sharedMemoryManager.PutObjectAsync(value);
                 needToFreeAfterInvocation = true;
             }
 
             // Check if the object was either already in shared memory or written to shared memory
-            if (sharedMemoryMeta == null)
+            if (sharedMemoryMetadata == null)
             {
                 logger.LogTrace("Cannot write to shared memory for invocation id: {Id}", invocationId);
                 return null;
@@ -95,15 +95,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
             {
                 // If written to shared memory successfully, add this shared memory map to the list of maps for this invocation
                 // so that once the invocation is over, the memory map's resources can be freed.
-                sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMeta.MemoryMapName);
+                sharedMemoryManager.AddSharedMemoryMapForInvocation(invocationId, sharedMemoryMetadata.MemoryMapName);
             }
 
             // Generate a response
             RpcSharedMemory sharedMem = new RpcSharedMemory()
             {
-                Name = sharedMemoryMeta.MemoryMapName,
+                Name = sharedMemoryMetadata.MemoryMapName,
                 Offset = 0,
-                Count = sharedMemoryMeta.Count,
+                Count = sharedMemoryMetadata.Count,
                 Type = rpcDataType.Value
             };
 
@@ -164,9 +164,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc.Extensions
                     return RpcDataType.Bytes;
                 case DataType.Stream:
                     return RpcDataType.Bytes;
+                default:
+                    return null;
             }
-
-            return null;
         }
     }
 }

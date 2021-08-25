@@ -253,13 +253,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
         private long GetMaximumCapacityBytes(IEnvironment environment)
         {
             string capacityVal = environment.GetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheMaximumSizeBytesSettingName);
-            if (!string.IsNullOrEmpty(capacityVal))
+            if (!string.IsNullOrEmpty(capacityVal) &&
+                long.TryParse(capacityVal, out long capacity) &&
+                capacity > 0)
             {
-                if (long.TryParse(capacityVal, out long capacity))
-                {
-                    return capacity;
-                }
+                return capacity;
             }
+
             return FunctionDataCacheConstants.FunctionDataCacheDefaultMaximumSizeBytes;
         }
 
