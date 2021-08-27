@@ -551,8 +551,8 @@ message RpcMetric {
   // Value of the metric
   double value = 3;
 
-  // json serialized property bag, or could use a type scheme like map<string, TypedData>
-  string properties = 4;
+  // property bag, values are JSON-serialized objects
+  map<string,string> properties = 4;
 }
 
 // Encapsulates an Exception 

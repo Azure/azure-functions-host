@@ -10,10 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -639,12 +637,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
                 System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
                 {
-                    var metricDetails = JsonSerializer.Deserialize<IDictionary<string, object>>(rpcMetric.Properties);
-                    if (metricDetails.TryGetValue<JsonElement>(LogConstants.NameKey, out var metricNameElt)
-                        && metricDetails.TryGetValue<JsonElement>(LogConstants.MetricValueKey, out var metricValueElt))
+                    var metricDetails = rpcMetric.Properties.ToDictionary(i => i.Key, i => (object)i.Value);
                     {
                         // Strip off the name/value entries in the dictionary passed to LogMetric and include the rest as the property bag passed to the backing ILogger
-                        context.Logger.LogMetric(metricNameElt.GetString(), metricValueElt.GetDouble(), metricDetails); /*
+                        context.Logger.LogMetric(rpcMetric.Name, rpcMetric.Value, metricDetails); /*
                         .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
                         .ToDictionary(i => i.Key, i => i.Value)); */
                     }
