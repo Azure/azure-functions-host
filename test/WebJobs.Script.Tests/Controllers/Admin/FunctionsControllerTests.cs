@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using WebJobs.Script.Tests;
@@ -73,9 +75,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Input = testInput
             };
 
+            var scriptPath = Path.GetTempPath();
+            var applicationHostOptions = new ScriptApplicationHostOptions();
+            applicationHostOptions.ScriptPath = scriptPath;
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
             var functionsManagerMock = new Mock<IWebFunctionsManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
-            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory());
+            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory(), optionsWrapper);
             IActionResult response = testController.Invoke(testFunctionName, invocation, scriptHostMock.Object);
             Assert.IsType<AcceptedResult>(response);
 
