@@ -141,9 +141,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private void SetDispatcherStateToInitialized(Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannel = null)
         {
+            // RanToCompletion indicates successful process startup
             if (State != FunctionInvocationDispatcherState.Initialized
                 && webhostLanguageWorkerChannel != null
-                && webhostLanguageWorkerChannel.Any())
+                && webhostLanguageWorkerChannel.Where(a => a.Value.Task.Status == TaskStatus.RanToCompletion).Any())
             {
                 SetFunctionDispatcherStateToInitializedAndLog();
             }
@@ -231,6 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime);
                 if (webhostLanguageWorkerChannels != null)
                 {
+                    int countOfReadyChannels = 0;
                     foreach (string workerId in webhostLanguageWorkerChannels.Keys.ToList())
                     {
                         if (webhostLanguageWorkerChannels.TryGetValue(workerId, out TaskCompletionSource<IRpcWorkerChannel> initializedLanguageWorkerChannelTask))
@@ -241,6 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                 IRpcWorkerChannel initializedLanguageWorkerChannel = await initializedLanguageWorkerChannelTask.Task;
                                 initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
                                 initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                                ++countOfReadyChannels;
                             }
                             catch (Exception ex)
                             {
@@ -249,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             }
                         }
                     }
-                    StartWorkerProcesses(webhostLanguageWorkerChannels.Count(), InitializeWebhostLanguageWorkerChannel, true, webhostLanguageWorkerChannels);
+                    StartWorkerProcesses(countOfReadyChannels, InitializeWebhostLanguageWorkerChannel, true, _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime));
                 }
                 else
                 {
