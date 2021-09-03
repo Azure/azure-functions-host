@@ -5,14 +5,17 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -89,6 +92,46 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() => functionInvoked, timeout: 3000, pollingInterval: 100);
 
             Assert.True(functionInvoked);
+        }
+
+        [Theory]
+        [InlineData(false, HttpStatusCode.Created)]
+        [InlineData(true, HttpStatusCode.BadRequest)]
+        public async Task CreateOrUpdate_DependsOnReadOnlyFileSystem(bool readOnlyFileSystem, HttpStatusCode expected)
+        {
+            var scriptPath = Path.GetTempPath();
+            var applicationHostOptions = new ScriptApplicationHostOptions
+            {
+                ScriptPath = scriptPath,
+                IsFileSystemReadOnly = readOnlyFileSystem
+            };
+
+            string testFunctionName = "TestFunction";
+            var functionsMetadataMock = new Mock<FunctionMetadataResponse>();
+            var functionsManagerMock = new Mock<IWebFunctionsManager>();
+            functionsManagerMock.Setup(p => p.CreateOrUpdate(It.IsAny<string>(), It.IsAny<FunctionMetadataResponse>(), It.IsAny<HttpRequest>()))
+            .Callback<string, FunctionMetadataResponse, HttpRequest>((name, functionMetadata, request) =>
+            {
+                // verify the correct arguments were passed to the method
+                Assert.Equal(testFunctionName, name);
+                Assert.Equal(request.Method, "Put");
+            })
+            .Returns(Task.FromResult((true, true, functionsMetadataMock.Object)));
+
+            var mockRouter = new Mock<IWebJobsRouter>();
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory(), optionsWrapper);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Host = new HostString("local");
+            httpContext.Request.Method = "Put";
+            httpContext.Request.Path = $"/admin/functions/{testFunctionName}";
+            testController.ControllerContext.HttpContext = httpContext;
+
+            var fileMonitoringServiceMock = new Mock<IFileMonitoringService>();
+            var result = (ObjectResult)(await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object));
+
+            Assert.Equal((int)expected, result.StatusCode);
         }
 
         protected virtual void Dispose(bool disposing)

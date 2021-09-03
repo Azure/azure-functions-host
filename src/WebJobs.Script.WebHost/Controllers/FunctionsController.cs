@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             if (_applicationHostOptions.Value.IsFileSystemReadOnly)
             {
-                return BadRequest("Filesystem is read-only");
+                return BadRequest("Your app is currently in read only mode. Cannot create or update functions.");
             }
 
             if (!Utility.IsValidFunctionName(name))
