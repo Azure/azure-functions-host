@@ -94,19 +94,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(functionInvoked);
         }
 
-        [Theory]
-        [InlineData(false, HttpStatusCode.Created)]
-        [InlineData(true, HttpStatusCode.BadRequest)]
-        public async Task CreateOrUpdate_DependsOnReadOnlyFileSystem(bool readOnlyFileSystem, HttpStatusCode expected)
+        private static FunctionsController SetUpFunctionsController(string testFunctionName, bool isFileSystemReadOnly, bool functionCreatedSuccess = true)
         {
             var scriptPath = Path.GetTempPath();
             var applicationHostOptions = new ScriptApplicationHostOptions
             {
                 ScriptPath = scriptPath,
-                IsFileSystemReadOnly = readOnlyFileSystem
+                IsFileSystemReadOnly = isFileSystemReadOnly
             };
 
-            string testFunctionName = "TestFunction";
             var functionsMetadataMock = new Mock<FunctionMetadataResponse>();
             var functionsManagerMock = new Mock<IWebFunctionsManager>();
             functionsManagerMock.Setup(p => p.CreateOrUpdate(It.IsAny<string>(), It.IsAny<FunctionMetadataResponse>(), It.IsAny<HttpRequest>()))
@@ -116,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(testFunctionName, name);
                 Assert.Equal(request.Method, "Put");
             })
-            .Returns(Task.FromResult((true, true, functionsMetadataMock.Object)));
+            .Returns(Task.FromResult((functionCreatedSuccess, true, functionsMetadataMock.Object)));
 
             var mockRouter = new Mock<IWebJobsRouter>();
             var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
@@ -128,10 +124,52 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             httpContext.Request.Path = $"/admin/functions/{testFunctionName}";
             testController.ControllerContext.HttpContext = httpContext;
 
-            var fileMonitoringServiceMock = new Mock<IFileMonitoringService>();
-            var result = (ObjectResult)(await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object));
+            return testController;
+        }
 
-            Assert.Equal((int)expected, result.StatusCode);
+        [Fact]
+        public async Task CreateOrUpdate_CreatesFunction()
+        {
+            var testFunctionName = "TestFunction";
+            var fileSystemReadOnly = false;
+            var testController = SetUpFunctionsController(testFunctionName, fileSystemReadOnly);
+
+            var functionsMetadataMock = new Mock<FunctionMetadataResponse>();
+            var fileMonitoringServiceMock = new Mock<IFileMonitoringService>();
+            var result = (CreatedResult)await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object);
+
+            Assert.Equal((int)HttpStatusCode.Created, result.StatusCode);
+            Assert.True(result.Location.Contains($"/admin/functions/{testFunctionName}"));
+        }
+
+        [Fact]
+        public async Task CreateOrUpdate_Fails()
+        {
+            var functionsMetadataMock = new Mock<FunctionMetadataResponse>();
+            var fileMonitoringServiceMock = new Mock<IFileMonitoringService>();
+
+            // issuing a PUT on a read-only filesystem results in 400
+            var testFunctionName = "TestFunction";
+            var testController = SetUpFunctionsController(testFunctionName, isFileSystemReadOnly: true);
+            var result = (BadRequestObjectResult)await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object);
+
+            Assert.Equal((int)HttpStatusCode.BadRequest, result.StatusCode);
+            Assert.Equal(result.Value, "Your app is currently in read only mode. Cannot create or update functions.");
+
+            // invalid function name results in 400
+            testFunctionName = string.Empty;
+            testController = SetUpFunctionsController(testFunctionName, isFileSystemReadOnly: false);
+            result = (BadRequestObjectResult)await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object);
+
+            Assert.Equal((int)HttpStatusCode.BadRequest, result.StatusCode);
+            Assert.Equal(result.Value, $"{testFunctionName} is not a valid function name");
+
+            // if function creation fails, we should respond with 500
+            testFunctionName = "TestFunction";
+            testController = SetUpFunctionsController(testFunctionName, isFileSystemReadOnly: false, functionCreatedSuccess: false);
+            var response = (StatusCodeResult)await testController.CreateOrUpdate(testFunctionName, functionsMetadataMock.Object, fileMonitoringServiceMock.Object);
+
+            Assert.Equal((int)HttpStatusCode.InternalServerError, response.StatusCode);
         }
 
         protected virtual void Dispose(bool disposing)
