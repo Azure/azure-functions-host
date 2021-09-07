@@ -5,7 +5,6 @@ using System;
 using System.IO;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using NuGet.Packaging;
 using NuGet.Versioning;
 
@@ -83,9 +82,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 && !string.IsNullOrEmpty(homeDirectory))
             {
                 string linuxDefaultPath = Path.Combine(Path.GetPathRoot(homeDirectory), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);
-                string deploymentPackageBundlePath = Path.Combine(
-                    homeDirectory,
-                    "site", "wwwroot", ".azureFunctions", ScriptConstants.ExtensionBundleDirectory, options.Id);
+                string deploymentPackageBundlePath = Path.Combine(homeDirectory, "site", "wwwroot",
+                                                                  ScriptConstants.AzureFunctionsSystemDirectoryName,
+                                                                  ScriptConstants.ExtensionBundleDirectory, options.Id);
 
                 options.ProbingPaths.Add(linuxDefaultPath);
                 options.ProbingPaths.Add(deploymentPackageBundlePath);
