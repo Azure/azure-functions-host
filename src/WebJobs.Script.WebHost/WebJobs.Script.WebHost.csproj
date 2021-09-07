@@ -75,12 +75,12 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0-preview.7.21378.6" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.5" />
     <PackageReference Include="Microsoft.Azure.AppService.Proxy.Client" Version="2.0.11020001-fabe022e" />
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.30-11868" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11868" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11868" />    
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
     <PackageReference Include="protobuf-net" Version="3.0.0" />
