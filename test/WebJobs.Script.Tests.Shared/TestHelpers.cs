@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
@@ -40,6 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
+        }
+
+        public static Task WaitOneAsync(this WaitHandle waitHandle)
+        {
+            if (waitHandle == null)
+            {
+                throw new ArgumentNullException("waitHandle");
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            var rwh = ThreadPool.RegisterWaitForSingleObject(waitHandle,
+                delegate { tcs.TrySetResult(true); }, null, -1, true);
+            var t = tcs.Task.ContinueWith((antecedent) => rwh.Unregister(null));
+
+            return t;
         }
 
         public static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
