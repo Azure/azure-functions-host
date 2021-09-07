@@ -80,8 +80,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                     // Check if the key is already present in the cache
                     if (_localCache.ContainsKey(cacheKey))
                     {
-                        // Key already exists in the local cache; do not overwrite and don't
-                        // delete the existing data.
+                        // Key already exists in the local cache; do not overwrite and don't delete the existing data.
+                        _logger.LogTrace("Cannot insert object into cache, it already exists: {ObjectName} and version: {Version}", cacheKey.Id, cacheKey.Version);
+
                         isFailure = false;
                         return false;
                     }
@@ -89,6 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                     long bytesRequired = sharedMemoryMeta.Count;
                     if (!EvictUntilCapacityAvailable(bytesRequired))
                     {
+                        _logger.LogTrace("Cannot insert object into cache, not enough space (required: {RequiredBytes} < available: {CapacityBytes})", bytesRequired, RemainingCapacityBytes);
+
                         return false;
                     }
 
@@ -105,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
                     // Update the cache utilization
                     RemainingCapacityBytes -= sharedMemoryMeta.Count;
+
+                    _logger.LogTrace("Object inserted into cache: {ObjectName} and version: {Version} with size: {Size} in shared memory map: {MapName} with updated capacity: {CapacityBytes} bytes", cacheKey.Id, cacheKey.Version, sharedMemoryMeta.Count, sharedMemoryMeta.MemoryMapName, RemainingCapacityBytes);
 
                     isFailure = false;
                     return true;
@@ -130,6 +135,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                 if (!_localCache.TryGetValue(cacheKey, out sharedMemoryMeta))
                 {
                     // Key does not exist in the local cache
+                    _logger.LogTrace("Cache miss for object: {ObjectName} and version: {Version}", cacheKey.Id, cacheKey.Version);
+
                     return false;
                 }
 
@@ -140,6 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
                 {
                     IncrementActiveReference(cacheKey);
                 }
+
+                _logger.LogTrace("Cache hit for object: {ObjectName} and version: {Version} with size: {Size} in shared memory map: {MapName}", cacheKey.Id, cacheKey.Version, sharedMemoryMeta.Count, sharedMemoryMeta.MemoryMapName);
 
                 return true;
             }
@@ -182,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache
 
                 // Update the cache utilization
                 RemainingCapacityBytes += sharedMemoryMeta.Count;
+
+                _logger.LogTrace("Removed cache object: {ObjectName} and version: {Version} with size: {Size} in shared memory map: {MapName} with updated capacity: {CapacityBytes} bytes", cacheKey.Id, cacheKey.Version, sharedMemoryMeta.Count, sharedMemoryMeta.MemoryMapName, RemainingCapacityBytes);
 
                 return true;
             }
