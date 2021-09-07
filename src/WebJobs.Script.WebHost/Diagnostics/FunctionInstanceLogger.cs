@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string accountConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Dashboard);
             if (accountConnectionString != null)
             {
-                loggerFactory.CreateLogger<FunctionInstanceLogger>().LogWarning($"The {ConnectionStringNames.Dashboard} setting is no longer supported.");
+                loggerFactory.CreateLogger<FunctionInstanceLogger>().LogWarning($"The {ConnectionStringNames.Dashboard} setting is no longer supported. See https://aka.ms/functions-dashboard for details.");
             }
         }
 
