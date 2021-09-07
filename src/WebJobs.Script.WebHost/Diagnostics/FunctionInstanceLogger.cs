@@ -119,10 +119,5 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         }
 
         public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken)) => Task.CompletedTask;
-
-        public static void OnException(Exception exception, ILogger logger)
-        {
-            logger.LogError($"Error writing logs to table storage: {exception.ToString()}", exception);
-        }
     }
 }
