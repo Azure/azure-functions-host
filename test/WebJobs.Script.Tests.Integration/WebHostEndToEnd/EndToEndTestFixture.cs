@@ -140,6 +140,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
                     ConfigureWebHost(s);
+                },
+                configureScriptHostAppConfiguration: configurationBuilder =>
+                {
+                    ConfigureAppConfiguration(configurationBuilder);
                 });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
@@ -154,6 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await CreateTestStorageEntities();
 
             MasterKey = await Host.GetMasterKeyAsync();
+
+            TestHelpers.WaitForWebHost(Host.HttpClient);
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
@@ -161,6 +167,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual void ConfigureWebHost(IServiceCollection services)
+        {
+        }
+
+        public virtual void ConfigureAppConfiguration(IConfigurationBuilder configurationBuilder)
         {
         }
 

@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _testOutputHelper = testOutputHelper;
         }
 
-        [Fact]
+        [Fact (Skip = "https://github.com/Azure/azure-functions-host/issues/7657")]
         public async Task ApplicationInsights_InvocationsContainDifferentOperationIds()
         {
             // Verify that when a request specializes the host we don't capture the context
