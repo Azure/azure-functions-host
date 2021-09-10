@@ -158,8 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await CreateTestStorageEntities();
 
             MasterKey = await Host.GetMasterKeyAsync();
-
-            TestHelpers.WaitForWebHost(Host.HttpClient);
         }
 
         public virtual void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
