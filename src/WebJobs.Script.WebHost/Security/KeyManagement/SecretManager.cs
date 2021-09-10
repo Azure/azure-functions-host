@@ -36,6 +36,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string _repositoryClassName;
         private DateTime _lastCacheResetTime;
 
+        internal const string AzureFunctionsSignature = "AzFu";
+
+        // Checksum seed for master keys. The string transformation here results in a
+        // a seed that is versioned in the least significant bits (as a ulong):
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master_0").Reverse().ToArray());
+        // If there is a need to version, use "Master_1" as the next string literal.
+        internal const ulong MasterKeySeed = 0x4d61737465725f30;
+
+        // Checksum seed for system keys.
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System_0").Reverse().ToArray());
+        // If there is a need to version, use "System_1" as the next string literal.
+        internal const ulong SystemKeySeed = 0x53797374656d5f30;
+
+        // Checksum seed for function keys.
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi_0").Reverse());
+        // If there is a need to version, use "Functi_1" next.
+        internal const ulong FunctionKeySeed = 0x46756e6374695f30;
+
         // for testing
         public SecretManager()
         {
@@ -619,6 +637,116 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 // Replace pluses as they are problematic as URL values
                 return secret.Replace('+', 'a');
             }
+        }
+
+        internal static string GenerateIdentifiableSecret(ulong checksumSeed)
+        {
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                byte[] data = new byte[40];
+                rng.GetBytes(data);
+                string secret = Convert.ToBase64String(data);
+
+                if (secret.Contains('+'))
+                {
+                    // Replace pluses as they are problematic as URL values.
+                    secret = secret.Replace('+', 'a');
+                    data = Convert.FromBase64String(secret);
+                }
+
+                secret = GenerateKeyWithAppendedSignatureAndChecksum(data, AzureFunctionsSignature, checksumSeed);
+
+                // The '+' may have snuck in again in the base64-encoded checksum.
+                // We arbitrarilty replace these specific characters with 'f' (for Azure 'functions).
+                return secret.Replace('+', 'f');
+            }
+        }
+
+        internal static string GenerateKeyWithAppendedSignatureAndChecksum(byte[] keyData, string base64EncodedSignature, ulong checksumSeed)
+        {
+            if (keyData.Length < 32)
+            {
+                throw new ArgumentException($"Key length must be at least 32 bytes for required security.");
+            }
+
+            uint keyLengthInBytes = (uint)keyData.Length;
+            uint checksumOffset = keyLengthInBytes - 4;
+            uint signatureOffset = checksumOffset - 4;
+
+            // Compute a signature that will render consistently when
+            // base64-encoded. This potentially requires consuming bits
+            // from the byte that precedes the signature (to keep data
+            // aligned on a 6-bit boundary, as required by base64).
+            byte signaturePrefixByte = keyData[signatureOffset];
+            byte[] signatureBytes = GetBase64EncodedSignatureBytes(
+                                        keyLengthInBytes,
+                                        base64EncodedSignature,
+                                        signaturePrefixByte);
+            signatureBytes.CopyTo(keyData, signatureOffset);
+
+            // Calculate the checksum against all data except the final
+            // four bytes, which are used to store the checksum itself.
+
+            var data = new ReadOnlySpan<byte>(keyData, 0, keyData.Length - 4);
+            int checksum = Marvin.ComputeHash32(data, checksumSeed);
+
+            byte[] checksumBytes = BitConverter.GetBytes(checksum);
+            checksumBytes.CopyTo(keyData, checksumOffset);
+
+            return Convert.ToBase64String(keyData);
+        }
+
+        private static byte[] GetBase64EncodedSignatureBytes(uint keyLengthInBytes, string base64EncodedSignature, byte? signaturePrefixByte = null)
+        {
+            if (base64EncodedSignature?.Length != 4 == true)
+            {
+                throw new ArgumentException(
+                    "Base64-encoded signature must be 4 characters long.",
+                    nameof(base64EncodedSignature));
+            }
+
+            byte[] signatureBytes = Convert.FromBase64String(base64EncodedSignature);
+            uint signature = (uint)signaturePrefixByte << 24;
+
+            // Retrieve padding required to maintain the 6-bit alignment
+            // that allows the base64-encoded signature to render.
+            int padding = (int)((keyLengthInBytes - 7) * 8) % 6;
+            uint mask = uint.MaxValue;
+
+            switch (padding)
+            {
+                case 2:
+                {
+                    // Clear the last two bits of the first byte. The signature
+                    // will be left-shifted into these bits in order to align
+                    // on a 6-bit boundary (required to render the signature).
+                    mask = 0xfcffffff;
+                    break;
+                }
+
+                case 4:
+                {
+                    // In this case, we must left-shift the signature 4 bits
+                    // to remain aligned with 6-bit base64-encoding boundaries.
+                    mask = 0xf0ffffff;
+                    break;
+                }
+            }
+
+            signature &= mask;
+
+            signature |= (uint)signatureBytes[0] << (16 + padding);
+            signature |= (uint)signatureBytes[1] << (8 + padding);
+            signature |= (uint)signatureBytes[2] << (0 + padding);
+
+            signatureBytes = BitConverter.GetBytes(signature);
+
+            if (BitConverter.IsLittleEndian)
+            {
+                Array.Reverse(signatureBytes);
+            }
+
+            return signatureBytes;
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
