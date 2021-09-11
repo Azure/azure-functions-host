@@ -240,8 +240,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 int padding = (int)((secret.Length - 7) * 8) % 6;
                 Assert.Equal(2, padding);
 
-                secret = secret.Trim('=');
-                char lastChecksumCharacter = secret[secret.Length - 1];
+                string trimmedSecret = secret.Trim('=');
+                char lastChecksumCharacter = trimmedSecret[trimmedSecret.Length - 1];
 
                 // The key generator shifts bits around six-bit boundaries in order to
                 // ensure that the fixed signature exists in the base64-encoded form.
