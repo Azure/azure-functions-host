@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -37,6 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private readonly ILogger _logger;
         private readonly StartupContextProvider _startupContextProvider;
 
+        private static readonly Regex AzureFunctionKeyRegex =
+                    new Regex("[0-9a-zA-Z\\/]{44}AzFu[0-9a-zA-Z\\/]{5}[AQgw]==",
+                              RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
+
         public SecretManagerTests()
         {
             _testEnvironment = new TestEnvironment();
@@ -49,6 +55,227 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             _hostNameProvider = new HostNameProvider(_testEnvironment);
             _startupContextProvider = new StartupContextProvider(_testEnvironment, loggerFactory.CreateLogger<StartupContextProvider>());
+        }
+
+        [Fact]
+        public void GenerateKeyWithAppendedSignatureAndChecksum_BasicTests()
+        {
+            int keySize = 256;
+            byte[] decodedBytes = GetDecodedBytesForBase64Character('/', keySize);
+
+            for (int i = 32; i < 256; i++)
+            {
+                string signature = new string((char)((int)'a' + (i % 26)), 4);
+
+                int bufferSize = i;
+                byte[] testData = new byte[bufferSize];
+                Buffer.BlockCopy(decodedBytes, 0, testData, 0, bufferSize);
+
+                ulong seed = ulong.MaxValue;
+
+                string secret = SecretManager.GenerateKeyWithAppendedSignatureAndChecksum(testData, signature, seed);
+                Assert.Contains(signature, secret);
+
+                var bytes = Convert.FromBase64String(secret);
+                var data = new ReadOnlySpan<byte>(bytes, 0, bytes.Length - 4);
+
+                int expectedChecksum = BitConverter.ToInt32(bytes, bytes.Length - 4);
+                int actualChecksum = Marvin.ComputeHash32(data, seed);
+
+                // The range of values we test happen to never produce a checksum
+                // that encodes a plus sign character which is subsequently replaced.
+                // And so these checksums will always be equivalent.
+                Assert.Equal(expectedChecksum, actualChecksum);
+            }
+        }
+
+        [Fact]
+        public void GenerateKeyWithAppendedSignatureAndChecksum_InsecureLengthThrows()
+        {
+            int keySize = 32;
+            byte[] decodedBytes = GetDecodedBytesForBase64Character('/', keySize);
+
+            string signature = "sign";
+            ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("12345678"), 0);
+
+            for (int i = 0; i < 32; i++)
+            {
+                byte[] testData = new byte[i];
+                Buffer.BlockCopy(decodedBytes, 0, testData, 0, i);
+                Assert.Throws<ArgumentException>(() => SecretManager.GenerateKeyWithAppendedSignatureAndChecksum(testData, signature, seed));
+            }
+        }
+
+        private byte[] GetDecodedBytesForBase64Character(char ch, int keySize)
+        {
+            int base64EncodedLength = ((keySize + 2) / 3) * 4;
+            string base64EncodedText = new string(ch, base64EncodedLength);
+            return Convert.FromBase64String(base64EncodedText);
+        }
+
+        [Fact]
+        public void GenerateKeyWithAppendedSignatureAndChecksum_IncorrectSignatureLengthThrows()
+        {
+            int keySize = 40;
+            byte[] decodedBytes = GetDecodedBytesForBase64Character('/', keySize);
+
+            ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("12345678"), 0);
+
+            string signature = null;
+            Assert.Throws<ArgumentException>(() => SecretManager.GenerateKeyWithAppendedSignatureAndChecksum(decodedBytes, signature, seed));
+
+            for (int i = 0; i < 10; i++)
+            {
+                if (i == 4)
+                {
+                    continue;
+                }
+
+                signature = new string('a', i);
+                Assert.Throws<ArgumentException>(() => SecretManager.GenerateKeyWithAppendedSignatureAndChecksum(decodedBytes, signature, seed));
+            }
+        }
+
+        private static void IsValidSecret(string secret, ulong seed)
+        {
+            Assert.Matches(AzureFunctionKeyRegex, secret);
+            Assert.True(secret.Contains(SecretManager.AzureFunctionsSignature));
+            Assert.False(secret.Contains("+"));
+            Assert.Equal(56, secret.Length);
+
+            var bytes = Convert.FromBase64String(secret);
+            var data = new ReadOnlySpan<byte>(bytes, 0, bytes.Length - 4);
+
+            int expectedChecksum = BitConverter.ToInt32(bytes, bytes.Length - 4);
+            int actualChecksum = Marvin.ComputeHash32(data, seed);
+
+            if (expectedChecksum != actualChecksum)
+            {
+                byte[] checksumBytes = BitConverter.GetBytes(actualChecksum);
+                checksumBytes.CopyTo(bytes, bytes.Length - 4);
+
+                string decodedKey = Convert.ToBase64String(bytes);
+                Assert.True(decodedKey.Contains("+"));
+
+                decodedKey = decodedKey.Replace("+", "f");
+                Assert.Equal(secret, decodedKey);
+            }
+
+            int padding = (int)((secret.Length - 7) * 8) % 6;
+
+            Assert.Equal(2, padding);
+
+            secret = secret.Trim('=');
+            char lastChecksumCharacter = secret[secret.Length - 1];
+
+            // The key generator shifts bits around six-bit boundaries in order to
+            // ensure that the fixed signature exists in the base64-encoded form.
+            // Because of this, for a 40 byte encoded value, the very last base64-encoded
+            // character will have the last four bits padded with 0. And so,
+            // only characters A, Q, g, or w are possible.
+            Assert.True(lastChecksumCharacter == 'A' || lastChecksumCharacter == 'Q' ||
+                        lastChecksumCharacter == 'g' || lastChecksumCharacter == 'w');
+        }
+
+        [Fact]
+        public void GeneratedIdentifiableSecret_ContainsFixedSignature()
+        {
+            ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("12345678"), 0);
+            string secret = SecretManager.GenerateIdentifiableSecret(seed);
+            Assert.True(secret.Contains(SecretManager.AzureFunctionsSignature));
+            IsValidSecret(secret, seed);
+        }
+
+        [Fact]
+        public void GenerateIdentifiableSecret_ChecksumIsValid()
+        {
+            bool verifiedNoSlashInChecksumCase = false, verifiedSlashInChecksumCase = false;
+
+            // We'll produce random key values until we validate both key conditions, the one
+            // in which an encoded check *does* and *does not* include a plus sign.
+            while (!verifiedNoSlashInChecksumCase || !verifiedSlashInChecksumCase)
+            {
+                ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("987654321"), 0);
+                string secret = SecretManager.GenerateIdentifiableSecret(seed);
+                Assert.False(secret.Contains("+"));
+
+                var bytes = Convert.FromBase64String(secret);
+                var data = new ReadOnlySpan<byte>(bytes, 0, bytes.Length - 4);
+
+                int expectedChecksum = BitConverter.ToInt32(bytes, bytes.Length - 4);
+                int actualChecksum = Marvin.ComputeHash32(data, seed);
+
+                if (expectedChecksum != actualChecksum)
+                {
+                    byte[] checksumBytes = BitConverter.GetBytes(actualChecksum);
+                    checksumBytes.CopyTo(bytes, bytes.Length - 4);
+
+                    string decodedKey = Convert.ToBase64String(bytes);
+                    Assert.True(decodedKey.Contains("+"));
+
+                    decodedKey = decodedKey.Replace("+", "f");
+                    Assert.Equal(secret, decodedKey);
+
+                    verifiedSlashInChecksumCase = true;
+                }
+                else
+                {
+                    verifiedNoSlashInChecksumCase = true;
+                }
+
+                IsValidSecret(secret, seed);
+            }
+        }
+
+        [Fact]
+        public void GenerateIdentifiableSecret_LastEncodedChecksumCharacterIsWithinRange()
+        {
+            var validChars = new HashSet<string>(new string[] { "A", "Q", "w", "g" });
+
+            while (validChars.Count > 0)
+            {
+                ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("abcdefgh"), 0);
+                string secret = SecretManager.GenerateIdentifiableSecret(seed);
+
+                int padding = (int)((secret.Length - 7) * 8) % 6;
+                Assert.Equal(2, padding);
+
+                string trimmedSecret = secret.Trim('=');
+                char lastChecksumCharacter = trimmedSecret[trimmedSecret.Length - 1];
+
+                // The key generator shifts bits around six-bit boundaries in order to
+                // ensure that the fixed signature exists in the base64-encoded form.
+                // Because of this, for a 40 byte encoded value, the very last base64-encoded
+                // character will have the last four bits padded with 0. And so,
+                // only characters A, Q, g, or w are possible.
+                Assert.True(lastChecksumCharacter == 'A' || lastChecksumCharacter == 'Q' ||
+                            lastChecksumCharacter == 'g' || lastChecksumCharacter == 'w');
+
+                validChars.Remove(lastChecksumCharacter.ToString());
+
+                IsValidSecret(secret, seed);
+            }
+        }
+
+        [Fact]
+        public void GenerateIdentifiableSecret_ReturnsKeyOfExpectedLength()
+        {
+            ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("zyxwvuts"), 0);
+
+            // All generated azure function keys consist of 40 bytes
+            // which require 56 characters when base64-encoded.
+            string secret = SecretManager.GenerateIdentifiableSecret(seed);
+            Assert.Equal(56, secret.Length);
+            IsValidSecret(secret, seed);
+        }
+
+        [Fact]
+        public void GenerateIdentifiableSecret_ReturnsKeyWithNoPlusSign()
+        {
+            ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("deadbeef"), 0);
+            string secret = SecretManager.GenerateIdentifiableSecret(seed);
+            Assert.DoesNotContain("+", secret);
+            IsValidSecret(secret, seed);
         }
 
         [Fact]
