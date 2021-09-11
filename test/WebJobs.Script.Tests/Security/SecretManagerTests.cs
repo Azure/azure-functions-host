@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -37,6 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private readonly TestLoggerProvider _loggerProvider;
         private readonly ILogger _logger;
         private readonly StartupContextProvider _startupContextProvider;
+
+        private static readonly Regex AzureFunctionKeyRegex =
+                    new Regex("[0-9a-zA-Z\\/]{44}AzFu[0-9a-zA-Z\\/]{5}[AQgw]==",
+                              RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant);
 
         public SecretManagerTests()
         {
@@ -131,12 +136,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             }
         }
 
+        private static void IsValidSecret(string secret, ulong seed)
+        {
+            Assert.Matches(AzureFunctionKeyRegex, secret);
+            Assert.True(secret.Contains(SecretManager.AzureFunctionsSignature));
+            Assert.False(secret.Contains("+"));
+            Assert.Equal(56, secret.Length);
+
+            var bytes = Convert.FromBase64String(secret);
+            var data = new ReadOnlySpan<byte>(bytes, 0, bytes.Length - 4);
+
+            int expectedChecksum = BitConverter.ToInt32(bytes, bytes.Length - 4);
+            int actualChecksum = Marvin.ComputeHash32(data, seed);
+
+            if (expectedChecksum != actualChecksum)
+            {
+                byte[] checksumBytes = BitConverter.GetBytes(actualChecksum);
+                checksumBytes.CopyTo(bytes, bytes.Length - 4);
+
+                string decodedKey = Convert.ToBase64String(bytes);
+                Assert.True(decodedKey.Contains("+"));
+
+                decodedKey = decodedKey.Replace("+", "f");
+                Assert.Equal(secret, decodedKey);
+            }
+
+            int padding = (int)((secret.Length - 7) * 8) % 6;
+
+            Assert.Equal(2, padding);
+
+            secret = secret.Trim('=');
+            char lastChecksumCharacter = secret[secret.Length - 1];
+
+            // The key generator shifts bits around six-bit boundaries in order to
+            // ensure that the fixed signature exists in the base64-encoded form.
+            // Because of this, for a 40 byte encoded value, the very last base64-encoded
+            // character will have the last four bits padded with 0. And so,
+            // only characters A, Q, g, or w are possible.
+            Assert.True(lastChecksumCharacter == 'A' || lastChecksumCharacter == 'Q' ||
+                        lastChecksumCharacter == 'g' || lastChecksumCharacter == 'w');
+        }
+
         [Fact]
         public void GeneratedIdentifiableSecret_ContainsFixedSignature()
         {
             ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("12345678"), 0);
             string secret = SecretManager.GenerateIdentifiableSecret(seed);
             Assert.True(secret.Contains(SecretManager.AzureFunctionsSignature));
+            IsValidSecret(secret, seed);
         }
 
         [Fact]
@@ -175,6 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     verifiedNoSlashInChecksumCase = true;
                 }
+
+                IsValidSecret(secret, seed);
             }
         }
 
@@ -189,7 +238,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 string secret = SecretManager.GenerateIdentifiableSecret(seed);
 
                 int padding = (int)((secret.Length - 7) * 8) % 6;
-
                 Assert.Equal(2, padding);
 
                 secret = secret.Trim('=');
@@ -204,6 +252,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                             lastChecksumCharacter == 'g' || lastChecksumCharacter == 'w');
 
                 validChars.Remove(lastChecksumCharacter.ToString());
+
+                IsValidSecret(secret, seed);
             }
         }
 
@@ -216,6 +266,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             // which require 56 characters when base64-encoded.
             string secret = SecretManager.GenerateIdentifiableSecret(seed);
             Assert.Equal(56, secret.Length);
+            IsValidSecret(secret, seed);
         }
 
         [Fact]
@@ -224,6 +275,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             ulong seed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("deadbeef"), 0);
             string secret = SecretManager.GenerateIdentifiableSecret(seed);
             Assert.DoesNotContain("+", secret);
+            IsValidSecret(secret, seed);
         }
 
         [Fact]
