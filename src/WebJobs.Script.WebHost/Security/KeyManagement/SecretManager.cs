@@ -40,19 +40,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         // Checksum seed for master keys. The string transformation here results in a
         // a seed that is versioned in the least significant bits (as a ulong):
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master_0").Reverse().ToArray());
-        // If there is a need to version, use "Master_1" as the next string literal.
-        internal const ulong MasterKeySeed = 0x4d61737465725f30;
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master00").Reverse().ToArray());
+        // If there is a need to version, use "Master01" as the next string literal.
+        internal const ulong MasterKeySeed = 0x4d61737465723030;
 
         // Checksum seed for system keys.
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System_0").Reverse().ToArray());
-        // If there is a need to version, use "System_1" as the next string literal.
-        internal const ulong SystemKeySeed = 0x53797374656d5f30;
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System00").Reverse().ToArray());
+        // If there is a need to version, use "System01" as the next string literal.
+        internal const ulong SystemKeySeed = 0x53797374656d3030;
 
         // Checksum seed for function keys.
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi_0").Reverse());
-        // If there is a need to version, use "Functi_1" next.
-        internal const ulong FunctionKeySeed = 0x46756e6374695f30;
+        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi00").Reverse());
+        // If there is a need to version, use "Functi01" next.
+        internal const ulong FunctionKeySeed = 0x46756e6374693030;
 
         // for testing
         public SecretManager()
