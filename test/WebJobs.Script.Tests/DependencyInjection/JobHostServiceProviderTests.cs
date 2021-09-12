@@ -88,6 +88,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             // Disposing of the JobHost service provider should not dispose of root container services
             Assert.False(rootService.Disposed);
         }
+        
+        [Fact]
+        public void GetRequiredService_OnJobHost_ShouldThrowAnInvalidOperationExceptionWhenAServiceCannotBeResolved()
+        {
+            var services = new ServiceCollection();
+            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
+            var jobHostServiceProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+
+            var recordedException = Record.Exception(() => jobHostServiceProvider.GetRequiredService(typeof(IService)));
+            Assert.NotNull(recordedException);
+            Assert.IsType<InvalidOperationException>(recordedException);
+        }
 
         [Fact]
         public void Scopes_ChildScopeIsIsolated()
