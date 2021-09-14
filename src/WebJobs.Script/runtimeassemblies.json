@@ -75,10 +75,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.ApplicationInsights",
-      "resolutionPolicy": "runtimeVersion"
-    },
-    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -412,10 +408,6 @@
     },
     {
       "name": "Microsoft.Azure.WebJobs.Logging",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

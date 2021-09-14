@@ -376,10 +376,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "Microsoft.Azure.WebJobs.Script",
       "resolutionPolicy": "minorMatchOrLower"
     },

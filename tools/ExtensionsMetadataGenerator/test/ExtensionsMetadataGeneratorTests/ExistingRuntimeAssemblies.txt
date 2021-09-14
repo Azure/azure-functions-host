@@ -1,4 +1,3 @@
-Microsoft.ApplicationInsights.dll
 Microsoft.AspNetCore.dll
 Microsoft.AspNetCore.Antiforgery.dll
 Microsoft.AspNetCore.Authentication.dll
@@ -83,7 +82,6 @@ Microsoft.Azure.WebJobs.Extensions.dll
 Microsoft.Azure.WebJobs.Extensions.Http.dll
 Microsoft.Azure.WebJobs.Host.dll
 Microsoft.Azure.WebJobs.Logging.dll
-Microsoft.Azure.WebJobs.Logging.ApplicationInsights.dll
 Microsoft.Azure.WebJobs.Script.dll
 Microsoft.Azure.WebJobs.Script.Abstractions.dll
 Microsoft.Azure.WebJobs.Script.Grpc.dll

@@ -7,11 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights.AspNetCore;
-using Microsoft.ApplicationInsights.AspNetCore.Extensions;
-using Microsoft.ApplicationInsights.DependencyCollector;
-using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -65,9 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
-
-            // This will no-op if already initialized.
-            InitializeApplicationInsightsRequestTracking();
 
             _applicationLifetime = applicationLifetime;
             RegisterApplicationLifetimeEvents();
@@ -721,34 +713,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                     else
                     {
-                        DisposeDependencyTrackingModule(instance);
                         instance.Dispose();
                         _logger.LogDebug("ScriptHost disposed");
                     }
                 }
-            }
-        }
-
-        // A temporary fix until we are able to take App Insights 2.18.0. There is a potential
-        // race during disposal where new DiagnosticListeners can throw exceptions after TelemetryConfiguration
-        // is disposed, but before this module is disposed. This ensures the module disposes first.
-        // Tracking issue: https://github.com/Azure/azure-functions-host/issues/7450
-        private void DisposeDependencyTrackingModule(IHost instance)
-        {
-            try
-            {
-                var module = instance?.Services.GetServices<ITelemetryModule>()
-                                      .SingleOrDefault(m => m is DependencyTrackingTelemetryModule)
-                                      as IDisposable;
-
-                module?.Dispose();
-
-                _logger.LogDebug($"{nameof(DependencyTrackingTelemetryModule)} disposed.");
-            }
-            catch (Exception ex)
-            {
-                // best effort.
-                _logger.LogDebug($"Unable to dispose {nameof(DependencyTrackingTelemetryModule)}. {ex}");
             }
         }
 
@@ -774,36 +742,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 Interlocked.Exchange(ref _applicationStopped, 1);
             });
-        }
-
-        private static void InitializeApplicationInsightsRequestTracking()
-        {
-            if (_requestTrackingModule != null)
-            {
-                return;
-            }
-
-            // Requests may come in before the JobHost has started (like during cold starts), which means
-            // they will not be properly tracked by Application Insights because there's nothing listening
-            // for them yet. This wires up the request tracking module with default values to catch those
-            // events and properly create an Activity. Once the JobHost has started, we dispose this and the
-            // JobHost tracking module takes over.
-            var module = new RequestTrackingTelemetryModule(new ApplicationInsightsApplicationIdProvider())
-            {
-                CollectionOptions = new RequestCollectionOptions
-                {
-                    TrackExceptions = false,
-                    EnableW3CDistributedTracing = true,
-                    InjectResponseHeaders = true
-                }
-            };
-
-            var telemetryConfig = new TelemetryConfiguration();
-
-            module.Initialize(telemetryConfig);
-
-            _telemetryConfiguration = telemetryConfig;
-            _requestTrackingModule = module;
         }
 
         public object GetService(Type serviceType)
