@@ -79,8 +79,8 @@
     <PackageReference Include="Microsoft.Azure.Services.AppAuthentication" Version="1.0.3" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageReference Include="Microsoft.Azure.KeyVault" Version="3.0.3" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.30-11868" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11868" />    
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.31-11877" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11874" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
     <PackageReference Include="protobuf-net" Version="3.0.0" />

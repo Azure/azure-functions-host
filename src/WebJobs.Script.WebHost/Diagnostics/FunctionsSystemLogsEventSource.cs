@@ -70,12 +70,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        public void SetActivityId(string activityId)
+        public static ActivityIdScope SetActivityId(string activityId)
         {
-            Guid guid;
-            if (!string.IsNullOrEmpty(activityId) && Guid.TryParse(activityId, out guid))
+            Guid.TryParse(activityId, out Guid guid);
+
+            SetCurrentThreadActivityId(guid, out Guid oldId);
+
+            return new ActivityIdScope(oldId);
+        }
+
+        public struct ActivityIdScope : IDisposable
+        {
+            public static readonly ActivityIdScope Empty = default;
+
+            public ActivityIdScope(Guid originalId)
             {
-                SetCurrentThreadActivityId(guid);
+                OriginalId = originalId;
+            }
+
+            public Guid OriginalId { get; set; }
+
+            public void Dispose()
+            {
+                SetCurrentThreadActivityId(OriginalId);
             }
         }
     }

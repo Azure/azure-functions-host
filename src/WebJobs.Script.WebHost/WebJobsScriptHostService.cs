@@ -139,7 +139,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            CheckFileSystem();
             if (ShutdownRequested)
             {
                 return;
@@ -168,9 +167,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void CheckFileSystem()
         {
-            // Shutdown if RunFromZipFailed
             if (_environment.ZipDeploymentAppSettingsExist())
             {
+                // Check for marker file indicating a zip package failure, and if found stop the application.
+                // We never want to run with an incorrect file system.
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
                 if (File.Exists(path))
                 {
@@ -214,6 +214,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
+            CheckFileSystem();
+            if (ShutdownRequested)
+            {
+                return;
+            }
+
             IHost localHost = null;
             var currentCancellationToken = activeOperation.CancellationTokenSource.Token;
             _logger.StartupOperationStarting(activeOperation.Id);

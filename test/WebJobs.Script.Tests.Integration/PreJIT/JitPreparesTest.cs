@@ -16,9 +16,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     public class JitPreparesTest
     {
         [Theory(Skip = "Currently disabled in v4")]
-        [InlineData(WarmUpConstants.JitTraceFileName)]
-        [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
-        public void ColdStart_JitFailuresTest(string fileName)
+        [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
+        [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]
+        public void ColdStart_JitFailuresTest(string fileName, double threshold)
         {
             var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
             var failurePercentage = (double)failedPrepares / successfulPrepares * 100;
 
             // using 1% as approximate number of allowed failures before we need to regenrate a new PGO file.
-            Assert.True(failurePercentage < 1.0, $"Number of failed PGOs are more than 1 percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
+            Assert.True(failurePercentage < threshold, $"Number of failed PGOs are more than {threshold} percent! Current number of failures are {failedPrepares}. This will definitely impact cold start! Time to regenrate PGOs and update the {fileName} file!");
         }
     }
 }

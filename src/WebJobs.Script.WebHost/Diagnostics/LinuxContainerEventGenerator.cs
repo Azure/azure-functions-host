@@ -68,10 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             string formattedEventTimeStamp = eventTimestamp.ToString(EventTimestampFormat);
             string hostVersion = ScriptHost.Version;
-            FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
-            details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
+            using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
+            {
+                details = details.Length > MaxDetailsLength ? details.Substring(0, MaxDetailsLength) : details;
 
-            _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimeStamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId},{runtimeSiteName},{slotName}");
+                _writeEvent($"{ScriptConstants.LinuxLogEventStreamName} {(int)ToEventLevel(level)},{subscriptionId},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimeStamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId},{_containerName},{StampName},{TenantId},{runtimeSiteName},{slotName}");
+            }
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average, long minimum, long maximum, long count, DateTime eventTimestamp, string data, string runtimeSiteName, string slotName)
