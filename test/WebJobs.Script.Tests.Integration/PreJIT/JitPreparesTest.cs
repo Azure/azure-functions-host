@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     {
         [Theory]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
-        [InlineData(WarmUpConstants.LinuxJitTraceFileName, 3.0)]
+        [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]
         public void ColdStart_JitFailuresTest(string fileName, double threshold)
         {
             var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);

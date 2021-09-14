@@ -291,6 +291,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task FunctionDispatcherState_Initialized_RemainsInitializing(bool setException = false)
+        {
+            var mockRpcWorkerChannel = new Mock<IRpcWorkerChannel>();
+            var tcs = new TaskCompletionSource<IRpcWorkerChannel>();
+            Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>();
+            Mock<IWebHostRpcWorkerChannelManager> mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
+
+            mockRpcWorkerChannel.Setup(a => a.StartWorkerProcessAsync()).Returns(Task.FromResult(true));
+            mockRpcWorkerChannel.Setup(a => a.SetupFunctionInvocationBuffers(It.IsAny<IEnumerable<FunctionMetadata>>()));
+            mockRpcWorkerChannel.Setup(a => a.SendFunctionLoadRequests(It.IsAny<ManagedDependencyOptions>(), It.IsAny<TimeSpan?>()));
+            webhostLanguageWorkerChannels.Add("java", tcs);
+            mockWebHostChannelManager.Setup(a => a.GetChannels(It.IsAny<string>())).Returns(webhostLanguageWorkerChannels);
+            mockWebHostChannelManager.Setup(a => a.ShutdownChannelIfExistsAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Exception>())).Returns(Task.FromResult(true));
+            if (!setException)
+            {
+                tcs.SetResult(mockRpcWorkerChannel.Object);
+            }
+            else
+            {
+                tcs.SetException(new Exception());
+            }
+
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(addWebhostChannel: true, mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager);
+
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = "node"
+            };
+            var functions = new List<FunctionMetadata>()
+            {
+                func1
+            };
+            await functionDispatcher.InitializeAsync(functions);
+            Assert.Equal(FunctionInvocationDispatcherState.Initializing, functionDispatcher.State);
+
+            try
+            {
+                await WaitForFunctionDispactherStateInitialized(functionDispatcher);
+            }
+            catch (Exception)
+            {
+                // We don't care if this times out
+            }
+
+            if (!setException)
+            {
+                Assert.Equal(FunctionInvocationDispatcherState.Initialized, functionDispatcher.State);
+            }
+            else
+            {
+                Assert.Equal(FunctionInvocationDispatcherState.Initializing, functionDispatcher.State);
+            }
+        }
+
         [Fact]
         public async Task FunctionDispatcherState_Transitions_From_Default_To_Initialized_To_Disposing()
         {
