@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -114,6 +116,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public IDictionary<string, string> GetTestEnvVars()
         {
             return new Dictionary<string, string>() { { "rpckey1", "rpcvalue1" }, { "rpckey2", "rpcvalue2" } };
+        }
+
+        [Theory]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonThreadpoolThreadCount, "1", "1")]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonThreadpoolThreadCount, null, RpcWorkerConstants.DefaultConcurrencyLimit)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound, "1", "1")]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound, null, RpcWorkerConstants.DefaultConcurrencyLimit)]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName, "test", null, null)]
+        public void DefaultWorkerProcessFactory_ApplyWorkerConcurrencyLimits_WorksAsExpected(string runtime, string name, string value, string expectedValue)
+        {
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
+
+            Process process = defaultWorkerProcessFactory.CreateWorkerProcess(TestWorkerContexts.ToList()[1][0] as WorkerContext);
+            process.StartInfo.EnvironmentVariables[RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = runtime;
+            if (!string.IsNullOrEmpty(value))
+            {
+                process.StartInfo.EnvironmentVariables[name] = value;
+            }
+            defaultWorkerProcessFactory.ApplyWorkerConcurrencyLimits(process.StartInfo);
+            Assert.Equal(process.StartInfo.EnvironmentVariables.GetValue(name), expectedValue);
         }
     }
 }
