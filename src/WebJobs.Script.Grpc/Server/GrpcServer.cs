@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task StartAsync()
         {
             _server.Start();
-            _logger.LogDebug($"Started {nameof(GrpcServer)} on {Uri}...");
+            _logger.LogDebug($"Started {nameof(GrpcServer)} on {Uri}.");
             return Task.CompletedTask;
         }
 
