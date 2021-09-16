@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -53,6 +54,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     configureWebJobs?.Invoke(webJobsBuilder);
+
+                    webJobsBuilder.Services.AddSingleton<HttpClient>(f =>
+                    {
+                        configLoggerFactory.CreateLogger("test").LogInformation("Registering Functions Host HttpClient");
+                        return rootServiceProvider.GetService<HttpClient>();
+                    });
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
 
