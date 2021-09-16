@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 new ExtensionPackageReference
                 {
                     Id = "Microsoft.Azure.WebJobs.Extensions.DurableTask",
-                    Version = "1.8.2"
+                    Version = "2.5.0"
                 }
             };
         }

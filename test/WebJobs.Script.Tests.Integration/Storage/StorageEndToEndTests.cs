@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.Storage",
-                        Version = "4.0.2"
+                        Version = "4.0.4"
                     }
                 };
             }
