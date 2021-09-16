@@ -373,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     new ExtensionPackageReference
                     {
                         Id = "Microsoft.Azure.WebJobs.Extensions.EventHubs",
-                        Version = "3.0.0-beta*"
+                        Version = "4.2.0"
                     }
                 };
             }
