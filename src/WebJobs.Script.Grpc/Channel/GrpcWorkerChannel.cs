@@ -12,6 +12,7 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -99,10 +100,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && !msg.IsLogOfCategory(RpcLogCategory.System))
                 .Subscribe(Log));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.IsMessageOfType(MsgType.RpcMetric))
-                .Subscribe(LogMetric));
 
             _eventSubscriptions.Add(_inboundWorkerEvents
                 .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && msg.IsLogOfCategory(RpcLogCategory.System))
@@ -616,33 +613,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
                 System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
                 {
-                    if (rpcLog.Exception != null)
+                    if (rpcLog.LogCategory == RpcLogCategory.CustomMetric)
                     {
-                        var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
-                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                        var rpcLogProperties = rpcLog.PropertiesMap.ToDictionary(i => i.Key, i => i.Value);
+                        if (rpcLogProperties.TryGetValue(LogConstants.NameKey, out var metricName)
+                            && rpcLogProperties.TryGetValue(LogConstants.MetricValueKey, out var metricValue))
+                        {
+                            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
+                            // Strip off the name/value entries in the dictionary passed to Log Message and include the rest as the property bag passed to the backing ILogger
+                            context.Logger.LogMetric(metricName.String, metricValue.Double, rpcLogProperties
+                                    .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
+                                    .ToDictionary(i => i.Key, i => i.Value.ToObject()));
+                        }
                     }
                     else
                     {
-                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
-                    }
-                }, null);
-            }
-        }
-
-        internal void LogMetric(GrpcEvent msg)
-        {
-            var rpcMetric = msg.Message.RpcMetric;
-            if (_executingInvocations.TryGetValue(rpcMetric.InvocationId, out ScriptInvocationContext context))
-            {
-                // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
-                System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
-                {
-                    var metricDetails = rpcMetric.Properties.ToDictionary(i => i.Key, i => (object)i.Value);
-                    {
-                        // Strip off the name/value entries in the dictionary passed to LogMetric and include the rest as the property bag passed to the backing ILogger
-                        context.Logger.LogMetric(rpcMetric.Name, rpcMetric.Value, metricDetails); /*
-                        .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
-                        .ToDictionary(i => i.Key, i => i.Value)); */
+                        if (rpcLog.Exception != null)
+                        {
+                            var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                        }
+                        else
+                        {
+                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                        }
                     }
                 }, null);
             }

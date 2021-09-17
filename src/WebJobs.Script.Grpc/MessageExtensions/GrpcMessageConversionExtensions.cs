@@ -28,24 +28,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             switch (typedData.DataCase)
             {
-                case RpcDataType.Bytes:
-                case RpcDataType.Stream:
-                    return typedData.Bytes.ToByteArray();
+                case RpcDataType.None:
+                    return null;
                 case RpcDataType.String:
                     return typedData.String;
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
+                case RpcDataType.Bytes:
+                case RpcDataType.Stream:
+                    return typedData.Bytes.ToByteArray();
                 case RpcDataType.Http:
                     return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
                     return typedData.Double;
-                case RpcDataType.None:
-                    return null;
                 default:
                     // TODO better exception
-                    throw new InvalidOperationException("Unknown RpcDataType");
+                    throw new InvalidOperationException($@"Unknown RpcDataType: {typedData.DataCase}");
             }
         }
 
@@ -57,29 +57,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 return typedData;
             }
 
-            if (value is byte[] arr)
+            switch (value)
             {
-                typedData.Bytes = ByteString.CopyFrom(arr);
-            }
-            else if (value is JObject jobj)
-            {
-                typedData.Json = jobj.ToString(Formatting.None);
-            }
-            else if (value is string str)
-            {
-                typedData.String = str;
-            }
-            else if (value.GetType().IsArray && IsTypedDataCollectionSupported(capabilities))
-            {
-                typedData = value.ToRpcCollection();
-            }
-            else if (value is HttpRequest request)
-            {
-                typedData = await request.ToRpcHttp(logger, capabilities);
-            }
-            else
-            {
-                typedData = value.ToRpcDefault();
+                case byte[] arr:
+                    typedData.Bytes = ByteString.CopyFrom(arr);
+                    break;
+                case JObject jobj:
+                    typedData.Json = jobj.ToString(Formatting.None);
+                    break;
+                case string str:
+                    typedData.String = str;
+                    break;
+                case double dbl:
+                    typedData.Double = dbl;
+                    break;
+                case HttpRequest request:
+                    typedData = await request.ToRpcHttp(logger, capabilities);
+                    break;
+                default:
+                    typedData = value.GetType().IsArray && IsTypedDataCollectionSupported(capabilities) ? value.ToRpcCollection() : value.ToRpcDefault();
+                    break;
             }
 
             return typedData;
@@ -88,25 +85,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal static TypedData ToRpcCollection(this object value)
         {
             TypedData typedData;
-            if (value is byte[][] arrBytes)
+            switch (value)
             {
-                typedData = arrBytes.ToRpcByteArray();
-            }
-            else if (value is string[] arrStr)
-            {
-                typedData = arrStr.ToRpcStringArray();
-            }
-            else if (value is double[] arrDouble)
-            {
-                typedData = arrDouble.ToRpcDoubleArray();
-            }
-            else if (value is long[] arrLong)
-            {
-                typedData = arrLong.ToRpcLongArray();
-            }
-            else
-            {
-                typedData = value.ToRpcDefault();
+                case byte[][] arrBytes:
+                    typedData = arrBytes.ToRpcByteArray();
+                    break;
+                case string[] arrStr:
+                    typedData = arrStr.ToRpcStringArray();
+                    break;
+                case double[] arrDouble:
+                    typedData = arrDouble.ToRpcDoubleArray();
+                    break;
+                case long[] arrLong:
+                    typedData = arrLong.ToRpcLongArray();
+                    break;
+                default:
+                    typedData = value.ToRpcDefault();
+                    break;
             }
 
             return typedData;
