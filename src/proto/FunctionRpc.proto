@@ -481,9 +481,9 @@ message RpcLog {
 
   // Category of the log. Defaults to User if not specified.
   enum RpcLogCategory {
-	User = 0;
-	System = 1;
-  CustomMetric = 2;
+    User = 0;
+    System = 1;
+    CustomMetric = 2;
   }
 
   // Unique id for invocation (if exists)
@@ -505,11 +505,14 @@ message RpcLog {
   // Exception (if exists)
   RpcException exception = 6;
 
-  // json serialized property bag, or could use a type scheme like map<string, TypedData>
-  map<string, TypedData> properties = 7;
+  // json serialized property bag
+  string properties = 7;
 
-  // Category of the log. Either user(default) or system.
+  // Category of the log. Either user(default), system, or custom metric.
   RpcLogCategory log_category = 8;
+
+  // strongly-typed (ish) property bag
+  map<string, TypedData> propertiesMap = 9;
 }
 
 // Encapsulates an Exception 
