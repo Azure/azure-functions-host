@@ -3,7 +3,7 @@
   "bundles": [
     {
       "id": "Microsoft.Azure.Functions.ExtensionBundle",
-      "minimumVersion": "2.7.0"
+      "minimumVersion": "2.6.1"
     }
   ],
   "types": [
@@ -18,8 +18,8 @@
       "name": "ServiceBusWebJobsStartup",
       "assemblyName": "Microsoft.Azure.WebJobs.ServiceBus",
       "packageName": "Microsoft.Azure.WebJobs.Extensions.ServiceBus",
-      "minimumAssemblyVersion": "4.3.0.0",
-      "minimumPackageVersion": "4.3.0"
+      "minimumAssemblyVersion": "4.2.1.0",
+      "minimumPackageVersion": "4.2.1"
     },
     {
       "name": "EventHubsWebJobsStartup",
@@ -32,16 +32,16 @@
       "name": "CosmosDBWebJobsStartup",
       "assemblyName": "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
       "packageName": "Microsoft.Azure.WebJobs.Extensions.CosmosDB",
-      "minimumAssemblyVersion": "3.0.10.0",
-      "minimumPackageVersion": "3.0.10"
+      "minimumAssemblyVersion": "3.0.9.0",
+      "minimumPackageVersion": "3.0.9"
     },
     {
       "name": "DurableTaskWebJobsStartup",
       "assemblyName": "Microsoft.Azure.WebJobs.Extensions.DurableTask",
       "packageName": "Microsoft.Azure.WebJobs.Extensions.DurableTask",
       "minimumAssemblyVersion": "2.0.0.0",
-      "minimumAssemblyFileVersion": "2.5.0",
-      "minimumPackageVersion": "2.5.0"
+      "minimumAssemblyFileVersion": "2.4.1",
+      "minimumPackageVersion": "2.4.1"
     },
     {
       "name": "EventGridWebJobsStartup",
@@ -61,8 +61,8 @@
       "name": "KafkaWebJobsStartup",
       "assemblyName": "Microsoft.Azure.WebJobs.Extensions.Kafka",
       "packageName": "Microsoft.Azure.WebJobs.Extensions.Kafka",
-      "minimumAssemblyVersion": "3.3.2.0",
-      "minimumPackageVersion": "3.3.2"
+      "minimumAssemblyVersion": "3.2.1.0",
+      "minimumPackageVersion": "3.2.1"
     }
   ]
 }

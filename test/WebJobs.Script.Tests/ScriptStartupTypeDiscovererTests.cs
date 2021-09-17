@@ -490,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
-                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.7.0. Update your extension bundle reference in host.json to reference 2.7.0 or later.")));
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.6.1. Update your extension bundle reference in host.json to reference 2.6.1 or later.")));
             }
         }
 
@@ -536,16 +536,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.NotNull(storageTrace);
                 Assert.Equal("ExtensionStartupType AzureStorageWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.Storage, Version=3.0.10.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.0.4.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.Storage to 4.0.4 or later.",
                     storageTrace.FormattedMessage);
-
-                var serviceBusTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType ServiceBusWebJobsStartup"));
-                Assert.NotNull(serviceBusTrace);
-                Assert.Equal("ExtensionStartupType ServiceBusWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.ServiceBus, Version=4.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' does not meet the required minimum version of 4.3.0.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.ServiceBus to 4.3.0 or later.",
-                    serviceBusTrace.FormattedMessage);
-
-                var durableTrace = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("ExtensionStartupType DurableTaskWebJobsStartup"));
-                Assert.NotNull(durableTrace);
-                Assert.Equal("ExtensionStartupType DurableTaskWebJobsStartup from assembly 'Microsoft.Azure.WebJobs.Extensions.DurableTask, Version=2.0.0.0, Culture=neutral, PublicKeyToken=014045d636e89289' does not meet the required minimum version of 2.5.0. Update your NuGet package reference for Microsoft.Azure.WebJobs.Extensions.DurableTask to 2.5.0 or later.",
-                    durableTrace.FormattedMessage);
             }
         }
 
