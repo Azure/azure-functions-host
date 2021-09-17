@@ -55,9 +55,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     configureWebJobs?.Invoke(webJobsBuilder);
 
-                    webJobsBuilder.Services.AddSingleton<HttpClient>(f =>
+                    webJobsBuilder.Services.TryAddSingleton<HttpClient>(f =>
                     {
-                        configLoggerFactory.CreateLogger("test").LogInformation("Registering Functions Host HttpClient");
+                        var loggerFactory = f.GetService<ILoggerFactory>();
+                        loggerFactory.CreateLogger("Host.Startup").LogWarning("Detected direct usage of HttpClient in function app. Please use HttpClientFactory instead - see <TODO aka.ms link> for more information.");
                         return rootServiceProvider.GetService<HttpClient>();
                     });
 
