@@ -2,13 +2,15 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
 
@@ -16,33 +18,64 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class ScriptHostIdProviderTests
     {
+        private readonly ScriptHostIdProvider _provider;
+        private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly HostIdValidator _hostIdValidator;
+        private readonly TestEnvironment _environment;
+
+        public ScriptHostIdProviderTests()
+        {
+            var options = new ScriptApplicationHostOptions();
+            _environment = new TestEnvironment();
+
+            _mockConfiguration = new Mock<IConfiguration>(MockBehavior.Strict);
+
+            var loggerProvider = new TestLoggerProvider();
+            var loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(loggerProvider);
+            var logger = loggerFactory.CreateLogger<HostIdValidator>();
+            var hostNameProvider = new HostNameProvider(_environment);
+            var mockStorageProvider = new Mock<IAzureStorageProvider>(MockBehavior.Strict);
+            var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
+            _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, mockApplicationLifetime.Object, hostNameProvider, logger);
+            _provider = new ScriptHostIdProvider(_mockConfiguration.Object, _environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(options), _hostIdValidator);
+        }
+
         [Fact]
         public async Task GetHostIdAsync_WithConfigurationHostId_ReturnsConfigurationHostId()
         {
-            var options = new ScriptApplicationHostOptions();
-            var environment = new TestEnvironment();
+            _mockConfiguration.SetupGet(p => p[ConfigurationSectionNames.HostIdPath]).Returns("test-host-id");
 
-            var config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string>
-                {
-                    { ConfigurationPath.Combine(ConfigurationSectionNames.HostIdPath), "test-host-id" }
-                })
-                .Build();
-
-            var provider = new ScriptHostIdProvider(config, environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(options));
-
-            string hostId = await provider.GetHostIdAsync(CancellationToken.None);
+            string hostId = await _provider.GetHostIdAsync(CancellationToken.None);
 
             Assert.Equal("test-host-id", hostId);
         }
 
         [Theory]
-        [InlineData("TEST-FUNCTIONS--", "123123", "test-functions")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx")]
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "123123", "test-functions-xxxxxxxxxxxxxxxx")] /* 32nd character is a '-' */
-        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", null, "testsite")] // Linux consumption scenario where host id will be derived from the host name.
-        [InlineData(null, "123123", null)]
-        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected)
+        [InlineData("TEST-FUNCTIONS--", "123123", "test-functions", false)]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx", true)]
+        public async Task GetHostIdAsync_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected, bool validationExpected)
+        {
+            _mockConfiguration.SetupGet(p => p[ConfigurationSectionNames.HostIdPath]).Returns((string)null);
+
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, azureWebsiteInstanceId);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
+
+            string hostId = await _provider.GetHostIdAsync(CancellationToken.None);
+
+            Assert.Equal(expected, hostId);
+            Assert.Equal(validationExpected, _hostIdValidator.ValidationScheduled);
+        }
+
+        [Theory]
+        [InlineData("TEST-FUNCTIONS--", "123123", "test-functions", false)]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", "123123", "test-functions-xxxxxxxxxxxxxxxxx", true)]
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", "123123", "test-functions-xxxxxxxxxxxxxxxx", true)] /* 32nd character is a '-' */
+        [InlineData("TEST-FUNCTIONS-XXXXXXXXXXXXXXXX-XXXX", null, "testsite", false)] // Linux consumption scenario where host id will be derived from the host name.
+        [InlineData(null, "123123", null, false)]
+        public void GetDefaultHostId_AzureHost_ReturnsExpectedResult(string siteName, string azureWebsiteInstanceId, string expected, bool expectedTruncation)
         {
             var options = new ScriptApplicationHostOptions
             {
@@ -54,8 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, siteName);
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "testContainer");
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "testsite.azurewebsites.net");
-            string hostId = ScriptHostIdProvider.GetDefaultHostId(environment, options);
-            Assert.Equal(expected, hostId);
+            var result = ScriptHostIdProvider.GetDefaultHostId(environment, options);
+            Assert.Equal(expected, result.HostId);
+            Assert.Equal(expectedTruncation, result.IsTruncated);
+            Assert.False(result.IsLocal);
         }
 
         [Fact]
@@ -69,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var environmentMock = new Mock<IEnvironment>();
 
-            string hostId = ScriptHostIdProvider.GetDefaultHostId(environmentMock.Object, options);
+            var result = ScriptHostIdProvider.GetDefaultHostId(environmentMock.Object, options);
 
             // This suffix is a stable hash code derived from the "RootScriptPath" string passed in the configuration.
             // We're using the literal here as we want this test to fail if this compuation ever returns something different.
@@ -78,7 +113,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string sanitizedMachineName = Environment.MachineName
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString().ToLowerInvariant();
-            Assert.Equal($"{sanitizedMachineName}-{suffix}", hostId);
+            Assert.Equal($"{sanitizedMachineName}-{suffix}", result.HostId);
+            Assert.True(result.IsLocal);
         }
     }
 }
