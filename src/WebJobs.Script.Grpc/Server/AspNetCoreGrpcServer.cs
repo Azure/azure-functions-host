@@ -32,11 +32,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Uri Uri { get; private set; }
 
-        public Task StartAsync()
+        public async Task StartAsync()
         {
             _grpcHost = _grpcHostBuilder.Build();
 
-            _grpcHost.Start();
+            await _grpcHost.StartAsync();
 
             // Get the actual address we've started on.
             var server = _grpcHost.Services.GetService<IServer>();
@@ -50,8 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _logger.LogDebug($"Started {nameof(AspNetCoreGrpcServer)} on {address}.");
-
-            return Task.CompletedTask;
         }
 
         public Task ShutdownAsync() => _grpcHost.StopAsync();
