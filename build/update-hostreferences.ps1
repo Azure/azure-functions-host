@@ -153,8 +153,8 @@ try
         }
         else
         {
-            WriteLog "Adding '$($packageInfo.Name)' '$($packageInfo.Version)' to project"
-            & { dotnet add package $packageInfo.Name -v $packageInfo.Version -s $SOURCE --no-restore }
+            WriteLog "Adding '$packageName' '$packageVersion' to project"
+            & { dotnet add package $packageName -v $packageVersion -s $source --no-restore }
 
             if ($LASTEXITCODE -ne 0)
             {
