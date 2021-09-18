@@ -116,6 +116,13 @@ if ($packagesToUpdate.Count -eq 0)
 WriteLog "Package references to update: $($packagesToUpdate.Count)"
 
 $currentDirectory = Get-Location
+
+$languageWorkerPackages = @{}
+$functionsZipPackage = @{
+    PackageName = $null
+    LanguageWorkerPackages = $null
+}
+
 try
 {
     set-location $path
@@ -124,7 +131,7 @@ try
     {
         $packageInfo = GetPackageInfo -Name $package.Name -MajorVersion $package.MajorVersion
 
-        if ($package.Name -eq "Microsoft.Azure.Functions.PythonWorker")
+        if ($packageInfo.Name -eq "Microsoft.Azure.Functions.PythonWorker")
         {
             # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in build/python.props.
             # To update the package version, the xml file build/python.props needs to be updated directly.
@@ -161,10 +168,23 @@ try
                 WriteLog "dotnet add package '$($packageInfo.Name)' -v '$($packageInfo.Version)' -s $SOURCE --no-restore failed" -Throw
             }
         }
+
+        $languageWorkerPackages.Add($packageInfo.Name, $packageInfo.Version)
     }
 }
 finally
 {
+    if ($languageWorkerPackages.Count -gt 0)
+    {
+        $functionsZipPackage["LanguageWorkerPackages"] = $languageWorkerPackages
+
+        $folderDestinationPath = "$PSScriptRoot/IntegrationTestArtifacts"
+        New-Item -Path $folderDestinationPath -ItemType Directory | Out-Null
+
+        $filePath = "$folderDestinationPath/PackageInfo.json"
+        $functionsZipPackage | ConvertTo-Json | Set-Content -Path $filePath
+    }
+
     Set-Location $currentDirectory
 }
 
