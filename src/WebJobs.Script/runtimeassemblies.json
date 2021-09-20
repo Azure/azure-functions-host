@@ -19,6 +19,26 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Grpc.AspNetCore.Server",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Grpc.AspNetCore.Server.ClientFactory",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Grpc.Net.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Grpc.Net.ClientFactory",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Grpc.Net.Common",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Bcl.AsyncInterfaces",
       "resolutionPolicy": "private"
     },
