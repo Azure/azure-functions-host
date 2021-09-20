@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Dictionary<string, string> dictionary = GetDictionaryFromScriptSecrets(secrets, functionName);
 
             // Delete existing keys
-            AsyncPageable<SecretProperties>secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
+            AsyncPageable<SecretProperties> secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
             List<Task> deleteTasks = new List<Task>();
             string prefix = (type == ScriptSecretsType.Host) ? HostPrefix : FunctionPrefix + Normalize(functionName);
 
@@ -202,9 +202,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return functionSecrets;
         }
 
-        public static AsyncPageable<SecretProperties> GetKeyVaultSecretsPagesAsync(SecretClient keyVaultClient)
+        public static AsyncPageable<SecretProperties> GetKeyVaultSecretsPagesAsync(SecretClient secretClient)
         {
-            return keyVaultClient.GetPropertiesOfSecretsAsync();
+            return secretClient.GetPropertiesOfSecretsAsync();
         }
 
         public static async Task<List<SecretProperties>> FindSecrets(AsyncPageable<SecretProperties> secretsPages, Func<SecretProperties, bool> comparison = null)
