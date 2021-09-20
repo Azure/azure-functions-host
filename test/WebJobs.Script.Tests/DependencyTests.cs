@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     continue;
                 }
 
-                RuntimeFile newFile = newAssets.SingleOrDefault(p =>
+                var newFile = newAssets.SingleOrDefault(p =>
                 {
                     return Path.GetFileName(p.Path) == fileName &&
-                        p.FileVersion != oldFile.FileVersion &&
-                        p.AssemblyVersion != oldFile.AssemblyVersion;
+                        (p.FileVersion != oldFile.FileVersion ||
+                         p.AssemblyVersion != oldFile.AssemblyVersion);
                 });
 
                 if (newFile != null)
