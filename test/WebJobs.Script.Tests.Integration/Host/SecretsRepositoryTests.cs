@@ -374,13 +374,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Fixture()
             {
                 TestSiteName = "Test_test";
+                Environment = new TestEnvironment();
+
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                 KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
-                KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
-                DefaultAzureCredential DefaultAzureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions { ManagedIdentityClientId = KeyVaultClientId });
-                SecretClient = new SecretClient(new Uri(KeyVaultUri), new DefaultAzureCredential());
-                Environment = new TestEnvironment();
+                KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
+
+                Uri vaultUri = new Uri($"https://{KeyVaultName}{Environment.GetVaultSuffix()}");
+                var credential = string.IsNullOrEmpty(KeyVaultClientId) ? new DefaultAzureCredential()
+                    : new ManagedIdentityCredential(KeyVaultClientId);
+
+                SecretClient = new SecretClient(vaultUri, credential);
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
 
@@ -398,7 +403,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public SecretClient SecretClient { get; private set; }
 
-            public string KeyVaultUri { get; private set; }
+            public string KeyVaultName { get; private set; }
 
             public string KeyVaultClientId { get; private set; }
 
@@ -453,7 +458,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, logger, Environment);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultName, KeyVaultClientId, logger, Environment);
                 }
             }
 

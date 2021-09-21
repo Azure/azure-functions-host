@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
-                ManagedIdentityCredential credential = string.IsNullOrEmpty(clientId) ? new ManagedIdentityCredential()
+                var credential = string.IsNullOrEmpty(clientId) ? new DefaultAzureCredential()
                     : new ManagedIdentityCredential(clientId);
 
                 return new SecretClient(vaultUri, credential);
