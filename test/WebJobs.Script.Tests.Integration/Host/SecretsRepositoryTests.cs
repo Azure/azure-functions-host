@@ -382,7 +382,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
 
                 Uri vaultUri = new Uri($"https://{KeyVaultName}{Environment.GetVaultSuffix()}");
-                var credential = string.IsNullOrEmpty(KeyVaultClientId) ? new DefaultAzureCredential()
+                ManagedIdentityCredential credential = string.IsNullOrEmpty(KeyVaultClientId) ? new ManagedIdentityCredential()
                     : new ManagedIdentityCredential(KeyVaultClientId);
 
                 SecretClient = new SecretClient(vaultUri, credential);
