@@ -1,5 +1,24 @@
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
+$setPatchVersion = $null
+
+if ($env:RUNBUILDFORINTEGRATIONTESTS)
+{
+    if (-not ([bool]::TryParse($env:RUNBUILDFORINTEGRATIONTESTS, [ref] $setPatchVersion)))
+    {
+      throw "RUNBUILDFORINTEGRATIONTESTS can only be set to True or False. Current value is set to $env:RUNBUILDFORINTEGRATIONTESTS"
+    }
+    Write-Host "setPatchVersion: $setPatchVersion"
+}
+
+if ($setPatchVersion)
+{
+  $helperModulePath = ".\build\helper.psm1"
+  Import-Module $helperModulePath -Force -ErrorAction Stop
+
+  $propsFilePath = ".\build\common.props"
+  AddPatchVersionToCommonProps -FilePath $propsFilePath
+}
 
 Write-Host "BUILD_REASON: '$buildReason'"
 Write-Host "BUILD_SOURCEBRANCH: '$sourceBranch'"
