@@ -281,7 +281,7 @@ jobs:
     artifact: SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
-    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
+    condition: and(succeeded(), ne(variables['patchVersion'], '0'), ne(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
