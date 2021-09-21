@@ -36,11 +36,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
         public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
-
-        // You can auth through environment variables, do we want to use them?
-        // https://github.com/Azure/azure-sdk-for-net/tree/main/sdk/identity/Azure.Identity#environment-variables
-        public const string AzureWebJobsSecretStorageKeyVaultUri = "AzureWebJobsSecretStorageKeyVaultUri";
-        public const string AzureWebJobsSecretStorageKeyVaultClientId = "AzureWebJobsSecretStorageKeyVaultClientId";
+        public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
+        public const string AzureWebJobsSecretStorageKeyVaultUserManagedClientId = "AzureWebJobsSecretStorageKeyVaultUserManagedClientId";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
         public const string UserDataHome = "USER_DATA_HOME";
