@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
-                DefaultAzureCredential credential = string.IsNullOrEmpty(clientId) ? new DefaultAzureCredential()
-                    : new DefaultAzureCredential(new DefaultAzureCredentialOptions { ManagedIdentityClientId = clientId });
+                ManagedIdentityCredential credential = string.IsNullOrEmpty(clientId) ? new ManagedIdentityCredential()
+                    : new ManagedIdentityCredential(clientId);
 
-                return new SecretClient(new Uri(_vaultUri), new DefaultAzureCredential());
+                return new SecretClient(new Uri(_vaultUri), credential);
             });
 
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
