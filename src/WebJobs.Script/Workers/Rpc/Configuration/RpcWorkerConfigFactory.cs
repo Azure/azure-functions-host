@@ -139,18 +139,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             WorkerPath = workerDescription.DefaultWorkerPath
                         };
                         arguments.ExecutableArguments.AddRange(workerDescription.Arguments);
-                        var config = new RpcWorkerConfig()
-                        {
-                            Description = workerDescription,
-                            Arguments = arguments
-                        };
-                        var rpcWorkerconfig = new RpcWorkerConfig()
+                        var rpcWorkerConfig = new RpcWorkerConfig()
                         {
                             Description = workerDescription,
                             Arguments = arguments,
-                            CountOptions = workerProcessCount
+                            CountOptions = workerProcessCount,
                         };
-                        _workerDescripionDictionary[workerDescription.Language] = rpcWorkerconfig;
+                        _workerDescripionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
                 }
