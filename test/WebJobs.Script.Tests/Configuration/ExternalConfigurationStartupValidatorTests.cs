@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -74,6 +75,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                     { _lookup, "abc" },
                     { _bindingExpressionLookup, "def" }
                 });
+        }
+
+        [Fact]
+        public void MultipleTriggers_Succeeds()
+        {
+            BindingMetadata bindingMetadata1 = new BindingMetadata
+            {
+                Type = "ATrigger",
+                Raw = JObject.FromObject(new
+                {
+                    key0 = "foo"
+                })
+            };
+
+            BindingMetadata bindingMetadata2 = new BindingMetadata
+            {
+                Type = "BTrigger",
+                Raw = JObject.FromObject(new
+                {
+                    key0 = "bar"
+                })
+            };
+
+            FunctionMetadata functionMetadata = new FunctionMetadata
+            {
+                Name = "test"
+            };
+
+            functionMetadata.Bindings.Add(bindingMetadata1);
+            functionMetadata.Bindings.Add(bindingMetadata2);
+
+            ICollection<FunctionMetadata> metadata = new Collection<FunctionMetadata>
+            {
+                functionMetadata
+            };
+
+            var metadataManager = new MockMetadataManager(metadata);
+            var config = _configBuilder.Build();
+
+            var validator = new ExternalConfigurationStartupValidator(config, metadataManager);
+            var invalidValues = validator.Validate(config);
+            Assert.Empty(invalidValues);
         }
 
         [Fact]
