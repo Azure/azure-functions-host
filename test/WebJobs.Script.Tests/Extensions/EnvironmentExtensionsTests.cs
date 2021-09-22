@@ -261,8 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         public void IsWorkerDynamicConcurrencyEnabled_ReturnsExpectedResult(string concurrencyEnabledValue, string processCountValue, bool expected)
         {
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, concurrencyEnabledValue);
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, processCountValue);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, concurrencyEnabledValue);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, processCountValue);
             Assert.Equal(expected, environment.IsWorkerDynamicConcurrencyEnabled());
         }
     }

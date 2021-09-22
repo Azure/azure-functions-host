@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(10, options.HistorySize);
             Assert.Equal(0.2F, options.NewWorkerThreshold);
             Assert.Equal(TimeSpan.FromMilliseconds(100), options.LatencyThreshold);
-            Assert.Equal(0, options.MaxWorkerCount);
+            Assert.Equal(10, options.MaxWorkerCount);
         }
 
         [Fact]
