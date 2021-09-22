@@ -339,7 +339,7 @@ jobs:
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultClientId: $(KeyVaultClientId)
-      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+      AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
   - task: PowerShell@2
     condition: always()
     displayName: 'Checkin secrets'

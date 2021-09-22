@@ -27,26 +27,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<SecretClient> _secretClient;
         private readonly IEnvironment _environment;
 
-        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultName, string clientId, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
+        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
         {
             if (string.IsNullOrEmpty(secretsSentinelFilePath))
             {
                 throw new ArgumentNullException(nameof(secretsSentinelFilePath));
             }
 
-            if (string.IsNullOrEmpty(vaultName))
+            if (string.IsNullOrEmpty(vaultUri))
             {
-                throw new ArgumentNullException(nameof(vaultName));
+                throw new ArgumentNullException(nameof(vaultUri));
             }
 
-            Uri vaultUri = new Uri($"https://{vaultName}{_environment.GetVaultSuffix()}");
+            Uri keyVaultUri = new Uri(vaultUri);
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
                 ManagedIdentityCredential credential = string.IsNullOrEmpty(clientId) ? new ManagedIdentityCredential()
                     : new ManagedIdentityCredential(clientId);
 
-                return new SecretClient(vaultUri, credential);
+                return new SecretClient(keyVaultUri, credential);
             });
 
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
