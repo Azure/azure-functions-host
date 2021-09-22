@@ -11,6 +11,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Azure.Security.KeyVault.Secrets",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Azure.Storage.Blobs",
       "resolutionPolicy": "private"
     },
@@ -32,10 +36,6 @@
     },
     {
       "name": "Microsoft.Identity.Client.Extensions.Msal",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.KeyVault.Core",
       "resolutionPolicy": "private"
     },
     {

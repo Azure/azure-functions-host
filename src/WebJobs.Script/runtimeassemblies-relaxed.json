@@ -4,7 +4,11 @@
 {
   "runtimeAssemblies": [
     {
-      "name": "Microsoft.Azure.KeyVault.Core",
+      "name": "Azure.Identity",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Security.KeyVault.Secrets",
       "resolutionPolicy": "private"
     },
     {
