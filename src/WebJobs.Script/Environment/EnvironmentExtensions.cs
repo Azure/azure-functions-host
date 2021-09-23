@@ -458,8 +458,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static bool SupportsAzureFileShareMount(this IEnvironment environment)
         {
-            return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
-                StringComparison.OrdinalIgnoreCase);
+            return true;
+            //return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
+            //    StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)

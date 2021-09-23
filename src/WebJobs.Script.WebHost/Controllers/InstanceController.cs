@@ -79,5 +79,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             // Reaching here implies that http health of the container is ok.
             return Ok();
         }
+
+        // add new API for testing bind mount
+        [HttpGet]
+        [Route("admin/instance/mount")]
+        public IActionResult Mount()
+        {
+            // call bind mount
+            return Ok();
+        }
+
+        // add new API for testing file watcher
+        [HttpGet]
+        [Route("admin/instance/filewatcher")]
+        public IActionResult FileWatcherAsync()
+        {
+            // trigger file change
+            return Ok();
+        }
     }
 }

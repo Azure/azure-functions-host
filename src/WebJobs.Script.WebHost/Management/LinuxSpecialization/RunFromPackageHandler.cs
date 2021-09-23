@@ -42,26 +42,60 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         {
             try
             {
-                // If Azure Files are mounted, /home will point to a shared remote dir
-                // So extracting to /home/site/wwwroot can interfere with other running instances
-                // Instead extract to localSitePackagesPath and bind to /home/site/wwwroot
-                // home will continue to point to azure file share
-                var localSitePackagesPath = azureFilesMounted
-                    ? _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.LocalSitePackages,
-                        EnvironmentSettingNames.DefaultLocalSitePackagesPath)
-                    : string.Empty;
-
-                // download zip and extract
-                var filePath = await _packageDownloadHandler.Download(pkgContext);
-                await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
-
-                string bundlePath = Path.Combine(targetPath, "worker-bundle");
-                if (Directory.Exists(bundlePath))
+                if (pkgContext.IsRunFromLocalPackage())
                 {
-                    _logger.LogInformation($"Python worker bundle detected");
-                }
+                    // if local zip (RFP=1), then get full path: zip file name in /home/data/packagename.txt
+                    // full path will be like: /home/data/some_file
+                    var packageNameFile = "/home/data/packagename.txt";
+                    if (!Directory.Exists(packageNameFile))
+                    {
+                        _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packageNameFile} does not exist!");
+                        return false;
+                    }
 
-                return true;
+                    // packagename.txt should consist of one line which contains the name of the package we need to mount
+                    var contents = File.ReadLines(packageNameFile);
+                    if (contents.Count() != 1)
+                    {
+                        _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packageNameFile} is invalid. It should consist only of the package file name.");
+                        return false;
+                    }
+
+                    var packageName = contents.First();
+                    var packagePath = $"/home/data/{packageName}";
+
+                    // mount the package to /home/site/wwwroot
+                    _logger.LogInformation($"Mounting {packagePath} to {targetPath}.");
+                    await _meshServiceClient.MountFuse(MeshServiceClient.SquashFsOperation, packagePath, targetPath);
+
+                    // initialize file watcher for file that points to package
+                    InitializeLocalPackageWatcher(packageNameFile);
+                    return true;
+                }
+                else
+                {
+                    // If Azure Files are mounted, /home will point to a shared remote dir
+                    // So extracting to /home/site/wwwroot can interfere with other running instances
+                    // Instead extract to localSitePackagesPath and bind to /home/site/wwwroot
+                    // home will continue to point to azure file share
+
+                    var localSitePackagesPath = azureFilesMounted
+                        ? _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.LocalSitePackages,
+                            EnvironmentSettingNames.DefaultLocalSitePackagesPath)
+                        : string.Empty;
+
+                    // download zip and extract
+                    var filePath = await _packageDownloadHandler.Download(pkgContext);
+                    await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
+
+                    string bundlePath = Path.Combine(targetPath, "worker-bundle");
+                    if (Directory.Exists(bundlePath))
+                    {
+                        _logger.LogInformation($"Python worker bundle detected");
+                    }
+
+                    return true;
+                }
             }
             catch (Exception e)
             {
@@ -75,6 +109,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
+        private void InitializeLocalPackageWatcher(string packageNameFile)
+        {
+            var filePath = "/home/data/packagename.txt";
+            _logger.LogDebug($"Initializing file watcher used for RFP=1. Watching file {filePath}");
+
+            // something like below but figure out how to access event subscriptions/filewatcher service
+            // and extract mounting to callable method (outside of specialization context?)
+            //_eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
+            //            .Where(f => string.Equals(f.Source, packageNameFile, StringComparison.Ordinal))
+            //            .Subscribe(e => OnLocalPackageFileChanged(e.FileChangeArguments)));
+        }
+
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
         {
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
@@ -84,6 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 packageType = GetPackageType(filePath, pkgContext);
             }
 
+            // no need to unsquash, just bind mount to test out (try mountfuse with squashfs)
             if (packageType == CodePackageType.Squashfs)
             {
                 // default to mount for squashfs images
