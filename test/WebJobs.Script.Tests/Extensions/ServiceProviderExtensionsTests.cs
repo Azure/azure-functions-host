@@ -36,5 +36,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             var result = serviceProviderMock.Object.GetScriptHostServiceOrNull<ITestInterface>();
             Assert.Null(result);
         }
+
+        [Fact]
+        public void GetScriptHostServiceOrNull_ContainerDisposed_ReturnsNull()
+        {
+            var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Throws(new ObjectDisposedException("test"));
+            var result = serviceProviderMock.Object.GetScriptHostServiceOrNull<ITestInterface>();
+            Assert.Null(result);
+        }
     }
 }
