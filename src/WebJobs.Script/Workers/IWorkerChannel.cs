@@ -3,12 +3,15 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public interface IHttpWorkerChannel : IWorkerChannel
+    public interface IWorkerChannel
     {
-        Task InvokeAsync(ScriptInvocationContext context);
+        string Id { get; }
+
+        Task<WorkerStatus> GetWorkerStatusAsync();
+
+        Task StartWorkerProcessAsync(CancellationToken cancellationToken = default);
     }
 }

@@ -24,9 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions = null;
         private readonly ISharedMemoryManager _sharedMemoryManager = null;
         private readonly IFunctionDataCache _functionDataCache = null;
+        private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
 
         public GrpcWorkerChannelFactory(IScriptEventManager eventManager, IEnvironment environment, IRpcServer rpcServer, ILoggerFactory loggerFactory, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache)
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IRpcWorkerProcessFactory rpcWorkerProcessManager, ISharedMemoryManager sharedMemoryManager, IFunctionDataCache functionDataCache, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
         {
             _eventManager = eventManager;
             _loggerFactory = loggerFactory;
@@ -35,6 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _functionDataCache = functionDataCache;
+            _workerConcurrencyOptions = workerConcurrencyOptions;
         }
 
         public IRpcWorkerChannel Create(string scriptRootPath, string runtime, IMetricsLogger metricsLogger, int attemptCount, IEnumerable<RpcWorkerConfig> workerConfigs)
@@ -58,7 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                          _environment,
                          _applicationHostOptions,
                          _sharedMemoryManager,
-                         _functionDataCache);
+                         _functionDataCache,
+                         _workerConcurrencyOptions);
         }
     }
 }

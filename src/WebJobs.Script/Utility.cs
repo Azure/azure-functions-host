@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
@@ -259,6 +260,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IReadOnlyDictionary<string, string> ToStringValues(this IReadOnlyDictionary<string, object> data)
         {
             return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static string GetValueOrNull(this StringDictionary dictionary, string key)
+        {
+            return dictionary.ContainsKey(key) ? dictionary[key] : null;
         }
 
         // "Namespace.Class.Method" --> "Method"
