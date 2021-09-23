@@ -381,9 +381,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
                 KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
 
-                ManagedIdentityCredential credential = string.IsNullOrEmpty(KeyVaultClientId) ? new ManagedIdentityCredential()
-                    : new ManagedIdentityCredential(KeyVaultClientId);
-
+                var credential = new DefaultAzureCredential();
                 SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
