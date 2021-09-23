@@ -384,7 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ManagedIdentityCredential credential = string.IsNullOrEmpty(KeyVaultClientId) ? new ManagedIdentityCredential()
                     : new ManagedIdentityCredential(KeyVaultClientId);
 
-                SecretClient = new SecretClient(KeyVaultUri, credential);
+                SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
 
@@ -574,33 +574,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private async Task<ScriptSecrets> GetSecretsFromKeyVault(string functionNameOrHost, ScriptSecretsType type)
             {
                 var secretResults = SecretClient.GetPropertiesOfSecretsAsync().AsPages();
+                var searchPages = new List<SecretProperties>();
                 await foreach (Page<SecretProperties> page in secretResults)
                 {
-                    if (type == ScriptSecretsType.Host)
                     {
-                        KeyVaultSecret masterBundle = await SecretClient.GetSecretAsync(page.Values.FirstOrDefault(x => x.Name.StartsWith("host--master")).Name);
-                        KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(page.Values.FirstOrDefault(x => x.Name.StartsWith("host--functionKey")).Name);
-                        KeyVaultSecret systemKeyBundle = await SecretClient.GetSecretAsync(page.Values.FirstOrDefault(x => x.Name.StartsWith("host--systemKey")).Name);
-                        HostSecrets hostSecrets = new HostSecrets()
+                        foreach (SecretProperties secret in page.Values)
                         {
-                            FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) },
-                            SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.Name), systemKeyBundle.Value) }
-                        };
-                        hostSecrets.MasterKey = new Key("master", masterBundle.Value);
-                        return hostSecrets;
-                    }
-                    else
-                    {
-                        KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(page.Values.FirstOrDefault(x => x.Name.StartsWith("function--")).Name);
-                        FunctionSecrets functionSecrets = new FunctionSecrets()
-                        {
-                            Keys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) }
-                        };
-                        return functionSecrets;
+                            searchPages.Add(secret);
+                        }
                     }
                 }
-                // TODO: don't do this!
-                return new FunctionSecrets();
+
+                if (type == ScriptSecretsType.Host)
+                {
+                    KeyVaultSecret masterBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--master")).Name);
+                    KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--functionKey")).Name);
+                    KeyVaultSecret systemKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--systemKey")).Name);
+                    HostSecrets hostSecrets = new HostSecrets()
+                    {
+                        FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) },
+                        SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.Name), systemKeyBundle.Value) }
+                    };
+                    hostSecrets.MasterKey = new Key("master", masterBundle.Value);
+                    return hostSecrets;
+                }
+                else
+                {
+                    KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("function--")).Name);
+                    FunctionSecrets functionSecrets = new FunctionSecrets()
+                    {
+                        Keys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) }
+                    };
+                    return functionSecrets;
+                }
             }
 
             public bool MarkerFileExists(string functionNameOrHost)
