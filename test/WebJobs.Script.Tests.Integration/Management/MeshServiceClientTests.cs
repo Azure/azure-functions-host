@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             _environment = new TestEnvironment();
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
-            _meshServiceClient = new MeshServiceClient(new HttpClient(_handlerMock.Object), _environment,
+            _meshServiceClient = new MeshServiceClient(CreateHttpClientFactory(_handlerMock), _environment,
                 NullLogger<MeshServiceClient>.Instance);
         }
 
@@ -257,6 +257,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var matchesOperation = string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
                      string.Equals(MeshServiceClient.AddFES, formData["operation"]);
             return expectedActivities.Aggregate(matchesOperation, (current, activity) => current && formData["content"].Contains(activity.FunctionName));
+        }
+
+        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock)
+        {
+            var httpClient = new HttpClient(handlerMock.Object);
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient())
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
 
         private class HelloWorldConverter : JsonConverter

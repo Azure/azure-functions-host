@@ -20,11 +20,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<ManagedIdentityTokenProvider> _logger;
 
-        public ManagedIdentityTokenProvider(IEnvironment environment, HttpClient httpClient,
+        public ManagedIdentityTokenProvider(IEnvironment environment, IHttpClientFactory httpClientFactory,
             IMetricsLogger metricsLogger, ILogger<ManagedIdentityTokenProvider> logger)
         {
             _environment = environment;
-            _httpClient = httpClient;
+            _httpClient = httpClientFactory.CreateClient();
             _metricsLogger = metricsLogger;
             _logger = logger;
         }

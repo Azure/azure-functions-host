@@ -30,12 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private const string AccessToken = "access-token";
 
         private readonly TestEnvironment _environment;
-        private HttpClient _httpClient;
+        private IHttpClientFactory _httpClientFactory;
 
         public ManagedIdentityTokenProviderTests()
         {
             _environment = new TestEnvironment();
-            _httpClient = new HttpClient();
+            _httpClientFactory = CreateHttpClientFactory();
         }
 
         private static TokenServiceMsiResponse GetTokenServiceMsiResponse()
@@ -66,9 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
             Assert.Equal(AccessToken, token);
         }
@@ -90,9 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
             Assert.Equal(AccessToken, token);
         }
@@ -113,9 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(),
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(),
                 NullLogger<ManagedIdentityTokenProvider>.Instance);
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken));
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         [InlineData("storageaccount")]
         public async Task ThrowsOnInvalidUrls(string url)
         {
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             await Assert.ThrowsAsync<ArgumentException>(async () => await tokenProvider.GetManagedIdentityToken(url));
         }
 
@@ -144,6 +144,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private static bool UrlMatchesUserAssignedIdentity(HttpRequestMessage r, string resourceHost, string resourceId)
         {
             return r.RequestUri.AbsoluteUri.Contains($"&resource={resourceHost}") && r.RequestUri.AbsoluteUri.Contains($"&mi_res_id={resourceId}");
+        }
+        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock = null)
+        {
+            var httpClient = handlerMock == null ? new HttpClient() : new HttpClient(handlerMock.Object);
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient())
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
     }
 }
