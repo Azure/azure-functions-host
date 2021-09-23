@@ -65,26 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [MemberData(nameof(FindSecretsDataProvider.TestCases), MemberType = typeof(FindSecretsDataProvider))]
         public async Task FindSecrets(Func<SecretProperties, bool> comparison, List<string> expectedMatches)
         {
-            // The type 'IAsyncEnumerable<T>' exists in both 'System.Interactive.Async, Version=3.2.0.0, Culture=neutral,
-            // PublicKeyToken=94bc3704cddfc263' and 'System.Runtime, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
-            AsyncPageable<SecretProperties> secretsPages = new IAsyncEnumerable<Page<SecretProperties>>
-            {
-                new List<SecretProperties>()
-                {
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/Atlanta"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/Seattle"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/NewYork"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/Chicago")
-                },
-                new List<SecretProperties>()
-                {
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/Portland"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/Austin"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/SanDiego"),
-                    new SecretProperties("https://testkeyvault.vault.azure.net/secrets/LosAngeles")
-                }
-            };
-
+            AsyncPageable<SecretProperties> secretsPages = GetSecretProperties();
             var matches = await KeyVaultSecretsRepository.FindSecrets(secretsPages, comparison);
 
             Assert.Equal(expectedMatches.Count, matches.Count);
@@ -94,6 +75,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.Equal(matchingNames.Count(), 1);
                 Assert.Equal(matchingNames.First().Name, name);
             }
+        }
+
+        private AsyncPageable<SecretProperties> GetSecretProperties()
+        {
+            // Create a list of SecretProperties
+            var pageOneValues = new[]
+            {
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Atlanta")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Seattle")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/NewYork")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Chicago"))
+            };
+
+            var pageTwoValues = new[]
+            {
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Portland")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Austin")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/SanDiego")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/LosAngeles"))
+            };
+
+            var page1 = Page<SecretProperties>.FromValues(pageOneValues, default, null);
+            var page2 = Page<SecretProperties>.FromValues(pageTwoValues, default, null);
+
+            return AsyncPageable<SecretProperties>.FromPages(new[] { page1, page2 });
         }
 
         public class FindSecretsDataProvider

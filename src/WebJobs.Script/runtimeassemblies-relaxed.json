@@ -848,10 +848,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "System.Interactive.Async",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "System.IO",
       "resolutionPolicy": "minorMatchOrLower"
     },

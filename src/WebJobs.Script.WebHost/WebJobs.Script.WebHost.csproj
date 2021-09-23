@@ -85,8 +85,6 @@
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
     <PackageReference Include="protobuf-net" Version="3.0.0" />
-    <!-- The System.Interactive.Async assembly is required to be deployed. See https://github.com/Azure/azure-functions-host/issues/6203 -->
-    <PackageReference Include="System.Interactive.Async" Version="3.2.0" />
     <!-- The System.Data.SqlClient assembly is required to be deployed. -->
     <PackageReference Include="System.Data.SqlClient" Version="4.8.2" />
     <PackageReference Include="System.IO.Pipes" Version="4.3.0" />
