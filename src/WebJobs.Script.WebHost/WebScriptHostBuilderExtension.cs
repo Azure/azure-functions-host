@@ -54,12 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
                     configureWebJobs?.Invoke(webJobsBuilder);
-                    webJobsBuilder.Services.TryAddSingleton<HttpClient>(f =>
-                    {
-                        var loggerFactory = f.GetService<ILoggerFactory>();
-                        loggerFactory.CreateLogger("Host.Startup").LogError("Detected direct usage of HttpClient in function app. Please use HttpClientFactory instead - see <TODO aka.ms link> for more information.");
-                        return rootServiceProvider.GetService<HttpClient>();
-                    });
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
 
