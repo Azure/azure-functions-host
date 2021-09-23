@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
 
-        private WorkerConcurrencyOptions _workerConcurrencyOptions = new WorkerConcurrencyOptions();
+        private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
         private Stopwatch _addWorkerStopwatch = Stopwatch.StartNew();
@@ -31,20 +31,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
-            IEnvironment environment, ILoggerFactory loggerFactory)
+            IEnvironment environment, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _workerConcurrencyOptions = workerConcurrencyOptions;
 
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
-        }
-
-        public WorkerConcurrencyOptions WorkerConcurrencyOptions
-        {
-            set
-            {
-                _workerConcurrencyOptions = value;
-            }
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -63,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _timer = new System.Timers.Timer()
                 {
                     AutoReset = false,
-                    Interval = _workerConcurrencyOptions.CheckInterval.TotalMilliseconds,
+                    Interval = _workerConcurrencyOptions.Value.CheckInterval.TotalMilliseconds,
                 };
 
                 _timer.Elapsed += OnTimer;
@@ -110,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal bool NewWorkerIsRequired(IDictionary<string, WorkerStatus> workerStatuses, TimeSpan timeSinceLastNewWorker)
         {
-            if (timeSinceLastNewWorker < _workerConcurrencyOptions.AdjustmentPeriod)
+            if (timeSinceLastNewWorker < _workerConcurrencyOptions.Value.AdjustmentPeriod)
             {
                 return false;
             }
@@ -135,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 int overloadedCount = descriptions.Where(x => x.IsOverloaded == true).Count();
                 if (overloadedCount > 0)
                 {
-                    if (workerStatuses.Count() < _workerConcurrencyOptions.MaxWorkerCount)
+                    if (workerStatuses.Count() < _workerConcurrencyOptions.Value.MaxWorkerCount)
                     {
                         _logger.LogInformation($"A new worker will be added, overloaded workers = {overloadedCount}, initialized workers = {workerStatuses.Count()} ");
                         result = true;
@@ -160,12 +153,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal bool IsOverloaded(WorkerStatus status)
         {
-            if (status.LatencyHistory != null && (status.LatencyHistory.Count() >= _workerConcurrencyOptions.HistorySize))
+            if (status.LatencyHistory != null && (status.LatencyHistory.Count() >= _workerConcurrencyOptions.Value.HistorySize))
             {
-                int overloadedCount = status.LatencyHistory.Where(x => x.TotalMilliseconds >= _workerConcurrencyOptions.LatencyThreshold.TotalMilliseconds).Count();
-                double proportion = (double)overloadedCount / _workerConcurrencyOptions.HistorySize;
+                int overloadedCount = status.LatencyHistory.Where(x => x.TotalMilliseconds >= _workerConcurrencyOptions.Value.LatencyThreshold.TotalMilliseconds).Count();
+                double proportion = (double)overloadedCount / _workerConcurrencyOptions.Value.HistorySize;
 
-                return proportion >= _workerConcurrencyOptions.NewWorkerThreshold;
+                return proportion >= _workerConcurrencyOptions.Value.NewWorkerThreshold;
             }
             return false;
         }

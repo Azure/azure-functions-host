@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
         private readonly IEnvironment _environment;
 
-        private Dictionary<string, RpcWorkerConfig> _workerDescripionDictionary = new Dictionary<string, RpcWorkerConfig>();
+        private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
         {
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             using (_metricsLogger.LatencyEvent(MetricEventNames.GetConfigs))
             {
                 BuildWorkerProviderDictionary();
-                return _workerDescripionDictionary.Values.ToList();
+                return _workerDescriptionDictionary.Values.ToList();
             }
         }
 
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 var workerDirectorySection = languageSection.GetSection(WorkerConstants.WorkerDirectorySectionName);
                 if (workerDirectorySection.Value != null)
                 {
-                    _workerDescripionDictionary.Remove(languageSection.Key);
+                    _workerDescriptionDictionary.Remove(languageSection.Key);
                     AddProvider(workerDirectorySection.Value);
                 }
             }
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             Arguments = arguments,
                             CountOptions = workerProcessCount,
                         };
-                        _workerDescripionDictionary[workerDescription.Language] = rpcWorkerConfig;
+                        _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
                 }

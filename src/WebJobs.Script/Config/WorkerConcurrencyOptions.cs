@@ -8,11 +8,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class WorkerConcurrencyOptions : Hosting.IOptionsFormatter
+    public class WorkerConcurrencyOptions
     {
         public WorkerConcurrencyOptions()
         {
-            // Setting deafault values
+            // Setting default values
             LatencyThreshold = TimeSpan.FromMilliseconds(100);
             AdjustmentPeriod = TimeSpan.FromSeconds(10);
             CheckInterval = TimeSpan.FromSeconds(1);
@@ -53,22 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets or sets the max count of workers.
         /// It will be set depending on SKU if equal to 0.
         /// </summary>
-        [Range(typeof(int), "0", "100", ErrorMessage = "Value for {0} must be between {1} and {2}.")]
+        [Range(typeof(int), "1", "100", ErrorMessage = "Value for {0} must be between {1} and {2}.")]
         public int MaxWorkerCount { get; set; }
-
-        public string Format()
-        {
-            var options = new JObject
-            {
-                { nameof(LatencyThreshold), LatencyThreshold },
-                { nameof(AdjustmentPeriod), AdjustmentPeriod },
-                { nameof(CheckInterval), CheckInterval },
-                { nameof(HistorySize), HistorySize },
-                { nameof(NewWorkerThreshold), NewWorkerThreshold },
-                { nameof(MaxWorkerCount), MaxWorkerCount }
-            };
-
-            return options.ToString(Formatting.Indented);
-        }
     }
 }

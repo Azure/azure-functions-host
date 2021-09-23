@@ -288,6 +288,11 @@ namespace Microsoft.Azure.WebJobs.Script
                          .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
                     });
+                services.AddOptions<WorkerConcurrencyOptions>()
+                    .Configure<IConfiguration>((o, c) =>
+                    {
+                        o = new WorkerConcurrencyOptions();
+                    });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
