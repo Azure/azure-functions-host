@@ -4,14 +4,6 @@
 {
   "runtimeAssemblies": [
     {
-      "name": "Azure.Identity",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Azure.Security.KeyVault.Secrets",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.OData.Core",
       "resolutionPolicy": "private"
     },

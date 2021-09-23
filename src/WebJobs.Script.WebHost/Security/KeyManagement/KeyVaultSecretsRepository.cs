@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Azure;
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
@@ -43,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
-                ManagedIdentityCredential credential = string.IsNullOrEmpty(clientId) ? new ManagedIdentityCredential()
+                TokenCredential credential = string.IsNullOrEmpty(clientId) ? new DefaultAzureCredential()
                     : new ManagedIdentityCredential(clientId);
 
                 return new SecretClient(keyVaultUri, credential);

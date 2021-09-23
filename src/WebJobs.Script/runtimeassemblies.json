@@ -7,14 +7,6 @@
       "resolutionPolicy": "private"
     },
     {
-      "name": "Azure.Identity",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Azure.Security.KeyVault.Secrets",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Azure.Storage.Blobs",
       "resolutionPolicy": "private"
     },
