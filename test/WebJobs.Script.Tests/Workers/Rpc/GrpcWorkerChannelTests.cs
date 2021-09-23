@@ -50,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IMemoryMappedFileAccessor _mapAccessor;
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly IFunctionDataCache _functionDataCache;
+        private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests()
@@ -64,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
+            _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
 
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -98,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache);
+               _functionDataCache,
+               _workerConcurrencyOptions);
         }
 
         public void Dispose()
@@ -180,7 +183,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache);
+               _functionDataCache,
+               _workerConcurrencyOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -293,7 +297,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache);
+               _functionDataCache,
+               _workerConcurrencyOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -579,7 +584,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache);
+               _functionDataCache,
+               _workerConcurrencyOptions);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -616,7 +622,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _testEnvironment,
                _hostOptionsMonitor,
                _sharedMemoryManager,
-               _functionDataCache);
+               _functionDataCache,
+               _workerConcurrencyOptions);
 
             // wait 10 seconds
             await Task.Delay(10000);

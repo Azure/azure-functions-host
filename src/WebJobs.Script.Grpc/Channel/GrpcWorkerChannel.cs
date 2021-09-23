@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly List<TimeSpan> _workerStatusLatencyHistory = new List<TimeSpan>();
-        private readonly WorkerConcurrencyOptions _workerConcurrencyOptions = new WorkerConcurrencyOptions();
+        private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -85,7 +85,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
            IEnvironment environment,
            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
            ISharedMemoryManager sharedMemoryManager,
-           IFunctionDataCache functionDataCache)
+           IFunctionDataCache functionDataCache,
+           IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -97,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
+            _workerConcurrencyOptions = workerConcurrencyOptions;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -868,7 +870,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         _timer = new System.Timers.Timer()
                         {
                             AutoReset = false,
-                            Interval = _workerConcurrencyOptions.CheckInterval.TotalMilliseconds,
+                            Interval = _workerConcurrencyOptions.Value.CheckInterval.TotalMilliseconds,
                         };
 
                         _timer.Elapsed += OnTimer;
@@ -908,7 +910,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             lock (_syncLock)
             {
-                if (samples.Count == _workerConcurrencyOptions.HistorySize)
+                if (samples.Count == _workerConcurrencyOptions.Value.HistorySize)
                 {
                     samples.RemoveAt(0);
                 }

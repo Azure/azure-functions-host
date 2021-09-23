@@ -272,6 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+                services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
@@ -287,11 +288,6 @@ namespace Microsoft.Azure.WebJobs.Script
                         c.GetSection(ConfigurationSectionNames.JobHost)
                          .GetSection(ConfigurationSectionNames.Scale)
                          .Bind(o);
-                    });
-                services.AddOptions<WorkerConcurrencyOptions>()
-                    .Configure<IConfiguration>((o, c) =>
-                    {
-                        o = new WorkerConcurrencyOptions();
                     });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();

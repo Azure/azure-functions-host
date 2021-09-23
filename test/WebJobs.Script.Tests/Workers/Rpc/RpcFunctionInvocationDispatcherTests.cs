@@ -603,7 +603,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
-                mockFunctionDispatcherLoadBalancer.Object);
+                mockFunctionDispatcherLoadBalancer.Object,
+                Options.Create(new WorkerConcurrencyOptions()));
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)
