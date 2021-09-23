@@ -9,7 +9,7 @@
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
-    <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
+    <AssemblyVersion>$(MajorVersion).$(MinorVersion).$(PatchVersion).0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).0</FileVersion>
     <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
     <InformationalVersion>$(Version) Commit hash: $(CommitHash)</InformationalVersion>
