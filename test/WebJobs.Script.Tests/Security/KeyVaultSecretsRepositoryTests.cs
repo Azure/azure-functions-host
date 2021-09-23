@@ -4,14 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Autofac.Core.Lifetime;
 using Azure;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
-
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -68,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // The type 'IAsyncEnumerable<T>' exists in both 'System.Interactive.Async, Version=3.2.0.0, Culture=neutral,
             // PublicKeyToken=94bc3704cddfc263' and 'System.Runtime, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a'
-            AsyncPageable<SecretProperties> secretsPages = new List<IAsyncEnumerable<SecretProperties>>
+            AsyncPageable<SecretProperties> secretsPages = new IAsyncEnumerable<Page<SecretProperties>>
             {
                 new List<SecretProperties>()
                 {
