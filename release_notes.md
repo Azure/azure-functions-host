@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [1.2.6](https://github.com/Azure/azure-functions-python-worker/releases/tag/1.2.6)
 - Updated PowerShell Worker (PS7) to [3.0.1045](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.1045)
 
 **Release sprint:** Sprint 107
