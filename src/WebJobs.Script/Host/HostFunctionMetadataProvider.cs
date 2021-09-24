@@ -240,11 +240,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // if there is a "run" file, that file is primary,
                     // for Node, any index.js file is primary
+                    // for Python, __init__.py file is primary
                     // TODO #6955: Get default function file name from language worker configs
                     functionPrimary = functionFiles.FirstOrDefault(p =>
                         fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js" ||
-                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs");
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs" ||
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "__init__.py");
                 }
             }
 
