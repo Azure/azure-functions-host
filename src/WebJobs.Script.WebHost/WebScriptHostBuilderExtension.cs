@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     webJobsBuilder.Services.TryAddSingleton<HttpClient>(f =>
                     {
                         var loggerFactory = f.GetService<ILoggerFactory>();
-                        loggerFactory.CreateLogger("Host.Startup").LogWarning("Detected direct usage of HttpClient in function app. Please use HttpClientFactory instead - see <TODO aka.ms link> for more information.");
+                        loggerFactory.CreateLogger("Host.Startup").LogWarning("Using HttpClient as an injected dependency will not be supported in future versions of Azure Functions. Use IHttpClientFactory instead. See http://aka.ms/functions-httpclient-di for more information.");
                         return rootServiceProvider.GetService<HttpClient>();
                     });
 
