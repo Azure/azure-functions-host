@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 // Try removing system logger
                 var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
                 s.Remove(descriptor);
-            });
+            }, expectSuccess: false);
 
             Assert.NotNull(invalidServicesMessage);
 
