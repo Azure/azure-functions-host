@@ -230,9 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var environment = s.GetService<IEnvironment>();
                 if (environment.IsLinuxConsumption())
                 {
-                    var httpClient = s.GetService<IHttpClientFactory>().CreateClient();
+                    var httpClientFactory = s.GetService<IHttpClientFactory>();
                     var logger = s.GetService<ILogger<MeshServiceClient>>();
-                    return new MeshServiceClient(httpClient, environment, logger);
+                    return new MeshServiceClient(httpClientFactory, environment, logger);
                 }
 
                 return NullMeshServiceClient.Instance;

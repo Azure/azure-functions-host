@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 }
             }
 
-            _httpClientFactory = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
             var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
             });
 
-            _httpClientFactory = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
             _managedIdentityTokenProvider.Setup(p => p.GetManagedIdentityToken(UriWithNoSasToken)).Returns(Task.FromResult(BearerToken));
 
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 });
             }
 
-            _httpClientFactory = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
             if (expectedFetchesManagedIdentityToken)
             {
@@ -324,7 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
                 });
 
-                _httpClientFactory = new HttpClient(handlerMock.Object);
+                _httpClientFactory = CreateHttpClientFactory(handlerMock);
             }
             else
             {
@@ -373,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
             });
 
-            _httpClientFactory = new HttpClient(handlerMock.Object);
+            _httpClientFactory = CreateHttpClientFactory(handlerMock);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
@@ -408,9 +408,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             return fileSystem;
         }
 
-        private static IHttpClientFactory CreateHttpClientFactory()
+        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock = null)
         {
-            var httpClient = new Mock<HttpClient>().Object;
+            var httpClient = handlerMock == null ? new HttpClient() : new HttpClient(handlerMock.Object);
             var mockFactory = new Mock<IHttpClientFactory>();
             mockFactory.Setup(m => m.CreateClient())
                  .Returns(httpClient);
