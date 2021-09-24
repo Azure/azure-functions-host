@@ -338,7 +338,6 @@ jobs:
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
-      # AzureWebJobsSecretStorageKeyVaultClientId: $(KeyVaultClientId)
       AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
       AZURE_TENANT_ID: $(AzureTenantId)
       AZURE_CLIENT_ID: $(AzureClientId)
