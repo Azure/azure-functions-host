@@ -7,6 +7,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Azure.Identity",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Azure.Storage.Blobs",
       "resolutionPolicy": "private"
     },

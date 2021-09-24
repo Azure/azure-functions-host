@@ -378,7 +378,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
                 KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
 
                 var credential = new DefaultAzureCredential();
@@ -401,8 +400,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public SecretClient SecretClient { get; private set; }
 
             public string KeyVaultUri { get; private set; }
-
-            public string KeyVaultClientId { get; private set; }
 
             public SecretsRepositoryType RepositoryType { get; private set; }
 
@@ -455,7 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, logger, Environment);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, null, logger, Environment);
                 }
             }
 
