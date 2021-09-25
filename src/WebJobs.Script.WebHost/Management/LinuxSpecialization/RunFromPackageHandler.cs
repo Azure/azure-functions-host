@@ -91,9 +91,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
-        private void InitializeLocalPackageWatcher()
+        public void InitializeLocalPackageWatcher()
         {
-            // todo
+            var filePath = "/home/data/sitepackages/packagename.txt";
+            _logger.LogDebug($"Initializing file watcher used for RFP=1. Watching file {filePath}");
+
+            // first option - inject IFileMonitoringService in constructor, if circular dependency:
+            // second option is to use IServiceProvider
+
+            // something like below but figure out how to access event subscriptions/filewatcher service
+            // and extract mounting to callable method (outside of specialization context?)
+            //_eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
+            //            .Where(f => string.Equals(f.Source, packageNameFile, StringComparison.Ordinal))
+            //            .Subscribe(e => OnLocalPackageFileChanged(e.FileChangeArguments)));
         }
 
         public async Task<bool> MountLocalPackageAsync(string targetPath)
@@ -124,21 +134,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             await _meshServiceClient.MountFuse(MeshServiceClient.SquashFsOperation, packagePath, targetPath);
 
             return true;
-        }
-
-        private void InitializeLocalPackageWatcher(string packageNameFile)
-        {
-            var filePath = "/home/data/sitepackages/packagename.txt";
-            _logger.LogDebug($"Initializing file watcher used for RFP=1. Watching file {filePath}");
-
-            // first option - inject IFileMonitoringService in constructor, if circular dependency:
-            // second option is to use IServiceProvider
-
-            // something like below but figure out how to access event subscriptions/filewatcher service
-            // and extract mounting to callable method (outside of specialization context?)
-            //_eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
-            //            .Where(f => string.Equals(f.Source, packageNameFile, StringComparison.Ordinal))
-            //            .Subscribe(e => OnLocalPackageFileChanged(e.FileChangeArguments)));
         }
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
