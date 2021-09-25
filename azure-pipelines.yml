@@ -290,6 +290,12 @@ jobs:
     artifact: NugetPackages
   - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
+  - task: PowerShell@2
+    displayName: 'Upload Functions zip to storage account'
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\upload-functionsZipToStorageAccount.ps1' 
+      arguments: '-StorageAccountName "$(functionsBuildsStorageAccountName)" -StorageAccountKey "$(functionsBuildsStorageAccountKey)" -SourcePath "$(Build.ArtifactStagingDirectory)\SiteExtension" '
+    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
 
 - job: RunUnitTests
   pool:
