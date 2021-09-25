@@ -12,5 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted,
             bool throwOnFailure = true);
+
+        Task<bool> MountLocalPackageAsync(string targetPath);
     }
 }

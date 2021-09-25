@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Extensions.Logging;
@@ -83,10 +84,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         // add new API for testing bind mount
         [HttpGet]
         [Route("admin/instance/mount")]
-        public IActionResult Mount()
+        public async Task<IActionResult> MountAsync([FromServices] IRunFromPackageHandler packageHandler)
         {
             // call bind mount
-            return Ok();
+            var ret = await packageHandler.MountLocalPackageAsync("/home/site/wwwroot");
+            var statusCode = ret ? StatusCodes.Status200OK : StatusCodes.Status500InternalServerError;
+            return StatusCode(statusCode);
         }
 
         // add new API for testing file watcher

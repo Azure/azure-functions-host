@@ -25,9 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IPackageDownloadHandler _packageDownloadHandler;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<RunFromPackageHandler> _logger;
+        private readonly IFileMonitoringService _fileMonitoringService;
 
-        public RunFromPackageHandler(IEnvironment environment, IMeshServiceClient meshServiceClient,
-            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
+        public RunFromPackageHandler(IEnvironment environment, IMeshServiceClient meshServiceClient, IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler,
+            IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger, IFileMonitoringService fileMonitoringService)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
@@ -36,6 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _fileMonitoringService = fileMonitoringService ?? throw new ArgumentNullException(nameof(fileMonitoringService));
         }
 
         public async Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
@@ -44,32 +46,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             {
                 if (pkgContext.IsRunFromLocalPackage())
                 {
-                    // if local zip (RFP=1), then get full path: zip file name in /home/data/packagename.txt
-                    // full path will be like: /home/data/some_file
-                    var packageNameFile = "/home/data/packagename.txt";
-                    if (!Directory.Exists(packageNameFile))
-                    {
-                        _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packageNameFile} does not exist!");
-                        return false;
-                    }
+                    // mount the local package file to /home/site/wwwroot
+                    await MountLocalPackageAsync(targetPath);
 
-                    // packagename.txt should consist of one line which contains the name of the package we need to mount
-                    var contents = File.ReadLines(packageNameFile);
-                    if (contents.Count() != 1)
-                    {
-                        _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packageNameFile} is invalid. It should consist only of the package file name.");
-                        return false;
-                    }
-
-                    var packageName = contents.First();
-                    var packagePath = $"/home/data/{packageName}";
-
-                    // mount the package to /home/site/wwwroot
-                    _logger.LogInformation($"Mounting {packagePath} to {targetPath}.");
-                    await _meshServiceClient.MountFuse(MeshServiceClient.SquashFsOperation, packagePath, targetPath);
-
-                    // initialize file watcher for file that points to package
-                    InitializeLocalPackageWatcher(packageNameFile);
+                    // initialize file watcher for /home/data/sitepackages/packagename.txt
+                    // whenever that file is updated, it means there is a new package
+                    InitializeLocalPackageWatcher();
                     return true;
                 }
                 else
@@ -109,10 +91,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
+        private void InitializeLocalPackageWatcher()
+        {
+            // todo
+        }
+
+        public async Task<bool> MountLocalPackageAsync(string targetPath)
+        {
+            // if local zip (RFP=1), then get full path: zip file name in /home/data/packagename.txt
+            // full path will be like: /home/data/some_file
+            var packagesPath = "/home/data/sitepackages";
+            var packagenameFilePath = Path.Join(packagesPath, "packagename.txt");
+            if (!Directory.Exists(packagenameFilePath))
+            {
+                _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packagenameFilePath} does not exist!");
+                return false;
+            }
+
+            // packagename.txt should consist of one line which contains the name of the package we need to mount
+            var contents = File.ReadLines(packagenameFilePath);
+            if (contents.Count() != 1)
+            {
+                _logger.LogError($"Application is configured to use WEBSITE_RUN_FROM_PACKAGE=1, but {packagenameFilePath} is invalid. It should consist only of the package file name.");
+                return false;
+            }
+
+            var packageName = contents.First();
+            var packagePath = Path.Join(packagesPath, packageName);
+
+            // mount the package to /home/site/wwwroot
+            _logger.LogInformation($"Mounting {packagePath} to {targetPath}.");
+            await _meshServiceClient.MountFuse(MeshServiceClient.SquashFsOperation, packagePath, targetPath);
+
+            return true;
+        }
+
         private void InitializeLocalPackageWatcher(string packageNameFile)
         {
-            var filePath = "/home/data/packagename.txt";
+            var filePath = "/home/data/sitepackages/packagename.txt";
             _logger.LogDebug($"Initializing file watcher used for RFP=1. Watching file {filePath}");
+
+            // first option - inject IFileMonitoringService in constructor, if circular dependency:
+            // second option is to use IServiceProvider
 
             // something like below but figure out how to access event subscriptions/filewatcher service
             // and extract mounting to callable method (outside of specialization context?)
