@@ -3,6 +3,7 @@
 
 using System;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 

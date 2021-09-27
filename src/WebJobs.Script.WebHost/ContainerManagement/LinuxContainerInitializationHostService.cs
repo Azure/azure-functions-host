@@ -2,10 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Azure.Storage.RetryPolicies;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Hosting;
@@ -115,15 +115,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // But the blob pointed to by the uri will not exist until the container is specialized.
             // When the blob doesn't exist it just means the container is waiting for specialization.
             // Don't treat this as a failure.
-            var cloudBlockBlob = new CloudBlockBlob(new Uri(uri));
+            var blobClient = new BlobClient(new Uri(uri));
 
-            var blobRequestOptions = new BlobRequestOptions
+            if (await blobClient.ExistsAsync())
             {
-                RetryPolicy = new LinearRetry(TimeSpan.FromMilliseconds(500), 3)
-            };
-            if (await cloudBlockBlob.ExistsAsync(blobRequestOptions, null, _cancellationToken))
-            {
-                return await cloudBlockBlob.DownloadTextAsync(null, null, blobRequestOptions, null, _cancellationToken);
+                var downloadResponse = await blobClient.DownloadAsync();
+                using (StreamReader reader = new StreamReader(downloadResponse.Value.Content, true))
+                {
+                    string content = reader.ReadToEnd();
+                    return content;
+                }
             }
 
             return string.Empty;

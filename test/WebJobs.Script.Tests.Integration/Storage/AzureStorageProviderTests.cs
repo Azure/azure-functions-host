@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             var jobHostConfiguration = new ConfigurationBuilder().Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            var container = azureStorageProvider.GetBlobContainerClient();
+            var container = azureStorageProvider.GetWebJobsBlobContainerClient();
             await VerifyContainerClientAvailable(container);
 
             Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
@@ -59,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            var container = azureStorageProvider.GetBlobContainerClient();
+            var container = azureStorageProvider.GetWebJobsBlobContainerClient();
             await VerifyContainerClientAvailable(container);
 
             Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            Assert.Throws<InvalidOperationException>(() => azureStorageProvider.GetBlobContainerClient());
+            Assert.Throws<InvalidOperationException>(() => azureStorageProvider.GetWebJobsBlobContainerClient());
 
             Assert.False(azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, ConnectionStringNames.Storage));
         }
