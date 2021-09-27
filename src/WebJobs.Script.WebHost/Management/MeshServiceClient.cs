@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public MeshServiceClient(IHttpClientFactory httpClientFactory, IEnvironment environment, ILogger<MeshServiceClient> logger)
         {
-            _client = httpClientFactory.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }

@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -195,6 +197,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Mock an HttpClientFactory and its CreateClient functionality.
+        /// </summary>
+        /// <param name="handlerMock">Some tests pass a mock HttpHandler into their HttpClient.</param>
+        /// <returns>IHttpClientFactory</returns>
+        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock = null)
+        {
+            var httpClient = handlerMock == null ? new HttpClient() : new HttpClient(handlerMock.Object);
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient())
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
     }
 }
