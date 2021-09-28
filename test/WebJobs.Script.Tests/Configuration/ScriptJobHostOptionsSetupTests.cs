@@ -67,10 +67,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal("Shared", options.WatchDirectories.ElementAt(1));
             Assert.Equal("Tools", options.WatchDirectories.ElementAt(2));
 
-            Assert.Equal(5, options.WatchFiles.Count);
+            Assert.Equal(4, options.WatchFiles.Count);
             Assert.Contains("host.json", options.WatchFiles);
             Assert.Contains("function.json", options.WatchFiles);
-            Assert.Contains("proxies.json", options.WatchFiles);
             Assert.Contains("myFirstFile.ext", options.WatchFiles);
             Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
