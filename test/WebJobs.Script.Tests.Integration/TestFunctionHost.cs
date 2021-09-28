@@ -111,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           return GetMetadataManager(montior, scriptManager, loggerFactory);
                       }, ServiceLifetime.Singleton));
 
+                      services.SkipDependencyValidation();
+
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
                   })
