@@ -2,20 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Script.Config;
-using Microsoft.Azure.WebJobs.Script.Management.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,31 +32,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task Warmup_Invoke_Succeeds()
-        {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync($"/admin/warmup");
-
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.False(response.Headers.Contains("myversion"), "/admin/warmup cannot be overriden by proxies." );
-        }
-        
-        [Fact]
         public async Task Normal_Api_Warmup_HttpTrigger_Succeeds()
         {
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/warmup");
 
             string content = await response.Content.ReadAsStringAsync();
-            Assert.True(response.StatusCode.ToString("D") =="200", "Normal http trigger with 'warmup' route failed to run. ");
+            Assert.True(response.StatusCode.ToString("D") == "200", "Normal http trigger with 'warmup' route failed to run. ");
             Assert.Equal("Pong", content);
-        }
-
-        [Fact]
-        public async Task Proxy_Admin_Override_Fails()
-        {
-            HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/123");
-
-            string content = await response.Content.ReadAsStringAsync();
-            Assert.False(response.Headers.Contains("myversion"), "/admin/* endpoints cannot be overriden by proxies.");
         }
 
         [Fact]
@@ -72,7 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(response.StatusCode.ToString("D") == "401", "/admin/* endpoints cannot be overriden by function routes.");
             Assert.True(content == string.Empty, "/admin/* endpoints cannot be overriden by function routes.");
         }
-
 
         public class TestFixture : IDisposable
         {
