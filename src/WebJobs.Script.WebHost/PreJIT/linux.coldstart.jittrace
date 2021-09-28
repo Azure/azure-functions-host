@@ -5973,9 +5973,6 @@ char.IsSurrogate(char)~System.Char,System.Private.CoreLib~1~0~IsSurrogate
 int64.GetHashCode()~System.Int64,System.Private.CoreLib~0~0~GetHashCode
 string.Ctor(char[])~System.String,System.Private.CoreLib~1~0~Ctor
 string.EndsWith(char)~System.String,System.Private.CoreLib~1~0~EndsWith
-[dotprintenv]dotprintenv.getenv.Run(HttpRequest,ILogger)~dotprintenv.getenv,dotprintenv~2~0~Run
-[dotprintenv]dotprintenv.getenv+<Run>d__0..ctor()~dotprintenv.getenv+<Run>d__0,dotprintenv~0~0~.ctor
-[dotprintenv]dotprintenv.getenv+<Run>d__0.MoveNext()~dotprintenv.getenv+<Run>d__0,dotprintenv~0~0~MoveNext
 [Microsoft.AI.PerfCounterCollector]Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCollectorEventSource.CounterCollectionSuccessEvent(int64,int64,string)~Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCollectorEventSource,Microsoft.AI.PerfCounterCollector~3~0~CounterCollectionSuccessEvent
 [Microsoft.AI.PerfCounterCollector]Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCounterUtility.CreateAndValidateCounter(string,IEnumerable`1<string>,IEnumerable`1<string>,bool,bool&,string&)~Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCounterUtility,Microsoft.AI.PerfCounterCollector~6~0~CreateAndValidateCounter
 [Microsoft.AI.PerfCounterCollector]Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCounterUtility.ExpandInstanceName(string,IEnumerable`1<string>,IEnumerable`1<string>,bool,bool&)~Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.Implementation.PerformanceCounterUtility,Microsoft.AI.PerfCounterCollector~5~0~ExpandInstanceName
