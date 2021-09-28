@@ -9,7 +9,6 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Logging;
@@ -61,16 +60,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             Func<FunctionMetadata, bool> filterPredicate;
 
-            if (!includeProxies)
-            {
-                // Remove all codeless metadata (includes proxies)
-                filterPredicate = m => !m.IsCodeless();
-            }
-            else
-            {
-                // Allow either proxies or non codeless functions
-                filterPredicate = m => m.IsProxy() || !m.IsCodeless();
-            }
+            // Remove all codeless metadata
+            filterPredicate = m => !m.IsCodeless();
 
             return _functionMetadataManager.GetFunctionMetadata(forceRefresh, applyAllowlist: false).Where(filterPredicate);
         }

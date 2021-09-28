@@ -191,7 +191,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         internal static bool RequiresAuthz(HttpRequest request, FunctionDescriptor descriptor)
         {
-            if (descriptor.Metadata.IsProxy() || descriptor.IsWarmupFunction())
+            if (descriptor.IsWarmupFunction())
             {
                 return false;
             }
