@@ -111,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           return GetMetadataManager(montior, scriptManager, loggerFactory);
                       }, ServiceLifetime.Singleton));
 
+                      services.Replace(new ServiceDescriptor(typeof(IDependencyValidator), new TestDependencyValidator()));
+
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
                   })
@@ -441,6 +443,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public void ConfigureServices(IServiceCollection services)
             {
                 _postConfigure?.Invoke(services);
+            }
+        }
+
+        private class TestDependencyValidator : IDependencyValidator
+        {
+            public void Validate(IServiceCollection services)
+            {
+                // no-op for tests; this allows us to override anything
             }
         }
     }
