@@ -108,11 +108,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal void ValidateName(string name, bool isProxy = false)
+        internal void ValidateName(string name)
         {
             if (!Utility.IsValidFunctionName(name))
             {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
+                throw new InvalidOperationException($"'{name}' is not a valid function name.");
             }
         }
 

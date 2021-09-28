@@ -10,10 +10,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Azure.AppService.Proxy.Runtime.Configuration.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Formatters;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
 {

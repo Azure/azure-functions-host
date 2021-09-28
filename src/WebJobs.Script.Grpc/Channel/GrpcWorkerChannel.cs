@@ -355,7 +355,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     Directory = metadata.FunctionDirectory ?? string.Empty,
                     EntryPoint = metadata.EntryPoint ?? string.Empty,
                     ScriptFile = metadata.ScriptFile ?? string.Empty,
-                    IsProxy = metadata.IsProxy()
+                    IsProxy = false
                 }
             };
 

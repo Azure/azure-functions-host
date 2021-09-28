@@ -17,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -828,15 +827,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Same(function, functionResult);
         }
 
-        [Theory]
-        [InlineData("myproxy")]
-        [InlineData("my proxy")]
-        [InlineData("my proxy %")]
-        public void UpdateProxyName(string proxyName)
-        {
-            Assert.Equal("myproxy", ProxyFunctionProvider.NormalizeProxyName(proxyName));
-        }
-
         [Fact]
         public void IsSingleLanguage_Returns_True()
         {
@@ -855,61 +845,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 func1, func2
             };
             Assert.True(Utility.IsSingleLanguage(functionsList, null));
-        }
-
-        [Fact]
-        public void IsSingleLanguage_Returns_True_Proxy()
-        {
-            ProxyFunctionMetadata proxy = new ProxyFunctionMetadata(null)
-            {
-                Name = "proxy"
-            };
-            FunctionMetadata funcJs = new FunctionMetadata()
-            {
-                Name = "funcJs",
-                Language = "node"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy, funcJs
-            };
-            Assert.True(Utility.IsSingleLanguage(functionsList, null));
-        }
-
-        [Fact]
-        public void IsSingleLanguage_Returns_True_OnlyProxies()
-        {
-            ProxyFunctionMetadata proxy1 = new ProxyFunctionMetadata(null)
-            {
-                Name = "proxy"
-            };
-            ProxyFunctionMetadata proxy2 = new ProxyFunctionMetadata(null)
-            {
-                Name = "proxy"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy1, proxy2
-            };
-            Assert.True(Utility.IsSingleLanguage(functionsList, null));
-        }
-
-        [Fact]
-        public void IsSingleLanguage_FunctionsWorkerRuntime_Set_Returns_True_OnlyProxies()
-        {
-            ProxyFunctionMetadata proxy1 = new ProxyFunctionMetadata(null)
-            {
-                Name = "proxy"
-            };
-            ProxyFunctionMetadata proxy2 = new ProxyFunctionMetadata(null)
-            {
-                Name = "proxy"
-            };
-            IEnumerable<FunctionMetadata> functionsList = new Collection<FunctionMetadata>()
-            {
-                proxy1, proxy2
-            };
-            Assert.True(Utility.IsSingleLanguage(functionsList, "python"));
         }
 
         [Fact]
@@ -1381,12 +1316,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
 
-            // add a proxy with same name
-            metadata = new ProxyFunctionMetadata(null);
+            // add another function with same name
+            metadata = new FunctionMetadata();
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
-                Route = "proxyRoute"
+                Route = "someRoute"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
@@ -1395,7 +1330,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 ScriptHost.ValidateFunction(function.Object, httpFunctions);
             });
 
-            Assert.Equal(string.Format($"The function or proxy name '{name}' must be unique within the function app.", name), ex.Message);
+            Assert.Equal(string.Format($"The function name '{name}' must be unique within the function app.", name), ex.Message);
         }
 
         [Fact]
