@@ -39,10 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _functionMetadataManager = functionMetadataManager;
         }
 
-        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata(bool includeProxies)
+        public async Task<IEnumerable<FunctionMetadataResponse>> GetFunctionsMetadata()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = GetFunctionsMetadata(includeProxies, forceRefresh: false);
+            var functionsMetadata = GetFunctionsMetadata(forceRefresh: false);
 
             return await GetFunctionMetadataResponse(functionsMetadata, hostOptions, _hostNameProvider);
         }
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             return await tasks.WhenAll();
         }
 
-        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool includeProxies, bool forceRefresh)
+        internal IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool forceRefresh)
         {
             Func<FunctionMetadata, bool> filterPredicate;
 
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<(bool, FunctionMetadataResponse)> TryGetFunction(string name, HttpRequest request)
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionMetadata = GetFunctionsMetadata(includeProxies: false, forceRefresh: true)
+            var functionMetadata = GetFunctionsMetadata(forceRefresh: true)
                 .FirstOrDefault(metadata => Utility.FunctionNamesMatch(metadata.Name, name));
 
             if (functionMetadata != null)

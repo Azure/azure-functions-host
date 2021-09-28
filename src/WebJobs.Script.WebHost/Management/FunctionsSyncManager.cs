@@ -423,12 +423,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
             }
 
-            if (FileUtility.FileExists(Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
-            {
-                // This is because we still need to scale function apps that are proxies only
-                triggers = triggers.Append(JObject.FromObject(new { type = "routingTrigger" }));
-            }
-
             return triggers;
         }
 

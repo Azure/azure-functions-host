@@ -369,9 +369,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets metadata collection of functions and proxies configured.
+        /// Gets metadata collection of functions configured.
         /// </summary>
-        /// <returns>A metadata collection of functions and proxies configured.</returns>
+        /// <returns>A metadata collection of functions configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
             IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();

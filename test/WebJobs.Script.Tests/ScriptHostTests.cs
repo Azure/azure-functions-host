@@ -1316,12 +1316,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
 
-            // add a proxy with same name
+            // add another function with same name
             metadata = new FunctionMetadata();
             function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
-                Route = "proxyRoute"
+                Route = "someRoute"
             };
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
