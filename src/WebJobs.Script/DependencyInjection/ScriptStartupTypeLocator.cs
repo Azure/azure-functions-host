@@ -27,23 +27,33 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
         private readonly string _rootScriptPath;
+        private readonly IEnvironment _environment;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly bool _isSelfHost;
         private readonly Lazy<IEnumerable<Type>> _startupTypes;
 
         private static readonly ExtensionRequirementsInfo _extensionRequirements = DependencyHelper.GetExtensionRequirements();
         private static string[] _builtinExtensionAssemblies = GetBuiltinExtensionAssemblies();
 
-        public ScriptStartupTypeLocator(string rootScriptPath, ILogger<ScriptStartupTypeLocator> logger, IExtensionBundleManager extensionBundleManager,
-            IFunctionMetadataManager functionMetadataManager, IMetricsLogger metricsLogger)
+        public ScriptStartupTypeLocator(
+            string rootScriptPath,
+            IEnvironment environment,
+            ILogger<ScriptStartupTypeLocator> logger,
+            IExtensionBundleManager extensionBundleManager,
+            IFunctionMetadataManager functionMetadataManager,
+            IMetricsLogger metricsLogger,
+            bool isSelfHost = false)
         {
             _rootScriptPath = rootScriptPath ?? throw new ArgumentNullException(nameof(rootScriptPath));
+            _environment = environment;
             _extensionBundleManager = extensionBundleManager ?? throw new ArgumentNullException(nameof(extensionBundleManager));
             _logger = logger;
             _functionMetadataManager = functionMetadataManager;
             _metricsLogger = metricsLogger;
+            _isSelfHost = isSelfHost;
             _startupTypes = new Lazy<IEnumerable<Type>>(() => GetExtensionsStartupTypesAsync().ConfigureAwait(false).GetAwaiter().GetResult());
         }
 
@@ -147,9 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             foreach (var extensionItem in extensionItems)
             {
-                if (!bundleConfigured
-                    || extensionItem.Bindings.Count == 0
-                    || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
+                if (!bundleConfigured || IsValidBindingMatch(extensionItem, bindingsSet))
                 {
                     string startupExtensionName = extensionItem.Name ?? extensionItem.TypeName;
                     _logger.ScriptStartUpLoadingStartUpExtension(startupExtensionName);
@@ -206,6 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
 
             ValidateExtensionRequirements(startupTypes);
+            ValidateApplicationInsightsConfig(startupTypes);
 
             return startupTypes;
         }
@@ -321,6 +330,42 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
                 throw new HostInitializationException(builder.ToString());
             }
+        }
+
+        private bool IsValidBindingMatch(ExtensionReference extension, HashSet<string> bindingsSet)
+        {
+            if (extension.Bindings.Count == 0)
+            {
+                return true;
+            }
+
+            // Application Insights uses a special binding value to ensure it's installed based on its App Setting
+            if (extension.Bindings.Any(b => b.Equals("_")))
+            {
+                return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString));
+            }
+
+            return extension.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any();
+        }
+
+        private void ValidateApplicationInsightsConfig(List<Type> startupTypes)
+        {
+            if (!startupTypes.Exists(t => t.Name.Equals("ApplicationInsightsWebJobsStartup")))
+            {
+                return;
+            }
+
+            if (_isSelfHost)
+            {
+                _logger.LogDebug("In order to use Application Insights in Azure Functions V4 and above, you must install the Application Insights Extension.");
+            }
+            else
+            {
+                throw new HostInitializationException($"{EnvironmentSettingNames.AppInsightsConnectionString} is defined but the Application Insights Extension is not installed. " +
+                                                        $"Please install the Application Insights Extension.");
+            }
+
+            return;
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>

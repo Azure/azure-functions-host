@@ -67,7 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -99,7 +100,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(string.Empty, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -156,7 +158,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -186,7 +189,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
             var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-            var discoverer = new ScriptStartupTypeLocator(string.Empty, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+            var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+            var discoverer = new ScriptStartupTypeLocator(string.Empty, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
             // Act
             var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -237,7 +241,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -287,7 +292,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // mock Function metadata
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -339,7 +345,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(true);
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleBinPathAsync()).Returns(Task.FromResult(binPath));
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -369,7 +376,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -401,7 +409,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails()));
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(hasPrecompiledFunction: hasPrecompiledFunctions);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -451,7 +460,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.IsExtensionBundleConfigured()).Returns(false);
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var types = await discoverer.GetExtensionsStartupTypesAsync();
@@ -483,7 +493,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 mockExtensionBundleManager.Setup(e => e.GetExtensionBundleDetails()).Returns(Task.FromResult(GetV2BundleDetails("2.1.0")));
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager();
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
@@ -524,7 +535,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testLogger = factory.CreateLogger<ScriptStartupTypeLocator>();
 
                 var mockFunctionMetadataManager = GetTestFunctionMetadataManager(ImmutableArray<FunctionMetadata>.Empty);
-                var discoverer = new ScriptStartupTypeLocator(directory.Path, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
+                var mockEnvironment = new Mock<IEnvironment>(MockBehavior.Strict);
+                var discoverer = new ScriptStartupTypeLocator(directory.Path, mockEnvironment.Object, testLogger, mockExtensionBundleManager.Object, mockFunctionMetadataManager, testMetricsLogger);
 
                 // Act
                 var exception = await Assert.ThrowsAsync<HostInitializationException>(async () => await discoverer.GetExtensionsStartupTypesAsync());
