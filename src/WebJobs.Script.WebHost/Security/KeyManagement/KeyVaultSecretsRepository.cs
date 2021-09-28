@@ -35,12 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 throw new ArgumentNullException(nameof(secretsSentinelFilePath));
             }
 
-            if (string.IsNullOrEmpty(vaultUri))
-            {
-                throw new ArgumentNullException(nameof(vaultUri));
-            }
-
-            Uri keyVaultUri = new Uri(vaultUri);
+            Uri keyVaultUri = string.IsNullOrEmpty(vaultUri) ? throw new ArgumentNullException(nameof(vaultUri)) : new Uri(vaultUri);
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
