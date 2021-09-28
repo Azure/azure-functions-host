@@ -300,8 +300,8 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: UseNode@1
-    inputs:
-      version: '10.x'
+    inputs:      
+      version: '14.x'
   - task: PowerShell@2
     displayName: 'Install Az.Storage Powershell module'
     inputs:
@@ -356,7 +356,7 @@ jobs:
   - template: build/install-dotnet.yml
   - task: UseNode@1
     inputs:
-      version: '10.x'
+      version: '14.x'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.7.x'

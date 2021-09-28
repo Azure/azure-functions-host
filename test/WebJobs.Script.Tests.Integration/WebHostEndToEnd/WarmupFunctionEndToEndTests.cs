@@ -116,6 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
+
+                       services.SkipDependencyValidation();
                    });
 
                 // TODO: https://github.com/Azure/azure-functions-host/issues/4876
