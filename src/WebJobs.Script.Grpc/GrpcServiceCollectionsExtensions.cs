@@ -15,14 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             services.AddSingleton<IRpcWorkerChannelFactory, GrpcWorkerChannelFactory>();
             services.AddSingleton<FunctionRpc.FunctionRpcBase, FunctionRpcService>();
 
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableAspNetCoreGrpc))
-            {
-                services.AddSingleton<IRpcServer, GrpcServer>();
-            }
-            else
-            {
-                services.AddSingleton<IRpcServer, AspNetCoreGrpcServer>();
-            }
+            services.AddSingleton<IRpcServer, AspNetCoreGrpcServer>();
 
             return services;
         }
