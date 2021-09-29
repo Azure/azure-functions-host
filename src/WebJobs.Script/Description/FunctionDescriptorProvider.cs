@@ -178,13 +178,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected internal virtual void ValidateFunction(FunctionMetadata functionMetadata)
         {
-            // Functions must have a trigger binding
-            var triggerMetadata = functionMetadata.InputBindings.FirstOrDefault(p => p.IsTrigger);
-            if (triggerMetadata == null)
-            {
-                throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
-            }
-
             HashSet<string> names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var binding in functionMetadata.Bindings)
             {
@@ -200,6 +193,20 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     names.Add(binding.Name);
                 }
             }
+
+            // Verify there aren't multiple triggers defined
+            var triggers = functionMetadata.InputBindings.Where(p => p.IsTrigger).ToArray();
+            if (triggers.Length > 1)
+            {
+                throw new InvalidOperationException($"Multiple trigger bindings defined. A function can only have a single trigger binding.");
+            }
+
+            // Functions must have a trigger binding
+            var triggerMetadata = triggers.FirstOrDefault(p => p.IsTrigger);
+            if (triggerMetadata == null)
+            {
+                throw new InvalidOperationException("No trigger binding specified. A function must have a trigger input binding.");
+            }
         }
 
         protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
@@ -212,6 +219,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
             {
                 throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
+            }
+
+            if (bindingMetadata.Type == null)
+            {
+                throw new ArgumentException($"Binding '{bindingMetadata.Name}' is invalid. Bindings must specify a Type.");
             }
         }
 

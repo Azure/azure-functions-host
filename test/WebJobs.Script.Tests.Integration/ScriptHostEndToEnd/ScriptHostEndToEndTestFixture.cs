@@ -39,9 +39,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly bool _startHost;
         private readonly ICollection<string> _functions;
         private readonly string _functionsWorkerLanguage;
+        private readonly bool _addWorkerConcurrency;
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, 
-            bool startHost = true, ICollection<string> functions = null)
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage,
+            bool startHost = true, ICollection<string> functions = null, bool addWorkerConcurrency = false)
         {
             _settingsManager = ScriptSettingsManager.Instance;
             FixtureId = testId;
@@ -54,6 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _startHost = startHost;
             _functions = functions;
             _functionsWorkerLanguage = functionsWorkerLanguage;
+            _addWorkerConcurrency = addWorkerConcurrency;
         }
 
         public TestLoggerProvider LoggerProvider { get; }
@@ -84,13 +86,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public HttpConfiguration RequestConfiguration { get; }
 
-        public IScriptEventManager EventManager { get; }
+        public IScriptEventManager EventManager { get; set;  }
 
         public async Task InitializeAsync()
         {
             if (!string.IsNullOrEmpty(_functionsWorkerLanguage))
             {
                 Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, _functionsWorkerLanguage);
+            }
+            if (_addWorkerConcurrency)
+            {
+                Environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             }
             IConfiguration configuration = TestHelpers.GetTestConfiguration();
             string connectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
@@ -149,6 +155,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
                    }
                    services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
+                   if (_addWorkerConcurrency)
+                   {
+                       services.AddSingleton<IScriptEventManager, WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager>();
+                   }
 
                    ConfigureServices(services);
                })

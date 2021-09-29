@@ -478,5 +478,14 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(KubernetesServiceHost)) ||
                 (bool.TryParse(environment.GetEnvironmentVariable(DrainOnApplicationStopping), out bool v) && v);
         }
+
+        public static bool IsWorkerDynamicConcurrencyEnabled(this IEnvironment environment)
+        {
+            if (bool.TryParse(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled), out bool concurrencyEnabled))
+            {
+                return concurrencyEnabled && string.IsNullOrEmpty(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName));
+            }
+            return false;
+        }
     }
 }

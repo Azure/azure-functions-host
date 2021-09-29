@@ -273,5 +273,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(DrainOnApplicationStopping, drainOnStoppingValue);
             Assert.Equal(expected, environment.DrainOnApplicationStoppingEnabled());
         }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("true", "1", false)]
+        [InlineData("true", "100", false)]
+        [InlineData("true", null, true)]
+        public void IsWorkerDynamicConcurrencyEnabled_ReturnsExpectedResult(string concurrencyEnabledValue, string processCountValue, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, concurrencyEnabledValue);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, processCountValue);
+            Assert.Equal(expected, environment.IsWorkerDynamicConcurrencyEnabled());
+        }
     }
 }
