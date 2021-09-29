@@ -211,8 +211,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         _logger.HostConfigNotFound();
 
                         // There isn't a clean way to create a new function app resource with host.json as initial payload.
-                        // So a newly created function app from the portal would have no host.json.
-                        // In that case we need to create a new function app based on the app kind.
+                        // So a newly created function app from the portal would have no host.json. In that case we need to
+                        // create a new function app with host.json that includes a matching extension bundle based on the app kind.
                         hostConfigObject = GetDefaultHostConfigObject();
                         string bundleId = _configurationSource.Environment.IsLogicApp() ?
                                             ScriptConstants.WorkFlowExtensionBundleId :
