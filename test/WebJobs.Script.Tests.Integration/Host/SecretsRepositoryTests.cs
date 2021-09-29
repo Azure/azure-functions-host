@@ -379,8 +379,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
                 KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
+                KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
+                KeyVaultClientSecret = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
+                KeyVaultTenantId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
 
-                var credential = new DefaultAzureCredential();
+                var credential = new ClientSecretCredential(KeyVaultTenantId, KeyVaultClientId, KeyVaultClientSecret);
                 SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
@@ -400,6 +403,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public SecretClient SecretClient { get; private set; }
 
             public string KeyVaultUri { get; private set; }
+
+            public string KeyVaultClientId { get; private set; }
+
+            public string KeyVaultClientSecret { get; private set; }
+
+            public string KeyVaultTenantId { get; private set; }
 
             public SecretsRepositoryType RepositoryType { get; private set; }
 
@@ -452,7 +461,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, null, logger, Environment);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, KeyVaultClientSecret, KeyVaultTenantId, logger, Environment);
                 }
             }
 
