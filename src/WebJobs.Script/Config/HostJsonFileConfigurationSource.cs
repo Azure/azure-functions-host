@@ -210,12 +210,19 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                         // if no file exists we default the config
                         _logger.HostConfigNotFound();
 
+                        // There isn't a clean way to create a new function app resource with host.json as initial payload.
+                        // So a newly created function app from the portal would have no host.json. In that case we need to
+                        // create a new function app with host.json that includes a matching extension bundle based on the app kind.
                         hostConfigObject = GetDefaultHostConfigObject();
                         string bundleId = _configurationSource.Environment.IsLogicApp() ?
                                             ScriptConstants.WorkFlowExtensionBundleId :
                                             ScriptConstants.DefaultExtensionBundleId;
 
-                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId);
+                        string bundleVersion = _configurationSource.Environment.IsLogicApp() ?
+                                            ScriptConstants.LogicAppDefaultExtensionBundleVersion :
+                                            ScriptConstants.DefaultExtensionBundleVersion;
+
+                        hostConfigObject = TryAddBundleConfiguration(hostConfigObject, bundleId, bundleVersion);
                         // Add bundle configuration if no file exists and file system is not read only
                         TryWriteHostJson(configFilePath, hostConfigObject);
                     }
@@ -255,11 +262,11 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 }
             }
 
-            private JObject TryAddBundleConfiguration(JObject content, string bundleId)
+            private JObject TryAddBundleConfiguration(JObject content, string bundleId, string bundleVersion)
             {
                 if (!_configurationSource.HostOptions.IsFileSystemReadOnly)
                 {
-                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '[2.*, 3.0.0)'}";
+                    string bundleConfiguration = "{ 'id': '" + bundleId + "', 'version': '" + bundleVersion + "'}";
                     content.Add("extensionBundle", JToken.Parse(bundleConfiguration));
                     _logger.AddingExtensionBundleConfiguration(bundleConfiguration);
                 }
