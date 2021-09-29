@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         public ManagedIdentityTokenProviderTests()
         {
             _environment = new TestEnvironment();
-            _httpClientFactory = CreateHttpClientFactory();
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
         }
 
         private static TokenServiceMsiResponse GetTokenServiceMsiResponse()
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClientFactory = CreateHttpClientFactory(handlerMock);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClientFactory = CreateHttpClientFactory(handlerMock);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClientFactory = CreateHttpClientFactory(handlerMock);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(),
                 NullLogger<ManagedIdentityTokenProvider>.Instance);
@@ -144,14 +144,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private static bool UrlMatchesUserAssignedIdentity(HttpRequestMessage r, string resourceHost, string resourceId)
         {
             return r.RequestUri.AbsoluteUri.Contains($"&resource={resourceHost}") && r.RequestUri.AbsoluteUri.Contains($"&mi_res_id={resourceId}");
-        }
-        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock = null)
-        {
-            var httpClient = handlerMock == null ? new HttpClient() : new HttpClient(handlerMock.Object);
-            var mockFactory = new Mock<IHttpClientFactory>();
-            mockFactory.Setup(m => m.CreateClient())
-                 .Returns(httpClient);
-            return mockFactory.Object;
         }
     }
 }

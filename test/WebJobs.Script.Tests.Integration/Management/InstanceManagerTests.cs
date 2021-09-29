@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         public InstanceManagerTests()
         {
-            _httpClientFactory = CreateHttpClientFactory();
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
 
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory.AddProvider(_loggerProvider);
@@ -376,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.NotFound
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, CreateHttpClientFactory(handlerMock),
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -1197,18 +1197,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             InstanceManager.Reset();
 
-            return new InstanceManager(_optionsFactory, CreateHttpClientFactory(handlerMock), _scriptWebEnvironment,
+            return new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
                 meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object);
-        }
-
-        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock = null)
-        {
-            var httpClient = handlerMock == null ? new HttpClient() : new HttpClient(handlerMock.Object);
-            var mockFactory = new Mock<IHttpClientFactory>();
-            mockFactory.Setup(m => m.CreateClient())
-                 .Returns(httpClient);
-            return mockFactory.Object;
         }
 
         public void Dispose()

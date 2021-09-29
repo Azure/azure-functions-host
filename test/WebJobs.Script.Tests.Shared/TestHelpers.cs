@@ -23,6 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -461,6 +462,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureStorageProvider>();
             return azureStorageProvider;
+        }
+
+        /// <summary>
+        /// Mock an HttpClientFactory and its CreateClient functionality.
+        /// </summary>
+        /// <param name="handler">Some tests pass a mock HttpHandler into their HttpClient.</param>
+        /// <returns>IHttpClientFactory</returns>
+        public static IHttpClientFactory CreateHttpClientFactory(HttpMessageHandler handler = null)
+        {
+            var httpClient = handler == null ? new HttpClient() : new HttpClient(handler);
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
+                 .Returns(httpClient);
+            return mockFactory.Object;
         }
     }
 }

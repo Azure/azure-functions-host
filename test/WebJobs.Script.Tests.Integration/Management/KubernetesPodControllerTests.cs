@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, CreateHttpClientFactory(handlerMock),
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.OK
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, CreateHttpClientFactory(handlerMock),
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, new Mock<IRunFromPackageHandler>().Object,
                 new Mock<IPackageDownloadHandler>(MockBehavior.Strict).Object);
@@ -144,15 +144,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             });
             Assert.Null(startupContextProvider.Context);
         }
-
-        private static IHttpClientFactory CreateHttpClientFactory(Mock<HttpMessageHandler> handlerMock)
-        {
-            var httpClient = new HttpClient(handlerMock.Object);
-            var mockFactory = new Mock<IHttpClientFactory>();
-            mockFactory.Setup(m => m.CreateClient())
-                 .Returns(httpClient);
-            return mockFactory.Object;
-        }
-
     }
 }

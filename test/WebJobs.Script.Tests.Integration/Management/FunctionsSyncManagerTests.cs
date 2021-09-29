@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             loggerFactory.AddProvider(_loggerProvider);
             _contentBuilder = new StringBuilder();
             _mockHttpHandler = new MockHttpHandler(_contentBuilder);
-            var httpClientFactory = CreateHttpClientFactory(_mockHttpHandler);
+            var httpClientFactory = TestHelpers.CreateHttpClientFactory(_mockHttpHandler);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
@@ -699,15 +699,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
-        }
-
-        private static IHttpClientFactory CreateHttpClientFactory(MockHttpHandler httpHandler)
-        {
-            var httpClient = new HttpClient(httpHandler);
-            var mockFactory = new Mock<IHttpClientFactory>();
-            mockFactory.Setup(m => m.CreateClient("httpClient"))
-                 .Returns(httpClient);
-            return mockFactory.Object;
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()
