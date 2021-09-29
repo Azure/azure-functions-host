@@ -339,9 +339,9 @@ jobs:
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
       AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
-      AZURE_TENANT_ID: $(AzureTenantId)
-      AZURE_CLIENT_ID: $(AzureClientId)
-      AZURE_CLIENT_SECRET: $(AzureClientSecret)
+      AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
+      AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
+      AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
   - task: PowerShell@2
     condition: always()
     displayName: 'Checkin secrets'

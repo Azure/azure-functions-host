@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Lazy<SecretClient> _secretClient;
         private readonly IEnvironment _environment;
 
-        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
+        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, string clientSecret, string tenantId, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
         {
             if (string.IsNullOrEmpty(secretsSentinelFilePath))
             {
@@ -39,8 +39,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
-                TokenCredential credential = string.IsNullOrEmpty(clientId) ? new DefaultAzureCredential()
-                    : new ManagedIdentityCredential(clientId);
+                // If clientSecret and tenantId are provided, use ClientSecret credential; otherwise use managed identity
+                TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId) ? new ClientSecretCredential(tenantId, clientId, clientSecret)
+                    : new ChainedTokenCredential(new ManagedIdentityCredential(clientId), new ManagedIdentityCredential());
 
                 return new SecretClient(keyVaultUri, credential);
             });

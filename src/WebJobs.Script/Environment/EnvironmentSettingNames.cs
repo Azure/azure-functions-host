@@ -38,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
         public const string AzureWebJobsSecretStorageKeyVaultUri = "AzureWebJobsSecretStorageKeyVaultUri";
         public const string AzureWebJobsSecretStorageKeyVaultClientId = "AzureWebJobsSecretStorageKeyVaultClientId";
+        public const string AzureWebJobsSecretStorageKeyVaultClientSecret = "AzureWebJobsSecretStorageKeyVaultClientSecret";
+        public const string AzureWebJobsSecretStorageKeyVaultTenantId = "AzureWebJobsSecretStorageKeyVaultTenantId";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
         public const string UserDataHome = "USER_DATA_HOME";

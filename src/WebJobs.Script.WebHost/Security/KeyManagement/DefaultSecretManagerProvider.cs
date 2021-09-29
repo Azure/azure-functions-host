@@ -70,8 +70,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 string azureWebJobsSecretStorageKeyVaultUri = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
                 string azureWebJobsSecretStorageKeyVaultClientId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
+                string azureWebJobsSecretStorageKeyVaultClientSecret = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
+                string azureWebJobsSecretStorageKeyVaultTenantId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
+
                 var logger = _loggerFactory.CreateLogger<KeyVaultSecretsRepository>();
-                return new KeyVaultSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), azureWebJobsSecretStorageKeyVaultUri, azureWebJobsSecretStorageKeyVaultClientId, logger, _environment);
+
+                return new KeyVaultSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"), azureWebJobsSecretStorageKeyVaultUri, azureWebJobsSecretStorageKeyVaultClientId,
+                                                                    azureWebJobsSecretStorageKeyVaultClientSecret, azureWebJobsSecretStorageKeyVaultTenantId, logger, _environment);
             }
             else if (secretStorageType != null && secretStorageType.Equals("kubernetes", StringComparison.OrdinalIgnoreCase))
             {
