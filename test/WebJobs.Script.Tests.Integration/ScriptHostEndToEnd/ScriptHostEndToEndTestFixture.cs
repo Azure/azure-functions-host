@@ -36,12 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly ScriptSettingsManager _settingsManager;
         private readonly ManualResetEventSlim _hostStartedEvent = new ManualResetEventSlim();
         private readonly string _rootPath;
-        private readonly ProxyClientExecutor _proxyClient;
         private readonly bool _startHost;
         private readonly ICollection<string> _functions;
         private readonly string _functionsWorkerLanguage;
 
-        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, ProxyClientExecutor proxyClient = null,
+        protected ScriptHostEndToEndTestFixture(string rootPath, string testId, string functionsWorkerLanguage, 
             bool startHost = true, ICollection<string> functions = null)
         {
             _settingsManager = ScriptSettingsManager.Instance;
@@ -52,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             LoggerProvider = new TestLoggerProvider();
 
             _rootPath = rootPath;
-            _proxyClient = proxyClient;
             _startHost = startHost;
             _functions = functions;
             _functionsWorkerLanguage = functionsWorkerLanguage;
@@ -139,12 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        {
                            o.Functions = _functions;
                        }
-                   });
-
-                   if (_proxyClient != null)
-                   {
-                       services.AddSingleton<ProxyClientExecutor>(_proxyClient);
-                   }
+                   });               
 
                    // Shared memory data transfer
                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

@@ -4,9 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Autofac.Core.Lifetime;
 using Azure;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.WebJobs.Script.WebHost;

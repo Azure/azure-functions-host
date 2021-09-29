@@ -34,12 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await InvokeHttpTrigger("HttpTrigger");
         }
 
-        [Fact(Skip = "Proxies disabled")]
-        public async Task Proxy_CustomHandler_Get_Succeeds()
-        {
-            await InvokeProxy();
-        }
-
         private async Task InvokeHttpTrigger(string functionName)
         {
             string functionKey = await _fixture.Host.GetFunctionSecretAsync($"{functionName}");
@@ -53,18 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string responseContent = await response.Content.ReadAsStringAsync();
             JObject res = JObject.Parse(responseContent);
             Assert.True(res["functionName"].ToString().StartsWith($"api/{functionName}"));
-        }
-
-        private async Task InvokeProxy()
-        {
-            string uri = "something";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string responseContent = await response.Content.ReadAsStringAsync();
-            Assert.Equal(responseContent, uri);
         }
 
         public class TestFixture : EndToEndTestFixture

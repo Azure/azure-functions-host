@@ -49,9 +49,6 @@ namespace Microsoft.Azure.WebJobs.Script
             metadata.Properties[FunctionIdKey] = functionId;
         }
 
-        public static bool IsProxy(this FunctionMetadata metadata) =>
-            metadata is ProxyFunctionMetadata;
-
         public static bool IsDirect(this FunctionMetadata metadata) =>
             GetBoolProperty(metadata.Properties, IsDirectKey);
 

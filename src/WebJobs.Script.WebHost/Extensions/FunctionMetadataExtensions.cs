@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 // Properties below this comment are not present in the kudu version.
                 IsDirect = functionMetadata.IsDirect(),
                 IsDisabled = functionMetadata.IsDisabled(),
-                IsProxy = functionMetadata.IsProxy(),
+                IsProxy = false,
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };

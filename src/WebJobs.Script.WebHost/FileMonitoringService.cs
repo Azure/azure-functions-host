@@ -269,7 +269,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
             // - the host.json file was changed
             // - a function.json file was changed
-            // - a proxies.json file was changed
             // - a function directory was added/removed/renamed
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
 

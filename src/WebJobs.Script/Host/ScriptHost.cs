@@ -317,9 +317,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
 
                 // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Dispatcher not needed for non-proxy codeless function.
+                // Dispatcher not needed for codeless function.
                 // Disptacher needed for non-dotnet codeless functions
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
                 await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
 
                 GenerateFunctions(directTypes);
@@ -369,9 +369,9 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets metadata collection of functions and proxies configured.
+        /// Gets metadata collection of functions configured.
         /// </summary>
-        /// <returns>A metadata collection of functions and proxies configured.</returns>
+        /// <returns>A metadata collection of functions configured.</returns>
         private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
         {
             IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
@@ -569,15 +569,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (functionMetadata.Any(m => m.IsProxy()))
-            {
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
-            }
-
-            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
+            // If we have a codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
             // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
             if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
-                && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
+                && functionMetadata.Any(m => m.IsCodeless()))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -775,35 +770,29 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
             {
-                bool isProxy = function.Metadata != null && function.Metadata.IsProxy();
+                ValidateHttpFunction(function.Name, httpTrigger);
 
-                ValidateHttpFunction(function.Name, httpTrigger, isProxy);
-
-                if (!isProxy)
+                // prevent duplicate/conflicting routes for functions
+                foreach (var pair in httpFunctions)
                 {
-                    // prevent duplicate/conflicting routes for functions
-                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
-                    foreach (var pair in httpFunctions)
+                    if (HttpRoutesConflict(httpTrigger, pair.Value))
                     {
-                        if (HttpRoutesConflict(httpTrigger, pair.Value))
-                        {
-                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
-                        }
+                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
                     }
                 }
 
                 if (httpFunctions.ContainsKey(function.Name))
                 {
-                    throw new InvalidOperationException($"The function or proxy name '{function.Name}' must be unique within the function app.");
+                    throw new InvalidOperationException($"The function name '{function.Name}' must be unique within the function app.");
                 }
 
                 httpFunctions.Add(function.Name, httpTrigger);
             }
         }
 
-        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
         {
-            if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
             {
                 // if no explicit route is provided, default to the function name
                 httpTrigger.Route = functionName;
