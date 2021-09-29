@@ -13,16 +13,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
-        private ILogger _logger;
+        private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
 
-        public DefaultWorkerProcessFactory(ILoggerFactory loggerFactory)
+        public DefaultWorkerProcessFactory(IEnvironment environment, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
             _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
-        }
+            _environment = environment;
+       }
 
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
@@ -97,14 +99,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal void ApplyWorkerConcurrencyLimits(ProcessStartInfo startInfo)
         {
-            // Set higher concurrency limits for Python and Powershell language workers for V4
-            string functionWorkerRuntime = startInfo.EnvironmentVariables.GetValue(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValue(RpcWorkerConstants.PythonThreadpoolThreadCount)) &&
+            string functionWorkerRuntime = startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PythonThreadpoolThreadCount)) &&
                 string.Equals(functionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 startInfo.EnvironmentVariables[RpcWorkerConstants.PythonThreadpoolThreadCount] = RpcWorkerConstants.DefaultConcurrencyLimit;
             }
-            else if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValue(RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound)) &&
+            else if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound)) &&
                string.Equals(functionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 startInfo.EnvironmentVariables[RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound] = RpcWorkerConstants.DefaultConcurrencyLimit;

@@ -6,7 +6,6 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -201,9 +200,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
             File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
-
-            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.proxies.json");
-            File.WriteAllText(Path.Combine(scriptPath, "proxies.json"), content);
 
             string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
             Directory.CreateDirectory(functionPath);

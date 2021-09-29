@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29409.12
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31717.71
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -318,7 +318,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CustomHandler", "CustomHandler", "{A59D3F65-53E5-4666-AEFE-882987A39A49}"
 	ProjectSection(SolutionItems) = preProject
 		sample\CustomHandler\host.json = sample\CustomHandler\host.json
-		sample\CustomHandler\proxies.json = sample\CustomHandler\proxies.json
 		sample\CustomHandler\server.js = sample\CustomHandler\server.js
 	EndProjectSection
 EndProject
