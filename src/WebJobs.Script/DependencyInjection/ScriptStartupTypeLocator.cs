@@ -342,8 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             // Application Insights uses a special binding value to ensure it's installed based on its App Setting
             if (extension.Bindings.Any(b => b.Equals("_")))
             {
-                return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString))
-                          || !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsInstrumentationKey));
+                return IsApplicationInsightsSettingPresent();
             }
 
             return extension.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any();
@@ -351,22 +350,31 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private void ValidateApplicationInsightsConfig(List<Type> startupTypes)
         {
-            if (!startupTypes.Exists(t => t.Name.Equals("ApplicationInsightsWebJobsStartup")))
+            bool isSelfHost = false;
+            if (isSelfHost)
             {
-                return;
-            }
-
-            if (_isSelfHost)
-            {
-                _logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, you must install the Application Insights Extension.");
+                _logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension.");
             }
             else
             {
-                throw new HostInitializationException($"{EnvironmentSettingNames.AppInsightsConnectionString} is defined but the Application Insights Extension is not installed. " +
-                                                        $"Please install the Application Insights Extension.");
+                bool applicationInsightsInstalled = startupTypes.Exists(t => t.Name.Equals("ApplicationInsightsWebJobsStartup"));
+                if (applicationInsightsInstalled && !IsApplicationInsightsSettingPresent())
+                {
+                    throw new HostInitializationException($"The Application Insights Extension is installed but is not properly configured. " +
+                                                          $"Please define the \"{EnvironmentSettingNames.AppInsightsConnectionString}\" app setting.");
+                }
+                else if (!applicationInsightsInstalled && IsApplicationInsightsSettingPresent())
+                {
+                    throw new HostInitializationException($"{EnvironmentSettingNames.AppInsightsConnectionString} or {EnvironmentSettingNames.AppInsightsInstrumentationKey} " +
+                                                          $"is defined but the Application Insights Extension is not installed. Please install the Application Insights Extension.");
+                }
             }
+        }
 
-            return;
+        private bool IsApplicationInsightsSettingPresent()
+        {
+            return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString))
+                      || !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsInstrumentationKey));
         }
 
         private class TypeNameEqualityComparer : IEqualityComparer<Type>
