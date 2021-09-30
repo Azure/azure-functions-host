@@ -7,5 +7,7 @@
 - Breaking change - removed HttpClient as a registered service and replaced with IHttpClientFactory (#7692)
 - My change description (#PR)
 
+- Updated Java Worker Version to [2.0.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.0.0)
+
 **Release sprint:** Sprint 111
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+111%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+111%22+label%3Afeature+is%3Aclosed) ]
