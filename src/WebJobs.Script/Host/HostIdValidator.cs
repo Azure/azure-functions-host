@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class HostIdValidator
     {
         public const string BlobPathFormat = "ids/usage/{0}";
-        private const LogLevel DefaultLevel = LogLevel.Warning;
+        private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
         private readonly IAzureStorageProvider _storageProvider;
@@ -116,16 +116,16 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string message = string.Format(Resources.HostIdCollisionFormat, hostId);
-            if (level == LogLevel.Error)
+            if (level == LogLevel.Warning)
             {
-                _logger.LogError(message);
-                _applicationLifetime.StopApplication();
+                _logger.LogWarning(message);
             }
             else
             {
                 // we only allow Warning/Error levels to be specified, so anything other than
-                // Error is treated as warning
-                _logger.LogWarning(message);
+                // Warning is treated as Error
+                _logger.LogError(message);
+                _applicationLifetime.StopApplication();
             }
         }
 

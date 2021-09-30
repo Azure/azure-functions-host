@@ -107,13 +107,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             Assert.Empty(logs);
         }
 
-        [Theory]
-        [InlineData(null)]
-        [InlineData("Warning")]
-        [InlineData("None")]
-        public async Task ValidateHostIdUsageAsync_Collision_WarningLevel_Logs(string level)
+        [Fact]
+        public async Task ValidateHostIdUsageAsync_Collision_WarningLevel_Logs()
         {
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, level);
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Warning.ToString());
 
             await ClearHostIdInfoAsync();
 
@@ -135,10 +132,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _mockApplicationLifetime.Verify(p => p.StopApplication(), Times.Never);
         }
 
-        [Fact]
-        public async Task ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("Error")]
+        [InlineData("None")]
+        public async Task ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(string level)
         {
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Error.ToString());
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, level);
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 
             await ClearHostIdInfoAsync();
