@@ -187,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
            var httpClient = new HttpClient(new MockHttpHandler(writeContent));
            var mockFactory = new Mock<IHttpClientFactory>();
-           mockFactory.Setup(m => m.CreateClient())
+           mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
                 .Returns(httpClient);
            return mockFactory.Object;
         }

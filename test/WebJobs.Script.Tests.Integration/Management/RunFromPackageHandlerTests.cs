@@ -561,7 +561,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
                 });
 
-            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
