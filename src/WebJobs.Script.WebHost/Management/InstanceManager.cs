@@ -34,11 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
+        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, IHttpClientFactory clientFactory, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
             IPackageDownloadHandler packageDownloadHandler)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _client = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;

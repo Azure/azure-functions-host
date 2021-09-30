@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly ScriptWebHostEnvironment _scriptWebEnvironment;
         private readonly InstanceManager _instanceManager;
         private readonly Mock<IMeshServiceClient> _meshServiceClientMock;
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly LoggerFactory _loggerFactory = new LoggerFactory();
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
         private readonly IRunFromPackageHandler _runFromPackageHandler;
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         public InstanceManagerTests()
         {
-            _httpClient = new HttpClient();
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
 
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory.AddProvider(_loggerProvider);
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
                 bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
-            _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            _instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
             InstanceManager.Reset();
@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
                 .Returns(Task.FromResult(string.Empty));
 
-            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -300,7 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 IsScmRunFromPackage = false
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
-            var instanceManager = new InstanceManager(optionsFactory, new HttpClient(), _scriptWebEnvironment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
                 _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -376,7 +376,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 StatusCode = HttpStatusCode.NotFound
             });
 
-            var instanceManager = new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object),
+            var instanceManager = new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object),
                 scriptWebEnvironment, environment, loggerFactory.CreateLogger<InstanceManager>(),
                 new TestMetricsLogger(), null, _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -757,7 +757,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountBlob(Utility.BuildStorageConnectionString(account3, accessKey3, CloudConstants.AzureStorageSuffix), share3, targetPath3)).Returns(Task.FromResult(true));
 
-            var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -810,7 +810,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             meshInitServiceClient.Setup(client =>
                 client.MountCifs(Utility.BuildStorageConnectionString(account1, accessKey1, CloudConstants.AzureStorageSuffix), share1, targetPath1)).Returns(Task.FromResult(true));
 
-            var instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(_optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), meshInitServiceClient.Object,
                 _runFromPackageHandler, _packageDownloadHandler.Object);
 
@@ -867,7 +867,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -933,7 +933,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -988,7 +988,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -1044,7 +1044,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -1095,7 +1095,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -1149,7 +1149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = scriptPath });
 
-            var instanceManager = new InstanceManager(optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
+            var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object,
                 runFromPackageHandler.Object, _packageDownloadHandler.Object);
 
@@ -1197,7 +1197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             InstanceManager.Reset();
 
-            return new InstanceManager(_optionsFactory, new HttpClient(handlerMock.Object), _scriptWebEnvironment,
+            return new InstanceManager(_optionsFactory, TestHelpers.CreateHttpClientFactory(handlerMock.Object), _scriptWebEnvironment,
                 _environment, _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(),
                 meshServiceClient, _runFromPackageHandler, _packageDownloadHandler.Object);
         }

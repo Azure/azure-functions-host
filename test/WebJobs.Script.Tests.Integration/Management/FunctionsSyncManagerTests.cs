@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             loggerFactory.AddProvider(_loggerProvider);
             _contentBuilder = new StringBuilder();
             _mockHttpHandler = new MockHttpHandler(_contentBuilder);
-            var httpClient = CreateHttpClient(_mockHttpHandler);
+            var httpClientFactory = TestHelpers.CreateHttpClientFactory(_mockHttpHandler);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
             var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
 
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
@@ -699,11 +699,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
-        }
-
-        private static HttpClient CreateHttpClient(MockHttpHandler httpHandler)
-        {
-            return new HttpClient(httpHandler);
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

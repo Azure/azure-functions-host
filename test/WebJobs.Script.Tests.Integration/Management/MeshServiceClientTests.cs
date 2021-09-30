@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             _environment = new TestEnvironment();
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
-            _meshServiceClient = new MeshServiceClient(new HttpClient(_handlerMock.Object), _environment,
+            _meshServiceClient = new MeshServiceClient(TestHelpers.CreateHttpClientFactory(_handlerMock.Object), _environment,
                 NullLogger<MeshServiceClient>.Instance);
         }
 

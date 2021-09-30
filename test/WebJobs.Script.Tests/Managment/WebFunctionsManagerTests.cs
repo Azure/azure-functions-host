@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var fileSystem = CreateFileSystem(_hostOptions);
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
             var contentBuilder = new StringBuilder();
-            var httpClient = CreateHttpClient(contentBuilder);
+            var httpClientFactory = CreateHttpClientFactory(contentBuilder);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
@@ -90,8 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var emptyOptions = new JobHostInternalStorageOptions();
             var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configurationMock.Object, emptyOptions);
-            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureStorageProvider);
-            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClient, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager);
+            var functionsSyncManager = new FunctionsSyncManager(configurationMock.Object, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, mockWebHostEnvironment.Object, _mockEnvironment.Object, hostNameProvider, functionMetadataManager, azureStorageProvider);
+            _webFunctionsManager = new WebFunctionsManager(optionsMonitor, loggerFactory, httpClientFactory, secretManagerProviderMock.Object, functionsSyncManager, hostNameProvider, functionMetadataManager);
         }
 
         [Theory]
@@ -183,9 +183,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(expected, _webFunctionsManager.GetBaseUrl());
         }
 
-        private static HttpClient CreateHttpClient(StringBuilder writeContent)
+        private static IHttpClientFactory CreateHttpClientFactory(StringBuilder writeContent)
         {
-            return new HttpClient(new MockHttpHandler(writeContent));
+           var httpClient = new HttpClient(new MockHttpHandler(writeContent));
+           var mockFactory = new Mock<IHttpClientFactory>();
+           mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
+                .Returns(httpClient);
+           return mockFactory.Object;
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

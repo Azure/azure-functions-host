@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private static readonly JsonSerializer Serializer = JsonSerializer.Create(new JsonSerializerSettings());
 
-        public MeshServiceClient(HttpClient client, IEnvironment environment, ILogger<MeshServiceClient> logger)
+        public MeshServiceClient(IHttpClientFactory httpClientFactory, IEnvironment environment, ILogger<MeshServiceClient> logger)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }

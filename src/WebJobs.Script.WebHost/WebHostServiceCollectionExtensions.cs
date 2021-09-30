@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
-            services.AddSingleton(_ => new HttpClient());
+            services.AddHttpClient();
             services.AddSingleton<StartupContextProvider>();
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
@@ -230,9 +230,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 var environment = s.GetService<IEnvironment>();
                 if (environment.IsLinuxConsumption())
                 {
-                    var httpClient = s.GetService<HttpClient>();
+                    var httpClientFactory = s.GetService<IHttpClientFactory>();
                     var logger = s.GetService<ILogger<MeshServiceClient>>();
-                    return new MeshServiceClient(httpClient, environment, logger);
+                    return new MeshServiceClient(httpClientFactory, environment, logger);
                 }
 
                 return NullMeshServiceClient.Instance;
