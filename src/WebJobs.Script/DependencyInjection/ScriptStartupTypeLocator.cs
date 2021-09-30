@@ -350,8 +350,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         private void ValidateApplicationInsightsConfig(List<Type> startupTypes)
         {
-            bool isSelfHost = false;
-            if (isSelfHost)
+            if (_isSelfHost)
             {
                 _logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension.");
             }
