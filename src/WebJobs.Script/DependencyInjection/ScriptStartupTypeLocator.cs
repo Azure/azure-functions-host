@@ -342,7 +342,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             // Application Insights uses a special binding value to ensure it's installed based on its App Setting
             if (extension.Bindings.Any(b => b.Equals("_")))
             {
-                return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString));
+                return !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsConnectionString))
+                          || !string.IsNullOrEmpty(_environment.GetEnvironmentVariable(EnvironmentSettingNames.AppInsightsInstrumentationKey));
             }
 
             return extension.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any();
