@@ -5,7 +5,7 @@ using System;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.WebHost
+namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
     /// Provides the current HostName for the Function App.

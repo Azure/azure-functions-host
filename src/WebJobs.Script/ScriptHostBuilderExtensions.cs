@@ -324,6 +324,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // to be careful with caching, etc. E.g. these services will get
             // initially created in placeholder mode and live on through the
             // specialized app.
+            services.AddSingleton<HostNameProvider>();
+            services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
 

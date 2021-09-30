@@ -124,7 +124,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddHttpClient();
             services.AddSingleton<StartupContextProvider>();
-            services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();

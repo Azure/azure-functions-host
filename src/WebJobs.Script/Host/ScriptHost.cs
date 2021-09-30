@@ -46,7 +46,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const string GeneratedTypeName = "Functions";
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
@@ -118,7 +117,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
             _configuration = configuration;
-            _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
             _fileLoggingStatusManager = fileLoggingStatusManager;
