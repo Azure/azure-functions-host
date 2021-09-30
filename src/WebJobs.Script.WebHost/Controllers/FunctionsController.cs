@@ -30,15 +30,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
     /// </summary>
     public class FunctionsController : Controller
     {
+        private readonly IOptions<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IWebFunctionsManager _functionsManager;
         private readonly IWebJobsRouter _webJobsRouter;
         private readonly ILogger _logger;
 
-        public FunctionsController(IWebFunctionsManager functionsManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory)
+        public FunctionsController(IWebFunctionsManager functionsManager, IWebJobsRouter webJobsRouter, ILoggerFactory loggerFactory, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
         {
             _functionsManager = functionsManager;
             _webJobsRouter = webJobsRouter;
             _logger = loggerFactory?.CreateLogger(ScriptConstants.LogCategoryFunctionsController);
+            _applicationHostOptions = applicationHostOptions;
         }
 
         [HttpGet]
@@ -67,6 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevel)]
         public async Task<IActionResult> CreateOrUpdate(string name, [FromBody] FunctionMetadataResponse functionMetadata, [FromServices] IFileMonitoringService fileMonitoringService)
         {
+            if (_applicationHostOptions.Value.IsFileSystemReadOnly)
+            {
+                return BadRequest("Your app is currently in read only mode. Cannot create or update functions.");
+            }
+
             if (!Utility.IsValidFunctionName(name))
             {
                 return BadRequest($"{name} is not a valid function name");

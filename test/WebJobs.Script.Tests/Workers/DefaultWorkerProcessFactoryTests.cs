@@ -4,10 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
@@ -15,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     public class DefaultWorkerProcessFactoryTests
     {
         private ILoggerFactory _loggerFactory = new LoggerFactory();
+        private TestEnvironment _testEnvironment = new TestEnvironment();
 
         public static IEnumerable<object[]> TestWorkerContexts
         {
@@ -37,18 +40,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 yield return new object[]
                 {
                     new RpcWorkerContext(
-                    "testId",
-                    500,
-                    "testWorkerId",
-                    new WorkerProcessArguments()
-                    {
-                        ExecutablePath = "test",
-                        ExecutableArguments = new List<string>() { "%httpkey1%", "%TestEnv%" },
-                        WorkerArguments = new List<string>() { "%httpkey2%" }
-                    },
-                    "c:\testDir",
-                    new Uri("http://localhost"),
-                    new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } })
+                        "testId",
+                        500,
+                        "testWorkerId",
+                        new WorkerProcessArguments()
+                        {
+                            ExecutablePath = "test",
+                            ExecutableArguments = new List<string>() { "%httpkey1%", "%TestEnv%" },
+                            WorkerArguments = new List<string>() { "%httpkey2%" }
+                        },
+                        "c:\testDir",
+                        new Uri("http://localhost"),
+                        new Dictionary<string, string>() { { "httpkey1", "httpvalue1" }, { "httpkey2", "httpvalue2" } })
                 };
             }
         }
@@ -66,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public void DefaultWorkerProcessFactory_Returns_ExpectedProcess(WorkerContext workerContext)
         {
             Environment.SetEnvironmentVariable("TestEnv", "TestVal");
-            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
             Process childProcess = defaultWorkerProcessFactory.CreateWorkerProcess(workerContext);
 
             var expectedEnvVars = workerContext.EnvironmentVariables;
@@ -93,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         [MemberData(nameof(InvalidWorkerContexts))]
         public void DefaultWorkerProcessFactory_InvalidWorkerContext_Throws(WorkerContext workerContext)
         {
-            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
             Assert.Throws<ArgumentNullException>(() => defaultWorkerProcessFactory.CreateWorkerProcess(workerContext));
         }
 
@@ -104,11 +107,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         public void DefaultWorkerProcessFactory_SanitizeExpandedArgs(string inputString, string expectedResult)
         {
             Environment.SetEnvironmentVariable("TestEnv", "TestVal");
-            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_loggerFactory);
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
             var expandedArgs = Environment.ExpandEnvironmentVariables(inputString);
             var result = defaultWorkerProcessFactory.SanitizeExpandedArgument(expandedArgs);
             Assert.Equal(expectedResult, result);
             Environment.SetEnvironmentVariable("TestEnv", string.Empty);
+        }
+
+        [Theory]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonThreadpoolThreadCount, "1", "1")]
+        [InlineData(RpcWorkerConstants.PythonLanguageWorkerName, RpcWorkerConstants.PythonThreadpoolThreadCount, null, RpcWorkerConstants.DefaultConcurrencyLimit)]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound, "1", "1")]
+        [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound, null, RpcWorkerConstants.DefaultConcurrencyLimit)]
+        [InlineData(RpcWorkerConstants.NodeLanguageWorkerName, "test", null, null)]
+        public void DefaultWorkerProcessFactory_ApplyWorkerConcurrencyLimits_WorksAsExpected(string runtime, string name, string value, string expectedValue)
+        {
+            DefaultWorkerProcessFactory defaultWorkerProcessFactory = new DefaultWorkerProcessFactory(_testEnvironment, _loggerFactory);
+
+            Process process = defaultWorkerProcessFactory.CreateWorkerProcess(TestWorkerContexts.ToList()[1][0] as WorkerContext);
+            process.StartInfo.EnvironmentVariables[RpcWorkerConstants.FunctionWorkerRuntimeSettingName] = runtime;
+            if (!string.IsNullOrEmpty(value))
+            {
+                process.StartInfo.EnvironmentVariables[name] = value;
+            }
+            defaultWorkerProcessFactory.ApplyWorkerConcurrencyLimits(process.StartInfo);
+            Assert.Equal(process.StartInfo.EnvironmentVariables.GetValueOrNull(name), expectedValue);
         }
 
         public IDictionary<string, string> GetTestEnvVars()

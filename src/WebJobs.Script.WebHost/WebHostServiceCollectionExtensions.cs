@@ -23,6 +23,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies;
 using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
+using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Configuration;
@@ -118,12 +119,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Management services
             services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-            services.AddSingleton<IFunctionMetadataProvider, FunctionMetadataProvider>();
+            services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();
             services.AddSingleton<IInstanceManager, InstanceManager>();
             services.AddSingleton(_ => new HttpClient());
             services.AddSingleton<StartupContextProvider>();
-            services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IFileSystem>(_ => FileUtility.Instance);
             services.AddTransient<VirtualFileSystem>();
             services.AddTransient<VirtualFileSystemMiddleware>();
@@ -160,8 +160,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             });
 
+            if (environment.SupportsSharedMemoryTransfer() && environment.SupportsFunctionDataCache())
+            {
+                services.AddSingleton<IFunctionDataCache, FunctionDataCache>();
+            }
+
             // Grpc
-            services.AddGrpc();
+            services.AddScriptGrpc();
 
             // Register common services with the WebHost
             // Language Worker Hosted Services need to be intialized before WebJobsScriptHostService
@@ -288,6 +293,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             services.AddSingleton<IRunFromPackageHandler, RunFromPackageHandler>();
+            services.AddSingleton<IPackageDownloadHandler, PackageDownloadHandler>();
+            services.AddSingleton<IManagedIdentityTokenProvider, ManagedIdentityTokenProvider>();
             services.AddSingleton<IUnZipHandler, UnZipHandler>();
             services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
         }

@@ -167,7 +167,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // store off a bit of the creation stack for easier debugging if this host doesn't shut down.
             var stack = new StackTrace(true).ToString().Split(Environment.NewLine).Take(5);
             _createdStack = string.Join($"{Environment.NewLine}    ", stack);
+
+            // cache startup logs since tests clear logs from time to time
+            StartupLogs = GetScriptHostLogMessages();
         }
+
+        public IList<LogMessage> StartupLogs { get; }
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
@@ -406,7 +411,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var managerServiceProvider = manager as IServiceProvider;
 
-            var metadataProvider = new FunctionMetadataProvider(optionsMonitor, NullLogger<FunctionMetadataProvider>.Instance, new TestMetricsLogger());
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), metadataProvider,
                 managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions));
 

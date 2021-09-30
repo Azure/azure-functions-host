@@ -12,8 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     internal class TestWorkerProcess : WorkerProcess
     {
-        internal TestWorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, bool useStdErrStreamForErrorsOnly = false)
-        : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, useStdErrStreamForErrorsOnly)
+        internal TestWorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, bool useStdErrStreamForErrorsOnly = false)
+        : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, useStdErrStreamForErrorsOnly)
         {
         }
 

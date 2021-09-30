@@ -19,7 +19,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class FunctionMetadataProvider : IFunctionMetadataProvider
+    public class HostFunctionMetadataProvider : IFunctionMetadataProvider
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly IMetricsLogger _metricsLogger;
@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public FunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
@@ -240,11 +240,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // if there is a "run" file, that file is primary,
                     // for Node, any index.js file is primary
+                    // for Python, __init__.py file is primary
                     // TODO #6955: Get default function file name from language worker configs
                     functionPrimary = functionFiles.FirstOrDefault(p =>
                         fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js" ||
-                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs");
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs" ||
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "__init__.py");
                 }
             }
 

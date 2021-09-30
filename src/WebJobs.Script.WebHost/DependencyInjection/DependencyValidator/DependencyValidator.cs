@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.FileProvisioning;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -43,17 +44,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             expected.ExpectCollection<IHostedService>()
                 .Expect<JobHostService>("Microsoft.Azure.WebJobs.Hosting.OptionsLoggingService")
                 .ExpectFactory<ExternalConfigurationStartupValidatorService>()
-                .Expect<PrimaryHostCoordinator>()
                 .ExpectFactory<IFileMonitoringService>()
                 .Expect<WorkerConsoleLogService>()
                 .Expect<FunctionInvocationDispatcherShutdownManager>()
+                .Expect<WorkerConcurrencyManager>()
                 .Optional<FunctionsScaleMonitorService>()
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
                 .Optional<FunctionsSyncService>() // Conditionally registered.
                 .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60") // Popularly-registered by DataProtection.
                 .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60") // Popularly-registered by Health Check Monitor.
-                .OptionalExternal("OpenTelemetry.Extensions.Hosting.Implementation.TelemetryHostedService", "OpenTelemetry.Extensions.Hosting", "7bd6737fe5b67e3c"); // Enable OpenTelemetry.Net instrumentation library
+                .OptionalExternal("OpenTelemetry.Extensions.Hosting.Implementation.TelemetryHostedService", "OpenTelemetry.Extensions.Hosting", "7bd6737fe5b67e3c") // Enable OpenTelemetry.Net instrumentation library
+                .OptionalExternal("Microsoft.Azure.WebJobs.Hosting.PrimaryHostCoordinator", "Microsoft.Azure.WebJobs.Host", "31bf3856ad364e35")
+                .OptionalExternal("Microsoft.Azure.WebJobs.Host.Scale.ConcurrencyManagerService", "Microsoft.Azure.WebJobs.Host", "31bf3856ad364e35");
 
             expected.ExpectSubcollection<ILoggerProvider>()
                 .Expect<FunctionFileLoggerProvider>()

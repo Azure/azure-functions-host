@@ -75,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationMountCifs = "linux.container.specialization.mount.cifs";
         public const string LinuxContainerSpecializationZipExtract = "linux.container.specialization.zip.extract";
         public const string LinuxContainerSpecializationZipDownload = "linux.container.specialization.zip.download";
+        public const string LinuxContainerSpecializationZipDownloadUsingManagedIdentity = "linux.container.specialization.zip.download.mi.token";
         public const string LinuxContainerSpecializationZipDownloadWarmup = "linux.container.specialization.zip.download.warmup";
         public const string LinuxContainerSpecializationZipWrite = "linux.container.specialization.zip.write";
         public const string LinuxContainerSpecializationZipWriteWarmup = "linux.container.specialization.zip.write.warmup";
@@ -82,6 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public const string LinuxContainerSpecializationZipHeadWarmup = "linux.container.specialization.zip.head.warmup";
         public const string LinuxContainerSpecializationFuseMount = "linux.container.specialization.mount";
         public const string LinuxContainerSpecializationMSIInit = "linux.container.specialization.msi.init";
+        public const string LinuxContainerSpecializationFetchMIToken = "linux.container.specialization.fetch.mi.token";
         public const string LinuxContainerSpecializationUnsquash = "linux.container.specialization.unsquash";
         public const string LinuxContainerSpecializationFileCommand = "linux.container.specialization.file.command";
         public const string LinuxContainerSpecializationAzureFilesMount = "linux.container.specialization.azure.files.mount";

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
@@ -25,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
             var testEnv = new TestEnvironment();
             var testWorkerConfigs = TestHelpers.GetTestWorkerConfigs();
+            var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
                 "testrootPath",
@@ -35,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 processRegistry.Object,
                 new TestLogger("test"),
                 languageWorkerConsoleLogSource.Object,
-                new TestMetricsLogger());
+                new TestMetricsLogger(),
+                serviceProviderMock.Object);
         }
 
         [Fact]

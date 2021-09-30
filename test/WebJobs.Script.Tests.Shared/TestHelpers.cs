@@ -11,15 +11,18 @@ using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -38,6 +41,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 return Path.Combine(Path.GetTempPath(), "FunctionsTest");
             }
+        }
+
+        public static Task WaitOneAsync(this WaitHandle waitHandle)
+        {
+            if (waitHandle == null)
+            {
+                throw new ArgumentNullException("waitHandle");
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            var rwh = ThreadPool.RegisterWaitForSingleObject(waitHandle,
+                delegate { tcs.TrySetResult(true); }, null, -1, true);
+            var t = tcs.Task.ContinueWith((antecedent) => rwh.Unregister(null));
+
+            return t;
         }
 
         public static async Task RunWithTimeoutAsync(Func<Task> action, TimeSpan timeout)
@@ -258,12 +276,38 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1)
+        public static IList<RpcWorkerConfig> GetTestWorkerConfigs(bool includeDllWorker = false, int processCountValue = 1,
+            TimeSpan? processStartupInterval = null, TimeSpan? processRestartInterval = null, TimeSpan? processShutdownTimeout = null)
         {
+            var defaultCountOptions = new WorkerProcessCountOptions();
+            TimeSpan startupInterval = processStartupInterval ?? defaultCountOptions.ProcessStartupInterval;
+            TimeSpan restartInterval = processRestartInterval ?? defaultCountOptions.ProcessRestartInterval;
+            TimeSpan shutdownTimeout = processShutdownTimeout ?? defaultCountOptions.ProcessShutdownTimeout;
+
             var workerConfigs = new List<RpcWorkerConfig>
             {
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("node", ".js"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } },
-                new RpcWorkerConfig() { Description = GetTestWorkerDescription("java", ".jar"), CountOptions = new Script.Workers.WorkerProcessCountOptions() { ProcessCount = processCountValue } }
+                new RpcWorkerConfig
+                {
+                    Description = GetTestWorkerDescription("node", ".js"),
+                    CountOptions = new WorkerProcessCountOptions
+                    {
+                        ProcessCount = processCountValue,
+                        ProcessStartupInterval = startupInterval,
+                        ProcessRestartInterval = restartInterval,
+                        ProcessShutdownTimeout = shutdownTimeout
+                    }
+                },
+                new RpcWorkerConfig
+                {
+                    Description = GetTestWorkerDescription("java", ".jar"),
+                    CountOptions = new WorkerProcessCountOptions
+                    {
+                        ProcessCount = processCountValue,
+                        ProcessStartupInterval = startupInterval,
+                        ProcessRestartInterval = restartInterval,
+                        ProcessShutdownTimeout = shutdownTimeout
+                    }
+                }
             };
 
             // Allow tests to have a worker that claims the .dll extension.
@@ -408,6 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     // Override configuration
                     services.AddSingleton(configuration);
                     services.AddAzureStorageProvider();
+                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(services);
                     if (storageOptions != null)
                     {
                         services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));

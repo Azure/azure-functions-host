@@ -28,9 +28,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private readonly Action<ScriptInvocationResult> _handleScriptReturnValue;
         private readonly IFunctionInvocationDispatcher _functionDispatcher;
         private readonly IApplicationLifetime _applicationLifetime;
+        private readonly TimeSpan _workerInitializationTimeout;
 
         internal WorkerFunctionInvoker(ScriptHost host, BindingMetadata bindingMetadata, FunctionMetadata functionMetadata, ILoggerFactory loggerFactory,
-            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher, IApplicationLifetime applicationLifetime)
+            Collection<FunctionBinding> inputBindings, Collection<FunctionBinding> outputBindings, IFunctionInvocationDispatcher functionDispatcher,
+            IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
             : base(host, functionMetadata, loggerFactory)
         {
             _bindingMetadata = bindingMetadata;
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _functionDispatcher = functionDispatcher;
             _logger = loggerFactory.CreateLogger<WorkerFunctionInvoker>();
             _applicationLifetime = applicationLifetime;
+            _workerInitializationTimeout = workerInitializationTimeout;
 
             InitializeFileWatcherIfEnabled();
 
@@ -109,7 +112,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             if (!IsDispatcherReady())
             {
                 _logger.LogTrace($"FunctionDispatcher state: {_functionDispatcher.State}");
-                bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * WorkerConstants.ProcessStartTimeoutSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
+                bool result = await Utility.DelayAsync((_functionDispatcher.ErrorEventsThreshold + 1) * (int)_workerInitializationTimeout.TotalSeconds, WorkerConstants.WorkerReadyCheckPollingIntervalMilliseconds, () =>
                 {
                     return _functionDispatcher.State != FunctionInvocationDispatcherState.Initialized;
                 });

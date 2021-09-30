@@ -164,4 +164,7 @@
   IsStopwatchHighResolution: {3}
 }}</value>
   </data>
+  <data name="HostIdCollisionFormat" xml:space="preserve">
+    <value>A collision for Host ID '{0}' was detected in the configured storage account. For more information, see https://aka.ms/functions-hostid-collision.</value>
+  </data>
 </root>

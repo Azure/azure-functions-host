@@ -435,6 +435,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("", null, false)]
+        [InlineData(null, null, false)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D",
+            "http://storage.blob.core.windows.net", true)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip",
+            "http://storage.blob.core.windows.net", true)]
+        [InlineData("https://storage.blob.core.windows.net/functions/func.zip",
+            "https://storage.blob.core.windows.net", true)]
+        [InlineData("https://storage.blob.core.windows.net/functions/func.zip?",
+            "https://storage.blob.core.windows.net", true)]
+        public void GetUriHostTests(string url, string expectedHost, bool expectedSuccess)
+        {
+            var success = Utility.TryGetUriHost(url, out var host);
+            Assert.Equal(expectedSuccess, success);
+            Assert.Equal(expectedHost, host);
+        }
+
+        [Theory]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", true)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip?sr=c&si=policy&sv=abcd&sig=f%2BGLvBih%2BoFuQvckBSHWKMXwqGJHlPkESmZh9pjnHuc%3D", false)]
+        [InlineData("http://storage.blob.core.windows.net/functions/func.zip", true)]
+        public void GetAccountNameFromDomain(string url, bool isUrlWithNoSas)
+        {
+            Assert.Equal(isUrlWithNoSas, Utility.IsResourceAzureBlobWithoutSas(new Uri(url)));
+        }
+
+        [Theory]
         [InlineData("httpTrigger", true)]
         [InlineData("manualTrigger", true)]
         [InlineData("HttptRIGGER", true)]

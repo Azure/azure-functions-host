@@ -113,30 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
             "{count} functions loaded");
 
-        private static readonly Action<ILogger, string, Exception> _primaryHostCoordinatorLockLeaseAcquired =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(316, nameof(PrimaryHostCoordinatorLockLeaseAcquired)),
-            "Host lock lease acquired by instance ID '{websiteInstanceId}'.");
-
-        private static readonly Action<ILogger, string, Exception> _primaryHostCoordinatorFailedToRenewLockLease =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(317, nameof(PrimaryHostCoordinatorFailedToRenewLockLease)),
-            "Failed to renew host lock lease: {reason}");
-
-        private static readonly Action<ILogger, string, string, Exception> _primaryHostCoordinatorFailedToAcquireLockLease =
-            LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
-            new EventId(318, nameof(PrimaryHostCoordinatorFailedToAcquireLockLease)),
-            "Host instance '{websiteInstanceId}' failed to acquire host lock lease: {reason}");
-
-        private static readonly Action<ILogger, string, Exception> _primaryHostCoordinatorReleasedLocklLease =
-            LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(319, nameof(PrimaryHostCoordinatorReleasedLocklLease)),
-            "Host instance '{websiteInstanceId}' released lock lease.");
-
         private static readonly Action<ILogger, string, string, Exception> _autoRecoveringFileSystemWatcherFailureDetected =
             LoggerMessage.Define<string, string>(
             LogLevel.Warning,
@@ -326,26 +302,6 @@ Lock file hash: {currentLockFileHash}";
         public static void FunctionMetadataProviderFunctionFound(this ILogger logger, int count)
         {
             _functionMetadataProviderFunctionsFound(logger, count, null);
-        }
-
-        public static void PrimaryHostCoordinatorLockLeaseAcquired(this ILogger logger, string websiteInstanceId)
-        {
-            _primaryHostCoordinatorLockLeaseAcquired(logger, websiteInstanceId, null);
-        }
-
-        public static void PrimaryHostCoordinatorFailedToRenewLockLease(this ILogger logger, string reason)
-        {
-            _primaryHostCoordinatorFailedToRenewLockLease(logger, reason, null);
-        }
-
-        public static void PrimaryHostCoordinatorFailedToAcquireLockLease(this ILogger logger, string websiteInstanceId, string reason)
-        {
-            _primaryHostCoordinatorFailedToAcquireLockLease(logger, websiteInstanceId, reason, null);
-        }
-
-        public static void PrimaryHostCoordinatorReleasedLocklLease(this ILogger logger, string websiteInstanceId)
-        {
-            _primaryHostCoordinatorReleasedLocklLease(logger, websiteInstanceId, null);
         }
 
         public static void AutoRecoveringFileSystemWatcherFailureDetected(this ILogger logger, string errorMessage, string path)

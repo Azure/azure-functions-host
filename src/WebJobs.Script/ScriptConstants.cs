@@ -97,6 +97,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AntaresColdStartHeaderName = "X-MS-COLDSTART";
         public const string SiteTokenHeaderName = "x-ms-site-restricted-token";
         public const string EasyAuthIdentityHeader = "x-ms-client-principal";
+        public const string AzureVersionHeader = "x-ms-version";
+        public const string XIdentityHeader = "X-IDENTITY-HEADER";
         public const string DynamicSku = "Dynamic";
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
@@ -112,6 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
         public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
+        public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
+        public const string FeatureFlagDisableAspNetCoreGrpc = "DisableAspNetCoreGrpc";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";
@@ -175,6 +179,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Windows64BitRID = "win-x64";
         public const string Windows32BitRID = "win-x86";
         public const string WorkFlowAppKind = "workflowapp";
+        public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
+        public const string DefaultExtensionBundleVersion = "[2.*, 3.0.0)";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

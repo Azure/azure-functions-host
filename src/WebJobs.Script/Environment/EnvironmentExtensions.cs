@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -497,7 +498,35 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Check if value was specified as an int (1/0)
                 return true;
             }
+        }
 
+        public static bool SupportsFunctionDataCache(this IEnvironment environment)
+        {
+            // Check if the environment variable (AppSetting) has this feature enabled
+            string envVal = environment.GetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName);
+            if (string.IsNullOrEmpty(envVal))
+            {
+                return false;
+            }
+
+            if (bool.TryParse(envVal, out bool boolResult))
+            {
+                // Check if value was specified as a bool (true/false)
+                return boolResult;
+            }
+            else if (int.TryParse(envVal, out int intResult) && intResult == 1)
+            {
+                // Check if value was specified as an int (1/0)
+                return true;
+            }
+        }
+
+        public static bool IsWorkerDynamicConcurrencyEnabled(this IEnvironment environment)
+        {
+            if (bool.TryParse(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled), out bool concurrencyEnabled))
+            {
+                return concurrencyEnabled && string.IsNullOrEmpty(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName));
+            }
             return false;
         }
     }

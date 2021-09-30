@@ -8,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.Timers;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
@@ -174,6 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     return NullHostedService.Instance;
                 });
+
+                // Wire this up early so that any early worker logs are guaranteed to be flushed if any other
+                // IHostedService has a slow startup.
+                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
             });
 
             builder.ConfigureWebJobs((context, webJobsBuilder) =>
@@ -246,6 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
+                services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
@@ -266,6 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+                services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
@@ -284,7 +291,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     });
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
-                services.AddSingleton<IPrimaryHostStateProvider, PrimaryHostStateProvider>();
 
                 if (!applicationHostOptions.HasParentScope)
                 {
@@ -295,14 +301,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Overriding IDistributedLockManager set by WebJobs.Host.Storage in AddAzureStorageCoreServices
                 services.AddSingleton<IDistributedLockManager>(provider => GetBlobLockManager(provider));
 
-                services.AddSingleton<IHostedService, WorkerConsoleLogService>();
+                // TODO (TEMP) : override the default SDK provided implementation with our own
+                // this is temporary until https://github.com/Azure/azure-webjobs-sdk/issues/2710 is addressed.
+                services.AddSingleton<IConcurrencyStatusRepository, BlobStorageConcurrencyStatusRepository>();
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
                 {
                     services.AddSingleton<IDistributedLockManager, KubernetesDistributedLockManager>();
                 }
 
-                services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, PrimaryHostCoordinator>());
                 services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionInvocationDispatcherShutdownManager>());
 
                 if (SystemEnvironment.Instance.IsRuntimeScaleMonitoringEnabled())
@@ -323,6 +330,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // to be careful with caching, etc. E.g. these services will get
             // initially created in placeholder mode and live on through the
             // specialized app.
+            services.AddSingleton<HostNameProvider>();
+            services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
 
@@ -338,6 +347,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+
             AddProcessRegistry(services);
         }
 
@@ -466,7 +476,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // If there is an error getting the container client,
                 // register an InMemoryDistributedLockManager.
-                // This signals a failed validation in connection configuration (i.e. could not create the storage client).
                 logger.LogDebug("Using InMemoryDistributedLockManager in Functions Host.");
                 return new InMemoryDistributedLockManager();
             }
