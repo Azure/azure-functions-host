@@ -3,7 +3,7 @@
   "bundles": [
     {
       "id": "Microsoft.Azure.Functions.ExtensionBundle",
-      "minimumVersion": "2.7.0"
+      "minimumVersion": "2.8.2"
     }
   ],
   "types": [

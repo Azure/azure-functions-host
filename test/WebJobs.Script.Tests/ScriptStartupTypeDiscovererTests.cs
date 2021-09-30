@@ -490,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var traces = testLoggerProvider.GetAllLogMessages();
 
                 // Assert
-                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.7.0. Update your extension bundle reference in host.json to reference 2.7.0 or later.")));
+                Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Referenced bundle Microsoft.Azure.Functions.ExtensionBundle of version 2.1.0 does not meet the required minimum version of 2.8.2. Update your extension bundle reference in host.json to reference 2.7.0 or later.")));
             }
         }
 
@@ -599,7 +599,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return directory;
         }
 
-        private ExtensionBundleDetails GetV2BundleDetails(string version = "2.7.0")
+        private ExtensionBundleDetails GetV2BundleDetails(string version = "2.8.2")
         {
             return new ExtensionBundleDetails
             {
