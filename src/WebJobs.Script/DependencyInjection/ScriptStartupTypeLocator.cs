@@ -357,7 +357,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             if (_isSelfHost)
             {
-                _logger.LogDebug("In order to use Application Insights in Azure Functions V4 and above, you must install the Application Insights Extension.");
+                _logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, you must install the Application Insights Extension.");
             }
             else
             {
