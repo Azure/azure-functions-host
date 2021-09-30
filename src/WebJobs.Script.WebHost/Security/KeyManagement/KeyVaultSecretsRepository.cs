@@ -3,17 +3,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.Azure.WebJobs.Script.IO;
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Rest.Azure;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -29,24 +25,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private const string FunctionKeyPrefix = "host--functionKey--";
         private const string SystemKeyPrefix = "host--systemKey--";
 
-        private readonly Lazy<KeyVaultClient> _keyVaultClient;
-        private readonly string _vaultName;
+        private readonly Lazy<SecretClient> _secretClient;
         private readonly IEnvironment _environment;
 
-        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultName, string connectionString, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
+        public KeyVaultSecretsRepository(string secretsSentinelFilePath, string vaultUri, string clientId, string clientSecret, string tenantId, ILogger logger, IEnvironment environment) : base(secretsSentinelFilePath, logger, environment)
         {
-            if (secretsSentinelFilePath == null)
+            if (string.IsNullOrEmpty(secretsSentinelFilePath))
             {
-                throw new ArgumentNullException(nameof(secretsSentinelFilePath));
+                throw new ArgumentException(nameof(secretsSentinelFilePath));
             }
 
-            _vaultName = vaultName ?? throw new ArgumentNullException(nameof(vaultName));
+            Uri keyVaultUri = string.IsNullOrEmpty(vaultUri) ? throw new ArgumentException(nameof(vaultUri)) : new Uri(vaultUri);
 
-            _keyVaultClient = new Lazy<KeyVaultClient>(() =>
+            _secretClient = new Lazy<SecretClient>(() =>
             {
-                AzureServiceTokenProvider azureServiceTokenProvider = string.IsNullOrEmpty(connectionString) ? new AzureServiceTokenProvider()
-                    : new AzureServiceTokenProvider(connectionString);
-                return new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
+                // If clientSecret and tenantId are provided, use ClientSecret credential; otherwise use managed identity
+                TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId)
+                    ? new ClientSecretCredential(tenantId, clientId, clientSecret)
+                    : new ChainedTokenCredential(new ManagedIdentityCredential(clientId), new ManagedIdentityCredential());
+
+                return new SecretClient(keyVaultUri, credential);
             });
 
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
@@ -71,16 +69,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Dictionary<string, string> dictionary = GetDictionaryFromScriptSecrets(secrets, functionName);
 
             // Delete existing keys
-            List<IEnumerable<SecretItem>> secretsPages = await GetKeyVaultSecretsPagesAsync(_keyVaultClient.Value, GetVaultBaseUrl());
+            AsyncPageable<SecretProperties> secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
             List<Task> deleteTasks = new List<Task>();
             string prefix = (type == ScriptSecretsType.Host) ? HostPrefix : FunctionPrefix + Normalize(functionName);
 
-            foreach (SecretItem item in FindSecrets(secretsPages, x => x.Identifier.Name.StartsWith(prefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(prefix)))
             {
                 // Delete only keys which no longer exist in passed-in secrets
-                if (!dictionary.Keys.Contains(item.Identifier.Name))
+                if (!dictionary.Keys.Contains(item.Name))
                 {
-                    deleteTasks.Add(_keyVaultClient.Value.DeleteSecretAsync(GetVaultBaseUrl(), item.Identifier.Name));
+                    deleteTasks.Add(_secretClient.Value.StartDeleteSecretAsync(item.Name));
                 }
             }
 
@@ -93,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             List<Task> setTasks = new List<Task>();
             foreach (string key in dictionary.Keys)
             {
-                setTasks.Add(_keyVaultClient.Value.SetSecretAsync(GetVaultBaseUrl(), key, dictionary[key]));
+                setTasks.Add(_secretClient.Value.SetSecretAsync(key, dictionary[key]));
             }
             await Task.WhenAll(setTasks);
 
@@ -121,14 +119,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task<ScriptSecrets> ReadHostSecrets()
         {
-            List<IEnumerable<SecretItem>> secretsPages = await GetKeyVaultSecretsPagesAsync(_keyVaultClient.Value, GetVaultBaseUrl());
-            List<Task<SecretBundle>> tasks = new List<Task<SecretBundle>>();
+            AsyncPageable<SecretProperties> secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
+            List<Task<Response<KeyVaultSecret>>> tasks = new List<Task<Response<KeyVaultSecret>>>();
 
             // Add master key task
-            List<SecretItem> masterItems = FindSecrets(secretsPages, x => x.Identifier.Name.StartsWith(MasterKey));
+            List<SecretProperties> masterItems = await FindSecrets(secretsPages, x => x.Name.StartsWith(MasterKey));
             if (masterItems.Count > 0)
             {
-                tasks.Add(_keyVaultClient.Value.GetSecretAsync(GetVaultBaseUrl(), masterItems[0].Identifier.Name));
+                tasks.Add(_secretClient.Value.GetSecretAsync(masterItems[0].Name));
             }
             else
             {
@@ -136,15 +134,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             // Add functionKey tasks
-            foreach (SecretItem item in FindSecrets(secretsPages, x => x.Identifier.Name.StartsWith(FunctionKeyPrefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(FunctionKeyPrefix)))
             {
-                tasks.Add(_keyVaultClient.Value.GetSecretAsync(GetVaultBaseUrl(), item.Identifier.Name));
+                tasks.Add(_secretClient.Value.GetSecretAsync(item.Name));
             }
 
             // Add systemKey tasks
-            foreach (SecretItem item in FindSecrets(secretsPages, x => x.Identifier.Name.StartsWith(SystemKeyPrefix)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(SystemKeyPrefix)))
             {
-                tasks.Add(_keyVaultClient.Value.GetSecretAsync(GetVaultBaseUrl(), item.Identifier.Name));
+                tasks.Add(_secretClient.Value.GetSecretAsync(item.Name));
             }
 
             await Task.WhenAll(tasks);
@@ -155,20 +153,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 SystemKeys = new List<Key>()
             };
 
-            foreach (Task<SecretBundle> task in tasks)
+            foreach (Task<Response<KeyVaultSecret>> task in tasks)
             {
-                SecretBundle item = task.Result;
-                if (item.SecretIdentifier.Name.StartsWith(MasterKey))
+                KeyVaultSecret item = task.Result;
+                if (item.Name.StartsWith(MasterKey))
                 {
-                    hostSecrets.MasterKey = SecretBundleToKey(item, MasterKey);
+                    hostSecrets.MasterKey = KeyVaultSecretToKey(item, MasterKey);
                 }
-                else if (item.SecretIdentifier.Name.StartsWith(FunctionKeyPrefix))
+                else if (item.Name.StartsWith(FunctionKeyPrefix))
                 {
-                    hostSecrets.FunctionKeys.Add(SecretBundleToKey(item, FunctionKeyPrefix));
+                    hostSecrets.FunctionKeys.Add(KeyVaultSecretToKey(item, FunctionKeyPrefix));
                 }
-                else if (item.SecretIdentifier.Name.StartsWith(SystemKeyPrefix))
+                else if (item.Name.StartsWith(SystemKeyPrefix))
                 {
-                    hostSecrets.SystemKeys.Add(SecretBundleToKey(item, SystemKeyPrefix));
+                    hostSecrets.SystemKeys.Add(KeyVaultSecretToKey(item, SystemKeyPrefix));
                 }
             }
 
@@ -177,13 +175,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private async Task<ScriptSecrets> ReadFunctionSecrets(string functionName)
         {
-            List<IEnumerable<SecretItem>> secretsPages = await GetKeyVaultSecretsPagesAsync(_keyVaultClient.Value, GetVaultBaseUrl());
-            List<Task<SecretBundle>> tasks = new List<Task<SecretBundle>>();
+            AsyncPageable<SecretProperties> secretsPages = GetKeyVaultSecretsPagesAsync(_secretClient.Value);
+            List<Task<Response<KeyVaultSecret>>> tasks = new List<Task<Response<KeyVaultSecret>>>();
             string prefix = $"{FunctionPrefix}{Normalize(functionName)}--";
 
-            foreach (SecretItem item in FindSecrets(secretsPages, x => x.Identifier.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+            foreach (SecretProperties item in await FindSecrets(secretsPages, x => x.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             {
-                tasks.Add(_keyVaultClient.Value.GetSecretAsync(GetVaultBaseUrl(), item.Identifier.Name));
+                tasks.Add(_secretClient.Value.GetSecretAsync(item.Name));
             }
 
             if (!tasks.Any())
@@ -197,30 +195,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 Keys = new List<Key>()
             };
 
-            foreach (Task<SecretBundle> task in tasks)
+            foreach (Task<Response<KeyVaultSecret>> task in tasks)
             {
-                SecretBundle item = task.Result;
-                functionSecrets.Keys.Add(SecretBundleToKey(item, prefix));
+                KeyVaultSecret item = task.Result;
+                functionSecrets.Keys.Add(KeyVaultSecretToKey(item, prefix));
             }
 
             return functionSecrets;
         }
 
-        public static async Task<List<IEnumerable<SecretItem>>> GetKeyVaultSecretsPagesAsync(KeyVaultClient keyVaultClient, string keyVaultBaseUrl)
+        public static AsyncPageable<SecretProperties> GetKeyVaultSecretsPagesAsync(SecretClient secretClient)
         {
-            IPage<SecretItem> secretItems = await keyVaultClient.GetSecretsAsync(keyVaultBaseUrl);
-            List<IEnumerable<SecretItem>> secretsPages = new List<IEnumerable<SecretItem>>() { secretItems };
-
-            while (!string.IsNullOrEmpty(secretItems.NextPageLink))
-            {
-                secretItems = await keyVaultClient.GetSecretsNextAsync(secretItems.NextPageLink);
-                secretsPages.Add(secretItems);
-            }
-
-            return secretsPages;
+            return secretClient.GetPropertiesOfSecretsAsync();
         }
 
-        public static List<SecretItem> FindSecrets(List<IEnumerable<SecretItem>> secretsPages, Func<SecretItem, bool> comparison = null)
+        public static async Task<List<SecretProperties>> FindSecrets(AsyncPageable<SecretProperties> secretsPages, Func<SecretProperties, bool> comparison = null)
         {
             // if no comparison is provided, every item is a match
             if (comparison == null)
@@ -228,21 +217,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 comparison = x => true;
             }
 
-            var secretItems = new List<SecretItem>();
-            foreach (IEnumerable<SecretItem> secretsPage in secretsPages)
+            var secretsList = new List<SecretProperties>();
+
+            await foreach (Page<SecretProperties> page in secretsPages.AsPages())
             {
-                foreach (SecretItem secretItem in secretsPage.Where(x => comparison(x)))
+                foreach (SecretProperties secret in page.Values.Where(x => comparison(x)))
                 {
-                    secretItems.Add(secretItem);
+                    secretsList.Add(secret);
                 }
             }
 
-            return secretItems;
-        }
-
-        private string GetVaultBaseUrl()
-        {
-            return $"https://{_vaultName}{_environment.GetVaultSuffix()}";
+            return secretsList;
         }
 
         public static Dictionary<string, string> GetDictionaryFromScriptSecrets(ScriptSecrets secrets, string functionName)
@@ -332,11 +317,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return result;
         }
 
-        private static Key SecretBundleToKey(SecretBundle item, string prefix)
+        private static Key KeyVaultSecretToKey(KeyVaultSecret item, string prefix)
         {
             return new Key()
             {
-                Name = Denormalize(item.SecretIdentifier.Name.Remove(0, prefix.Length)),
+                Name = Denormalize(item.Properties.Name.Remove(0, prefix.Length)),
                 Value = item.Value,
                 IsStale = false,
                 IsEncrypted = false

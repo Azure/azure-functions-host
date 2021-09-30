@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.KeyVault.Models;
+using System.Threading.Tasks;
+using Azure;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Xunit;
 
@@ -59,35 +61,43 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         [Theory]
         [MemberData(nameof(FindSecretsDataProvider.TestCases), MemberType = typeof(FindSecretsDataProvider))]
-        public void FindSecrets(Func<SecretItem, bool> comparison, List<string> expectedMatches)
+        public async Task FindSecrets(Func<SecretProperties, bool> comparison, List<string> expectedMatches)
         {
-            List<IEnumerable<SecretItem>> secretsPages = new List<IEnumerable<SecretItem>>()
-            {
-                new List<SecretItem>()
-                {
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Atlanta"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Seattle"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/NewYork"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Chicago")
-                },
-                new List<SecretItem>()
-                {
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Portland"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/Austin"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/SanDiego"),
-                    new SecretItem("https://testkeyvault.vault.azure.net/secrets/LosAngeles")
-                }
-            };
-
-            var matches = KeyVaultSecretsRepository.FindSecrets(secretsPages, comparison);
+            AsyncPageable<SecretProperties> secretsPages = GetSecretProperties();
+            var matches = await KeyVaultSecretsRepository.FindSecrets(secretsPages, comparison);
 
             Assert.Equal(expectedMatches.Count, matches.Count);
             foreach (string name in expectedMatches)
             {
-                var matchingNames = matches.Where(x => x.Identifier.Name == name);
+                var matchingNames = matches.Where(x => x.Name == name);
                 Assert.Equal(matchingNames.Count(), 1);
-                Assert.Equal(matchingNames.First().Identifier.Name, name);
+                Assert.Equal(matchingNames.First().Name, name);
             }
+        }
+
+        private AsyncPageable<SecretProperties> GetSecretProperties()
+        {
+            // Create a list of SecretProperties
+            var pageOneValues = new[]
+            {
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Atlanta")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Seattle")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/NewYork")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Chicago"))
+            };
+
+            var pageTwoValues = new[]
+            {
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Portland")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/Austin")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/SanDiego")),
+                new SecretProperties(new Uri("https://testkeyvault.vault.azure.net/secrets/LosAngeles"))
+            };
+
+            var page1 = Page<SecretProperties>.FromValues(pageOneValues, default, null);
+            var page2 = Page<SecretProperties>.FromValues(pageTwoValues, default, null);
+
+            return AsyncPageable<SecretProperties>.FromPages(new[] { page1, page2 });
         }
 
         public class FindSecretsDataProvider
@@ -96,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 get
                 {
-                    yield return new object[] { (Func<SecretItem, bool>)(x => x.Identifier.Name.StartsWith("S")), new List<string>() { "Seattle", "SanDiego" } };
-                    yield return new object[] { (Func<SecretItem, bool>)(x => x.Identifier.Name.EndsWith("o")), new List<string>() { "Chicago", "SanDiego" } };
+                    yield return new object[] { (Func<SecretProperties, bool>)(x => x.Name.StartsWith("S")), new List<string>() { "Seattle", "SanDiego" } };
+                    yield return new object[] { (Func<SecretProperties, bool>)(x => x.Name.EndsWith("o")), new List<string>() { "Chicago", "SanDiego" } };
                 }
             }
         }

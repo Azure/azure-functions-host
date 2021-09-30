@@ -7,8 +7,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.KeyVault.Models;
+using Azure;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
@@ -16,7 +17,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Rest.Azure;
 using Microsoft.WebJobs.Script.Tests;
 using WebJobs.Script.Tests;
 using Xunit;
@@ -374,13 +374,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public Fixture()
             {
                 TestSiteName = "Test_test";
+                Environment = new TestEnvironment();
+
                 var configuration = TestHelpers.GetTestConfiguration();
                 BlobConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
-                KeyVaultConnectionString = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultConnectionString);
-                KeyVaultName = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultName);
-                AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider(KeyVaultConnectionString);
-                KeyVaultClient = new KeyVaultClient(new KeyVaultClient.AuthenticationCallback(azureServiceTokenProvider.KeyVaultTokenCallback));
-                Environment = new TestEnvironment();
+                KeyVaultUri = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
+                KeyVaultClientId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
+                KeyVaultClientSecret = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
+                KeyVaultTenantId = configuration.GetWebJobsConnectionString(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
+
+                var credential = new ClientSecretCredential(KeyVaultTenantId, KeyVaultClientId, KeyVaultClientSecret);
+                SecretClient = new SecretClient(new Uri(KeyVaultUri), credential);
                 AzureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
             }
 
@@ -396,11 +400,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public CloudBlobContainer BlobContainer { get; private set; }
 
-            public KeyVaultClient KeyVaultClient { get; private set; }
+            public SecretClient SecretClient { get; private set; }
 
-            public string KeyVaultName { get; private set; }
+            public string KeyVaultUri { get; private set; }
 
-            public string KeyVaultConnectionString { get; private set; }
+            public string KeyVaultClientId { get; private set; }
+
+            public string KeyVaultClientSecret { get; private set; }
+
+            public string KeyVaultTenantId { get; private set; }
 
             public SecretsRepositoryType RepositoryType { get; private set; }
 
@@ -453,7 +461,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 }
                 else
                 {
-                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultName, KeyVaultConnectionString, logger, Environment);
+                    return new KeyVaultSecretsRepository(SecretsDirectory, KeyVaultUri, KeyVaultClientId, KeyVaultClientSecret, KeyVaultTenantId, logger, Environment);
                 }
             }
 
@@ -475,11 +483,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private string RelativeBlobPath(string functionNameOrHost)
             {
                 return string.Format("{0}/{1}.json", TestSiteName.ToLowerInvariant(), functionNameOrHost.ToLowerInvariant());
-            }
-
-            private string GetKeyVaultBaseUrl()
-            {
-                return $"https://{KeyVaultName}.vault.azure.net";
             }
 
             private string SecretsFileOrSentinelPath(string functionNameOrHost)
@@ -535,7 +538,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Dictionary<string, string> dictionary = KeyVaultSecretsRepository.GetDictionaryFromScriptSecrets(secrets, functionNameOrHost);
                 foreach (string key in dictionary.Keys)
                 {
-                    await KeyVaultClient.SetSecretAsync(GetKeyVaultBaseUrl(), key, dictionary[key]);
+                    await SecretClient.SetSecretAsync(key, dictionary[key]);
                 }
             }
 
@@ -574,26 +577,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private async Task<ScriptSecrets> GetSecretsFromKeyVault(string functionNameOrHost, ScriptSecretsType type)
             {
-                var secretResults = await KeyVaultClient.GetSecretsAsync(GetKeyVaultBaseUrl());
+                var secretResults = SecretClient.GetPropertiesOfSecretsAsync().AsPages();
+                var searchPages = new List<SecretProperties>();
+                await foreach (Page<SecretProperties> page in secretResults)
+                {
+                    {
+                        foreach (SecretProperties secret in page.Values)
+                        {
+                            searchPages.Add(secret);
+                        }
+                    }
+                }
+
                 if (type == ScriptSecretsType.Host)
                 {
-                    SecretBundle masterBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--master")).Identifier.Name);
-                    SecretBundle functionKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--functionKey")).Identifier.Name);
-                    SecretBundle systemKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("host--systemKey")).Identifier.Name);
+                    KeyVaultSecret masterBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--master")).Name);
+                    KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--functionKey")).Name);
+                    KeyVaultSecret systemKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("host--systemKey")).Name);
                     HostSecrets hostSecrets = new HostSecrets()
                     {
-                        FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.SecretIdentifier.Name), functionKeyBundle.Value) },
-                        SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.SecretIdentifier.Name), systemKeyBundle.Value) }
+                        FunctionKeys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) },
+                        SystemKeys = new List<Key>() { new Key(GetSecretName(systemKeyBundle.Name), systemKeyBundle.Value) }
                     };
                     hostSecrets.MasterKey = new Key("master", masterBundle.Value);
                     return hostSecrets;
                 }
                 else
                 {
-                    SecretBundle functionKeyBundle = await KeyVaultClient.GetSecretAsync(GetKeyVaultBaseUrl(), secretResults.FirstOrDefault(x => x.Identifier.Name.StartsWith("function--")).Identifier.Name);
+                    KeyVaultSecret functionKeyBundle = await SecretClient.GetSecretAsync(searchPages.FirstOrDefault(x => x.Name.StartsWith("function--")).Name);
                     FunctionSecrets functionSecrets = new FunctionSecrets()
                     {
-                        Keys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.SecretIdentifier.Name), functionKeyBundle.Value) }
+                        Keys = new List<Key>() { new Key(GetSecretName(functionKeyBundle.Name), functionKeyBundle.Value) }
                     };
                     return functionSecrets;
                 }
@@ -641,12 +655,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             private async Task ClearAllKeyVaultSecrets()
             {
-                var secretsPages = await KeyVaultSecretsRepository.GetKeyVaultSecretsPagesAsync(KeyVaultClient, GetKeyVaultBaseUrl());
-                foreach (IPage<SecretItem> secretsPage in secretsPages)
+                var secretsPages = KeyVaultSecretsRepository.GetKeyVaultSecretsPagesAsync(SecretClient).AsPages();
+                await foreach (Page<SecretProperties> page in secretsPages)
                 {
-                    foreach (SecretItem item in secretsPage)
+                    foreach (SecretProperties item in page.Values)
                     {
-                        await KeyVaultClient.DeleteSecretAsync(GetKeyVaultBaseUrl(), item.Identifier.Name);
+                        await SecretClient.StartDeleteSecretAsync(item.Name);
                     }
                 }
             }

@@ -1,5 +1,5 @@
 ﻿// Assemblies in this list cannot be overriden in the funcion load context
-// This list originally comes from dumping TPA assemblies. 
+// This list originally comes from dumping TPA assemblies.
 {
   "runtimeAssemblies": [
     {
@@ -8,6 +8,10 @@
     },
     {
       "name": "Azure.Identity",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Azure.Security.KeyVault.Secrets",
       "resolutionPolicy": "private"
     },
     {
@@ -52,10 +56,6 @@
     },
     {
       "name": "Microsoft.Identity.Client.Extensions.Msal",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.KeyVault.Core",
       "resolutionPolicy": "private"
     },
     {
@@ -912,10 +912,6 @@
     },
     {
       "name": "System.IdentityModel.Tokens.Jwt",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "System.Interactive.Async",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

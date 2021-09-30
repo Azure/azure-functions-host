@@ -202,7 +202,6 @@ System.Globalization.dll
 System.Globalization.Calendars.dll
 System.Globalization.Extensions.dll
 System.IdentityModel.Tokens.Jwt.dll
-System.Interactive.Async.dll
 System.IO.dll
 System.IO.Abstractions.dll
 System.IO.Compression.dll
