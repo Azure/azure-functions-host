@@ -10,10 +10,8 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
-    public interface IRpcWorkerChannel
+    public interface IRpcWorkerChannel : IWorkerChannel
     {
-        string Id { get; }
-
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
 
         bool IsChannelReadyForInvocations();
@@ -23,10 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout);
 
         Task SendFunctionEnvironmentReloadRequest();
-
-        Task StartWorkerProcessAsync();
-
-        Task<WorkerStatus> GetWorkerStatusAsync();
 
         Task DrainInvocationsAsync();
 

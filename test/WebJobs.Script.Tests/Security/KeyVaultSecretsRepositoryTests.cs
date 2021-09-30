@@ -4,10 +4,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Autofac.Core.Lifetime;
 using Microsoft.Azure.KeyVault.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Rest.Azure;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

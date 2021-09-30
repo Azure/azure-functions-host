@@ -111,6 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           return GetMetadataManager(montior, scriptManager, loggerFactory);
                       }, ServiceLifetime.Singleton));
 
+                      services.SkipDependencyValidation();
+
                       // Allows us to configure services as the last step, thereby overriding anything
                       services.AddSingleton(new PostConfigureServices(configureWebHostServices));
                   })
@@ -167,7 +169,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // store off a bit of the creation stack for easier debugging if this host doesn't shut down.
             var stack = new StackTrace(true).ToString().Split(Environment.NewLine).Take(5);
             _createdStack = string.Join($"{Environment.NewLine}    ", stack);
+
+            // cache startup logs since tests clear logs from time to time
+            StartupLogs = GetScriptHostLogMessages();
         }
+
+        public IList<LogMessage> StartupLogs { get; }
 
         public IServiceProvider JobHostServices => _hostService.Services;
 

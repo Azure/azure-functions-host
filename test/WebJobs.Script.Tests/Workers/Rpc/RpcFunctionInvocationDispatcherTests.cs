@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -301,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>> webhostLanguageWorkerChannels = new Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>();
             Mock<IWebHostRpcWorkerChannelManager> mockWebHostChannelManager = new Mock<IWebHostRpcWorkerChannelManager>();
 
-            mockRpcWorkerChannel.Setup(a => a.StartWorkerProcessAsync()).Returns(Task.FromResult(true));
+            mockRpcWorkerChannel.Setup(a => a.StartWorkerProcessAsync(CancellationToken.None)).Returns(Task.FromResult(true));
             mockRpcWorkerChannel.Setup(a => a.SetupFunctionInvocationBuffers(It.IsAny<IEnumerable<FunctionMetadata>>()));
             mockRpcWorkerChannel.Setup(a => a.SendFunctionLoadRequests(It.IsAny<ManagedDependencyOptions>(), It.IsAny<TimeSpan?>()));
             webhostLanguageWorkerChannels.Add("java", tcs);
@@ -602,7 +603,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 testWebHostLanguageWorkerChannelManager,
                 jobHostLanguageWorkerChannelManager,
                 new OptionsWrapper<ManagedDependencyOptions>(new ManagedDependencyOptions()),
-                mockFunctionDispatcherLoadBalancer.Object);
+                mockFunctionDispatcherLoadBalancer.Object,
+                Options.Create(new WorkerConcurrencyOptions()));
         }
 
         private async Task<int> WaitForJobhostWorkerChannelsToStartup(RpcFunctionInvocationDispatcher functionDispatcher, int expectedCount, bool allReadyForInvocations = true)

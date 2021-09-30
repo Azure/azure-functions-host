@@ -168,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && !functionMetadata.IsProxy() && _servicesReset)
+                if (string.IsNullOrEmpty(functionMetadata.ScriptFile) && !_isHttpWorker && _servicesReset)
                 {
                     throw new FunctionConfigurationException(_functionConfigurationErrorMessage);
                 }

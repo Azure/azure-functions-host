@@ -122,19 +122,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await SamplesTestHelpers.InvokeAndValidateHttpTriggerWithoutContentType(_fixture, "HttpTrigger");
         }
 
-        [Fact(Skip = "Proxies disabled")]
-        public async Task InvokeProxy_GetsResponse()
-        {
-            string uri = "something";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string responseContent = await response.Content.ReadAsStringAsync();
-            Assert.Equal(responseContent, uri);
-        }
-
         [Fact]
         public async Task HttpTrigger_DuplicateQueryParams_Succeeds()
         {
