@@ -51,6 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
 
+        internal RuntimeAssembliesInfo RuntimeAssemblies => _runtimeAssembliesInfo;
+
         internal static void ResetSharedContext(string baseProbingPath = null)
         {
             baseProbingPath ??= ResolveFunctionBaseProbingPath();

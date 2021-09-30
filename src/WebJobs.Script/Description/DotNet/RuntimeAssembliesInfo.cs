@@ -25,6 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(GetRuntimeAssemblies);
         }
 
+        public event EventHandler<EventArgs> Reset;
+
         public Dictionary<string, ScriptRuntimeAssembly> Assemblies => _runtimeAssemblies.Value;
 
         private Dictionary<string, ScriptRuntimeAssembly> GetRuntimeAssemblies()
@@ -49,11 +51,18 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     _runtimeAssemblies = new Lazy<Dictionary<string, ScriptRuntimeAssembly>>(GetRuntimeAssemblies);
 
+                    OnReset();
+
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private void OnReset()
+        {
+            Reset?.Invoke(this, EventArgs.Empty);
         }
     }
 }
