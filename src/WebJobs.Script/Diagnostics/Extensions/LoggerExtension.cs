@@ -209,12 +209,6 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             new EventId(335, nameof(MinimumBundleVersionNotSatisfied)),
             "Referenced bundle {bundleId} of version {bundleVersion} does not meet the required minimum version of {minimumVersion}. Update your extension bundle reference in host.json to reference {minimumVersion2} or later.");
 
-        private static readonly Action<ILogger, Exception> _applicationInsightsExtensionWarning =
-            LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(336, nameof(ApplicationInsightsExtensionWarning)),
-            "In order to use Application Insights in Azure Functions V4 and above, you must install the Application Insights Extension.");
-
         public static void ExtensionsManagerRestoring(this ILogger logger)
         {
             _extensionsManagerRestoring(logger, null);
@@ -385,11 +379,6 @@ Lock file hash: {currentLockFileHash}";
         public static void MinimumBundleVersionNotSatisfied(this ILogger logger, string bundleId, string bundleVersion, string minimumVersion)
         {
             _minimumBundleVersionNotSatisfied(logger, bundleId, bundleVersion, minimumVersion, minimumVersion, null);
-        }
-
-        public static void ApplicationInsightsExtensionWarning(this ILogger logger)
-        {
-            _applicationInsightsExtensionWarning(logger, null);
         }
     }
 }
