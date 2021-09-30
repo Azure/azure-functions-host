@@ -33,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public bool TryFreeSharedMemoryMap(string mapName)
         {
-            return true;
+            return false;
         }
 
         public bool TryFreeSharedMemoryMapsForInvocation(string invocationId)
         {
-            return true;
+            return false;
         }
     }
 }
