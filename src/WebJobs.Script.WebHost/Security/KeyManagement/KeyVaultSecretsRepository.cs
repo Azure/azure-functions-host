@@ -32,15 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (string.IsNullOrEmpty(secretsSentinelFilePath))
             {
-                throw new ArgumentNullException(nameof(secretsSentinelFilePath));
+                throw new ArgumentException(nameof(secretsSentinelFilePath));
             }
 
-            Uri keyVaultUri = string.IsNullOrEmpty(vaultUri) ? throw new ArgumentNullException(nameof(vaultUri)) : new Uri(vaultUri);
+            Uri keyVaultUri = string.IsNullOrEmpty(vaultUri) ? throw new ArgumentException(nameof(vaultUri)) : new Uri(vaultUri);
 
             _secretClient = new Lazy<SecretClient>(() =>
             {
                 // If clientSecret and tenantId are provided, use ClientSecret credential; otherwise use managed identity
-                TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId) ? new ClientSecretCredential(tenantId, clientId, clientSecret)
+                TokenCredential credential = !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId)
+                    ? new ClientSecretCredential(tenantId, clientId, clientSecret)
                     : new ChainedTokenCredential(new ManagedIdentityCredential(clientId), new ManagedIdentityCredential());
 
                 return new SecretClient(keyVaultUri, credential);

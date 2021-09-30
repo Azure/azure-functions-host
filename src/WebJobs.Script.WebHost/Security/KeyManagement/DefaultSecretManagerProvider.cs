@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal ISecretsRepository CreateSecretsRepository()
         {
-            string secretStorageType = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
+            string secretStorageType = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
             string secretStorageSas = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageSas);
             if (secretStorageType != null && secretStorageType.Equals(FileStorage, StringComparison.OrdinalIgnoreCase))
             {
@@ -68,10 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             else if (secretStorageType != null && secretStorageType.Equals("keyvault", StringComparison.OrdinalIgnoreCase))
             {
-                string azureWebJobsSecretStorageKeyVaultUri = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
-                string azureWebJobsSecretStorageKeyVaultClientId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
-                string azureWebJobsSecretStorageKeyVaultClientSecret = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
-                string azureWebJobsSecretStorageKeyVaultTenantId = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
+                string azureWebJobsSecretStorageKeyVaultUri = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultUri);
+                string azureWebJobsSecretStorageKeyVaultClientId = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientId);
+                string azureWebJobsSecretStorageKeyVaultClientSecret = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultClientSecret);
+                string azureWebJobsSecretStorageKeyVaultTenantId = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageKeyVaultTenantId);
 
                 var logger = _loggerFactory.CreateLogger<KeyVaultSecretsRepository>();
 
