@@ -636,7 +636,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             var expectedExceptionMessage = $"{EnvironmentSettingNames.AppInsightsConnectionString} or {EnvironmentSettingNames.AppInsightsInstrumentationKey} " +
-                                           $"is defined but the Application Insights Extension is not installed. Please install the Application Insights Extension." +
+                                           $"is defined but the Application Insights Extension is not installed. Please install the Application Insights Extension. " +
                                            $"See https://aka.ms/func-applicationinsights-extension for more details.";
             if (extensionInstalled && !settingPresent)
             {
@@ -677,7 +677,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var warning = traces.FirstOrDefault(m => m.FormattedMessage.StartsWith("In order to use Application Insights"));
             Assert.NotNull(warning);
-            var expectedWarning = "In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension." +
+            var expectedWarning = "In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension. " +
                                   "See https://aka.ms/func-applicationinsights-extension for more details.";
             Assert.Equal(expectedWarning, warning.FormattedMessage);
         }
