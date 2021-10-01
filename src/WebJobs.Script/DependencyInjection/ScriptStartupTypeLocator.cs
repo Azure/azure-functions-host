@@ -352,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
         {
             if (isSelfHost)
             {
-                logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension." +
+                logger.LogWarning("In order to use Application Insights in Azure Functions V4 and above, please install the Application Insights Extension. " +
                                   "See https://aka.ms/func-applicationinsights-extension for more details.");
             }
             else if (!isExtensionBundleConfigured)
@@ -368,7 +368,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                     // this could break extension bundle apps depending on when application insights extension is
                     // released in bundles, so ignore them.
                     throw new HostInitializationException($"{EnvironmentSettingNames.AppInsightsConnectionString} or {EnvironmentSettingNames.AppInsightsInstrumentationKey} " +
-                                                          $"is defined but the Application Insights Extension is not installed. Please install the Application Insights Extension." +
+                                                          $"is defined but the Application Insights Extension is not installed. Please install the Application Insights Extension. " +
                                                           $"See https://aka.ms/func-applicationinsights-extension for more details.");
                 }
             }
