@@ -1196,6 +1196,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             public bool IsEncryptionSupported => throw new NotImplementedException();
 
+            public string Name => nameof(TestSecretsRepository);
+
             public Task<string[]> GetSecretSnapshots(ScriptSecretsType type, string functionName)
             {
                 return Task.FromResult(new string[0]);

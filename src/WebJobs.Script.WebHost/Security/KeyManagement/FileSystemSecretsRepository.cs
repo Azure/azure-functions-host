@@ -41,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public override string Name => nameof(FileSystemSecretsRepository);
+
         public override async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
             string filePath = GetSecretsFilePath(type, functionName);

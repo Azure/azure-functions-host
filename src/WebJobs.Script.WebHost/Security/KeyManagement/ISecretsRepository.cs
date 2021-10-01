@@ -12,6 +12,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         event EventHandler<SecretsChangedEventArgs> SecretsChanged;
 
+        string Name { get; }
+
         bool IsEncryptionSupported { get; }
 
         Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName);
