@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <PackageId>Microsoft.Azure.WebJobs.Script.Grpc</PackageId>
     <AssemblyName>Microsoft.Azure.WebJobs.Script.Grpc</AssemblyName>
     <RootNamespace>Microsoft.Azure.WebJobs.Script.Grpc</RootNamespace>
@@ -21,23 +21,14 @@
   
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0-rc.1.21451.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0-rc.1.21451.13" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="System.ComponentModel.Annotations" Version="6.0.0-preview.4.21253.7" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>C:\Program Files\dotnet\sdk\NuGetFallbackFolder\newtonsoft.json\11.0.2\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
-    </Reference>
   </ItemGroup>
   
   <ItemGroup>
