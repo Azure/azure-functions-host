@@ -50,6 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public abstract bool IsEncryptionSupported { get; }
 
+        public abstract string Name { get; }
+
         protected string GetSecretsSentinelFilePath(ScriptSecretsType secretsType, string functionName = null)
         {
             return secretsType == ScriptSecretsType.Host
