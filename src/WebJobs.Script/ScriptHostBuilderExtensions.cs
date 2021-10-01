@@ -184,6 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 })
                 .AddHttp()
                 .AddTimers()
+                .AddTimersStorage()
                 .AddManualTrigger()
                 .AddWarmup();
 
