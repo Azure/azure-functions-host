@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -58,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     webJobsBuilder.Services.TryAddSingleton<HttpClient>(f =>
                     {
                         var loggerFactory = f.GetService<ILoggerFactory>();
-                        loggerFactory.CreateLogger("Host.Startup").LogWarning("Using HttpClient as an injected dependency will not be supported in future versions of Azure Functions. Use IHttpClientFactory instead. See http://aka.ms/functions-httpclient-di for more information.");
+                        loggerFactory.CreateLogger(LogCategories.Startup).LogWarning("Using HttpClient as an injected dependency will not be supported in future versions of Azure Functions. Use IHttpClientFactory instead. See http://aka.ms/functions-httpclient-di for more information.");
                         return rootServiceProvider.GetService<HttpClient>();
                     });
 
