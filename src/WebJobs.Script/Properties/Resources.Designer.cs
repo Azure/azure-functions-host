@@ -183,6 +183,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A collision for Host ID &apos;{0}&apos; was detected in the configured storage account. For more information, see https://aka.ms/functions-hostid-collision..
+        /// </summary>
+        internal static string HostIdCollisionFormat {
+            get {
+                return ResourceManager.GetString("HostIdCollisionFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
         /// </summary>
         internal static string MatchingBundleNotFound {

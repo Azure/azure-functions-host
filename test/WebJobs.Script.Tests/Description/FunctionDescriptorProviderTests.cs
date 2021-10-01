@@ -56,11 +56,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             functionMetadata.Bindings.Add(new BindingMetadata
             {
-                Name = "dupe"
+                Name = "dupe",
+                Type = "Blob"
             });
             functionMetadata.Bindings.Add(new BindingMetadata
             {
-                Name = "dupe"
+                Name = "dupe",
+                Type = "Blob"
             });
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
@@ -69,6 +71,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal("Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
+        }
+
+        [Fact]
+        public void ValidateFunction_NoBindingType_Throws()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            functionMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "a",
+                Type = "BlobTrigger"
+            });
+            functionMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "b"
+            });
+
+            var ex = Assert.Throws<ArgumentException>(() =>
+            {
+                _provider.ValidateFunction(functionMetadata);
+            });
+
+            Assert.Equal("Binding 'b' is invalid. Bindings must specify a Type.", ex.Message);
+        }
+
+        [Fact]
+        public void ValidateFunction_MultipleTriggerBindings_Throws()
+        {
+            FunctionMetadata functionMetadata = new FunctionMetadata();
+            functionMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "a",
+                Type = "BlobTrigger"
+            });
+            functionMetadata.Bindings.Add(new BindingMetadata
+            {
+                Name = "b",
+                Type = "QueueTrigger"
+            });
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                _provider.ValidateFunction(functionMetadata);
+            });
+
+            Assert.Equal("Multiple trigger bindings defined. A function can only have a single trigger binding.", ex.Message);
         }
 
         [Fact]
@@ -173,7 +220,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             BindingMetadata bindingMetadata = new BindingMetadata
             {
-                Name = bindingName
+                Name = bindingName,
+                Type = "Blob"
             };
 
             if (bindingMetadata.IsReturn)

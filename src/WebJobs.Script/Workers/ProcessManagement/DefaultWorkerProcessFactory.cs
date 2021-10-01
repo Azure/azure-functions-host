@@ -6,22 +6,25 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal class DefaultWorkerProcessFactory : IWorkerProcessFactory
     {
-        private ILogger _logger;
+        private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
 
-        public DefaultWorkerProcessFactory(ILoggerFactory loggerFactory)
+        public DefaultWorkerProcessFactory(IEnvironment environment, ILoggerFactory loggerFactory)
         {
             if (loggerFactory == null)
             {
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
             _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
-        }
+            _environment = environment;
+       }
 
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
@@ -47,6 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 WorkingDirectory = context.WorkingDirectory,
                 Arguments = GetArguments(context),
             };
+
             var processEnvVariables = context.EnvironmentVariables;
             if (processEnvVariables != null && processEnvVariables.Any())
             {
@@ -57,6 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);
             }
+
+            if (bool.TryParse(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerRemoveConcurrencyLimits), out bool removeConcurrencyLimits))
+            {
+                if (removeConcurrencyLimits)
+                {
+                    ApplyWorkerConcurrencyLimits(startInfo);
+                }
+            }
+
             return new Process { StartInfo = startInfo };
         }
 
@@ -88,6 +101,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 envExpandedString = envExpandedString.Replace(match.Value, string.Empty);
             }
             return envExpandedString;
+        }
+
+        internal void ApplyWorkerConcurrencyLimits(ProcessStartInfo startInfo)
+        {
+            string functionWorkerRuntime = startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PythonThreadpoolThreadCount)) &&
+                string.Equals(functionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                startInfo.EnvironmentVariables[RpcWorkerConstants.PythonThreadpoolThreadCount] = RpcWorkerConstants.DefaultConcurrencyLimit;
+            }
+            else if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound)) &&
+               string.Equals(functionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+            {
+                startInfo.EnvironmentVariables[RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound] = RpcWorkerConstants.DefaultConcurrencyLimit;
+            }
         }
     }
 }
