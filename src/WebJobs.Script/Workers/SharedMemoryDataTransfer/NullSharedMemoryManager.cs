@@ -8,12 +8,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 {
     public class NullSharedMemoryManager : ISharedMemoryManager
     {
-        public void AddSharedMemoryMapForInvocation(string invocationId, string mapName)
+        public void Dispose()
         {
         }
 
-        public void Dispose()
+        public Task<SharedMemoryMetadata> PutObjectAsync(object input)
         {
+            return null;
         }
 
         public Task<object> GetObjectAsync(string mapName, int offset, int count, Type objectType)
@@ -26,9 +27,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             return false;
         }
 
-        public Task<SharedMemoryMetadata> PutObjectAsync(object input)
+        public bool TryFreeSharedMemoryMapsForInvocation(string invocationId)
         {
-            return null;
+            return false;
+        }
+
+        public void AddSharedMemoryMapForInvocation(string invocationId, string mapName)
+        {
         }
 
         public bool TryFreeSharedMemoryMap(string mapName)
@@ -36,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
             return false;
         }
 
-        public bool TryFreeSharedMemoryMapsForInvocation(string invocationId)
+        public bool TryTrackSharedMemoryMap(string mapName)
         {
             return false;
         }
