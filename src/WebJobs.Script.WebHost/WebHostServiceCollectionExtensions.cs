@@ -160,10 +160,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
             });
 
-            if (environment.SupportsSharedMemoryTransfer() && environment.SupportsFunctionDataCache())
+            services.AddSingleton<IFunctionDataCache>(p =>
             {
-                services.AddSingleton<IFunctionDataCache, FunctionDataCache>();
-            }
+                var environment = p.GetService<IEnvironment>();
+                if (environment.SupportsSharedMemoryTransfer() && environment.SupportsFunctionDataCache())
+                {
+                    var sharedMemoryManager = p.GetService<ISharedMemoryManager>();
+                    var loggerFactory = p.GetService<ILoggerFactory>();
+                    return new FunctionDataCache(sharedMemoryManager, loggerFactory, environment);
+                }
+                else
+                {
+                    return new NullFunctionDataCache();
+                }
+            });
 
             // Grpc
             services.AddScriptGrpc();

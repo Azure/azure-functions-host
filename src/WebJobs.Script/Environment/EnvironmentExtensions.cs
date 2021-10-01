@@ -498,6 +498,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Check if value was specified as an int (1/0)
                 return true;
             }
+            return false;
         }
 
         public static bool SupportsFunctionDataCache(this IEnvironment environment)
@@ -519,6 +520,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 // Check if value was specified as an int (1/0)
                 return true;
             }
+            return false;
         }
 
         public static bool IsWorkerDynamicConcurrencyEnabled(this IEnvironment environment)
