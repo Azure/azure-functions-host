@@ -37,7 +37,7 @@
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="6.0.0-rc.1.21452.15" />
     <PackageReference Include="Microsoft.Azure.DocumentDB.Core" Version="2.11.2" />
     <PackageReference Include="Microsoft.Azure.EventHubs" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.0.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="4.0.5-11874" />
     <PackageReference Include="Microsoft.Azure.Functions.JavaWorker" Version="2.0.0" />
     <PackageReference Include="Microsoft.Azure.Mobile.Client" Version="4.0.2" />
