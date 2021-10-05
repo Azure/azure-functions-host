@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -15,8 +16,6 @@ using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Evaluation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
@@ -67,14 +66,14 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             await SaveAndProcessProjectAsync(project);
         }
 
-        private async Task SaveAndProcessProjectAsync(ProjectRootElement project)
+        private async Task SaveAndProcessProjectAsync(XmlDocument project)
         {
             string baseFolder = Path.GetTempPath();
 
             var tempFolder = Path.Combine(baseFolder, "Functions", "Extensions", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempFolder);
 
-            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.RawXml);
+            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.InnerXml);
 
             await ProcessExtensionsProject(tempFolder);
         }
@@ -104,13 +103,15 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             }
 
             var project = await GetOrCreateProjectAsync(extensionsProjectPath);
+            var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
 
-            return project.Items
-                .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !MetadataGeneratorPackageId.Equals(i.Include, StringComparison.Ordinal))
+            return projectElements
+                .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal)
+                    && !MetadataGeneratorPackageId.Equals(i.Attributes[PackageReferenceIncludesElementName].Value, StringComparison.Ordinal))
                 .Select(i => new ExtensionPackageReference
                 {
-                    Id = i.Include,
-                    Version = i.Metadata.FirstOrDefault(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal))?.Value
+                    Id = i.Attributes[PackageReferenceIncludesElementName]?.Value,
+                    Version = i.Attributes[PackageReferenceVersionElementName]?.Value
                 })
                 .ToList();
         }
@@ -264,35 +265,43 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), DefaultExtensionsProjectPath, true);
         }
 
-        private Task<ProjectRootElement> GetOrCreateProjectAsync(string path)
+        private Task<XmlDocument> GetOrCreateProjectAsync(string path)
         {
             return Task.Run(() =>
             {
-                ProjectRootElement root = null;
+                XmlDocument root = new XmlDocument();
                 if (File.Exists(path))
                 {
-                    var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
-                    root = ProjectRootElement.Create(reader);
+                    root.Load(path);
                 }
 
                 return root ?? CreateDefaultProject(path);
             });
         }
 
-        private ProjectRootElement CreateDefaultProject(string path)
+        private XmlDocument CreateDefaultProject(string path)
         {
-            var root = ProjectRootElement.Create(path, NewProjectFileOptions.None);
-            root.Sdk = "Microsoft.NET.Sdk";
+            XmlDocument doc = new XmlDocument();
 
-            var propGroup = root.AddPropertyGroup();
-            propGroup.AddProperty("TargetFramework", "netstandard2.0");
-            propGroup.AddProperty("WarningsAsErrors", string.Empty);
+            // Create project
+            XmlElement project = doc.CreateElement(string.Empty, "Project", string.Empty);
+            project.SetAttribute("Sdk", "Microsoft.NET.Sdk");
 
-            root.AddItemGroup()
-                .AddItem(PackageReferenceElementName, MetadataGeneratorPackageId)
-                .AddMetadata(PackageReferenceVersionElementName, MetadataGeneratorPackageVersion, true);
+            // Create property group
+            XmlElement propertyGroup = doc.CreateElement(string.Empty, "PropertyGroup", string.Empty);
+            propertyGroup.AppendChild(doc.CreateTargetFramework("netstandard2.0"));
+            propertyGroup.AppendChild(doc.CreateElement(string.Empty, "WarningsAsErrors", string.Empty));
 
-            return root;
+            // Create item group
+            XmlElement itemGroup = doc.CreateElement(string.Empty, "ItemGroup", string.Empty);
+            itemGroup.AppendChild(doc.CreatePackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion));
+
+            // Compose xml file
+            project.AppendChild(propertyGroup);
+            project.AppendChild(itemGroup);
+            doc.AppendChild(project);
+
+            return doc;
         }
     }
 }

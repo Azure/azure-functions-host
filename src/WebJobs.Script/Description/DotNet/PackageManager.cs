@@ -14,7 +14,6 @@ using System.Xml;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -199,16 +198,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             using (var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(projectFilePath))))
             {
-                var root = ProjectRootElement.Create(reader);
+                XmlDocument root = new XmlDocument();
+                root.Load(reader);
 
-                return root.Items
-                   .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal))
-                   .Select(i => new LibraryRange
-                   {
-                       Name = i.Include,
-                       VersionRange = VersionRange.Parse(i.Metadata.First(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal)).Value)
-                   })
-                   .ToList();
+                return root.SelectNodes("//*").OfType<XmlElement>()
+                    .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal))
+                    .Select(i => new LibraryRange
+                    {
+                        Name = i.Attributes[PackageReferenceIncludesElementName]?.Value,
+                        VersionRange = VersionRange.Parse(i.Attributes.OfType<XmlAttribute>().First(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal)).Value)
+                    })
+                    .ToList();
             }
         }
 

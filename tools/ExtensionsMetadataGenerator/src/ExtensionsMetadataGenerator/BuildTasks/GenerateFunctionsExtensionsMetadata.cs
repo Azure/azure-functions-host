@@ -6,8 +6,6 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator;
-using Microsoft.Build.Framework;
-using Microsoft.Build.Utilities;
 
 namespace ExtensionsMetadataGenerator.BuildTasks
 {
