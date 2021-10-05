@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
 
             XmlElement existingPackageReference = projectElements
-                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
+                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludeElementName]?.Value == packageId);
 
             if (existingPackageReference != null)
             {
@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
 
             XmlElement existingPackageReference = projectElements
-                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
+                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludeElementName]?.Value == packageId);
 
             if (existingPackageReference != null)
             {
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         public static XmlElement CreatePackageReference(this XmlDocument doc, string id, string version)
         {
             XmlElement element = doc?.CreateElement(string.Empty, PackageReferenceElementName, string.Empty);
-            element.SetAttribute(PackageReferenceIncludesElementName, id);
+            element.SetAttribute(PackageReferenceIncludeElementName, id);
             element.SetAttribute(PackageReferenceVersionElementName, version);
             return element;
         }

@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MetadataGeneratorPackageVersion = "1.1.*";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
-        public const string PackageReferenceIncludesElementName = "Includes";
+        public const string PackageReferenceIncludeElementName = "Include";
         public const string TargetFrameworkElementName = "TargetFramework";
         public const string PropertyGroupElementName = "PropertyGroup";
         public const string ItemGroupElementName = "ItemGroup";

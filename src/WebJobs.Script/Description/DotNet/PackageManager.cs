@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // In order to determine whether we have a match, we:
             //  - Read the project frameworks and their dependencies,
             //      extracting the appropriate version range using the lock file format
-            //  - Read the lock file depenency groups
+            //  - Read the lock file dependency groups
             //  - Ensure that each project dependency matches a dependency in the lock file for the
             //      appropriate group matching the framework (including non-framework specific/project wide dependencies)
 
@@ -205,8 +205,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                     .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal))
                     .Select(i => new LibraryRange
                     {
-                        Name = i.Attributes[PackageReferenceIncludesElementName]?.Value,
-                        VersionRange = VersionRange.Parse(i.Attributes.OfType<XmlAttribute>().First(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal)).Value)
+                        Name = i.Attributes[PackageReferenceIncludeElementName]?.Value,
+                        VersionRange = VersionRange.Parse(i.Attributes[PackageReferenceVersionElementName]?.Value)
                     })
                     .ToList();
             }

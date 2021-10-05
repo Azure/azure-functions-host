@@ -107,10 +107,10 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             return projectElements
                 .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal)
-                    && !MetadataGeneratorPackageId.Equals(i.Attributes[PackageReferenceIncludesElementName].Value, StringComparison.Ordinal))
+                    && !MetadataGeneratorPackageId.Equals(i.Attributes[PackageReferenceIncludeElementName].Value, StringComparison.Ordinal))
                 .Select(i => new ExtensionPackageReference
                 {
-                    Id = i.Attributes[PackageReferenceIncludesElementName]?.Value,
+                    Id = i.Attributes[PackageReferenceIncludeElementName]?.Value,
                     Version = i.Attributes[PackageReferenceVersionElementName]?.Value
                 })
                 .ToList();
