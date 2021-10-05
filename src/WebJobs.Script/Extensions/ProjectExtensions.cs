@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                 existingPackageReference.ParentNode?.RemoveChild(existingPackageReference);
             }
 
-            XmlElement group = GetUniformItemGroupOrNew(project, PackageReferenceElementName);
+            XmlElement group = GetUniformItemGroupOrNew(project, ItemGroupElementName);
 
             group.AppendChild(project.CreatePackageReference(packageId, version));
         }

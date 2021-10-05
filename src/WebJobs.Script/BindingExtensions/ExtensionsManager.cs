@@ -269,9 +269,10 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         {
             return Task.Run(() =>
             {
-                XmlDocument root = new XmlDocument();
+                XmlDocument root = null;
                 if (File.Exists(path))
                 {
+                    root = new XmlDocument();
                     root.Load(path);
                 }
 
