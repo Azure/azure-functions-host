@@ -10,6 +10,19 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
     internal static class ProjectExtensions
     {
+        public static void CreateProject(this XmlDocument document)
+        {
+            XmlElement project = document.CreateElement(string.Empty, ProjectElementName, string.Empty);
+            XmlElement propertyGroup = document.CreatePropertyGroup();
+            XmlElement itemGroup = document.CreateItemGroup();
+
+            propertyGroup.AppendChild(document.CreateWarningAsErrors());
+            project.SetAttribute(ExtensionsProjectSdkAttributeName, ExtensionsProjectSdkPackageId);
+            project.AppendChild(propertyGroup);
+            project.AppendChild(itemGroup);
+            document.AppendChild(project);
+        }
+
         public static void AddPackageReference(this XmlDocument project, string packageId, string version)
         {
             var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
@@ -46,7 +59,37 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             }
         }
 
-        public static XmlElement GetUniformItemGroupOrNew(this XmlDocument project, string itemName)
+        public static void AddTargetFramework(this XmlDocument project, string innerText)
+        {
+            var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
+
+            XmlElement existingPackageReference = projectElements
+                .FirstOrDefault(item => item?.Name == TargetFrameworkElementName && item.InnerText == innerText);
+
+            if (existingPackageReference != null)
+            {
+                return;
+            }
+
+            XmlElement group = GetUniformItemGroupOrNew(project, PropertyGroupElementName);
+
+            group.AppendChild(project.CreateTargetFramework(innerText));
+        }
+
+        public static void RemoveTargetFramework(this XmlDocument project, string innerText)
+        {
+            var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
+
+            XmlElement existingPackageReference = projectElements
+                .FirstOrDefault(item => item?.Name == TargetFrameworkElementName && item.InnerText == innerText);
+
+            if (existingPackageReference != null)
+            {
+                existingPackageReference.ParentNode?.RemoveChild(existingPackageReference);
+            }
+        }
+
+        private static XmlElement GetUniformItemGroupOrNew(this XmlDocument project, string itemName)
         {
             var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
 
@@ -54,23 +97,29 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                                 .Where(i => itemName.Equals(i.Name, StringComparison.Ordinal))
                                 .FirstOrDefault();
 
-            return group ?? project.AddItemGroup();
+            return group ?? project.AddGroup();
         }
 
-        public static XmlElement CreateTargetFramework(this XmlDocument doc, string innerText)
+        private static XmlElement CreatePropertyGroup(this XmlDocument doc)
+        {
+            XmlElement itemGroup = doc?.CreateElement(string.Empty, PropertyGroupElementName, string.Empty);
+            return itemGroup;
+        }
+
+        private static XmlElement CreateItemGroup(this XmlDocument doc)
+        {
+            XmlElement itemGroup = doc?.CreateElement(string.Empty, ItemGroupElementName, string.Empty);
+            return itemGroup;
+        }
+
+        private static XmlElement CreateTargetFramework(this XmlDocument doc, string innerText)
         {
             XmlElement element = doc?.CreateElement(string.Empty, ScriptConstants.TargetFrameworkElementName, string.Empty);
             element.InnerText = innerText;
             return element;
         }
 
-        public static XmlElement CreateItemGroup(this XmlDocument doc)
-        {
-            XmlElement itemGroup = doc?.CreateElement(string.Empty, ItemGroupElementName, string.Empty);
-            return itemGroup;
-        }
-
-        public static XmlElement CreatePackageReference(this XmlDocument doc, string id, string version)
+        private static XmlElement CreatePackageReference(this XmlDocument doc, string id, string version)
         {
             XmlElement element = doc?.CreateElement(string.Empty, PackageReferenceElementName, string.Empty);
             element.SetAttribute(PackageReferenceIncludeElementName, id);
@@ -78,7 +127,13 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             return element;
         }
 
-        public static XmlElement AddItemGroup(this XmlDocument doc)
+        private static XmlElement CreateWarningAsErrors(this XmlDocument doc)
+        {
+            XmlElement element = doc?.CreateElement(string.Empty, WarningsAsErrorsElementName, string.Empty);
+            return element;
+        }
+
+        private static XmlElement AddGroup(this XmlDocument doc)
         {
             XmlElement reference = doc?.FirstChild?.ChildNodes?.OfType<XmlElement>().FirstOrDefault();
             XmlElement propertyGroups = doc?.FirstChild?.ChildNodes?.OfType<XmlElement>()

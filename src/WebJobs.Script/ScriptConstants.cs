@@ -133,8 +133,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int MaxTestDataInlineStringLength = 4 * 1024;
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
+        public const string ExtensionsProjectSdkAttributeName = "Sdk";
+        public const string ExtensionsProjectSdkPackageId = "Microsoft.NET.Sdk";
         public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
         public const string MetadataGeneratorPackageVersion = "1.1.*";
+        public const string ProjectElementName = "Project";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
         public const string PackageReferenceIncludeElementName = "Include";

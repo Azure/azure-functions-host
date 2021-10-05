@@ -284,23 +284,9 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
         {
             XmlDocument doc = new XmlDocument();
 
-            // Create project
-            XmlElement project = doc.CreateElement(string.Empty, "Project", string.Empty);
-            project.SetAttribute("Sdk", "Microsoft.NET.Sdk");
-
-            // Create property group
-            XmlElement propertyGroup = doc.CreateElement(string.Empty, PropertyGroupElementName, string.Empty);
-            propertyGroup.AppendChild(doc.CreateTargetFramework("netstandard2.0"));
-            propertyGroup.AppendChild(doc.CreateElement(string.Empty, WarningsAsErrorsElementName, string.Empty));
-
-            // Create item group
-            XmlElement itemGroup = doc.CreateElement(string.Empty, ItemGroupElementName, string.Empty);
-            itemGroup.AppendChild(doc.CreatePackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion));
-
-            // Compose xml file
-            project.AppendChild(propertyGroup);
-            project.AppendChild(itemGroup);
-            doc.AppendChild(project);
+            doc.CreateProject();
+            doc.AddTargetFramework("netstandard2.0");
+            doc.AddPackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion);
 
             return doc;
         }
