@@ -288,12 +288,12 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             project.SetAttribute("Sdk", "Microsoft.NET.Sdk");
 
             // Create property group
-            XmlElement propertyGroup = doc.CreateElement(string.Empty, "PropertyGroup", string.Empty);
+            XmlElement propertyGroup = doc.CreateElement(string.Empty, PropertyGroupElementName, string.Empty);
             propertyGroup.AppendChild(doc.CreateTargetFramework("netstandard2.0"));
-            propertyGroup.AppendChild(doc.CreateElement(string.Empty, "WarningsAsErrors", string.Empty));
+            propertyGroup.AppendChild(doc.CreateElement(string.Empty, WarningsAsErrorsElementName, string.Empty));
 
             // Create item group
-            XmlElement itemGroup = doc.CreateElement(string.Empty, "ItemGroup", string.Empty);
+            XmlElement itemGroup = doc.CreateElement(string.Empty, ItemGroupElementName, string.Empty);
             itemGroup.AppendChild(doc.CreatePackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion));
 
             // Compose xml file

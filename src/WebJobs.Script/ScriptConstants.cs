@@ -136,9 +136,12 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
         public const string MetadataGeneratorPackageVersion = "1.1.*";
         public const string PackageReferenceElementName = "PackageReference";
-        public const string TargetFrameworkElementName = "TargetFramework";
         public const string PackageReferenceVersionElementName = "Version";
         public const string PackageReferenceIncludesElementName = "Includes";
+        public const string TargetFrameworkElementName = "TargetFramework";
+        public const string PropertyGroupElementName = "PropertyGroup";
+        public const string ItemGroupElementName = "ItemGroup";
+        public const string WarningsAsErrorsElementName = "WarningsAsErrors";
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;

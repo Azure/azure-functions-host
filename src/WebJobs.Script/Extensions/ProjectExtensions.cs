@@ -12,10 +12,10 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
     {
         public static void AddPackageReference(this XmlDocument project, string packageId, string version)
         {
-            var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
+            var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
 
             XmlElement existingPackageReference = projectElements
-                .FirstOrDefault(item => item.Name == PackageReferenceElementName && item.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
+                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
 
             if (existingPackageReference != null)
             {
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
                     return;
                 }
 
-                existingPackageReference.ParentNode.RemoveChild(existingPackageReference);
+                existingPackageReference.ParentNode?.RemoveChild(existingPackageReference);
             }
 
             XmlElement group = GetUniformItemGroupOrNew(project, PackageReferenceElementName);
@@ -38,17 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
 
             XmlElement existingPackageReference = projectElements
-                .FirstOrDefault(item => item.Name == PackageReferenceElementName && item.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
+                .FirstOrDefault(item => item?.Name == PackageReferenceElementName && item?.Attributes[PackageReferenceIncludesElementName]?.Value == packageId);
 
             if (existingPackageReference != null)
             {
-                existingPackageReference.ParentNode.RemoveChild(existingPackageReference);
+                existingPackageReference.ParentNode?.RemoveChild(existingPackageReference);
             }
         }
 
         public static XmlElement GetUniformItemGroupOrNew(this XmlDocument project, string itemName)
         {
-            var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
+            var projectElements = project?.SelectNodes("//*").OfType<XmlElement>();
 
             XmlElement group = projectElements
                                 .Where(i => itemName.Equals(i.Name, StringComparison.Ordinal))
@@ -59,30 +59,30 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
         public static XmlElement CreateTargetFramework(this XmlDocument doc, string innerText)
         {
-            XmlElement element = doc.CreateElement(string.Empty, ScriptConstants.TargetFrameworkElementName, string.Empty);
+            XmlElement element = doc?.CreateElement(string.Empty, ScriptConstants.TargetFrameworkElementName, string.Empty);
             element.InnerText = innerText;
             return element;
         }
 
         public static XmlElement CreateItemGroup(this XmlDocument doc)
         {
-            XmlElement itemGroup = doc.CreateElement(string.Empty, "ItemGroup", string.Empty);
+            XmlElement itemGroup = doc?.CreateElement(string.Empty, ItemGroupElementName, string.Empty);
             return itemGroup;
         }
 
         public static XmlElement CreatePackageReference(this XmlDocument doc, string id, string version)
         {
-            XmlElement element = doc.CreateElement(string.Empty, "PackageReference", string.Empty);
-            element.SetAttribute("Includes", id);
-            element.SetAttribute("Version", version);
+            XmlElement element = doc?.CreateElement(string.Empty, PackageReferenceElementName, string.Empty);
+            element.SetAttribute(PackageReferenceIncludesElementName, id);
+            element.SetAttribute(PackageReferenceVersionElementName, version);
             return element;
         }
 
         public static XmlElement AddItemGroup(this XmlDocument doc)
         {
-            XmlElement reference = doc.FirstChild.ChildNodes.OfType<XmlElement>().FirstOrDefault();
-            XmlElement propertyGroups = doc.FirstChild.ChildNodes.OfType<XmlElement>()
-                                            .Where(i => "PropertyGroups".Equals(i.Name,  StringComparison.Ordinal))
+            XmlElement reference = doc?.FirstChild?.ChildNodes?.OfType<XmlElement>().FirstOrDefault();
+            XmlElement propertyGroups = doc?.FirstChild?.ChildNodes?.OfType<XmlElement>()
+                                            .Where(i => PropertyGroupElementName.Equals(i.Name,  StringComparison.Ordinal))
                                             .FirstOrDefault();
 
             if (reference == null)
