@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public async Task<IEnumerable<Type>> GetExtensionsStartupTypesAsync()
         {
-            string extensionsPath;
+            string extensionsMetadataPath;
             var functionMetadataCollection = _functionMetadataManager.GetFunctionMetadata(forceRefresh: true, includeCustomProviders: false);
             HashSet<string> bindingsSet = null;
             var bundleConfigured = _extensionBundleManager.IsExtensionBundleConfigured();
@@ -94,45 +94,59 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                 _logger.ScriptStartNotLoadingExtensionBundle("WARMUP_LOG_ONLY", bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
             }
 
+            string baseProbingPath = null;
+
             if (bundleConfigured && (!isPrecompiledFunctionApp || _extensionBundleManager.IsLegacyExtensionBundle()))
             {
-                extensionsPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
-                if (string.IsNullOrEmpty(extensionsPath))
+                extensionsMetadataPath = await _extensionBundleManager.GetExtensionBundleBinPathAsync();
+                if (string.IsNullOrEmpty(extensionsMetadataPath))
                 {
                     _logger.ScriptStartUpErrorLoadingExtensionBundle();
                     return Array.Empty<Type>();
                 }
 
-                _logger.ScriptStartUpLoadingExtensionBundle(extensionsPath);
+                _logger.ScriptStartUpLoadingExtensionBundle(extensionsMetadataPath);
             }
             else
             {
-                extensionsPath = Path.Combine(_rootScriptPath, "bin");
+                extensionsMetadataPath = Path.Combine(_rootScriptPath, "bin");
 
-                if (!File.Exists(Path.Combine(extensionsPath, ScriptConstants.ExtensionsMetadataFileName)))
+                // Verify if the file exists and apply fallback paths
+                // The fallback order is:
+                //   1 - Script root
+                //       - If the system folder exists with metadata file at the root, use that as the base probing path
+                //   2 - System folder
+                if (!File.Exists(Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName)))
                 {
+                    string systemPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
+
                     if (File.Exists(Path.Combine(_rootScriptPath, ScriptConstants.ExtensionsMetadataFileName)))
                     {
                         // As a fallback, allow extensions.json in the root path.
-                        extensionsPath = _rootScriptPath;
-                    }
-                    else
-                    {
-                        string systemPath = Path.Combine(_rootScriptPath, ScriptConstants.AzureFunctionsSystemDirectoryName);
-                        if (File.Exists(Path.Combine(systemPath, ScriptConstants.ExtensionsMetadataFileName)))
+                        extensionsMetadataPath = _rootScriptPath;
+
+                        // If the system path exists, that should take precedence as the base probing path
+                        if (Directory.Exists(systemPath))
                         {
-                            extensionsPath = systemPath;
+                            baseProbingPath = systemPath;
                         }
+                    }
+                    else if (File.Exists(Path.Combine(systemPath, ScriptConstants.ExtensionsMetadataFileName)))
+                    {
+                        extensionsMetadataPath = systemPath;
                     }
                 }
 
-                _logger.ScriptStartNotLoadingExtensionBundle(extensionsPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
+                _logger.ScriptStartNotLoadingExtensionBundle(extensionsMetadataPath, bundleConfigured, isPrecompiledFunctionApp, isLegacyExtensionBundle);
             }
 
-            // Reset the load context using the resolved extensions path
-            FunctionAssemblyLoadContext.ResetSharedContext(extensionsPath);
+            baseProbingPath ??= extensionsMetadataPath;
+            _logger.ScriptStartupResettingLoadContextWithBasePath(baseProbingPath);
 
-            string metadataFilePath = Path.Combine(extensionsPath, ScriptConstants.ExtensionsMetadataFileName);
+            // Reset the load context using the resolved extensions path
+            FunctionAssemblyLoadContext.ResetSharedContext(baseProbingPath);
+
+            string metadataFilePath = Path.Combine(extensionsMetadataPath, ScriptConstants.ExtensionsMetadataFileName);
 
             // parse the extensions file to get declared startup extensions
             ExtensionReference[] extensionItems = ParseExtensions(metadataFilePath);
@@ -167,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
                             var hintUri = new Uri(path, UriKind.RelativeOrAbsolute);
                             if (!hintUri.IsAbsoluteUri)
                             {
-                                path = Path.Combine(extensionsPath, path);
+                                path = Path.Combine(extensionsMetadataPath, path);
                             }
 
                             if (File.Exists(path))
