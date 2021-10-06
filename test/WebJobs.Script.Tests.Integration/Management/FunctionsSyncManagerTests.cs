@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly Mock<ISecretManager> _secretManagerMock;
         private string _function1;
         private bool _emptyContent;
 
@@ -89,8 +90,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
             var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
-            var secretManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-            secretManagerProviderMock.SetupGet(p => p.Current).Returns(secretManagerMock.Object);
+            _secretManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
+            secretManagerProviderMock.SetupGet(p => p.Current).Returns(_secretManagerMock.Object);
             var hostSecretsInfo = new HostSecretsInfo();
             hostSecretsInfo.MasterKey = "aaa";
             hostSecretsInfo.FunctionKeys = new Dictionary<string, string>
@@ -103,13 +104,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                     { "TestSystemKey1", "aaa" },
                     { "TestSystemKey2", "bbb" }
                 };
-            secretManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecretsInfo);
+            _secretManagerMock.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecretsInfo);
             Dictionary<string, string> functionSecretsResponse = new Dictionary<string, string>()
                 {
                     { "TestFunctionKey1", "aaa" },
                     { "TestFunctionKey2", "bbb" }
                 };
-            secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("function1", false)).ReturnsAsync(functionSecretsResponse);
+            _secretManagerMock.Setup(p => p.GetFunctionSecretsAsync("function1", false)).ReturnsAsync(functionSecretsResponse);
+            _secretManagerMock.Setup(p => p.ClearCache());
 
             var configuration = ScriptSettingsManager.BuildDefaultConfiguration();
             var hostIdProviderMock = new Mock<IHostIdProvider>(MockBehavior.Strict);
@@ -309,6 +311,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
                 Assert.Equal("No functions found. Skipping Sync operation.", logs.Single());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_ClearsSecretsCache()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                _secretManagerMock.Verify(p => p.ClearCache(), Times.Once);
             }
         }
 
