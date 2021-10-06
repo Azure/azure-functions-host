@@ -5,7 +5,7 @@
     <LangVersion>7.2</LangVersion>
     <MajorVersion>3</MajorVersion>
     <MinorVersion>3</MinorVersion>
-    <PatchVersion>0</PatchVersion>
+    <PatchVersion>1</PatchVersion>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>
