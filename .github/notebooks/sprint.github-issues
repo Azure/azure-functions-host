@@ -1,0 +1,27 @@
+[
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$funcHostRepo=repo:azure/azure-functions-host \n$current=milestone:\"Functions Sprint 110\"\n$next=milestone:\"Functions Sprint 111\"\n$user=liliankasem"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# Current Sprint"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$funcHostRepo $current"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# Next Sprint"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$funcHostRepo $next"
+  }
+]

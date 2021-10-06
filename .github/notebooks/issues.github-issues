@@ -1,0 +1,27 @@
+[
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "// Functions Host repo\n$REPOS=repo:azure/azure-functions-host repo:azure/azure-functions-core-tools repo:azure/azure-functions-docker repo:azure/azure-functions-dotnet-worker repo:azure/azure-functions-nodejs-worker repo:azure/azure-functions-java-worker repo:azure/azure-functions-python-worker repo:azure/azure-functions-powershell-worker\n\n// Configuration\n$IS_OPEN_ISSUE=is:issue is:open \n$MINE=assignee:@me\n$NOT_MINE=-$MINE\n$TEAM=author:fabiocav author:brettsam author:soninaren author:madelinegordon author:liliankasem author:kashimiz author:kshyju author:satvu author:surgupta-msft"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# Issues assigned to me"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$REPOS $IS_OPEN_ISSUE $MINE"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# Issues assigned to my team"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$REPOS $IS_OPEN_ISSUE $TEAM"
+  }
+]
