@@ -601,18 +601,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
-                    // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
-                    if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
+                    if (_environment.SupportsSharedMemoryTransfer())
                     {
-                        _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
-                    }
+                        // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
+                        if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
+                        {
+                            _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
+                        }
 
-                    // List of shared memory maps that were produced by the worker (for output bindings)
-                    IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
-                    if (outputMaps.Count > 0)
-                    {
-                        // If this invocation was using any shared memory maps produced by the worker, close them to free memory
-                        SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
+                        // List of shared memory maps that were produced by the worker (for output bindings)
+                        IList<string> outputMaps = GetOutputMaps(invokeResponse.OutputData);
+                        if (outputMaps.Count > 0)
+                        {
+                            // If this invocation was using any shared memory maps produced by the worker, close them to free memory
+                            SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
+                        }
                     }
                 }
             }
