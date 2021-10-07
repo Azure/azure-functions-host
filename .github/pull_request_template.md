@@ -2,7 +2,7 @@
 
 ### Issue describing the changes in this PR
 
-resolves #issue_for_this_pr
+Resolves #issue_for_this_pr
 
 ### Pull request checklist
 
