@@ -373,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal static void AddAzureStorageProvider(this IServiceCollection services)
         {
             services.AddAzureStorageCoreServices();
-            services.AddSingleton<IAzureStorageProvider, HostAzureStorageProvider>();
+            services.AddSingleton<IAzureBlobStorageProvider, HostAzureStorageProvider>();
         }
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)

@@ -407,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public ILoggerProvider LoggerProvider { get; private set; }
 
-            public IAzureStorageProvider AzureStorageProvider { get; private set; }
+            public IAzureBlobStorageProvider AzureStorageProvider { get; private set; }
 
             public async Task TestInitialize(SecretsRepositoryType repositoryType, string secretsDirectory, string testSiteName = null)
             {

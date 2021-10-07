@@ -23,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnection;
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureStorageProvider;
         private BlobContainerClient _blobContainerClient;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureStorageProvider azureStorageProvider)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureBlobStorageProvider azureStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
             if (secretSentinelDirectoryPath == null)
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual BlobContainerClient CreateBlobContainerClient(string connection)
         {
-            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connection))
+            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(connection, out BlobServiceClient blobServiceClient))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
                 blobContainerClient.CreateIfNotExists();
