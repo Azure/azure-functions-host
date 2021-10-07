@@ -1,4 +1,4 @@
-﻿// Assemblies in this list cannot be overriden in the funcion load context
+// Assemblies in this list cannot be overriden in the funcion load context
 // This list originally comes from dumping TPA assemblies.
 {
   "runtimeAssemblies": [
@@ -40,58 +40,6 @@
     },
     {
       "name": "Grpc.Net.Common",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Bcl.AsyncInterfaces",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Extensions.Azure",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Identity.Client",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Identity.Client.Extensions.Msal",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.OData.Core",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.OData.Edm",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Spatial",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.Storage.Common",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.DocumentDB.Core",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.Cosmos.Table",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.Storage.Blob",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.Storage.File",
-      "resolutionPolicy": "private"
-    },
-    {
-      "name": "Microsoft.Azure.Storage.Queue",
       "resolutionPolicy": "private"
     },
     {
@@ -407,11 +355,31 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.Azure.WebJobs",
-      "resolutionPolicy": "minorMatchOrLower"
+      "name": "Microsoft.Azure.Cosmos.Table",
+      "resolutionPolicy": "private"
     },
     {
-      "name": "Microsoft.Azure.WebJobs.Host.Storage",
+      "name": "Microsoft.Azure.DocumentDB.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Blob",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Common",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.File",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.Storage.Queue",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -424,6 +392,10 @@
     },
     {
       "name": "Microsoft.Azure.WebJobs.Host",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Host.Storage",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
@@ -449,6 +421,10 @@
     {
       "name": "Microsoft.Azure.WebSites.DataProtection",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Bcl.AsyncInterfaces",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Build",
@@ -481,6 +457,10 @@
     {
       "name": "Microsoft.DotNet.PlatformAbstractions",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Extensions.Azure",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Extensions.Caching.Abstractions",
@@ -651,6 +631,14 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Identity.Client",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Identity.Client.Extensions.Msal",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.IdentityModel.Logging",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -669,6 +657,18 @@
     {
       "name": "Microsoft.Net.Http.Headers",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.OData.Core",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.OData.Edm",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Spatial",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.VisualBasic",
@@ -1303,15 +1303,15 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "System.Text.Encodings.Web",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
       "name": "System.Text.Encoding.CodePages",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "System.Text.Encoding.Extensions",
+      "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Text.Encodings.Web",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
