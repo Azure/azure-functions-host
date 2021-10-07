@@ -377,6 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static ExtensionBundleOptions GetExtensionBundleOptions(IConfiguration configuration)
         {
+            AppContext.SetSwitch("Microsoft.Extensions.Configuration.BindSingleElementsToArray", false);
             var options = new ExtensionBundleOptions();
             var optionsSetup = new ExtensionBundleConfigurationHelper(configuration, SystemEnvironment.Instance);
             configuration.Bind(options);
