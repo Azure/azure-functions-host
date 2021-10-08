@@ -473,11 +473,11 @@
     },
     {
       "name": "Microsoft.Build",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Build.Framework",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.CodeAnalysis",
