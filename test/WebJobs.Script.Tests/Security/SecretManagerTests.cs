@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -119,25 +118,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 WriteStartContextCache(startupContextPath);
 
-                try
+                using (var secretManager = CreateSecretManager(directory.Path))
                 {
-                    using (var secretManager = CreateSecretManager(directory.Path))
+                    for (int i = 0; i < 3; i++)
                     {
-                        for (int i = 0; i < 3; i++)
-                        {
-                            (string, AuthorizationLevel) result = await secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
-                            Assert.Equal(result.Item2, expectedLevel);
-                            Assert.Equal(result.Item1, expectedKeyName);
-                        }
+                        (string, AuthorizationLevel) result = await secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
+                        Assert.Equal(result.Item2, expectedLevel);
+                        Assert.Equal(result.Item1, expectedKeyName);
                     }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("----------");
-                    Console.WriteLine(ex.ToString());
-                    Console.WriteLine(_loggerProvider.GetLog());
-                    Console.WriteLine("----------");
-                    throw;
                 }
             }
         }
