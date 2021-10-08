@@ -119,14 +119,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 WriteStartContextCache(startupContextPath);
 
-                using (var secretManager = CreateSecretManager(directory.Path))
+                try
                 {
-                    for (int i = 0; i < 3; i++)
+                    using (var secretManager = CreateSecretManager(directory.Path))
                     {
-                        (string, AuthorizationLevel) result = await secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
-                        Assert.Equal(result.Item2, expectedLevel);
-                        Assert.Equal(result.Item1, expectedKeyName);
+                        for (int i = 0; i < 3; i++)
+                        {
+                            (string, AuthorizationLevel) result = await secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
+                            Assert.Equal(result.Item2, expectedLevel);
+                            Assert.Equal(result.Item1, expectedKeyName);
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("----------");
+                    Console.WriteLine(ex.ToString());
+                    Console.WriteLine(_loggerProvider.GetLog());
+                    Console.WriteLine("----------");
+                    throw;
                 }
             }
         }
