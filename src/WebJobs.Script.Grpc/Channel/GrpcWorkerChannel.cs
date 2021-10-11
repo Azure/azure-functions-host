@@ -601,7 +601,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
-                    if (_environment.SupportsSharedMemoryTransfer())
+                    if (_isSharedMemoryDataTransferEnabled)
                     {
                         // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
                         if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
