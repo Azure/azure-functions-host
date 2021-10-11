@@ -58,6 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public override string Name => nameof(KeyVaultSecretsRepository);
+
         public override async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
             return type == ScriptSecretsType.Host ? await ReadHostSecrets() : await ReadFunctionSecrets(functionName);

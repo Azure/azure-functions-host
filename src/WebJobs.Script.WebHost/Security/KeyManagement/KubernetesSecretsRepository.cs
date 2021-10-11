@@ -41,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public bool IsEncryptionSupported => false;
 
+        public string Name => nameof(KeyVaultSecretsRepository);
+
         public async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
             if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))

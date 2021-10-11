@@ -2,9 +2,6 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
-
-- Updated PowerShell Worker (PS7) to [3.0.1045](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.1045)
-- Breaking change - removed HttpClient as a registered service and replaced with IHttpClientFactory (#7692)
 - My change description (#PR)
 
 - Updated Java Worker Version to [2.0.0](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.0.0)
