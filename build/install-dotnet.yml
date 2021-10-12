@@ -7,4 +7,4 @@ steps:
       Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile 'dotnet-install.ps1'
       # Official release versions can be found at: https://dotnet.microsoft.com/download/dotnet/6.0
       # Newer versions can be found at: https://github.com/dotnet/installer#installers-and-binaries
-      ./dotnet-install.ps1 -InstallDir 'C:\Program Files\dotnet' -Verbose -Version 6.0.100-rc.1.21458.32
+      ./dotnet-install.ps1 -InstallDir 'C:\Program Files\dotnet' -Verbose -Version 6.0.100-rc.2.21505.57
