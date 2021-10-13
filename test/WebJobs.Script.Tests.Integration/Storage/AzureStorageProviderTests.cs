@@ -37,10 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             var jobHostConfiguration = new ConfigurationBuilder().Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            var container = azureStorageProvider.GetWebJobsBlobContainerClient();
+            azureStorageProvider.TryCreateHostingBlobContainerClient(out var container);
             await VerifyContainerClientAvailable(container);
 
-            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
@@ -60,10 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            var container = azureStorageProvider.GetWebJobsBlobContainerClient();
+            azureStorageProvider.TryCreateHostingBlobContainerClient(out var container);
             await VerifyContainerClientAvailable(container);
 
-            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
@@ -76,9 +76,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            Assert.Throws<InvalidOperationException>(() => azureStorageProvider.GetWebJobsBlobContainerClient());
+            Assert.False(azureStorageProvider.TryCreateHostingBlobContainerClient(out _));
 
-            Assert.False(azureStorageProvider.TryGetBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.False(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
         }
 
         [Theory]
@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .Build();
 
             var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            Assert.True(azureStorageProvider.TryGetBlobServiceClientFromConnection("Storage1", out BlobServiceClient client));
+            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection("Storage1", out BlobServiceClient client));
             Assert.Equal("webHostAccount", client.AccountName, ignoreCase: true);
         }
 

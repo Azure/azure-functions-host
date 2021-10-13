@@ -42,14 +42,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
         }
 
         [Fact]
-        public async Task TestBlobStorageProvider_TryConnectionName()
-        {
-            var client = _blobServiceClientProvider.Create(StorageConnection, _configuration);
-            Assert.NotNull(client);
-            await VerifyServiceAvailable(client);
-        }
-
-        [Fact]
         public async Task TestBlobStorageProvider_ConnectionName()
         {
             var client = _blobServiceClientProvider.Create(StorageConnection, _configuration);
@@ -65,13 +57,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             await VerifyServiceAvailable(client);
         }
 
-        [Fact]
-        public async Task TestBlobStorageProvider_TryConnectionStringVariants()
+        [Theory]
+        [InlineData("ConnectionStrings:AzureWebJobsStorage")]
+        [InlineData("AzureWebJobsStorage")]
+        public async Task TestBlobStorageProvider_TryConnectionStringVariants(string keyName)
         {
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "ConnectionStrings:AzureWebJobsStorage", Environment.GetEnvironmentVariable(StorageConnection) },
-                { "AzureWebJobsStorage", "" }
+                { keyName, Environment.GetEnvironmentVariable(StorageConnection) },
             };
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(testData)

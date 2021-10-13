@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -115,11 +116,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             // But the blob pointed to by the uri will not exist until the container is specialized.
             // When the blob doesn't exist it just means the container is waiting for specialization.
             // Don't treat this as a failure.
-            var blobClient = new BlobClient(new Uri(uri));
+            var blobClientOptions = new BlobClientOptions();
+            blobClientOptions.Retry.Mode = RetryMode.Fixed;
+            blobClientOptions.Retry.MaxRetries = 3;
+            blobClientOptions.Retry.Delay = TimeSpan.FromMilliseconds(500);
 
-            if (await blobClient.ExistsAsync())
+            var blobClient = new BlobClient(new Uri(uri), blobClientOptions);
+
+            if (await blobClient.ExistsAsync(cancellationToken: _cancellationToken))
             {
-                var downloadResponse = await blobClient.DownloadAsync();
+                var downloadResponse = await blobClient.DownloadAsync(cancellationToken: _cancellationToken);
                 using (StreamReader reader = new StreamReader(downloadResponse.Value.Content, true))
                 {
                     string content = reader.ReadToEnd();
