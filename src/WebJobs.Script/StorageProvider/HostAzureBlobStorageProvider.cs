@@ -18,16 +18,21 @@ namespace Microsoft.Azure.WebJobs.Script
     /// The Host overrides the implementation in Microsoft.Azure.WebJobs.Host.Storage to provide the IConfiguration that
     /// unifies the WebHost and inner ScriptHost configurations. This unification is done through ActiveHostConfigurationSource.
     /// </summary>
-    internal class HostAzureStorageProvider : IAzureBlobStorageProvider
+    internal class HostAzureBlobStorageProvider : IAzureBlobStorageProvider
     {
         private readonly BlobServiceClientProvider _blobServiceClientProvider;
-        private readonly ILogger<HostAzureStorageProvider> _logger;
+        private readonly ILogger<HostAzureBlobStorageProvider> _logger;
         private readonly IOptionsMonitor<JobHostInternalStorageOptions> _storageOptions;
 
-        public HostAzureStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<HostAzureStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
+        public HostAzureBlobStorageProvider(IScriptHostManager scriptHostManager, IConfiguration configuration, IOptionsMonitor<JobHostInternalStorageOptions> options, ILogger<HostAzureBlobStorageProvider> logger, AzureComponentFactory componentFactory, AzureEventSourceLogForwarder logForwarder)
         {
-            _storageOptions = options;
-            _logger = logger;
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+
+            _storageOptions = options ?? throw new ArgumentNullException(nameof(options));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _blobServiceClientProvider = new BlobServiceClientProvider(componentFactory, logForwarder);
 
@@ -37,7 +42,11 @@ namespace Microsoft.Azure.WebJobs.Script
             }
             else
             {
-                _ = scriptHostManager ?? throw new ArgumentNullException(nameof(scriptHostManager));
+                if (scriptHostManager == null)
+                {
+                    throw new ArgumentNullException(nameof(scriptHostManager));
+                }
+
                 Configuration = new ConfigurationBuilder()
                     .Add(new ActiveHostConfigurationSource(scriptHostManager))
                     .AddConfiguration(configuration)

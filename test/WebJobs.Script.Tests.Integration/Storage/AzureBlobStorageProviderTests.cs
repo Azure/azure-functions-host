@@ -16,12 +16,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 {
-    public class AzureStorageProviderTests
+    public class AzureBlobStorageProviderTests
     {
         private const string StorageConnection = "AzureWebJobsStorage";
 
         [Fact]
-        public async Task TestAzureStorageProvider_ConnectionInWebHostConfiguration()
+        public async Task TestAzureBlobStorageProvider_ConnectionInWebHostConfiguration()
         {
             var testConfiguration = TestHelpers.GetTestConfiguration();
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -36,16 +36,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
 
             var jobHostConfiguration = new ConfigurationBuilder().Build();
 
-            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            azureStorageProvider.TryCreateHostingBlobContainerClient(out var container);
+            var azureBlobStorageProvider = GetAzureBlobStorageProvider(webHostConfiguration, jobHostConfiguration);
+            azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var container);
             await VerifyContainerClientAvailable(container);
 
-            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.True(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
         [Fact]
-        public async Task TestAzureStorageProvider_ConnectionInJobHostConfiguration()
+        public async Task TestAzureBlobStorageProvider_ConnectionInJobHostConfiguration()
         {
             var testConfiguration = TestHelpers.GetTestConfiguration();
             var testData = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -59,33 +59,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .AddInMemoryCollection(testData)
                 .Build();
 
-            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            azureStorageProvider.TryCreateHostingBlobContainerClient(out var container);
+            var azureBlobStorageProvider = GetAzureBlobStorageProvider(webHostConfiguration, jobHostConfiguration);
+            azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var container);
             await VerifyContainerClientAvailable(container);
 
-            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.True(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
             await VerifyBlobServiceClientAvailable(blobServiceClient);
         }
 
         [Fact]
-        public void TestAzureStorageProvider_NoConnectionThrowsException()
+        public void TestAzureBlobStorageProvider_NoConnectionThrowsException()
         {
             var webHostConfiguration = new ConfigurationBuilder()
                 .Build();
             var jobHostConfiguration = new ConfigurationBuilder()
                 .Build();
 
-            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            Assert.False(azureStorageProvider.TryCreateHostingBlobContainerClient(out _));
+            var azureBlobStorageProvider = GetAzureBlobStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.False(azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _));
 
-            Assert.False(azureStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
+            Assert.False(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobServiceClient));
         }
 
         [Theory]
         [InlineData("ConnectionStrings:AzureWebJobsStorage1")]
         [InlineData("AzureWebJobsStorage1")]
         [InlineData("Storage1")]
-        public void TestAzureStorageProvider_JobHostConfigurationWinsConflict(string connectionName)
+        public void TestAzureBlobStorageProvider_JobHostConfigurationWinsConflict(string connectionName)
         {
             var bytes = Encoding.UTF8.GetBytes("someKey");
             var encodedString = Convert.ToBase64String(bytes);
@@ -106,8 +106,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 .AddInMemoryCollection(jobHostConfigData)
                 .Build();
 
-            var azureStorageProvider = GetAzureStorageProvider(webHostConfiguration, jobHostConfiguration);
-            Assert.True(azureStorageProvider.TryCreateBlobServiceClientFromConnection("Storage1", out BlobServiceClient client));
+            var azureBlobStorageProvider = GetAzureBlobStorageProvider(webHostConfiguration, jobHostConfiguration);
+            Assert.True(azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection("Storage1", out BlobServiceClient client));
             Assert.Equal("webHostAccount", client.AccountName, ignoreCase: true);
         }
 
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             }
         }
 
-        private static IAzureBlobStorageProvider GetAzureStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration, JobHostInternalStorageOptions storageOptions = null)
+        private static IAzureBlobStorageProvider GetAzureBlobStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration, JobHostInternalStorageOptions storageOptions = null)
         {
             IHost tempHost = new HostBuilder()
                 .ConfigureServices(services =>
@@ -154,8 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     }
                 }).Build();
 
-            var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureBlobStorageProvider>();
-            return azureStorageProvider;
+            var azureBlobStorageProvider = tempHost.Services.GetRequiredService<IAzureBlobStorageProvider>();
+            return azureBlobStorageProvider;
         }
 
         private class TestScriptHostService : IScriptHostManager, IServiceProvider

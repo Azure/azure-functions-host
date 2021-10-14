@@ -183,8 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     o.AppDirectory = applicationHostOptions.ScriptPath;
                 })
                 .AddHttp()
-                .AddTimers()
-                .AddTimersStorage()
+                .AddTimersWithStorage()
                 .AddManualTrigger()
                 .AddWarmup();
 
@@ -372,8 +371,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void AddAzureBlobStorageProvider(this IServiceCollection services)
         {
-            services.AddAzureStorageCoreServices(); // We just need the JobHostInternalStorageOptions service
-            services.AddSingleton<IAzureBlobStorageProvider, HostAzureStorageProvider>();
+            services.AddAzureStorageCoreServices();
+            services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
         }
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)
