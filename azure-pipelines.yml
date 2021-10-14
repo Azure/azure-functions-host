@@ -2,8 +2,6 @@ variables:
   buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
-name: 4.0.$(buildNumber)
-
 pr:
   branches:
     include:
@@ -32,7 +30,7 @@ jobs:
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-connectionString ''$(Storage-azurefunctionshostci0)'''
+      arguments: '-buildNumber ''$(buildNumber)'''
 
 - job: BuildArtifacts
   dependsOn: InitializePipeline
@@ -42,9 +40,14 @@ jobs:
       suffixTemp: $(buildNumber)
       packSuffixSwitchTemp: --version-suffix $(buildNumber)
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+      buildNumberSuffixTemp: $(buildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
+    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
+    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
+    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
     vmImage: 'windows-2019'
   steps:
@@ -53,7 +56,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -69,7 +72,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
@@ -268,6 +271,9 @@ jobs:
       contents: '**\CodeSignSummary-*.md'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
+    artifact: PatchedSiteExtension
+    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols

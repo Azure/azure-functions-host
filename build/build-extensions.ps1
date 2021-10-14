@@ -1,8 +1,14 @@
 param (
-  [string]$buildNumber = "0",  
-  [string]$suffix = "",  
+  [string]$buildNumber = "0",
+  [string]$majorMinorVersion,
+  [string]$patchVersion,
+  [string]$suffix = "",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
+
+$extensionVersion = "$majorMinorVersion.$patchVersion"
+Write-Host "ExtensionVersion is $extensionVersion"
+Write-Host "BuildNumber is $buildNumber"
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
@@ -121,6 +127,105 @@ function CleanOutput([string] $rootPath) {
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
+function CreatePatchedSiteExtension([string] $siteExtensionPath) {
+  try {
+    Write-Host "SiteExtensionPath is $siteExtensionPath"
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
+    $baseVersion = "$majorMinorVersion.0"
+    $baseZipPath = "$buildOutput\BaseZipDirectory"
+    $baseExtractedPath = "$buildOutput\BaseZipDirectory\Extracted"
+    
+    # Try to download base version
+    New-Item -Itemtype "directory" -path "$baseZipPath" -Force > $null
+    New-Item -Itemtype "directory" -path "$baseExtractedPath" -Force > $null
+    $baseZipUrl = "https://github.com/Azure/azure-functions-host/releases/download/v$majorMinorVersion.0/Functions.$majorMinorVersion.0.zip"
+
+    Write-Host "Downloading from $baseZipUrl"
+    (New-Object System.Net.WebClient).DownloadFile($baseZipUrl, "$baseZipPath\Functions.$majorMinorVersion.0.zip")
+    Write-Host "Download complete"
+
+    # Extract zip
+    Expand-Archive -LiteralPath "$baseZipPath\Functions.$majorMinorVersion.0.zip" -DestinationPath "$baseExtractedPath"
+    
+    # Create directory for patch
+    $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
+    New-Item -Itemtype directory -path $zipOutput -Force > $null
+
+    # Create directory for content
+    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
+    New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
+
+    # Copy extensions.xml as is
+    Copy-Item "$siteExtensionPath\extension.xml" -Destination "$patchedContentDirectory\extension.xml"
+
+    # Read hashes.txt for base
+    $hashForBase = @{}
+    foreach($line in Get-Content "$baseExtractedPath\$baseVersion\hashesForHardlinks.txt") {
+      $lineContents = $line.Split(" ")
+      $hashKey = $lineContents[1].Split(":")[1]
+      $hashValue = $lineContents[0].Split(":")[1]
+  
+      $hashForBase.Add($hashKey, $hashValue)
+    }
+
+    # Read hashes.txt for patched
+    $hashForPatched = @{}
+    foreach($line in Get-Content "$officialSiteExtensionPath\hashesForHardlinks.txt") {
+      $lineContents = $line.Split(" ")
+      $hashKey = $lineContents[1].Split(":")[1]
+      $hashValue = $lineContents[0].Split(":")[1]
+  
+      $hashForPatched.Add($hashKey, $hashValue)
+    }
+
+    # Iterate over patched to generate the appropriate set of files
+    $informationJson = New-Object System.Collections.ArrayList
+    foreach($key in $hashForPatched.Keys) {
+      $infoKeyValuePairs = @{}
+      
+      # If key doesn't exist in base, or if the keys exists but their hashes don't match, copy over.
+      if((!$hashForBase.ContainsKey($key)) -or ($hashForPatched[$key] -ne $hashForBase[$key])) {
+        $filePath = $key.Replace(".\","")
+        $sourcePath = "$officialSiteExtensionPath\$filePath"
+        $destinationPath = "$patchedContentDirectory\$extensionVersion\$filePath"
+        Write-Host "Copying $sourcePath to $destinationPath"
+        $ValidPath = Test-Path "$destinationPath"
+
+        If ($ValidPath -eq $False){
+            New-Item -Path "$destinationPath" -Force > $null
+        }
+
+        Copy-Item "$sourcePath" "$destinationPath" -Force > $null
+
+        # Get it into info
+        $infoKeyValuePairs.Add("FileName", $key)
+        $infoKeyValuePairs.Add("SourceVersion", $extensionVersion)
+        $infoKeyValuePairs.Add("HashValue", $hashForPatched[$key])
+        $informationJson.Add($infoKeyValuePairs)
+        continue
+      }
+
+      # Add info that would help get this file from base
+      $infoKeyValuePairs.Add("FileName", $key)
+      $infoKeyValuePairs.Add("SourceVersion", $baseVersion)
+      $infoKeyValuePairs.Add("HashValue", $hashForBase[$key])
+      $informationJson.Add($infoKeyValuePairs)
+    }
+    $informationJson | ConvertTo-Json -depth 100 | Out-File "$patchedContentDirectory\$extensionVersion\HardlinksMetadata.json"
+
+    # Zip it up
+    ZipContent $patchedContentDirectory "$zipOutput\Functions.$extensionVersion.zip"
+
+    # Clean up
+    Remove-Item $patchedContentDirectory -Recurse -Force > $null
+  }
+  catch {
+    Write-Host $_.Exception
+    $statusCode = $_.Exception.Response.StatusCode.Value__
+    Write-Host "Invoking url $baseZipUrl returned status code of $statusCode which could mean that no base version exists. The full version needs to be deployed"
+  }
+}
+
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
@@ -153,9 +258,21 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host
     
+    # This needs to be determined if it's patch or not.
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+
+    # Construct patch
+    if(([int]$patchVersion) -gt 0)
+    {
+      Write-Host "======================================"
+      Write-Host "Generating patch file"
+      CreatePatchedSiteExtension $siteExtensionPath
+      Write-Host "Done generating patch files"
+      Write-Host "======================================"
+      Write-Host
+    }
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null    
     
