@@ -558,7 +558,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
-            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{functionId}'", invokeResponse.InvocationId);
+            _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
                 && invokeResponse.Result.IsSuccess(context.ResultSource))
