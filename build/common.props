@@ -20,7 +20,8 @@
 
     <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true"</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
-    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>    
   </PropertyGroup>
 
   <Target Name="GenerateSiteExtensionVersion">
