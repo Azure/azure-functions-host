@@ -814,7 +814,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             foreach (ScriptInvocationContext currContext in _executingInvocations?.Values)
             {
                 string invocationId = currContext?.ExecutionContext?.InvocationId.ToString();
-                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: '{functionId}'", _workerId, invocationId);
+                _workerChannelLogger.LogDebug("Worker '{workerId}' encountered a fatal error. Failing invocation id: '{invocationId}'", _workerId, invocationId);
                 currContext?.ResultSource?.TrySetException(workerException);
                 _executingInvocations.TryRemove(invocationId, out ScriptInvocationContext _);
             }
