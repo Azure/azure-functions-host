@@ -195,7 +195,6 @@ System.Globalization.Calendars.dll
 System.Globalization.Extensions.dll
 System.IdentityModel.Tokens.Jwt.dll
 System.IO.dll
-System.IO.Abstractions.dll
 System.IO.Compression.dll
 System.IO.Compression.Brotli.dll
 System.IO.Compression.FileSystem.dll
