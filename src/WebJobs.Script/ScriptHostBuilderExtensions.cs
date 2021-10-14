@@ -285,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
-                    services.AddAzureStorageProvider();
+                    services.AddAzureBlobStorageProvider();
                 }
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
@@ -370,9 +370,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return options;
         }
 
-        internal static void AddAzureStorageProvider(this IServiceCollection services)
+        internal static void AddAzureBlobStorageProvider(this IServiceCollection services)
         {
-            services.AddAzureStorageCoreServices();
+            services.AddAzureStorageCoreServices(); // We just need the JobHostInternalStorageOptions service
             services.AddSingleton<IAzureBlobStorageProvider, HostAzureStorageProvider>();
         }
 

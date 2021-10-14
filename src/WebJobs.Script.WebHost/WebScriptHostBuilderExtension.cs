@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -52,6 +53,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
+                    // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider
+                    webJobsBuilder.Services.AddSingleton<IAzureBlobStorageProvider>(rootServiceProvider.GetService<IAzureBlobStorageProvider>());
+                    webJobsBuilder.AddAzureStorageCoreServices();
+
                     configureWebJobs?.Invoke(webJobsBuilder);
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);

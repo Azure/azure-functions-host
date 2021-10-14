@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                 {
                     // Override configuration
                     services.AddSingleton(webHostConfiguration);
-                    services.AddAzureStorageProvider();
+                    services.AddAzureBlobStorageProvider();
 
                     var testServiceProvider = new TestScriptHostService(jobHostConfiguration);
                     services.AddSingleton<IScriptHostManager>(testServiceProvider);

@@ -452,7 +452,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     // Override configuration
                     services.AddSingleton(configuration);
-                    services.AddAzureStorageProvider();
+                    services.AddAzureBlobStorageProvider();
                     TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(services);
                     if (storageOptions != null)
                     {

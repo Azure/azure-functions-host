@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
 
-                    s.AddAzureStorageProvider();
+                    s.AddAzureBlobStorageProvider();
                     TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(s);
                 });
 
