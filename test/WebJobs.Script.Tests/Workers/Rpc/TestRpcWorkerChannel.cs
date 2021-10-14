@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -83,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _executingInvocations.Remove(invokeResponse.InvocationId);
         }
 
-        public async Task StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
             // To verify FunctionDispatcher transistions
             await Task.Delay(TimeSpan.FromMilliseconds(500));

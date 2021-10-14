@@ -262,7 +262,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
         }
 
-        public static string GetValue(this StringDictionary dictionary, string key)
+        public static string GetValueOrNull(this StringDictionary dictionary, string key)
         {
             return dictionary.ContainsKey(key) ? dictionary[key] : null;
         }

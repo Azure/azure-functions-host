@@ -36,8 +36,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string EnvironmentNameKey = "AZURE_FUNCTIONS_ENVIRONMENT";
         public const string FunctionsV2CompatibilityModeKey = "FUNCTIONS_V2_COMPATIBILITY_MODE";
         public const string EasyAuthEnabled = "WEBSITE_AUTH_ENABLED";
-        public const string AzureWebJobsSecretStorageKeyVaultName = "AzureWebJobsSecretStorageKeyVaultName";
-        public const string AzureWebJobsSecretStorageKeyVaultConnectionString = "AzureWebJobsSecretStorageKeyVaultConnectionString";
+        public const string AzureWebJobsSecretStorageKeyVaultUri = "AzureWebJobsSecretStorageKeyVaultUri";
+        public const string AzureWebJobsSecretStorageKeyVaultClientId = "AzureWebJobsSecretStorageKeyVaultClientId";
+        public const string AzureWebJobsSecretStorageKeyVaultClientSecret = "AzureWebJobsSecretStorageKeyVaultClientSecret";
+        public const string AzureWebJobsSecretStorageKeyVaultTenantId = "AzureWebJobsSecretStorageKeyVaultTenantId";
         public const string AzureWebsiteArmCacheEnabled = "WEBSITE_FUNCTIONS_ARMCACHE_ENABLED";
         public const string MountEnabled = "WEBSITE_MOUNT_ENABLED";
         public const string UserDataHome = "USER_DATA_HOME";
@@ -58,6 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string TestDataCapEnabled = "WEBSITE_FUNCTIONS_TESTDATA_CAP_ENABLED";
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
+        public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

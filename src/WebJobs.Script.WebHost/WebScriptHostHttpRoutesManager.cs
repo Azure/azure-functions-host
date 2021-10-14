@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Text;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
@@ -36,13 +35,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
             WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), _httpOptions.Value.RoutePrefix);
 
-            // Proxies do not honor the route prefix defined in host.json
-            WebJobsRouteBuilder proxiesRoutesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, true), routePrefix: null);
-
             WebJobsRouteBuilder warmupRouteBuilder = null;
             if (!_environment.IsLinuxConsumption() && !_environment.IsWindowsConsumption())
             {
-                warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isProxy: false, isWarmup: true), routePrefix: "admin");
+                warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isWarmup: true), routePrefix: "admin");
             }
 
             foreach (var function in host.Functions)
@@ -57,17 +53,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
 
                     string route = httpTrigger.Route;
-                    bool isProxy = function.Metadata.IsProxy();
 
-                    if (string.IsNullOrEmpty(route) && !isProxy)
+                    if (string.IsNullOrEmpty(route))
                     {
                         route = function.Name;
                     }
 
-                    WebJobsRouteBuilder builder = isProxy ? proxiesRoutesBuilder : routesBuilder;
-                    builder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
+                    routesBuilder.MapFunctionRoute(function.Metadata.Name, route, constraints, function.Metadata.Name);
 
-                    LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, isProxy, _httpOptions.Value.RoutePrefix);
+                    LogRouteMap(routesLogBuilder, function.Metadata.Name, route, httpTrigger.Methods, _httpOptions.Value.RoutePrefix);
                 }
                 else if (warmupRouteBuilder != null && function.IsWarmupFunction())
                 {
@@ -77,21 +71,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             IRouter proxyRouter = null;
             IRouter functionRouter = null;
-            if (routesBuilder.Count == 0 && proxiesRoutesBuilder.Count == 0)
+            if (routesBuilder.Count == 0)
             {
                 routesLogBuilder.AppendLine("No HTTP routes mapped");
             }
             else
             {
-                if (proxiesRoutesBuilder.Count > 0)
-                {
-                    proxyRouter = proxiesRoutesBuilder.Build();
-                }
-
-                if (routesBuilder.Count > 0)
-                {
-                    functionRouter = routesBuilder.Build();
-                }
+                functionRouter = routesBuilder.Build();
             }
 
             _router.AddFunctionRoutes(functionRouter, proxyRouter);
@@ -111,18 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             logger.LogInformation(routesLogBuilder.ToString());
         }
 
-        private void LogRouteMap(StringBuilder builder, string functionName, string route, string[] methods, bool isProxy, string prefix)
+        private void LogRouteMap(StringBuilder builder, string functionName, string route, string[] methods, string prefix)
         {
             string methodList = methods is null ? "all" : string.Join(',', methods);
 
-            if (isProxy)
-            {
-                builder.AppendLine($"Mapped proxy route '{route}' [{methodList}] to '{functionName}'");
-            }
-            else
-            {
-                builder.AppendLine($"Mapped function route '{prefix}/{route}' [{methodList}] to '{functionName}'");
-            }
+            builder.AppendLine($"Mapped function route '{prefix}/{route}' [{methodList}] to '{functionName}'");
         }
     }
 }

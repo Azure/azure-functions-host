@@ -29,8 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IApplicationLifetime applicationLifetime, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
-            MaxConnectionHelper.SetMaxConnectionsPerServer(loggerFactory.CreateLogger($"Host.{nameof(MaxConnectionHelper)}"));
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

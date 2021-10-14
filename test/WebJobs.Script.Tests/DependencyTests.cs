@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly DependencyContextJsonReader _reader = new DependencyContextJsonReader();
         private readonly IEnumerable<string> _rids = DependencyHelper.GetRuntimeFallbacks();
 
-        [Fact(Skip = "Will update later")]
+        [Fact]
         public void Verify_DepsJsonChanges()
         {
             string depsJsonFileName = "Microsoft.Azure.WebJobs.Script.WebHost.deps.json";
@@ -78,11 +78,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     continue;
                 }
 
-                RuntimeFile newFile = newAssets.SingleOrDefault(p =>
+                var newFile = newAssets.SingleOrDefault(p =>
                 {
                     return Path.GetFileName(p.Path) == fileName &&
-                        p.FileVersion != oldFile.FileVersion &&
-                        p.AssemblyVersion != oldFile.AssemblyVersion;
+                        (p.FileVersion != oldFile.FileVersion ||
+                         p.AssemblyVersion != oldFile.AssemblyVersion);
                 });
 
                 if (newFile != null)

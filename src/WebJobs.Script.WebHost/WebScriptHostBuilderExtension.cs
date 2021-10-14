@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Net.Http;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
@@ -9,6 +10,7 @@ using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Host.Timers;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -58,6 +60,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     webJobsBuilder.AddAzureStorageCoreServices();
 
                     configureWebJobs?.Invoke(webJobsBuilder);
+
+                    webJobsBuilder.Services.TryAddSingleton<HttpClient>(f =>
+                    {
+                        var loggerFactory = f.GetService<ILoggerFactory>();
+                        loggerFactory.CreateLogger(LogCategories.Startup).LogWarning("Using HttpClient as an injected dependency will not be supported in future versions of Azure Functions. Use IHttpClientFactory instead. See http://aka.ms/functions-httpclient-di for more information.");
+                        return rootServiceProvider.GetService<HttpClient>();
+                    });
 
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
 

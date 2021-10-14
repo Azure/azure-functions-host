@@ -33,11 +33,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly TestMetricsLogger _metricsLogger;
 
-        private HttpClient _httpClient;
+        private IHttpClientFactory _httpClientFactory;
 
         public PackageDownloadHandlerTests()
         {
-            _httpClient = new Mock<HttpClient>().Object;
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
             _bashCmdHandlerMock = new Mock<IBashCommandHandler>(MockBehavior.Strict);
             _managedIdentityTokenProvider = new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict);
             _logger = NullLogger<PackageDownloadHandler>.Instance;
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         [InlineData("http:/abcd")]
         public async Task ThrowsExceptionForInvalidUrls(string url)
         {
-            var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, null, true);
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
@@ -118,9 +118,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 }
             }
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
-            var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);
@@ -188,11 +188,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             _managedIdentityTokenProvider.Setup(p => p.GetManagedIdentityToken(UriWithNoSasToken)).Returns(Task.FromResult(BearerToken));
 
-            var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, UriWithNoSasToken, 0, false);
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 });
             }
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             if (expectedFetchesManagedIdentityToken)
             {
@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     .Returns(Task.FromResult(BearerToken));
             }
 
-            var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, 0, false);
@@ -324,7 +324,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
                 });
 
-                _httpClient = new HttpClient(handlerMock.Object);
+                _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
             }
             else
             {
@@ -334,7 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);
 
-            var packageDownloadHandler = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
 
             var filePath = await packageDownloadHandler.Download(runFromPackageContext);
@@ -373,9 +373,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new ReadOnlyMemoryContent(ReadOnlyMemory<byte>.Empty)
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
-            var packageDownloadHandler = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
+            var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);

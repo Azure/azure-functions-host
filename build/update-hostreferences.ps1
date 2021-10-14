@@ -20,6 +20,76 @@ function WriteLog
     Write-Host $Message
 }
 
+function ValidateNugetListOutput
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [System.String]
+        $Output,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [System.String]
+        $Command
+    )
+
+    if ($Output -like "*No packages found*")
+    {
+        WriteLog "Failed to get the latest package information via: $Command" -Throw
+    }
+}
+
+function GetPackageInfo
+{
+    param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [System.String]
+        $Name,
+
+        [Parameter(Mandatory=$false)]
+        [System.String]
+        $MajorVersion
+    )
+
+    $result = $null
+
+    if (-not [string]::IsNullOrWhiteSpace($MajorVersion))
+    {
+        $packageInfo = & { NuGet list $Name -Source $SOURCE -PreRelease -AllVersions }
+
+        $command = "NuGet list $Name -Source $SOURCE -PreRelease -AllVersions"
+        ValidateNugetListOutput -Output ($packageInfo | Out-String) -Command $command
+
+        foreach ($package in $packageInfo)
+        {
+            $packageVersion = $package.Split()[1]
+            if ($packageVersion.StartsWith($MajorVersion))
+            {
+                $result = $package
+                break
+            }
+        }
+    }
+    else
+    {
+        $packageInfo = & { NuGet list $Name -Source $SOURCE -PreRelease }
+
+        $command = "NuGet list $Name -Source $SOURCE -PreRelease"
+        ValidateNugetListOutput -Output ($packageInfo | Out-String) -Command $command
+
+        $result = $packageInfo
+    }
+
+    if (-not $result)
+    {
+        WriteLog "Failed to get the latest package information for '$Name'" -Throw
+    }
+
+    return $result
+}
+
 WriteLog "Script started."
 
 # Make sure the project path exits
@@ -29,19 +99,19 @@ if (-not (Test-Path $path))
     WriteLog "Failed to find '$path' to update package references" -Throw
 }
 
-WriteLog "Get the list of packages to update"
-$url = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/dev/integrationTestsBuild/V3/HostBuild.json"
+$URL = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/dev/integrationTestsBuild/V3/HostBuild2.json"
+$SOURCE = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
 
-$packagesToUpdate = Invoke-RestMethod -Uri $url -ErrorAction Stop
+WriteLog "Get the list of packages to update"
+
+$packagesToUpdate = Invoke-RestMethod -Uri $URL -ErrorAction Stop
 if ($packagesToUpdate.Count -eq 0)
 {
-    WriteLog "There are no packages to update in '$url'" -Throw
+    WriteLog "There are no packages to update in '$URL'" -Throw
 }
 
 # Update packages references
 WriteLog "Package references to update: $($packagesToUpdate.Count)"
-
-$source = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
 
 $currentDirectory = Get-Location
 try
@@ -50,15 +120,9 @@ try
 
     foreach ($package in $packagesToUpdate)
     {
-        WriteLog "Package name: $package"
+        WriteLog "Package name: $($package.Name)"
 
-        $packageInfo = & { NuGet list $package -Source $source -PreRelease }
-
-        if ($packageInfo -like "*No packages found*")
-        {
-            $command = "NuGet list '$($package)' -Source '$($source)' -PreRelease"
-            WriteLog "Failed to get the latest package information via: $command" -Throw
-        }
+        $packageInfo = GetPackageInfo -Name $package.Name -MajorVersion $package.MajorVersion
 
         WriteLog "AzureFunctionsPreRelease latest package info --> $packageInfo"
         $packageName = $packageInfo.Split()[0]
@@ -94,11 +158,11 @@ try
         else
         {
             WriteLog "Adding '$packageName' '$packageVersion' to project"
-            & { dotnet add package $packageName -v $packageVersion -s $source }
+            & { dotnet add package $packageName -v $packageVersion -s $source --no-restore }
 
             if ($LASTEXITCODE -ne 0)
             {
-                WriteLog "dotnet add package $packageName -v $packageVersion -s $source failed" -Throw
+                WriteLog "dotnet add package $packageName -v $packageVersion -s $source --no-restore failed" -Throw
             }
         }
     }

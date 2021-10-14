@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public async Task Validator_InvalidServices_LogsError()
+        public async Task Validator_InvalidServices_ThrowsException()
         {
             LogMessage invalidServicesMessage = await RunTest(configureJobHost: s =>
             {
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 // Try removing system logger
                 var descriptor = s.Single(p => p.ImplementationType == typeof(SystemLoggerProvider));
                 s.Remove(descriptor);
-            });
+            }, expectSuccess: false);
 
             Assert.NotNull(invalidServicesMessage);
 
@@ -70,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.True(invalidServicesMessage == null, msg + invalidServicesMessage?.Exception?.ToString());
         }
 
-        private async Task<LogMessage> RunTest(Action<IServiceCollection> configureWebHost = null, Action<IServiceCollection> configureJobHost = null)
+        private async Task<LogMessage> RunTest(Action<IServiceCollection> configureWebHost = null, Action<IServiceCollection> configureJobHost = null, bool expectSuccess = true)
         {
             LogMessage invalidServicesMessage = null;
             TestLoggerProvider loggerProvider = new TestLoggerProvider();
@@ -108,8 +108,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 await TestHelpers.Await(() =>
                 {
+                    string expectedMessage = "Host initialization";
+
+                    if (!expectSuccess)
+                    {
+                        expectedMessage = "A host error has occurred during startup operation";
+                    }
+
                     return loggerProvider.GetAllLogMessages()
-                        .FirstOrDefault(p => p.FormattedMessage.StartsWith("Host initialization")) != null;
+                            .FirstOrDefault(p => p.FormattedMessage.StartsWith(expectedMessage)) != null;
                 }, userMessageCallback: () => loggerProvider.GetLog());
 
                 invalidServicesMessage = loggerProvider.GetAllLogMessages()

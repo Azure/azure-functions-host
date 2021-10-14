@@ -40,18 +40,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             {
             }
 
-            protected override ExtensionPackageReference[] GetExtensionsToInstall()
-            {
-                // This test fixture should use the most recent major version of the storage extension, so update this as required.
-                return new ExtensionPackageReference[]
-                {
-                    new ExtensionPackageReference
-                    {
-                        Id = "Microsoft.Azure.WebJobs.Extensions.Storage",
-                        Version = "4.0.4"
-                    }
-                };
-            }
+            // TODO: Metadata installation of storage packages does not currently work as expected as the 
+            // test host installs the extension by default and this may lead to mismatches.
+            //protected override ExtensionPackageReference[] GetExtensionsToInstall()
+            //{
+            //    // This test fixture should use the most recent major version of the storage extension, so update this as required.
+            //    return new ExtensionPackageReference[]
+            //    {
+            //        new ExtensionPackageReference
+            //        {
+            //            Id = "Microsoft.Azure.WebJobs.Extensions.Storage",
+            //            Version = "4.0.4"
+            //        }
+            //    };
+            //}
 
             public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
             {
@@ -60,84 +62,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
                     o.Functions = new[]
                     {
                         "QueueTriggerToBlobRichTypes",
-                    };
-                });
-            }
-        }
-    }
-
-
-    public class NoExplicitStorageReferenceEndToEndTests : IClassFixture<NoExplicitStorageReferenceEndToEndTests.NoStorageReferenceTestFixture>
-    {
-        private EndToEndTestFixture _fixture;
-
-        public NoExplicitStorageReferenceEndToEndTests(NoStorageReferenceTestFixture fixture)
-        {
-            _fixture = fixture;
-        }
-
-        [Fact]
-        public async Task CanUseStorageV9Types()
-        {
-            // The point of this test is to verify back compat behavior that a user can still #r and use storage v9 types in CSX, 
-            // even if storage extension is not installed 
-
-            _fixture.AssertNoScriptHostErrors();
-
-            string testData = Guid.NewGuid().ToString();
-
-            await _fixture.Host.BeginFunctionAsync("StorageReferenceV9", testData);
-
-            await TestHelpers.Await(() =>
-            {
-                // make sure the function executed successfully
-                var logs = _fixture.Host.GetScriptHostLogMessages();
-                return logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
-            }, userMessageCallback: _fixture.Host.GetLog);
-        }
-
-        [Fact]
-        public async Task CanUseStorageV11Types()
-        {
-            // The point of this test is to verify back compat behavior that a user can still #r and use storage v11 types in CSX, 
-            // even if storage extension is not installed 
-
-            _fixture.AssertNoScriptHostErrors();
-
-            string testData = Guid.NewGuid().ToString();
-
-            await _fixture.Host.BeginFunctionAsync("StorageReferenceV11", testData);
-
-            await TestHelpers.Await(() =>
-            {
-                // make sure the function executed successfully
-                var logs = _fixture.Host.GetScriptHostLogMessages();
-                return logs.Any(p => p.FormattedMessage != null && p.FormattedMessage.Contains(testData));
-            }, userMessageCallback: _fixture.Host.GetLog);
-        }
-
-        public class NoStorageReferenceTestFixture : EndToEndTestFixture
-        {
-            public NoStorageReferenceTestFixture() : base(@"TestScripts\CSharp", "csharp", RpcWorkerConstants.DotNetLanguageWorkerName)
-            {
-            }
-
-            protected override ExtensionPackageReference[] GetExtensionsToInstall()
-            {
-                // It is explicitly intended that this scenario has no package references
-                return new ExtensionPackageReference[]
-                {
-                };
-            }
-
-            public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-            {
-                webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-                {
-                    o.Functions = new[]
-                    {
-                        "StorageReferenceV9",
-                        "StorageReferenceV11"
                     };
                 });
             }

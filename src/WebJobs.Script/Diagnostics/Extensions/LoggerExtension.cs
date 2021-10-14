@@ -12,190 +12,164 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         // EventId range is 300-399
 
         private static readonly Action<ILogger, Exception> _extensionsManagerRestoring =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(300, nameof(ExtensionsManagerRestoring)),
-            "Restoring extension packages");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(300, nameof(ExtensionsManagerRestoring)),
+                "Restoring extension packages");
 
         private static readonly Action<ILogger, Exception> _extensionsManagerRestoreSucceeded =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(301, nameof(ExtensionsManagerRestoreSucceeded)),
-            "Extensions packages restore succeeded.'");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(301, nameof(ExtensionsManagerRestoreSucceeded)),
+                "Extensions packages restore succeeded.'");
 
         private static readonly Action<ILogger, Exception> _scriptStartUpErrorLoadingExtensionBundle =
-            LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(302, nameof(ScriptStartUpErrorLoadingExtensionBundle)),
-            "Unable to find or download extension bundle");
-
-        private static readonly Action<ILogger, string, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
-            LoggerMessage.Define<string, bool, bool, bool>(
-            LogLevel.Information,
-            new EventId(328, nameof(ScriptStartNotLoadingExtensionBundle)),
-            "Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}");
+            LoggerMessage.Define(LogLevel.Error,
+                new EventId(302, nameof(ScriptStartUpErrorLoadingExtensionBundle)),
+                "Unable to find or download extension bundle");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
-           LoggerMessage.Define<string>(
-           LogLevel.Information,
-           new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
-           "Loading extension bundle from {path}");
+           LoggerMessage.Define<string>(LogLevel.Information,
+               new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
+               "Loading extension bundle from {path}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingStartUpExtension =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(304, nameof(ScriptStartUpLoadingStartUpExtension)),
-            "Loading startup extension '{startupExtensionName}'");
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(304, nameof(ScriptStartUpLoadingStartUpExtension)),
+                "Loading startup extension '{startupExtensionName}'");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpBelongExtension =
-            LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(305, nameof(ScriptStartUpBelongExtension)),
-            "The extension startup type '{typeName}' belongs to a builtin extension");
+            LoggerMessage.Define<string>(LogLevel.Warning,
+                new EventId(305, nameof(ScriptStartUpBelongExtension)),
+                "The extension startup type '{typeName}' belongs to a builtin extension");
 
         private static readonly Action<ILogger, string, string, Exception> _scriptStartUpUnableToLoadExtension =
-            LoggerMessage.Define<string, string>(
-            LogLevel.Warning,
-            new EventId(306, nameof(ScriptStartUpUnableToLoadExtension)),
-            "Unable to load startup extension '{startupExtensionName}' (Type: '{typeName}'). The type does not exist. Please validate the type and assembly names.");
+            LoggerMessage.Define<string, string>(LogLevel.Warning,
+                new EventId(306, nameof(ScriptStartUpUnableToLoadExtension)),
+                "Unable to load startup extension '{startupExtensionName}' (Type: '{typeName}'). The type does not exist. Please validate the type and assembly names.");
 
         private static readonly Action<ILogger, string, string, string, Exception> _scriptStartUpTypeIsNotValid =
-            LoggerMessage.Define<string, string, string>(
-            LogLevel.Warning,
-            new EventId(307, nameof(ScriptStartUpTypeIsNotValid)),
-            "Type '{typeName}' is not a valid startup extension. The type does not implement {startupClassName} or {startupConfigurationClassName}.");
+            LoggerMessage.Define<string, string, string>(LogLevel.Warning,
+                new EventId(307, nameof(ScriptStartUpTypeIsNotValid)),
+                "Type '{typeName}' is not a valid startup extension. The type does not implement {startupClassName} or {startupConfigurationClassName}.");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpUnableParseMetadataMissingProperty =
-            LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(308, nameof(ScriptStartUpUnableParseMetadataMissingProperty)),
-            "Unable to parse extensions metadata file '{metadataFilePath}'. Missing 'extensions' property.");
+            LoggerMessage.Define<string>(LogLevel.Error,
+                new EventId(308, nameof(ScriptStartUpUnableParseMetadataMissingProperty)),
+                "Unable to parse extensions metadata file '{metadataFilePath}'. Missing 'extensions' property.");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpUnableParseMetadata =
-            LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(309, nameof(ScriptStartUpUnableParseMetadata)),
-            "Unable to parse extensions metadata file '{metadataFilePath}'");
+            LoggerMessage.Define<string>(LogLevel.Error,
+                new EventId(309, nameof(ScriptStartUpUnableParseMetadata)),
+                "Unable to parse extensions metadata file '{metadataFilePath}'");
 
         private static readonly Action<ILogger, Exception> _packageManagerStartingPackagesRestore =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(310, nameof(PackageManagerStartingPackagesRestore)),
-            "Starting packages restore");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(310, nameof(PackageManagerStartingPackagesRestore)),
+                "Starting packages restore");
 
         private static readonly Action<ILogger, string, Exception> _packageManagerRestoreFailed =
-            LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(311, nameof(PackageManagerRestoreFailed)),
-            "{message}");
+            LoggerMessage.Define<string>(LogLevel.Error,
+                new EventId(311, nameof(PackageManagerRestoreFailed)),
+                "{message}");
 
         private static readonly Action<ILogger, string, Exception> _packageManagerProcessDataReceived =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(312, nameof(PackageManagerProcessDataReceived)),
-            "{message}");
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(312, nameof(PackageManagerProcessDataReceived)),
+                "{message}");
 
         private static readonly Action<ILogger, Exception> _debugManagerUnableToUpdateSentinelFile =
-            LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(313, nameof(DebugManagerUnableToUpdateSentinelFile)),
-            "Unable to update the debug sentinel file.");
+            LoggerMessage.Define(LogLevel.Error,
+                new EventId(313, nameof(DebugManagerUnableToUpdateSentinelFile)),
+                "Unable to update the debug sentinel file.");
 
         private static readonly Action<ILogger, Exception> _functionMetadataManagerLoadingFunctionsMetadata =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(314, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
-            "Loading functions metadata");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(314, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
+                "Loading functions metadata");
 
         private static readonly Action<ILogger, int, Exception> _functionMetadataManagerFunctionsLoaded =
-            LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
-            "{count} functions loaded");
+            LoggerMessage.Define<int>(LogLevel.Information,
+                new EventId(315, nameof(FunctionMetadataManagerFunctionsLoaded)),
+                "{count} functions loaded");
 
         private static readonly Action<ILogger, string, string, Exception> _autoRecoveringFileSystemWatcherFailureDetected =
-            LoggerMessage.Define<string, string>(
-            LogLevel.Warning,
-            new EventId(320, nameof(AutoRecoveringFileSystemWatcherFailureDetected)),
-            "Failure detected '{errorMessage}'. Initiating recovery... (path: '{path}')");
+            LoggerMessage.Define<string, string>(LogLevel.Warning,
+                new EventId(320, nameof(AutoRecoveringFileSystemWatcherFailureDetected)),
+                "Failure detected '{errorMessage}'. Initiating recovery... (path: '{path}')");
 
         private static readonly Action<ILogger, string, Exception> _autoRecoveringFileSystemWatcherRecoveryAborted =
-            LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(321, nameof(AutoRecoveringFileSystemWatcherRecoveryAborted)),
-            "Recovery process aborted. (path: '{path}')");
+            LoggerMessage.Define<string>(LogLevel.Error,
+                new EventId(321, nameof(AutoRecoveringFileSystemWatcherRecoveryAborted)),
+                "Recovery process aborted. (path: '{path}')");
 
         private static readonly Action<ILogger, string, Exception> _autoRecoveringFileSystemWatcherRecovered =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(322, nameof(AutoRecoveringFileSystemWatcherRecovered)),
-            "File watcher recovered. (path: '{path}')");
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(322, nameof(AutoRecoveringFileSystemWatcherRecovered)),
+                "File watcher recovered. (path: '{path}')");
 
         private static readonly Action<ILogger, string, Exception> _autoRecoveringFileSystemWatcherAttemptingToRecover =
-            LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(323, nameof(AutoRecoveringFileSystemWatcherAttemptingToRecover)),
-            "Attempting to recover... (path: '{path}')");
+            LoggerMessage.Define<string>(LogLevel.Warning,
+                new EventId(323, nameof(AutoRecoveringFileSystemWatcherAttemptingToRecover)),
+                "Attempting to recover... (path: '{path}')");
 
         private static readonly Action<ILogger, string, Exception> _autoRecoveringFileSystemWatcherUnableToRecover =
-            LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(324, nameof(AutoRecoveringFileSystemWatcherUnableToRecover)),
-            "Unable to recover (path: '{path}')");
+            LoggerMessage.Define<string>(LogLevel.Error,
+                new EventId(324, nameof(AutoRecoveringFileSystemWatcherUnableToRecover)),
+                "Unable to recover (path: '{path}')");
 
         private static readonly Action<ILogger, string, string, Exception> _scriptStartUpLoadedExtension =
-            LoggerMessage.Define<string, string>(
-            LogLevel.Information,
-            new EventId(325, nameof(ScriptStartUpLoadedExtension)),
-            "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
+            LoggerMessage.Define<string, string>(LogLevel.Information,
+                new EventId(325, nameof(ScriptStartUpLoadedExtension)),
+                "Loaded extension '{startupExtensionName}' ({startupExtensionVersion})");
 
         private static readonly Action<ILogger, Exception> _functionMetadataProviderReadingMetadata =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
-            "Reading functions metadata");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(326, nameof(FunctionMetadataManagerLoadingFunctionsMetadata)),
+                "Reading functions metadata");
 
         private static readonly Action<ILogger, int, Exception> _functionMetadataProviderFunctionsFound =
-            LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
-            "{count} functions found");
+            LoggerMessage.Define<int>(LogLevel.Information,
+                new EventId(327, nameof(FunctionMetadataManagerFunctionsLoaded)),
+                "{count} functions found");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerForwardingHttpTriggerInvocation =
-            LoggerMessage.Define<string, Guid>(
-            LogLevel.Debug,
-            new EventId(328, nameof(CustomHandlerForwardingHttpTriggerInvocation)),
-            "Forwarding httpTrigger invocation for function: '{functionName}' invocationId: '{invocationId}'");
+            LoggerMessage.Define<string, Guid>(LogLevel.Debug,
+                new EventId(328, nameof(CustomHandlerForwardingHttpTriggerInvocation)),
+                "Forwarding httpTrigger invocation for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerSendingInvocation =
-           LoggerMessage.Define<string, Guid>(
-           LogLevel.Debug,
-           new EventId(329, nameof(CustomHandlerSendingInvocation)),
-           "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
+           LoggerMessage.Define<string, Guid>(LogLevel.Debug,
+               new EventId(329, nameof(CustomHandlerSendingInvocation)),
+               "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerReceivedInvocationResponse =
-           LoggerMessage.Define<string, Guid>(
-           LogLevel.Debug,
-           new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
-           "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
+           LoggerMessage.Define<string, Guid>(LogLevel.Debug,
+               new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
+               "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, Exception> _jobHostFunctionTimeoutNotSet =
-            LoggerMessage.Define(
-            LogLevel.Information,
-            new EventId(331, nameof(JobHostFunctionTimeoutNotSet)),
-            "FunctionTimeout is not set.");
+            LoggerMessage.Define(LogLevel.Information,
+                new EventId(331, nameof(JobHostFunctionTimeoutNotSet)),
+                "FunctionTimeout is not set.");
 
         private static readonly Action<ILogger, string, Exception> _autorestGeneratedFunctionApplication =
-            LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(332, nameof(AutorestGeneratedFunctionApplication)),
-            "autorest_generated.json file found generated by Autorest (https://aka.ms/stencil) | file content:\n{sanitizedAutorestJson}");
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(332, nameof(AutorestGeneratedFunctionApplication)),
+                "autorest_generated.json file found generated by Autorest (https://aka.ms/stencil) | file content:\n{sanitizedAutorestJson}");
 
         private static readonly Action<ILogger, string, Exception> _incorrectAutorestGeneratedJSONFile =
-            LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(333, nameof(IncorrectAutorestGeneratedJsonFile)),
-            "autorest_generated.json file found is incorrect (https://aka.ms/stencil) | exception:\n{contents}");
+            LoggerMessage.Define<string>(LogLevel.Warning,
+                new EventId(333, nameof(IncorrectAutorestGeneratedJsonFile)),
+                "autorest_generated.json file found is incorrect (https://aka.ms/stencil) | exception:\n{contents}");
+
+        private static readonly Action<ILogger, string, bool, bool, bool, Exception> _scriptStartUpNotLoadingExtensionBundle =
+            LoggerMessage.Define<string, bool, bool, bool>(LogLevel.Information,
+                new EventId(334, nameof(ScriptStartNotLoadingExtensionBundle)),
+                "Loading extensions from {path}. BundleConfigured: {bundleConfigured}, PrecompiledFunctionApp: {isPrecompiledFunctionApp}, LegacyBundle: {isLegacyExtensionBundle}");
+
+        private static readonly Action<ILogger, string, Exception> _scriptStartupResettingLoadContextWithBasePath =
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(335, nameof(ScriptStartupResettingLoadContextWithBasePath)),
+                "Script Startup resetting load context with base path: '{path}'.");
 
         private static readonly Action<ILogger, string, string, Version, string, string, Exception> _minimumExtensionVersionNotSatisfied =
             LoggerMessage.Define<string, string, Version, string, string>(
@@ -227,6 +201,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptStartUpLoadingExtensionBundle(this ILogger logger, string path)
         {
             _scriptStartUpLoadingExtensionBundle(logger, path, null);
+        }
+
+        public static void ScriptStartupResettingLoadContextWithBasePath(this ILogger logger, string path)
+        {
+            _scriptStartupResettingLoadContextWithBasePath(logger, path, null);
         }
 
         public static void ScriptStartNotLoadingExtensionBundle(this ILogger logger, string path, bool bundleConfigured, bool isPrecompiledFunctionApp, bool isLegacyExtensionBundle)

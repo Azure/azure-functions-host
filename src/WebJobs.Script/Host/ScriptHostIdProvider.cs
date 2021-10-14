@@ -18,21 +18,36 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IConfiguration _config;
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
+        private readonly HostIdValidator _hostIdValidator;
 
-        public ScriptHostIdProvider(IConfiguration config, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options)
+        public ScriptHostIdProvider(IConfiguration config, IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> options, HostIdValidator hostIdValidator)
         {
             _config = config;
             _environment = environment;
             _options = options;
+            _hostIdValidator = hostIdValidator;
         }
 
         public Task<string> GetHostIdAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult(_config[ConfigurationSectionNames.HostIdPath] ?? GetDefaultHostId(_environment, _options.CurrentValue));
+            string hostId = _config[ConfigurationSectionNames.HostIdPath];
+            if (hostId == null)
+            {
+                HostIdResult result = GetDefaultHostId(_environment, _options.CurrentValue);
+                hostId = result.HostId;
+                if (result.IsTruncated && !result.IsLocal)
+                {
+                    _hostIdValidator.ScheduleValidation(hostId);
+                }
+            }
+
+            return Task.FromResult(hostId);
         }
 
-        internal static string GetDefaultHostId(IEnvironment environment, ScriptApplicationHostOptions scriptOptions)
+        internal static HostIdResult GetDefaultHostId(IEnvironment environment, ScriptApplicationHostOptions scriptOptions)
         {
+            HostIdResult result = new HostIdResult();
+
             // We're setting the default here on the newly created configuration
             // If the user has explicitly set the HostID via host.json, it will overwrite
             // what we set here
@@ -64,19 +79,32 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Where(char.IsLetterOrDigit)
                     .Aggregate(new StringBuilder(), (b, c) => b.Append(c)).ToString();
                 hostId = $"{sanitizedMachineName}-{Math.Abs(Utility.GetStableHash(scriptOptions.ScriptPath))}";
+                result.IsLocal = true;
             }
 
             if (!string.IsNullOrEmpty(hostId))
             {
                 if (hostId.Length > ScriptConstants.MaximumHostIdLength)
                 {
-                    // Truncate to the max host name length if needed
+                    // Truncate to the max host name length
                     hostId = hostId.Substring(0, ScriptConstants.MaximumHostIdLength);
+                    result.IsTruncated = true;
                 }
             }
 
             // Lowercase and trim any trailing '-' as they can cause problems with queue names
-            return hostId?.ToLowerInvariant().TrimEnd('-');
+            result.HostId = hostId?.ToLowerInvariant().TrimEnd('-');
+
+            return result;
+        }
+
+        public class HostIdResult
+        {
+            public string HostId { get; set; }
+
+            public bool IsTruncated { get; set; }
+
+            public bool IsLocal { get; set; }
         }
     }
 }

@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault.Models;
+using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
@@ -328,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return secrets;
             }, secretsFactory).ContinueWith(t =>
             {
-                if (t.IsFaulted && t.Exception.InnerException is KeyVaultErrorException)
+                if (t.IsFaulted && t.Exception.InnerException is RequestFailedException)
                 {
                     result = OperationResult.Forbidden;
                 }
@@ -651,18 +651,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public void ClearCache()
+        {
+            _authorizationCache.Clear();
+            _hostSecrets = null;
+            _functionSecrets.Clear();
+        }
+
         private async Task<string> AnalyzeSnapshots(string[] secretBackups)
         {
             string analyzeResult = string.Empty;
             try
             {
-                List<ScriptSecrets> shapShots = new List<ScriptSecrets>();
+                List<ScriptSecrets> snapShots = new List<ScriptSecrets>();
                 foreach (string secretPath in secretBackups)
                 {
                     ScriptSecrets secrets = await _repository.ReadAsync(ScriptSecretsType.Function, Path.GetFileNameWithoutExtension(secretPath));
-                    shapShots.Add(secrets);
+                    snapShots.Add(secrets);
                 }
-                string[] hosts = shapShots.Select(x => x.HostName).Distinct().ToArray();
+                string[] hosts = snapShots.Select(x => x.HostName).Distinct().ToArray();
                 if (hosts.Length > 1)
                 {
                     analyzeResult = string.Format(Resources.ErrorSameSecrets, string.Join(",", hosts));

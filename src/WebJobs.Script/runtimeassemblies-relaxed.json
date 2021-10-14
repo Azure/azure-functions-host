@@ -4,10 +4,6 @@
 {
   "runtimeAssemblies": [
     {
-      "name": "Microsoft.Azure.KeyVault.Core",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.OData.Core",
       "resolutionPolicy": "private"
     },
@@ -841,10 +837,6 @@
     },
     {
       "name": "System.IdentityModel.Tokens.Jwt",
-      "resolutionPolicy": "minorMatchOrLower"
-    },
-    {
-      "name": "System.Interactive.Async",
       "resolutionPolicy": "minorMatchOrLower"
     },
     {

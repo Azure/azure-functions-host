@@ -21,11 +21,19 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(serviceProvider));
             }
 
-            var hostManager = serviceProvider.GetService<IScriptHostManager>();
-            if (Utility.TryGetHostService(hostManager, out TService service))
+            try
             {
-                return service;
+                var hostManager = serviceProvider.GetService<IScriptHostManager>();
+                if (Utility.TryGetHostService(hostManager, out TService service))
+                {
+                    return service;
+                }
             }
+            catch
+            {
+                // can get exceptions if the host is being disposed
+            }
+
             return null;
         }
     }
