@@ -71,7 +71,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.31-11877" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11874" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
 

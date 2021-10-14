@@ -977,7 +977,7 @@
     },
     {
       "name": "System.IO.Abstractions",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "System.IO.Compression",
