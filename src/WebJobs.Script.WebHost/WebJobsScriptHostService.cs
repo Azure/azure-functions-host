@@ -763,16 +763,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _applicationLifetime.ApplicationStopping.Register(() =>
             {
                 Interlocked.Exchange(ref _applicationStopping, 1);
-                if (_environment.DrainOnApplicationStoppingEnabled())
+                var drainModeManager = _host?.Services.GetService<IDrainModeManager>();
+                if (drainModeManager != null)
                 {
-                    var drainModeManager = _host?.Services.GetService<IDrainModeManager>();
-                    if (drainModeManager != null)
-                    {
-                        _logger.LogDebug("Application Stopping: initiate drain mode");
-                        drainModeManager.EnableDrainModeAsync(CancellationToken.None);
-                        // Workaround until https://github.com/Azure/azure-functions-host/issues/7188 is addressed.
-                        Thread.Sleep(TimeSpan.FromMinutes(10));
-                    }
+                    _logger.LogDebug("Application Stopping: Initiate drain mode.");
+                    drainModeManager.EnableDrainModeAsync(CancellationToken.None);
+                }
+                if (_environment.DrainOnApplicationStoppingEnabled() && drainModeManager != null)
+                {
+                    _logger.LogDebug("Application Stopping. Waiting for 10mins to drain invocations.");
+                    // Workaround until https://github.com/Azure/azure-functions-host/issues/7188 is addressed.
+                    Thread.Sleep(TimeSpan.FromMinutes(10));
                 }
             });
 
