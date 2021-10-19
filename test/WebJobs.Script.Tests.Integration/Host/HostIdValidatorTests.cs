@@ -6,9 +6,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -21,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string _testHostname = "test-host.net";
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
-        private readonly BlobContainerClient _blobContainerClient;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private BlobContainerClient _blobContainerClient;
         private bool _storageConfigured;
 
         public HostIdValidatorTests()
@@ -42,16 +45,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
                 .Build();
-            var azureStorageProvider = TestHelpers.GetAzureStorageProvider(config);
-            _blobContainerClient = azureStorageProvider.GetBlobContainerClient();
+            var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(config);
+            azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _blobContainerClient);
 
-            var mockStorageProvider = new Mock<IAzureStorageProvider>(MockBehavior.Strict);
-            mockStorageProvider.Setup(p => p.ConnectionExists(ConnectionStringNames.Storage)).Returns(() => _storageConfigured);
-            mockStorageProvider.Setup(p => p.GetBlobContainerClient()).Returns(_blobContainerClient);
+            var mockBlobStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
+            mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out It.Ref<BlobContainerClient>.IsAny))
+                .Callback((ref BlobContainerClient containerClient) =>
+                 {
+                     containerClient = _blobContainerClient;
+                 })
+                .Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
             _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
-            _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
+            _hostIdValidator = new HostIdValidator(_environment, mockBlobStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
 
             _storageConfigured = true;
         }
@@ -84,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             else
             {
                 Assert.Null(hostIdInfo);
-                Assert.Empty(logs);
             }
         }
 
@@ -110,6 +116,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [Fact]
         public async Task ValidateHostIdUsageAsync_Collision_WarningLevel_Logs()
         {
+            _storageConfigured = true;
+
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Warning.ToString());
 
             await ClearHostIdInfoAsync();
@@ -138,6 +146,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [InlineData("None")]
         public async Task ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(string level)
         {
+            _storageConfigured = true;
+
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, level);
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 
@@ -166,6 +176,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [InlineData(false)]
         public async Task WriteHostIdAsync_ExistingBlob_HandlesCollision(bool collision)
         {
+            _storageConfigured = true;
+
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Error.ToString());
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 

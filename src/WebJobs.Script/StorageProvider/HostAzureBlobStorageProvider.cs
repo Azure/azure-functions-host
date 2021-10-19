@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public IConfiguration Configuration { get; private set; }
+        public virtual IConfiguration Configuration { get; private set; }
 
         public virtual bool TryCreateHostingBlobContainerClient(out BlobContainerClient blobContainerClient)
         {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
-        private readonly IAzureStorageProvider _storageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly HostNameProvider _hostNameProvider;
         private readonly ILogger _logger;
@@ -37,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly object _syncLock = new object();
         private bool _validationScheduled;
 
-        public HostIdValidator(IEnvironment environment, IAzureStorageProvider storageProvider, IApplicationLifetime applicationLifetime,
+        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBtorageProvider, IApplicationLifetime applicationLifetime,
             HostNameProvider hostNameProvider, ILogger<HostIdValidator> logger)
         {
             _environment = environment;
-            _storageProvider = storageProvider;
+            _azureBlobStorageProvider = azureBtorageProvider;
             _applicationLifetime = applicationLifetime;
             _hostNameProvider = hostNameProvider;
             _logger = logger;
@@ -67,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (!_storageProvider.ConnectionExists(ConnectionStringNames.Storage))
+                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _))
                 {
                     return;
                 }
@@ -133,7 +134,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                var containerClient = _storageProvider.GetBlobContainerClient();
+                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var containerClient))
+                {
+                    throw new InvalidOperationException($"Could not create Hosting BlobContainerClient in {nameof(WriteHostIdAsync)}");
+                }
+
                 string blobPath = string.Format(BlobPathFormat, hostId);
                 BlobClient blobClient = containerClient.GetBlobClient(blobPath);
                 BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
@@ -165,7 +170,11 @@ namespace Microsoft.Azure.WebJobs.Script
             try
             {
                 // check storage to see if a record already exists for this host ID
-                var containerClient = _storageProvider.GetBlobContainerClient();
+                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var containerClient))
+                {
+                    throw new InvalidOperationException($"Could not create Hosting BlobContainerClient in {nameof(ReadHostIdInfoAsync)}");
+                }
+
                 string blobPath = string.Format(BlobPathFormat, hostId);
                 BlobClient blobClient = containerClient.GetBlobClient(blobPath);
                 var downloadResponse = await blobClient.DownloadAsync();
