@@ -117,6 +117,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         }
 
         [HttpGet]
+        [Route("admin/host/drain/status")]
+        [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
+        public IActionResult DrainStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IDrainModeManager drainModeManager)
+        {
+            if (Utility.TryGetHostService(scriptHostManager, out IFunctionActivityStatusProvider functionActivityStatusProvider))
+            {
+                var functionActivityStatus = functionActivityStatusProvider.GetStatus();
+                DrainModeState state = DrainModeState.Disabled;
+                if (drainModeManager.IsDrainModeEnabled)
+                {
+                    state = (functionActivityStatus.OutstandingInvocations == 0 && functionActivityStatus.OutstandingRetries == 0) ?
+                       DrainModeState.Completed : DrainModeState.InProgress;
+                }
+
+                DrainModeStatus status = new DrainModeStatus()
+                {
+                    State = state
+                };
+
+                string message = $"Drain Status: {JsonConvert.SerializeObject(state, Formatting.Indented)}, Activity Status: {JsonConvert.SerializeObject(functionActivityStatus, Formatting.Indented)}";
+                _logger.LogInformation(message);
+
+                return Ok(status);
+            }
+            else
+            {
+                // This case should never happen. Because this action is marked RequiresRunningHost,
+                // it's only invoked when the host is running, and if it's running, we'll have access
+                // to the IFunctionActivityStatusProvider.
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
+        }
+
+        [HttpGet]
         [HttpPost]
         [Route("admin/host/ping")]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
