@@ -1,9 +1,11 @@
 ﻿using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -14,14 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_DrainStatus : SamplesEndToEndTests_Node_Retry.TestFixture
+    public class SamplesEndToEndTests_Node_DrainStatus : DrainTestFixture
     {
         [Theory]
-        [InlineData("HttpTrigger-RetryStatus-Fixed")]
-        [InlineData("HttpTrigger-RetryStatus-Exponential")]
+        [InlineData("HttpTrigger-LongRun")]
         public async Task DrainStatus_ReturnsExpected(string functionName)
         {
-            // Validate the state is to "Disabled" initially
+            // Validate the state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
             var responseString = response.Content.ReadAsStringAsync().Result;
             var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
@@ -42,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
                     return status.State == DrainModeState.InProgress;
-                }, 20000, 200);
+                }, 20000);
 
                 // Validate the state is changed to "Completed"
                 await TestHelpers.Await(async () =>
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
                     return status.State == DrainModeState.Completed;
-                }, 20000, 200);
+                }, 20000);
 
                 resetEvent.Set();
             });
@@ -62,6 +63,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
+    }
 
+    public class DrainTestFixture : EndToEndTestFixture
+    {
+        static DrainTestFixture()
+        {
+        }
+
+        public DrainTestFixture()
+            : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+        {
+        }
+
+        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
+        {
+            base.ConfigureScriptHost(webJobsBuilder);
+        }
     }
 }
