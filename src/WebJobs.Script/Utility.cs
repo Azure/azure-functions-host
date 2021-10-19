@@ -831,8 +831,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             mediaType.MediaType.IndexOf(ScriptConstants.MediatypeMutipartPrefix, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
-        public static void ValidateRetryOptions(RetryOptions
-            retryOptions)
+        public static void ValidateRetryOptions(RetryOptions retryOptions, IEnvironment environment)
         {
             if (retryOptions == null)
             {
@@ -842,6 +841,28 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 throw new ArgumentNullException(nameof(retryOptions.MaxRetryCount));
             }
+            // Validate SKU limits for retries
+            TimeSpan? interval = null;
+            if (retryOptions.DelayInterval.HasValue)
+            {
+                interval = retryOptions.DelayInterval;
+            }
+            else if (retryOptions.MaximumInterval.HasValue)
+            {
+                interval = retryOptions.MaximumInterval;
+            }
+            if (interval.HasValue)
+            {
+                if (environment.IsWindowsElasticPremium() && interval > TimeSpan.FromMinutes(60))
+                {
+                    throw new InvalidOperationException("Maximum delay interval must not exceed 60 minutes for Elastic Premium plan.");
+                }
+                if (environment.IsConsumptionSku() && interval > TimeSpan.FromMinutes(10))
+                {
+                    throw new InvalidOperationException("Maximum delay interval must not exceed 10 minutes for Consumption plan.");
+                }
+            }
+
             switch (retryOptions.Strategy)
             {
                 case RetryStrategy.FixedDelay:

@@ -219,6 +219,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(maxIntervalTimeSpan, options.Retry.MaximumInterval);
         }
 
+        [Theory]
+        [InlineData("fixedDelay", "00:00:30", ScriptConstants.DynamicSku, false)]
+        [InlineData("fixedDelay", "00:10:00", ScriptConstants.DynamicSku, false)]
+        [InlineData("fixedDelay", "00:11:00", ScriptConstants.DynamicSku, true)]
+        [InlineData("ExponentialBackoff", "00:10:00", ScriptConstants.ElasticPremiumSku, false)]
+        [InlineData("ExponentialBackoff", "01:00:00", ScriptConstants.ElasticPremiumSku, false)]
+        [InlineData("ExponentialBackoff", "01:00:03", ScriptConstants.ElasticPremiumSku, true)]
+        [InlineData("ExponentialBackoff", "00:00:03", "", false)]
+        [InlineData("ExponentialBackoff", "00:10:03", "", false)]
+        [InlineData("ExponentialBackoff", "01:00:03", "", false)]
+        public void Configure_AppliesRetry_SKU_Limits(string expectedStrategy, string delay, string sku, bool exceptionThrows)
+        {
+            Dictionary<string, string> settings = null;
+
+            if (expectedStrategy == "fixedDelay")
+            {
+                settings = new Dictionary<string, string>
+                {
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "strategy"), expectedStrategy },
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maxRetryCount"), "10" },
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "delayInterval"), delay }
+                };
+            }
+            else
+            {
+                settings = new Dictionary<string, string>
+                {
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "strategy"), expectedStrategy },
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maxRetryCount"), "10" },
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "minimumInterval"), "00:00:01" },
+                    { ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "retry", "maximumInterval"), delay }
+                };
+            }
+
+            var environment = new TestEnvironment();
+            if (!string.IsNullOrEmpty(sku))
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, sku);
+            }
+            if (exceptionThrows)
+            {
+                Assert.Throws<InvalidOperationException>(() => GetConfiguredOptions(settings, environment));
+            }
+            else
+            {
+                _ = GetConfiguredOptions(settings, environment);
+            }
+        }
+
         [Fact]
         public void Configure_TimeoutDefaultsNull_IfNotDynamic()
         {

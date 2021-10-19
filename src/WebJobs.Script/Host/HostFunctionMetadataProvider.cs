@@ -25,13 +25,15 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IMetricsLogger _metricsLogger;
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
+        private readonly IEnvironment _environment;
         private ImmutableArray<FunctionMetadata> _functions;
 
-        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger)
+        public HostFunctionMetadataProvider(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<HostFunctionMetadataProvider> logger, IMetricsLogger metricsLogger, IEnvironment environment)
         {
             _applicationHostOptions = applicationHostOptions;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _environment = environment;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -161,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             //Retry
             functionMetadata.Retry = configMetadata.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
-            Utility.ValidateRetryOptions(functionMetadata.Retry);
+            Utility.ValidateRetryOptions(functionMetadata.Retry, _environment);
 
             return functionMetadata;
         }

@@ -17,12 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class FunctionMetadataProviderTests
     {
         private TestMetricsLogger _testMetricsLogger;
+        private TestEnvironment _testEnvironment;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
         public FunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            _testEnvironment = new TestEnvironment();
         }
 
         [Fact]
@@ -31,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, _testEnvironment);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
             Assert.Equal(18, metadataProvider.GetFunctionMetadata(workerConfigs, false).Length);
@@ -44,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, _testEnvironment);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
             var functionMetadatas = metadataProvider.GetFunctionMetadata(workerConfigs, false);
 
@@ -101,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, _testEnvironment);
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
@@ -122,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string functionsPath = "c:\testdir";
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger, _testEnvironment);
 
             try
             {
