@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                                                  _environment,
                                                                  _azureBlobStorageProvider);
             }
-            else if (StorageConnectionExists())
+            else if (_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _))
             {
                 string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
                 repository = new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"),
@@ -114,13 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ILogger logger = _loggerFactory.CreateLogger<DefaultSecretManagerProvider>();
             logger.LogInformation("Resolved secret storage provider {provider}", repository.Name);
             return repository;
-        }
-
-        private bool StorageConnectionExists()
-        {
-            HostAzureBlobStorageProvider blobStorageProvider = _azureBlobStorageProvider as HostAzureBlobStorageProvider;
-            var section = blobStorageProvider?.Configuration.GetWebJobsConnectionSection(ConnectionStringNames.Storage);
-            return section != null && section.Exists();
         }
     }
 }
