@@ -137,15 +137,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 };
 
                 string message = $"Drain Status: {JsonConvert.SerializeObject(state, Formatting.Indented)}, Activity Status: {JsonConvert.SerializeObject(functionActivityStatus, Formatting.Indented)}";
-                _logger.LogInformation(message);
+                _logger.LogDebug(message);
 
                 return Ok(status);
             }
             else
             {
-                // This case should never happen. Because this action is marked RequiresRunningHost,
-                // it's only invoked when the host is running, and if it's running, we'll have access
-                // to the IFunctionActivityStatusProvider.
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
         }

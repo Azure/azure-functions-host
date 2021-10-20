@@ -18,9 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
     [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
     public class SamplesEndToEndTests_Node_DrainStatus : DrainTestFixture
     {
-        [Theory]
-        [InlineData("HttpTrigger-LongRun")]
-        public async Task DrainStatus_ReturnsExpected(string functionName)
+        [Fact]
+        public async Task DrainStatus_RunningHost_ReturnsExpected()
         {
             // Validate the state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
@@ -29,12 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             Assert.Equal(status.State, DrainModeState.Disabled);
 
-            // Put the host to drain mode
-            response = await SamplesTestHelpers.InvokeDrain(this);
-
             ManualResetEvent resetEvent = new ManualResetEvent(false);
             _ = Task.Run(async () =>
             {
+                // Put the host to drain mode
+                response = await SamplesTestHelpers.InvokeDrain(this);
+
                 // Validate the state is changed to "InProgress"
                 await TestHelpers.Await(async () =>
                 {
@@ -58,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 resetEvent.Set();
             });
 
-            response = await SamplesTestHelpers.InvokeHttpTrigger(this, functionName);
+            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-LongRun");
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
