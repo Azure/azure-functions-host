@@ -55,9 +55,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 })
                 .AddScriptHost(webHostOptions, configLoggerFactory, metricsLogger, webJobsBuilder =>
                 {
-                    // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider
-                    webJobsBuilder.Services.AddSingleton<IAzureBlobStorageProvider>(rootServiceProvider.GetService<IAzureBlobStorageProvider>());
+                    // Adds necessary Azure-based services to the ScriptHost, which will use the host-provided IAzureBlobStorageProvider registered below.
                     webJobsBuilder.AddAzureStorageCoreServices();
+
+                    // This overrides the IAzureBlobStorageProvider registered by the above call to AddAzureStorageCoreServices().
+                    // This forwards the Host provided implementation to the inner ScriptHost and MUST be called AFTER the AddAzureStorageCoreServices() call to avoid layering mishaps later.
+                    // The Host provided IAzureBlobStorageProvider is designed to react to specialization and limited ScriptHost lifetimes, so it can be safely forwarded to the ScriptHost.
+                    webJobsBuilder.Services.AddSingleton<IAzureBlobStorageProvider>(rootServiceProvider.GetService<IAzureBlobStorageProvider>());
 
                     configureWebJobs?.Invoke(webJobsBuilder);
 

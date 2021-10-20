@@ -38,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly object _syncLock = new object();
         private bool _validationScheduled;
 
-        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBtorageProvider, IApplicationLifetime applicationLifetime,
+        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider, IApplicationLifetime applicationLifetime,
             HostNameProvider hostNameProvider, ILogger<HostIdValidator> logger)
         {
             _environment = environment;
-            _azureBlobStorageProvider = azureBtorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
             _applicationLifetime = applicationLifetime;
             _hostNameProvider = hostNameProvider;
             _logger = logger;
@@ -68,12 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _))
+                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient))
                 {
                     return;
                 }
 
-                HostIdInfo hostIdInfo = await ReadHostIdInfoAsync(hostId);
+                HostIdInfo hostIdInfo = await ReadHostIdInfoAsync(hostId, blobContainerClient);
 
                 if (hostIdInfo != null)
                 {
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         Hostname = _hostNameProvider.Value
                     };
-                    await WriteHostIdAsync(hostId, hostIdInfo);
+                    await WriteHostIdAsync(hostId, hostIdInfo, blobContainerClient);
                 }
             }
             catch (Exception ex)
@@ -130,17 +130,12 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal async Task WriteHostIdAsync(string hostId, HostIdInfo hostIdInfo)
+        internal async Task WriteHostIdAsync(string hostId, HostIdInfo hostIdInfo, BlobContainerClient blobContainerClient)
         {
             try
             {
-                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var containerClient))
-                {
-                    throw new InvalidOperationException($"Could not create Hosting BlobContainerClient in {nameof(WriteHostIdAsync)}");
-                }
-
                 string blobPath = string.Format(BlobPathFormat, hostId);
-                BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+                BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
                 BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
                 await blobClient.UploadAsync(data);
 
@@ -150,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Another instance wrote the blob between the time when we initially
                 // checked and when we attempted to write. Read the blob and validate it.
-                hostIdInfo = await ReadHostIdInfoAsync(hostId);
+                hostIdInfo = await ReadHostIdInfoAsync(hostId, blobContainerClient);
                 if (hostIdInfo != null)
                 {
                     CheckForCollision(hostId, hostIdInfo);
@@ -163,20 +158,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal async Task<HostIdInfo> ReadHostIdInfoAsync(string hostId)
+        internal async Task<HostIdInfo> ReadHostIdInfoAsync(string hostId, BlobContainerClient blobContainerClient)
         {
             HostIdInfo hostIdInfo = null;
 
             try
             {
                 // check storage to see if a record already exists for this host ID
-                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var containerClient))
-                {
-                    throw new InvalidOperationException($"Could not create Hosting BlobContainerClient in {nameof(ReadHostIdInfoAsync)}");
-                }
-
                 string blobPath = string.Format(BlobPathFormat, hostId);
-                BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+                BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
                 var downloadResponse = await blobClient.DownloadAsync();
                 string content;
                 using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))

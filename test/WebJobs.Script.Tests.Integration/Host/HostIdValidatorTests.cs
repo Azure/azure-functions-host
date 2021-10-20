@@ -49,12 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _blobContainerClient);
 
             var mockBlobStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
-            mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out It.Ref<BlobContainerClient>.IsAny))
-                .Callback((ref BlobContainerClient containerClient) =>
-                 {
-                     containerClient = _blobContainerClient;
-                 })
-                .Returns(() => _storageConfigured);
+            mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out _blobContainerClient)).Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
             _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
@@ -77,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _hostIdValidator.ScheduleValidation(_testHostId);
 
             await Task.Delay(2000);
-            HostIdValidator.HostIdInfo hostIdInfo = await _hostIdValidator.ReadHostIdInfoAsync(_testHostId);
+            HostIdValidator.HostIdInfo hostIdInfo = await _hostIdValidator.ReadHostIdInfoAsync(_testHostId, _blobContainerClient);
 
             var logs = _loggerProvider.GetAllLogMessages();
             if (expectHostIdInfo)
@@ -91,6 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             else
             {
                 Assert.Null(hostIdInfo);
+                Assert.Empty(logs);
             }
         }
 
@@ -103,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -116,8 +112,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [Fact]
         public async Task ValidateHostIdUsageAsync_Collision_WarningLevel_Logs()
         {
-            _storageConfigured = true;
-
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Warning.ToString());
 
             await ClearHostIdInfoAsync();
@@ -126,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = "test-host2.net"
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -146,8 +140,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [InlineData("None")]
         public async Task ValidateHostIdUsageAsync_Collision_ErrorLevel_LogsAndStopsApplication(string level)
         {
-            _storageConfigured = true;
-
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, level);
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 
@@ -157,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = "test-host2.net"
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -176,8 +168,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         [InlineData(false)]
         public async Task WriteHostIdAsync_ExistingBlob_HandlesCollision(bool collision)
         {
-            _storageConfigured = true;
-
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsHostIdCheckLevel, LogLevel.Error.ToString());
             _mockApplicationLifetime.Setup(p => p.StopApplication());
 
@@ -189,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = collision ? "another-test-host.net" : _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -197,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             var logs = _loggerProvider.GetAllLogMessages();
             if (collision)

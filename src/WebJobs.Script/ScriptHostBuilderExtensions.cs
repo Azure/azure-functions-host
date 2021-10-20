@@ -26,6 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -376,7 +377,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static void AddAzureBlobStorageProvider(this IServiceCollection services)
         {
-            services.AddAzureStorageCoreServices();
+            // Adds necessary Azure services to create clients
+            services.AddAzureClientsCore();
+
+            // HostAzureBlobStorageProvider depends on JobHostInternalStorageOptions to support ability to provide a SAS blob container as the Hosting container.
+            // This is registered in WebJobs.Host.Storage, but since IAzureBlobStorageProvider needs to be accessible in the WebHost layer,
+            // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implemention in ActiveHostWebJobsOptionsSetup.
+            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<JobHostInternalStorageOptions>, ActiveHostWebJobsOptionsSetup<JobHostInternalStorageOptions>>());
             services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
         }
 
