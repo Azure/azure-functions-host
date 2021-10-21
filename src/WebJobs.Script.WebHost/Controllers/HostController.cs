@@ -107,21 +107,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/drain")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Drain([FromServices] IDrainModeManager drainModeManager)
+        public IActionResult Drain([FromServices] IScriptHostManager scriptHostManager)
         {
             _logger.LogDebug("Received request for draining host");
 
-            // Stop call to some listeners get stuck, Not waiting for the stop call to complete
-            drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
-            return Ok();
+            if (Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
+            {
+                // Stop call to some listeners get stuck, Not waiting for the stop call to complete
+                drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
+                return Ok();
+            }
+            else
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
         }
 
         [HttpGet]
         [Route("admin/host/drain/status")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult DrainStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IDrainModeManager drainModeManager)
+        public IActionResult DrainStatus([FromServices] IScriptHostManager scriptHostManager)
         {
-            if (Utility.TryGetHostService(scriptHostManager, out IFunctionActivityStatusProvider functionActivityStatusProvider))
+            if (Utility.TryGetHostService(scriptHostManager, out IFunctionActivityStatusProvider functionActivityStatusProvider) &&
+                Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
             {
                 var functionActivityStatus = functionActivityStatusProvider.GetStatus();
                 DrainModeState state = DrainModeState.Disabled;

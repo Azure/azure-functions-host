@@ -221,19 +221,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
             var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
             serviceProviderMock.Setup(x => x.GetService(typeof(IFunctionActivityStatusProvider))).Returns(functionActivityStatusProvider.Object);
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(expectedState != DrainModeState.Disabled);
 
-            var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object, drainModeManager.Object);
+            var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
             Assert.Equal((result.Value as DrainModeStatus).State, expectedState);
+        }
+
+        [Fact]
+        public void GetDrain_HostNotRunning_ReturnsServiceUnavailable()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+
+            var result = (StatusCodeResult)_hostController.Drain(scriptHostManagerMock.Object);
+            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
         }
 
         [Fact]
         public void GetDrainStatus_HostNotRunning_ReturnsServiceUnavailable()
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
-            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
 
-            var result = (StatusCodeResult)_hostController.DrainStatus(scriptHostManagerMock.Object, drainModeManager.Object);
+            var result = (StatusCodeResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
             Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
         }
     }
