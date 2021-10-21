@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
-        }
+        }   
     }
 
     public class DrainTestFixture : EndToEndTestFixture
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         public DrainTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
         {
         }
 
