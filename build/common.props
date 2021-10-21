@@ -7,21 +7,21 @@
     <MinorVersion>0</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <PreviewVersion>5</PreviewVersion>
+    <PreviewVersion></PreviewVersion>
     <PreviewString Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</PreviewString>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <VersionSuffixWithDash Condition=" '$(VersionSuffix)' != '' ">-$(VersionSuffix)</VersionSuffixWithDash>
     <Version>$(VersionPrefix)$(PreviewString)$(VersionSuffixWithDash)</Version>
     <AssemblyVersion>$(MajorVersion).0.0.0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
-    <CommitHash Condition="$(CommitHash) == ''">N/A</CommitHash>        
-    <InformationalVersion>$(Version)+$(CommitHash)</InformationalVersion>
+
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
+
+    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true"</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
-    <UseSourceLink Condition="$(UseSourceLink) == '' And $(CI) != ''">true</UseSourceLink>
-    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile> <!-- https://github.com/dotnet/runtime/issues/54684 -->
-    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+    <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>    
   </PropertyGroup>
 
   <Target Name="GenerateSiteExtensionVersion">
@@ -32,27 +32,9 @@
       <WriteLinesToFile File="$(VersionFile)" Lines="$(Version)" Overwrite="true" />
   </Target>
 
-  <PropertyGroup Condition="'$(UseSourceLink)' == 'true'">
-    <SourceLink>$(BaseIntermediateOutputPath)source_link.json</SourceLink>
-  </PropertyGroup>
-  
-  <Target Name="GenerateSourceLink" BeforeTargets="CoreCompile" Condition="'$(UseSourceLink)' == 'true'">
-    <PropertyGroup>
-      <SrcRootDirectory>$([System.IO.Directory]::GetParent($(MSBuildThisFileDirectory.TrimEnd("\"))))</SrcRootDirectory>
-      <SourceLinkRoot>$(SrcRootDirectory.Replace("\", "\\"))</SourceLinkRoot>
-    </PropertyGroup>
-    <Message Importance="high" Text="Generating SourceLink..."></Message>
-    <Exec Command="git config --get remote.origin.url" ConsoleToMsBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="RemoteUri" />
-    </Exec>
-
-    <Exec Command="git rev-parse HEAD" ConsoleToMsBuild="true" Condition = " '$(LatestCommit)' == '' ">
-      <Output TaskParameter="ConsoleOutput" PropertyName="LatestCommit" />
-    </Exec>
-
-    <!-- Write out the source file for this project to point at raw.githubusercontent.com -->
-    <WriteLinesToFile File="$(BaseIntermediateOutputPath)source_link.json" Overwrite="true" Lines='{"documents": { "$(SourceLinkRoot)\\*" : "$(RemoteUri.Replace(".git", "").Replace("github.com", "raw.githubusercontent.com"))/$(LatestCommit)/*" }}' />
-  </Target>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+  </ItemGroup>
   
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />

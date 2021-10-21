@@ -24,10 +24,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     {
         public static void Main(string[] args)
         {
-            // Protect users from https://github.com/dotnet/runtime/pull/59716.
-            // Can be removed after running on .NET 6.0 GA
-            AppContext.SetSwitch("Microsoft.Extensions.Configuration.BindSingleElementsToArray", false);
-
             InitializeProcess();
 
             var host = BuildWebHost(args);
