@@ -282,7 +282,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
         }
 
-        internal static void AddAzureBlobStorageProvider(this IServiceCollection services)
+        private static void AddAzureBlobStorageProvider(this IServiceCollection services)
         {
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
