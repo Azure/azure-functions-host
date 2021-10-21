@@ -9,12 +9,15 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -440,6 +443,77 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     response = await client.GetAsync("api/functionexecutioncontext");
                     response.EnsureSuccessStatusCode();
                 }
+            }
+        }
+
+        /// <summary>
+        /// This scenario tests that the configured JobHostInternalStorageOptions will have the right
+        /// customer-provided configuration of the ActiveHost after specialization.
+        /// Since JobHostInternalStorageOptions is registered at the WebHost, it must react to changes
+        /// to the ActiveHost.
+        /// </summary>
+        [Fact]
+        public async Task Specialization_JobHostInternalStorageOptionsUpdatesWithActiveHost()
+        {
+            var storageValue = TestHelpers.GetTestConfiguration().GetWebJobsConnectionString("AzureWebJobsStorage");
+
+            var blobServiceClient = new BlobServiceClient(storageValue);
+            var containerClient = blobServiceClient.GetBlobContainerClient("test-sas-container");
+            await containerClient.CreateIfNotExistsAsync(); // this will throw if storageValue is bad;
+            var fakeSasUri = containerClient.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.Write | BlobContainerSasPermissions.List, DateTime.UtcNow.AddDays(10));
+
+            // We can't assume the placeholder has any environment variables specified by the customer.
+            // Add environment variables expected throughout the specialization (similar to how DWAS updates the environment)
+            using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", ""))
+            using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", ""))
+            {
+                var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                .ConfigureScriptHostWebJobsBuilder(s =>
+                {
+                    if (!_environment.IsPlaceholderModeEnabled())
+                    {
+                        // Add an extension that calls GetUrl(), which can cause secrets to be loaded
+                        // before the host is initialized.
+                        s.Services.AddSingleton<IExtensionConfigProvider, TestWebHookExtension>();
+                    }
+                });
+
+                // This is required to force secrets to load.
+                _environment.SetEnvironmentVariable("WEBSITE_HOSTNAME", "test");
+
+                using (var testServer = new TestServer(builder))
+                {
+                    var client = testServer.CreateClient();
+                    var response = await client.GetAsync("api/warmup");
+                    response.EnsureSuccessStatusCode();
+
+                    // Should not be able to get the Hosting BlobContainerClient before specialization since
+                    // customer provided storage-related configuration is not in the Environment
+                    var blobStorageProvider = testServer.Services.GetService<IAzureBlobStorageProvider>();
+                    Assert.False(blobStorageProvider.TryCreateHostingBlobContainerClient(out _));
+
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                    _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+
+                    // This value is available now
+                    using (new TestScopedEnvironmentVariable("AzureFunctionsJobHost__InternalSasBlobContainer", fakeSasUri.ToString()))
+                    using (new TestScopedEnvironmentVariable("AzureWebJobsStorage", storageValue))
+                    {
+                        // Now that we're specialized, set up the expected env var, which will be loaded internally
+                        // when the config is refreshed during specialization.
+                        // This request will force specialization.
+                        response = await client.GetAsync("api/functionexecutioncontext");
+                        response.EnsureSuccessStatusCode();
+
+                        // The HostingBlobContainerClient should be the sas container specified.
+                        blobStorageProvider = testServer.Services.GetService<IAzureBlobStorageProvider>();
+                        Assert.True(blobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient));
+                        Assert.Equal("test-sas-container", blobContainerClient.Name);
+                    }
+                }
+
+                await containerClient.DeleteAsync();
             }
         }
 

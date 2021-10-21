@@ -287,7 +287,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
-                    services.AddAzureBlobStorageProvider();
                 }
 
                 if (SystemEnvironment.Instance.IsKubernetesManagedHosting())
@@ -373,18 +372,6 @@ namespace Microsoft.Azure.WebJobs.Script
             configuration.Bind(options);
             optionsSetup.Configure(options);
             return options;
-        }
-
-        internal static void AddAzureBlobStorageProvider(this IServiceCollection services)
-        {
-            // Adds necessary Azure services to create clients
-            services.AddAzureClientsCore();
-
-            // HostAzureBlobStorageProvider depends on JobHostInternalStorageOptions to support ability to provide a SAS blob container as the Hosting container.
-            // This is registered in WebJobs.Host.Storage, but since IAzureBlobStorageProvider needs to be accessible in the WebHost layer,
-            // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implemention in ActiveHostWebJobsOptionsSetup.
-            services.TryAddEnumerable(ServiceDescriptor.Transient<IConfigureOptions<JobHostInternalStorageOptions>, ActiveHostWebJobsOptionsSetup<JobHostInternalStorageOptions>>());
-            services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
         }
 
         private static void RegisterFileProvisioningService(IHostBuilder builder)
