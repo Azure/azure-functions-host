@@ -13,6 +13,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)FunctionExecutionEvent.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HttpTestHelpers.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FunctionTraceEvent.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LoggerFactoryExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TempDirectory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestChangeTokenSource.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestConfigurationBuilderExtensions.cs" />
@@ -21,6 +22,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestFunctionMetadataManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostBuilderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestHostExtensions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestOutputHelperLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestOutputHelperLoggerProvider.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestMetricsLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestNameResolver.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsFactory.cs" />
