@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Logging.ApplicationInsights;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
@@ -21,6 +22,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
     public class LoggingConfigurationTests
     {
         private readonly string _loggingPath = ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "Logging");
+
+        [Fact]
+        public void Logging_Binds_AppInsightsOptions()
+        {
+            var hostBuilder = new HostBuilder()
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
+                        { "APPLICATIONINSIGHTS_CONNECTION_STRING", "InstrumentationKey=some_other_key" },
+                        { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SamplingSettings", "IsEnabled"), "false" },
+                        { ConfigurationPath.Combine(_loggingPath, "ApplicationInsights", "SnapshotConfiguration", "IsEnabled"), "false" }
+                    });
+                })
+                .ConfigureDefaultTestWebScriptHost();
+
+            using (IHost host = hostBuilder.Build())
+            {
+                ApplicationInsightsLoggerOptions appInsightsOptions = host.Services.GetService<IOptions<ApplicationInsightsLoggerOptions>>().Value;
+
+                Assert.Equal("some_key", appInsightsOptions.InstrumentationKey);
+                Assert.Equal("InstrumentationKey=some_other_key", appInsightsOptions.ConnectionString);
+                Assert.Null(appInsightsOptions.SamplingSettings);
+                Assert.False(appInsightsOptions.SnapshotConfiguration.IsEnabled);
+            }
+        }
 
         [Fact]
         public void Logging_Filters()
@@ -210,6 +238,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
                 loggerProviders.OfType<ConsoleLoggerProvider>().Single();
+                loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
+            }
+        }
+
+        [Fact]
+        public void LoggerProviders_ApplicationInsights()
+        {
+            var hostBuilder = new HostBuilder()
+               .ConfigureAppConfiguration(c =>
+               {
+                   c.AddInMemoryCollection(new Dictionary<string, string>
+                  {
+                        { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" }
+                  });
+               })
+              .ConfigureDefaultTestWebScriptHost();
+
+            using (IHost host = hostBuilder.Build())
+            {
+                IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
+
+                Assert.Equal(5, loggerProviders.Count());
+                loggerProviders.OfType<SystemLoggerProvider>().Single();
+                loggerProviders.OfType<HostFileLoggerProvider>().Single();
+                loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
+                loggerProviders.OfType<ApplicationInsightsLoggerProvider>().Single();
                 loggerProviders.OfType<AzureMonitorDiagnosticLoggerProvider>().Single();
             }
         }

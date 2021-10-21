@@ -6,60 +6,61 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 {
-    public abstract class ApplicationInsightsTestFixture : EndToEndTestFixture
+    public abstract class ApplicationInsightsTestFixture : IDisposable
     {
         public const string ApplicationInsightsKey = "some_key";
 
-        public ApplicationInsightsTestFixture(string rootPath, string testId, string language) :
-            base(rootPath, testId, language)
+        public ApplicationInsightsTestFixture(string scriptRoot, string testId)
         {
+            string scriptPath = Path.Combine(Environment.CurrentDirectory, scriptRoot);
+            string logPath = Path.Combine(Path.GetTempPath(), @"Functions");
 
-        }
-
-        protected override ExtensionPackageReference[] GetExtensionsToInstall()
-        {
-            return new ExtensionPackageReference[]
+            WebHostOptions = new ScriptApplicationHostOptions
             {
-                new ExtensionPackageReference
-                {
-                    Id = "Microsoft.Azure.WebJobs.Extensions.ApplicationInsights",
-                    Version = "1.0.0"
-                }
+                IsSelfHost = true,
+                ScriptPath = scriptPath,
+                LogPath = logPath,
+                SecretsPath = Environment.CurrentDirectory // not used
             };
-        }
 
-        public override void ConfigureScriptHost(IWebJobsBuilder webJobsBuilder)
-        {
-            webJobsBuilder.Services.AddSingleton<ITelemetryChannel>(_ => Channel);
-            webJobsBuilder.Services.Configure<ScriptJobHostOptions>(o =>
-            {
-                o.Functions = new[]
+            TestHost = new TestFunctionHost(scriptPath, logPath,
+                configureScriptHostServices: s =>
                 {
-                    "Scenarios",
-                    "HttpTrigger-Scenarios"
-                };
-            });
-        }
+                    s.AddSingleton<ITelemetryChannel>(_ => Channel);
+                    s.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.Functions = new[]
+                        {
+                            "Scenarios",
+                            "HttpTrigger-Scenarios"
+                        };
+                    });
+                    s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                },
+                configureScriptHostAppConfiguration: configurationBuilder =>
+                {
+                    configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ApplicationInsightsKey
+                    });
+                });
 
-        public override void ConfigureAppConfiguration(IConfigurationBuilder configurationBuilder)
-        {
-            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string>
-            {
-                [EnvironmentSettingNames.AppInsightsInstrumentationKey] = ApplicationInsightsKey
-            });
+            HttpClient = TestHost.HttpClient;
+
+            TestHelpers.WaitForWebHost(HttpClient);
         }
 
         public TestTelemetryChannel Channel { get; private set; } = new TestTelemetryChannel();
+
+        public TestMetricsLogger MetricsLogger { get; private set; } = new TestMetricsLogger();
 
         public TestFunctionHost TestHost { get; }
 
@@ -67,9 +68,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
         public HttpClient HttpClient { get; private set; }
 
-        public override async Task DisposeAsync()
+        public void Dispose()
         {
-            await base.DisposeAsync();
+            TestHost?.Dispose();
+            HttpClient?.Dispose();
 
             // App Insights takes 2 seconds to flush telemetry and because our container
             // is disposed on a background task, it doesn't block. So waiting here to ensure
