@@ -52,6 +52,10 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.ApplicationInsights",
+      "resolutionPolicy": "runtimeVersion"
+    },
+    {
       "name": "Microsoft.AspNetCore",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -446,6 +450,10 @@
     {
       "name": "Microsoft.Azure.WebJobs.Host.Storage",
       "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
+      "resolutionPolicy": "minorMatchOrLower"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Script",

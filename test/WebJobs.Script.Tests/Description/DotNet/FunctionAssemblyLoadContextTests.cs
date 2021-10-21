@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("Microsoft.Azure.WebJobs, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Extensions.Http, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Host, Version=3.0.0.0")]
+        [InlineData("Microsoft.Azure.WebJobs.Logging.ApplicationInsights, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Script, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Script.Grpc, Version=3.0.0.0")]
         [InlineData("Microsoft.Azure.WebJobs.Script.WebHost, Version=3.0.0.0")]
