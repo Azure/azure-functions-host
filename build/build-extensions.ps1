@@ -1,7 +1,6 @@
 param (
   [string]$buildNumber = "0",  
-  [string]$suffix = "",
-  [string]$commitHash = "N/A",
+  [string]$suffix = "",  
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -15,7 +14,7 @@ if ($hasSuffix) {
 }
 
 # use the same logic as the projects to generate the site extension version
-$cmd = "build", "$rootDir\build\common.props", "/t:GenerateSiteExtensionVersion", "-restore:False", "-o", "$buildOutput", "/p:BuildNumber=$buildNumber",  "/p:CommitHash=$commitHash", $suffixCmd, "-v", "q", "--nologo", "-clp:NoSummary"
+$cmd = "build", "$rootDir\build\common.props", "/t:GenerateSiteExtensionVersion", "-restore:False", "-o", "$buildOutput", "/p:BuildNumber=$buildNumber", $suffixCmd, "-v", "q", "--nologo", "-clp:NoSummary"
 & dotnet $cmd
 
 $versionTxt = "$rootDir\buildoutput\version.txt"
@@ -55,7 +54,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -67,6 +66,11 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     
     & dotnet $cmd
+
+    if ($LASTEXITCODE -ne 0)
+    {
+      exit $LASTEXITCODE
+    }
 
     Write-Host ""
     Write-Host "Moving symbols to $symbolsTarget"
