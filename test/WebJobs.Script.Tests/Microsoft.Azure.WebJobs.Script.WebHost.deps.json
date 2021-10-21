@@ -945,34 +945,16 @@
         "dependencies": {
           "Microsoft.Extensions.Configuration.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Primitives": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Configuration.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Configuration.Abstractions/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "Microsoft.Extensions.Primitives": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Configuration.Binder/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "Microsoft.Extensions.Configuration.Abstractions": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Configuration.Binder.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Configuration.EnvironmentVariables/2.1.0": {
@@ -997,22 +979,9 @@
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0-rc.2.21480.5",
           "System.Runtime.CompilerServices.Unsafe": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.DependencyInjection.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
-      "Microsoft.Extensions.DependencyInjection.Abstractions/6.0.0-rc.2.21480.5": {
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
-        }
-      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions/6.0.0-rc.2.21480.5": {},
       "Microsoft.Extensions.DependencyModel/2.1.0": {
         "dependencies": {
           "Microsoft.DotNet.PlatformAbstractions": "2.1.0",
@@ -1031,12 +1000,6 @@
       "Microsoft.Extensions.FileProviders.Abstractions/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "Microsoft.Extensions.Primitives": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.FileProviders.Physical/2.1.0": {
@@ -1060,12 +1023,6 @@
           "Microsoft.Extensions.Configuration.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.FileProviders.Abstractions": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.1/Microsoft.Extensions.Hosting.Abstractions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Http/3.0.3": {
@@ -1082,22 +1039,9 @@
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Options": "6.0.0-rc.2.21480.5",
           "System.Diagnostics.DiagnosticSource": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.1/Microsoft.Extensions.Logging.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
-      "Microsoft.Extensions.Logging.Abstractions/6.0.0-rc.2.21480.5": {
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.Logging.Abstractions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
-        }
-      },
+      "Microsoft.Extensions.Logging.Abstractions/6.0.0-rc.2.21480.5": {},
       "Microsoft.Extensions.Logging.Configuration/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "Microsoft.Extensions.Configuration": "6.0.0-rc.2.21480.5",
@@ -1108,12 +1052,6 @@
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Options": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Options.ConfigurationExtensions": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Logging.Configuration.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Logging.Console/6.0.0-rc.2.21480.5": {
@@ -1124,12 +1062,6 @@
           "Microsoft.Extensions.Logging.Configuration": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Options": "6.0.0-rc.2.21480.5",
           "System.Text.Json": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.Logging.Console.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.ObjectPool/2.2.0": {},
@@ -1137,12 +1069,6 @@
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Primitives": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.1/Microsoft.Extensions.Options.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Options.ConfigurationExtensions/6.0.0-rc.2.21480.5": {
@@ -1152,23 +1078,11 @@
           "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Options": "6.0.0-rc.2.21480.5",
           "Microsoft.Extensions.Primitives": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/netstandard2.0/Microsoft.Extensions.Options.ConfigurationExtensions.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Extensions.Primitives/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/Microsoft.Extensions.Primitives.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "Microsoft.Identity.Client/4.30.1": {
@@ -1646,12 +1560,6 @@
       "System.Diagnostics.DiagnosticSource/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/System.Diagnostics.DiagnosticSource.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "System.Diagnostics.TraceSource/4.3.0": {
@@ -2098,14 +2006,7 @@
           "Microsoft.NETCore.Targets": "1.1.0"
         }
       },
-      "System.Runtime.CompilerServices.Unsafe/6.0.0-rc.2.21480.5": {
-        "runtime": {
-          "lib/net6.0/System.Runtime.CompilerServices.Unsafe.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
-        }
-      },
+      "System.Runtime.CompilerServices.Unsafe/6.0.0-rc.2.21480.5": {},
       "System.Runtime.Extensions/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "2.1.2",
@@ -2353,32 +2254,12 @@
       "System.Text.Encodings.Web/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/System.Text.Encodings.Web.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
-        },
-        "runtimeTargets": {
-          "runtimes/browser/lib/net6.0/System.Text.Encodings.Web.dll": {
-            "rid": "browser",
-            "assetType": "runtime",
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "System.Text.Json/6.0.0-rc.2.21480.5": {
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0-rc.2.21480.5",
           "System.Text.Encodings.Web": "6.0.0-rc.2.21480.5"
-        },
-        "runtime": {
-          "lib/net6.0/System.Text.Json.dll": {
-            "assemblyVersion": "6.0.0.0",
-            "fileVersion": "6.0.21.48005"
-          }
         }
       },
       "System.Threading/4.3.0": {
@@ -2775,7 +2656,7 @@
     "Microsoft.Azure.Functions.NodeJsWorker/3.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-vJyQD/265AEBIe1oK+an0CrRkC85hIo1A/R2QtcZ7qsDdMX6EMp+vVgvp5J6FAn+J7wIdjsG42U4YP9g7ArSDw==",
+      "sha512": "sha512-lUJQP98kE0+Ki/0tQ0F4/lDr81FsaRwSmpgRS2qZK/pw461c7wgeDwWuDC83i2YNvd01e6EM+B4Pe8Ox93VvXA==",
       "path": "microsoft.azure.functions.nodejsworker/3.0.0",
       "hashPath": "microsoft.azure.functions.nodejsworker.3.0.0.nupkg.sha512"
     },
@@ -2859,7 +2740,7 @@
     "Microsoft.Azure.WebJobs.Host.Storage/5.0.0-beta.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-rTpndv2LwLzGrY2LTloCeCzp4tn5/zxJg23V33Me8EP/A09Nlz6rPPHWoa4E3k5fMZgAKoI68JDeJlqotktRHQ==",
+      "sha512": "sha512-rBLplUrYO5AfH2aPbHRm90M71PQHJmLp6zQGHk9O19L/0DJUdl4fndGEUQHGnhiSYff2i/2qI0MuPO5lLLdALg==",
       "path": "microsoft.azure.webjobs.host.storage/5.0.0-beta.1",
       "hashPath": "microsoft.azure.webjobs.host.storage.5.0.0-beta.1.nupkg.sha512"
     },
@@ -3384,7 +3265,7 @@
     "runtime.native.System.Security.Cryptography.Apple/4.3.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-DloMk88juo0OuOWr56QG7MNchmafTLYWvABy36izkrLI5VledI0rq28KGs1i9wbpeT9NPQrx/wTf8U2vazqQ3Q==",
+      "sha512": "sha512-jwjwlEL0Elv6gwoyaokRn12nv/JE+UW/DXJEbzhjCPvGbef36StnHKc9XaZD/rGWqYicrphZ7eumR/jdmNcjRg==",
       "path": "runtime.native.system.security.cryptography.apple/4.3.0",
       "hashPath": "runtime.native.system.security.cryptography.apple.4.3.0.nupkg.sha512"
     },
@@ -3412,7 +3293,7 @@
     "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple/4.3.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-kVXCuMTrTlxq4XOOMAysuNwsXWpYeboGddNGpIgNSZmv1b6r/s/DPk0fYMB7Q5Qo4bY68o48jt4T4y5BVecbCQ==",
+      "sha512": "sha512-Kh9W4agE0r/hK8AX1LvyQI2NrKHBL8pO0gRoDTdDb0LL6Ta1Z2OtFx3lOaAE0ZpCUc/dt9Wzs3rA7a3IsKdOVA==",
       "path": "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple/4.3.0",
       "hashPath": "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple.4.3.0.nupkg.sha512"
     },
