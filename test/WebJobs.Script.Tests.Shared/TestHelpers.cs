@@ -449,12 +449,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         // Creates an IAzureBlobStorageProvider without reacting to Specialization and ActiveHost change. To test the specialization logic, please refer to
         // Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.
-        public static IAzureBlobStorageProvider GetAzureBlobStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration = null, JobHostInternalStorageOptions storageOptions = null)
+        public static IAzureBlobStorageProvider GetAzureBlobStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration = null, JobHostInternalStorageOptions storageOptions = null, IScriptHostManager scriptHostManager = null)
         {
             IHost tempHost = new HostBuilder()
                 .ConfigureServices(services =>
                 {
-                    AddTestAzureBlobStorageProvider(services, jobHostConfiguration ?? webHostConfiguration);
+                    AddTestAzureBlobStorageProvider(services, jobHostConfiguration ?? webHostConfiguration, scriptHostManager: scriptHostManager);
                 })
                 .ConfigureAppConfiguration(c =>
                 {
@@ -466,13 +466,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return azureBlobStorageProvider;
         }
 
-        public static IServiceCollection AddTestAzureBlobStorageProvider(IServiceCollection services, IConfiguration configuration, JobHostInternalStorageOptions storageOptions = null)
+        public static IServiceCollection AddTestAzureBlobStorageProvider(IServiceCollection services, IConfiguration configuration,  JobHostInternalStorageOptions storageOptions = null, IScriptHostManager scriptHostManager = null)
         {
             // Adds necessary Azure services to create clients
             services.AddAzureClientsCore();
 
-            var testServiceProvider = new TestScriptHostService(configuration);
-            services.AddSingleton<IScriptHostManager>(testServiceProvider);
+            if (scriptHostManager == null)
+            {
+                scriptHostManager = new TestScriptHostService(configuration);
+            }
+
+            services.AddSingleton<IScriptHostManager>(scriptHostManager);
             if (storageOptions != null)
             {
                 services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));
@@ -500,7 +504,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         /// <summary>
         /// Test class for IScriptHostManager to register an IAzureBlobStorageProvider.
         /// </summary>
-        private class TestScriptHostService : IScriptHostManager, IServiceProvider
+        public class TestScriptHostService : IScriptHostManager, IServiceProvider
         {
             private readonly IConfiguration _configuration;
 
