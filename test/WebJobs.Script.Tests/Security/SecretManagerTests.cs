@@ -16,7 +16,6 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -24,6 +23,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using WebJobs.Script.Tests;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 {
@@ -37,14 +37,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         private readonly ILogger _logger;
         private readonly StartupContextProvider _startupContextProvider;
 
-        public SecretManagerTests()
+        public SecretManagerTests(ITestOutputHelper outputHelper)
         {
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "test.azurewebsites.net");
 
-            _loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(_loggerProvider);
+            var loggerFactory = new LoggerFactory()
+                .AddTestOutputHelperLoggerProvider(outputHelper)
+                .AddTestLoggerProvider(out TestLoggerProvider loggerProvider);
+
+            _loggerProvider = loggerProvider;
+
             _logger = _loggerProvider.CreateLogger(LogCategories.CreateFunctionCategory("test"));
 
             _hostNameProvider = new HostNameProvider(_testEnvironment);
