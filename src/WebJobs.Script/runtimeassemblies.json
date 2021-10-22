@@ -416,10 +416,6 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
-      "name": "Microsoft.Azure.Storage.Blob",
-      "resolutionPolicy": "private"
-    },
-    {
       "name": "Microsoft.Azure.Storage.Common",
       "resolutionPolicy": "private"
     },
@@ -438,6 +434,10 @@
     {
       "name": "Microsoft.Azure.WebJobs.Extensions.Http",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Azure.WebJobs.Extensions.Timers.Storage",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Host",

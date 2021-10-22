@@ -8,6 +8,7 @@ using System.Reflection.Emit;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -64,14 +65,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     b.AddTimers()
                     .AddAzureStorageCoreServices();
-                    b.Services.AddTimerScheduleMonitor();
                 })
                 .ConfigureServices(s =>
                 {
                     s.AddSingleton<ITypeLocator>(new TestTypeLocator(functionType));
                     s.AddSingleton<ILoggerFactory>(new LoggerFactory());
 
-                    s.AddAzureStorageProvider();
+                    TestHelpers.AddTestAzureBlobStorageProvider(s, TestHelpers.GetTestConfiguration());
                     TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(s);
                 });
 

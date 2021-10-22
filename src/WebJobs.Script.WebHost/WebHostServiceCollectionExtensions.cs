@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -26,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Standby;
 using Microsoft.Azure.WebJobs.Script.Workers.FunctionDataCache;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -172,8 +174,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.TryAddSingleton<IDependencyValidator, DependencyValidator>();
             services.TryAddSingleton<IJobHostMiddlewarePipeline>(s => DefaultMiddlewarePipeline.Empty);
 
-            // Add AzureStorageProvider to WebHost (also needed for ScriptHost)
-            services.AddAzureStorageProvider();
+            // Add AzureBlobStorageProvider to WebHost (also needed for ScriptHost)
+            services.AddAzureBlobStorageProvider();
         }
 
         private static void AddStandbyServices(this IServiceCollection services)
@@ -278,6 +280,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IManagedIdentityTokenProvider, ManagedIdentityTokenProvider>();
             services.AddSingleton<IUnZipHandler, UnZipHandler>();
             services.AddSingleton<IBashCommandHandler, BashCommandHandler>();
+        }
+
+        private static void AddAzureBlobStorageProvider(this IServiceCollection services)
+        {
+            // Adds necessary Azure services to create clients
+            services.AddAzureClientsCore();
+
+            // HostAzureBlobStorageProvider depends on JobHostInternalStorageOptions to support ability to provide a SAS blob container as the Hosting container.
+            // This is registered in WebJobs.Host.Storage, but since IAzureBlobStorageProvider needs to be accessible in the WebHost layer,
+            // we need to register the JobHostInternalStorageOptions in the WebHost layer too, using the merged configuration implemention in ActiveHostWebJobsOptionsSetup.
+            services.ConfigureOptionsWithChangeTokenSource<JobHostInternalStorageOptions, ActiveHostWebJobsOptionsSetup<JobHostInternalStorageOptions>, SpecializationChangeTokenSource<JobHostInternalStorageOptions>>();
+            services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
         }
 
         private static IServiceCollection ConfigureOptionsWithChangeTokenSource<TOptions, TOptionsSetup, TOptionsChangeTokenSource>(this IServiceCollection services)

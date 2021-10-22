@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -59,11 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureStorageProvider azureStorageProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
-            _azureStorageProvider = azureStorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -286,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (_hashBlobClient == null)
             {
-                if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobClient, ConnectionStringNames.Storage))
+                if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobClient))
                 {
                     string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
                     var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);

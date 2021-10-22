@@ -44,29 +44,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Add(new ActiveHostConfigurationSource(_mockScriptHostManager.Object))
                 .Build();
 
-            Assert.Equal("str1", configurationToTest.GetWebJobsConnectionStringSection("connStr1").Value);
-            Assert.Equal("testValue1", configurationToTest.GetWebJobsConnectionStringSection("Storage").Value);
-            Assert.Equal("testValue1", configurationToTest.GetWebJobsConnectionStringSection("AzureWebJobsStorage").Value);
-            Assert.True(configurationToTest.GetWebJobsConnectionStringSection("TestSection1").Exists());
-            Assert.Equal("value1", configurationToTest.GetWebJobsConnectionStringSection("TestSection1").GetValue<string>("someKey"));
+            Assert.Equal("str1", configurationToTest.GetWebJobsConnectionSection("connStr1").Value);
+            Assert.Equal("testValue1", configurationToTest.GetWebJobsConnectionSection("Storage").Value);
+            Assert.Equal("testValue1", configurationToTest.GetWebJobsConnectionSection("AzureWebJobsStorage").Value);
+            Assert.True(configurationToTest.GetWebJobsConnectionSection("TestSection1").Exists());
+            Assert.Equal("value1", configurationToTest.GetWebJobsConnectionSection("TestSection1").GetValue<string>("someKey"));
 
-            Assert.True(configurationToTest.GetWebJobsConnectionStringSection("SectionA:SectionB").Exists());
-            Assert.Equal("middleValue", configurationToTest.GetWebJobsConnectionStringSection("SectionA:SectionB").Value);
-            Assert.Equal("finalValue", configurationToTest.GetWebJobsConnectionStringSection("SectionA:SectionB:SectionC").Value);
+            Assert.True(configurationToTest.GetWebJobsConnectionSection("SectionA:SectionB").Exists());
+            Assert.Equal("middleValue", configurationToTest.GetWebJobsConnectionSection("SectionA:SectionB").Value);
+            Assert.Equal("finalValue", configurationToTest.GetWebJobsConnectionSection("SectionA:SectionB:SectionC").Value);
 
             // Test equal behavior to EnvironmentVariableConfigurationProvider
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("connStr1").Value,
-                            configurationToTest.GetWebJobsConnectionStringSection("connStr1").Value);
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("Storage").Value,
-                            configurationToTest.GetWebJobsConnectionStringSection("Storage").Value);
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("AzureWebJobsStorage").Value,
-                            configurationToTest.GetWebJobsConnectionStringSection("AzureWebJobsStorage").Value);
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("TestSection1").Exists(),
-                            configurationToTest.GetWebJobsConnectionStringSection("TestSection1").Exists());
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("TestSection1").GetValue<string>("someKey"),
-                            configurationToTest.GetWebJobsConnectionStringSection("TestSection1").GetValue<string>("someKey"));
-            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionStringSection("SectionA:SectionB:SectionC").Value,
-                            configurationToTest.GetWebJobsConnectionStringSection("SectionA:SectionB:SectionC").Value);
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("connStr1").Value,
+                            configurationToTest.GetWebJobsConnectionSection("connStr1").Value);
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("Storage").Value,
+                            configurationToTest.GetWebJobsConnectionSection("Storage").Value);
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("AzureWebJobsStorage").Value,
+                            configurationToTest.GetWebJobsConnectionSection("AzureWebJobsStorage").Value);
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("TestSection1").Exists(),
+                            configurationToTest.GetWebJobsConnectionSection("TestSection1").Exists());
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("TestSection1").GetValue<string>("someKey"),
+                            configurationToTest.GetWebJobsConnectionSection("TestSection1").GetValue<string>("someKey"));
+            Assert.Equal(testActiveHostConfig.GetWebJobsConnectionSection("SectionA:SectionB:SectionC").Value,
+                            configurationToTest.GetWebJobsConnectionSection("SectionA:SectionB:SectionC").Value);
         }
 
         [Fact]

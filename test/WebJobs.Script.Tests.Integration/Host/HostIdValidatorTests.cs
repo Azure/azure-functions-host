@@ -6,9 +6,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -21,9 +24,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
         private readonly string _testHostname = "test-host.net";
         private readonly HostIdValidator _hostIdValidator;
         private readonly TestEnvironment _environment;
-        private readonly BlobContainerClient _blobContainerClient;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly Mock<IApplicationLifetime> _mockApplicationLifetime;
+        private BlobContainerClient _blobContainerClient;
         private bool _storageConfigured;
 
         public HostIdValidatorTests()
@@ -42,16 +45,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             var config = new ConfigurationBuilder()
                 .AddEnvironmentVariables()
                 .Build();
-            var azureStorageProvider = TestHelpers.GetAzureStorageProvider(config);
-            _blobContainerClient = azureStorageProvider.GetBlobContainerClient();
+            var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(config);
+            azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _blobContainerClient);
 
-            var mockStorageProvider = new Mock<IAzureStorageProvider>(MockBehavior.Strict);
-            mockStorageProvider.Setup(p => p.ConnectionExists(ConnectionStringNames.Storage)).Returns(() => _storageConfigured);
-            mockStorageProvider.Setup(p => p.GetBlobContainerClient()).Returns(_blobContainerClient);
+            var mockBlobStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
+            mockBlobStorageProvider.Setup(p => p.TryCreateHostingBlobContainerClient(out _blobContainerClient)).Returns(() => _storageConfigured);
 
             var hostNameProvider = new HostNameProvider(_environment);
             _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
-            _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
+            _hostIdValidator = new HostIdValidator(_environment, mockBlobStorageProvider.Object, _mockApplicationLifetime.Object, hostNameProvider, logger);
 
             _storageConfigured = true;
         }
@@ -70,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             _hostIdValidator.ScheduleValidation(_testHostId);
 
             await Task.Delay(2000);
-            HostIdValidator.HostIdInfo hostIdInfo = await _hostIdValidator.ReadHostIdInfoAsync(_testHostId);
+            HostIdValidator.HostIdInfo hostIdInfo = await _hostIdValidator.ReadHostIdInfoAsync(_testHostId, _blobContainerClient);
 
             var logs = _loggerProvider.GetAllLogMessages();
             if (expectHostIdInfo)
@@ -97,7 +99,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -118,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = "test-host2.net"
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -147,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = "test-host2.net"
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -177,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = collision ? "another-test-host.net" : _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             _loggerProvider.ClearAllLogMessages();
 
@@ -185,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             {
                 Hostname = _testHostname
             };
-            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo);
+            await _hostIdValidator.WriteHostIdAsync(_testHostId, hostIdInfo, _blobContainerClient);
 
             var logs = _loggerProvider.GetAllLogMessages();
             if (collision)

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             loggerFactory.AddProvider(loggerProvider);
             var logger = loggerFactory.CreateLogger<HostIdValidator>();
             var hostNameProvider = new HostNameProvider(_environment);
-            var mockStorageProvider = new Mock<IAzureStorageProvider>(MockBehavior.Strict);
+            var mockStorageProvider = new Mock<IAzureBlobStorageProvider>(MockBehavior.Strict);
             var mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Strict);
             _hostIdValidator = new HostIdValidator(_environment, mockStorageProvider.Object, mockApplicationLifetime.Object, hostNameProvider, logger);
             _provider = new ScriptHostIdProvider(_mockConfiguration.Object, _environment, new TestOptionsMonitor<ScriptApplicationHostOptions>(options), _hostIdValidator);

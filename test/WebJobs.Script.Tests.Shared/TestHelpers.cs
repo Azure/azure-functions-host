@@ -15,9 +15,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Storage;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -445,23 +447,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new Uri(container.StorageUri.PrimaryUri, sas);
         }
 
-        public static IAzureStorageProvider GetAzureStorageProvider(IConfiguration configuration, JobHostInternalStorageOptions storageOptions = null)
+        // Creates an IAzureBlobStorageProvider without reacting to Specialization and ActiveHost change. To test the specialization logic, please refer to
+        // Microsoft.Azure.WebJobs.Script.Tests.SpecializationE2ETests.
+        public static IAzureBlobStorageProvider GetAzureBlobStorageProvider(IConfiguration webHostConfiguration, IConfiguration jobHostConfiguration = null, JobHostInternalStorageOptions storageOptions = null, IScriptHostManager scriptHostManager = null)
         {
             IHost tempHost = new HostBuilder()
                 .ConfigureServices(services =>
                 {
-                    // Override configuration
-                    services.AddSingleton(configuration);
-                    services.AddAzureStorageProvider();
-                    TestHostBuilderExtensions.AddMockedSingleton<IScriptHostManager>(services);
-                    if (storageOptions != null)
-                    {
-                        services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));
-                    }
-                }).Build();
+                    AddTestAzureBlobStorageProvider(services, jobHostConfiguration ?? webHostConfiguration, scriptHostManager: scriptHostManager);
+                })
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddConfiguration(webHostConfiguration);
+                })
+                .Build();
 
-            var azureStorageProvider = tempHost.Services.GetRequiredService<IAzureStorageProvider>();
-            return azureStorageProvider;
+            var azureBlobStorageProvider = tempHost.Services.GetRequiredService<IAzureBlobStorageProvider>();
+            return azureBlobStorageProvider;
+        }
+
+        public static IServiceCollection AddTestAzureBlobStorageProvider(IServiceCollection services, IConfiguration configuration,  JobHostInternalStorageOptions storageOptions = null, IScriptHostManager scriptHostManager = null)
+        {
+            // Adds necessary Azure services to create clients
+            services.AddAzureClientsCore();
+
+            if (scriptHostManager == null)
+            {
+                scriptHostManager = new TestScriptHostService(configuration);
+            }
+
+            services.AddSingleton<IScriptHostManager>(scriptHostManager);
+            if (storageOptions != null)
+            {
+                services.AddTransient<IOptions<JobHostInternalStorageOptions>>(s => new OptionsWrapper<JobHostInternalStorageOptions>(storageOptions));
+            }
+
+            services.AddSingleton<IAzureBlobStorageProvider, HostAzureBlobStorageProvider>();
+
+            return services;
         }
 
         /// <summary>
@@ -476,6 +499,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
                  .Returns(httpClient);
             return mockFactory.Object;
+        }
+
+        /// <summary>
+        /// Test class for IScriptHostManager to register an IAzureBlobStorageProvider.
+        /// </summary>
+        public class TestScriptHostService : IScriptHostManager, IServiceProvider
+        {
+            private readonly IConfiguration _configuration;
+
+            public TestScriptHostService(IConfiguration configuration)
+            {
+                _configuration = configuration;
+            }
+
+            event EventHandler IScriptHostManager.HostInitializing
+            {
+                add
+                {
+                    throw new NotImplementedException();
+                }
+
+                remove
+                {
+                    throw new NotImplementedException();
+                }
+            }
+
+            public event EventHandler<ActiveHostChangedEventArgs> ActiveHostChanged;
+
+            ScriptHostState IScriptHostManager.State => throw new NotImplementedException();
+
+            Exception IScriptHostManager.LastError => throw new NotImplementedException();
+
+            public void OnActiveHostChanged()
+            {
+                ActiveHostChanged?.Invoke(this, new ActiveHostChangedEventArgs(null, null));
+            }
+
+            object IServiceProvider.GetService(Type serviceType)
+            {
+                if (serviceType == typeof(IConfiguration))
+                {
+                    return _configuration;
+                }
+
+                throw new NotImplementedException();
+            }
+
+            Task IScriptHostManager.RestartHostAsync(CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

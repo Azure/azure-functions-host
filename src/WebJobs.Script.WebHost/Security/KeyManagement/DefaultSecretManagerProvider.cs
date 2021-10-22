@@ -5,8 +5,8 @@ using System;
 using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,11 +24,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IEnvironment _environment;
         private readonly HostNameProvider _hostNameProvider;
         private readonly StartupContextProvider _startupContextProvider;
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private Lazy<ISecretManager> _secretManagerLazy;
 
         public DefaultSecretManagerProvider(IOptionsMonitor<ScriptApplicationHostOptions> options, IHostIdProvider hostIdProvider,
-            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider, IAzureStorageProvider azureStorageProvider)
+            IConfiguration configuration, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger, HostNameProvider hostNameProvider, StartupContextProvider startupContextProvider, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             if (loggerFactory == null)
             {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // When these options change (due to specialization), we need to reset the secret manager.
             options.OnChange(_ => ResetSecretManager());
 
-            _azureStorageProvider = azureStorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider ?? throw new ArgumentNullException(nameof(azureBlobStorageProvider));
         }
 
         public ISecretManager Current => _secretManagerLazy.Value;
@@ -93,9 +93,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                                                  siteSlotName,
                                                                  _loggerFactory.CreateLogger<BlobStorageSasSecretsRepository>(),
                                                                  _environment,
-                                                                 _azureStorageProvider);
+                                                                 _azureBlobStorageProvider);
             }
-            else if (_azureStorageProvider.ConnectionExists(ConnectionStringNames.Storage))
+            else if (_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out _))
             {
                 string siteSlotName = _environment.GetAzureWebsiteUniqueSlotName() ?? _hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult();
                 repository = new BlobStorageSecretsRepository(Path.Combine(_options.CurrentValue.SecretsPath, "Sentinels"),
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                                                               siteSlotName,
                                                               _loggerFactory.CreateLogger<BlobStorageSecretsRepository>(),
                                                               _environment,
-                                                              _azureStorageProvider);
+                                                              _azureBlobStorageProvider);
             }
             else
             {
