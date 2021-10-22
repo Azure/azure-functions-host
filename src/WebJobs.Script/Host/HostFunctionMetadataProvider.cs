@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _functions = functionMetadata.ToImmutableArray();
             }
 
-            await Task.Delay(0);
+            await Task.FromResult(0);
             return _functions;
         }
 
