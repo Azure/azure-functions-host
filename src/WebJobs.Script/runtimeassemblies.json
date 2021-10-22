@@ -52,8 +52,36 @@
       "resolutionPolicy": "private"
     },
     {
+      "name": "Microsoft.AI.DependencyCollector",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.AI.EventCounterCollector",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.AI.PerfCounterCollector",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.AI.ServerTelemetryChannel",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.AI.WindowsServer",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.ApplicationInsights",
       "resolutionPolicy": "runtimeVersion"
+    },
+    {
+      "name": "Microsoft.ApplicationInsights.AspNetCore",
+      "resolutionPolicy": "private"
+    },
+    {
+      "name": "Microsoft.ApplicationInsights.SnapshotCollector",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.AspNetCore",
@@ -453,7 +481,7 @@
     },
     {
       "name": "Microsoft.Azure.WebJobs.Logging.ApplicationInsights",
-      "resolutionPolicy": "minorMatchOrLower"
+      "resolutionPolicy": "private"
     },
     {
       "name": "Microsoft.Azure.WebJobs.Script",
@@ -648,6 +676,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Extensions.Logging.ApplicationInsights",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "Microsoft.Extensions.Logging.Configuration",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -758,6 +790,10 @@
     {
       "name": "Microsoft.Win32.Registry",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "Microsoft.Win32.SystemEvents",
+      "resolutionPolicy": "private"
     },
     {
       "name": "Mono.Posix.NETStandard",
@@ -880,6 +916,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Configuration.ConfigurationManager",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.Console",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -924,6 +964,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Diagnostics.PerformanceCounter",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.Diagnostics.Process",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -950,6 +994,10 @@
     {
       "name": "System.Drawing",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Drawing.Common",
+      "resolutionPolicy": "private"
     },
     {
       "name": "System.Drawing.Primitives",
@@ -1352,6 +1400,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "System.Security.Permissions",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.Security.Principal",
       "resolutionPolicy": "minorMatchOrLower"
     },
@@ -1458,6 +1510,10 @@
     {
       "name": "System.Windows",
       "resolutionPolicy": "minorMatchOrLower"
+    },
+    {
+      "name": "System.Windows.Extensions",
+      "resolutionPolicy": "private"
     },
     {
       "name": "System.Xml",
