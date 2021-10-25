@@ -49,8 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _functions = functionMetadata.ToImmutableArray();
             }
 
-            await Task.FromResult(0);
-            return _functions;
+            return await Task.FromResult(_functions);
         }
 
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, IFileSystem fileSystem = null)

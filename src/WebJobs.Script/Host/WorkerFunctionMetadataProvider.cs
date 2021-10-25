@@ -43,8 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
-            await Task.FromResult(0);
-            return GetFunctionMetadataAsync(forceRefresh).GetAwaiter().GetResult();
+            return await GetFunctionMetadataAsync(forceRefresh);
         }
 
         internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh)
