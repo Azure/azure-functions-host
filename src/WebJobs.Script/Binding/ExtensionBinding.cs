@@ -9,8 +9,10 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Binding
@@ -42,6 +44,33 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             return attributeBuilders;
         }
 
+        /// <summary>
+        /// Try to add appropriate attributes into the <see cref="BindingContext"/>, related to the shared memory region that holds the object.
+        /// These attributes are used during the binding process to read/write from shared memory.
+        /// </summary>
+        private async Task<bool> TryPrepareAttributesAndBindCacheAwareAsync(BindingContext context, FileAccess access)
+        {
+            if (access == FileAccess.Write)
+            {
+                if (context.Value is SharedMemoryObject sharedMemoryObj)
+                {
+                    // First copy the attributes and then add a specific attribute (mapName) for the particular invocation.
+                    var currentAttributes = Attributes.ToList();
+                    SharedMemoryAttribute sharedMemoryAttribute = new SharedMemoryAttribute(sharedMemoryObj.MemoryMapName, sharedMemoryObj.Count);
+                    currentAttributes.Add(sharedMemoryAttribute);
+                    context.Attributes = currentAttributes.ToArray();
+                }
+                else
+                {
+                    // When binding in a cache aware manner, the write object must already be in shared memory
+                    return false;
+                }
+            }
+
+            await BindCacheAwareAsync(context, access);
+            return true;
+        }
+
         public override async Task BindAsync(BindingContext context)
         {
             context.Attributes = Attributes.ToArray();
@@ -60,6 +89,14 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             }
             else if (_binding.DefaultType == typeof(Stream))
             {
+                if (ScriptHost.IsFunctionDataCacheEnabled)
+                {
+                    if (await TryPrepareAttributesAndBindCacheAwareAsync(context, Access))
+                    {
+                        return;
+                    }
+                }
+
                 await BindStreamAsync(context, Access);
             }
             else if (_binding.DefaultType == typeof(JObject))

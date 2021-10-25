@@ -115,6 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
+        public const string FeatureFlagDisableAspNetCoreGrpc = "DisableAspNetCoreGrpc";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
@@ -179,6 +180,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string Windows64BitRID = "win-x64";
         public const string Windows32BitRID = "win-x86";
         public const string WorkFlowAppKind = "workflowapp";
+        public const string LogicAppDefaultExtensionBundleVersion = "[1.*, 2.0.0)";
+        public const string DefaultExtensionBundleVersion = "[2.*, 3.0.0)";
 
         public const string AzureMonitorTraceCategory = "FunctionAppLogs";
 

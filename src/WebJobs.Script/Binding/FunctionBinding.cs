@@ -10,9 +10,9 @@ using System.IO;
 using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -235,6 +235,51 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
                 object converted = context.Value;
                 ConvertStreamToValue(stream, context.DataType, ref converted);
                 context.Value = converted;
+            }
+        }
+
+        /// <summary>
+        /// Binds the object based on the given <see cref="BindingContext"/> in a manner that is aware of the presence of <see cref="IFunctionDataCache"/>.
+        /// This means that before reading an object, it will be attempted to be read from the cache. When writing, it will be attempted to be written to the cache.
+        /// In case of a read access (i.e., <see cref="FileAccess.Read"/>), the binding may be delayed as the object could be read either from the cache or storage.
+        /// The actual conversion is thus delayed to <see cref="RpcSharedMemoryDataExtension"/>.
+        /// </summary>
+        internal static async Task BindCacheAwareAsync(BindingContext context, FileAccess access)
+        {
+            if (access == FileAccess.Write)
+            {
+                ICacheAwareWriteObject obj = await context.Binder.BindAsync<ICacheAwareWriteObject>(context.Attributes);
+
+                if (context.Value is SharedMemoryObject sharedMemoryObj)
+                {
+                    using (Stream sharedMemoryStream = sharedMemoryObj.Content)
+                    using (Stream blobStream = obj.BlobStream)
+                    {
+                        await sharedMemoryStream.CopyToAsync(blobStream);
+                        await blobStream.FlushAsync();
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException($"Cannot perform cache-aware binding of write object with type: {context.Value.GetType()}");
+                }
+
+                context.Value = obj;
+            }
+            else if (access == FileAccess.Read)
+            {
+                ICacheAwareReadObject obj = await context.Binder.BindAsync<ICacheAwareReadObject>(context.Attributes);
+
+                // We get a binding to the object. It could either be read from the cache or from storage.
+                // Therefore, we delay the conversion into the actual object to the RpcSharedMemoryDataExtension.
+                // The extension will check if the object was already in the cache, then no conversion is necessary.
+                // If the object was not in the cache then it will be read directly into shared memory without creating extra
+                // intermediate copies.
+                context.Value = obj;
+            }
+            else
+            {
+                throw new NotSupportedException($"FileAccess: {access} not supported in CacheAware mode");
             }
         }
 

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -66,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Verify expected results
                 Assert.NotNull(metadata);
-                Assert.NotNull(metadata.Name);
-                Assert.True(Guid.TryParse(metadata.Name, out _));
+                Assert.NotNull(metadata.MemoryMapName);
+                Assert.True(Guid.TryParse(metadata.MemoryMapName, out _));
                 Assert.Equal(contentSize, metadata.Count);
             }
         }
@@ -76,8 +77,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         /// Put a <see cref="string"/> object into shared memory.
         /// </summary>
         /// <param name="content">String content to put.</param>
-        [InlineData("")]
         [InlineData("foo")]
+        [InlineData("f")]
         [Theory]
         public async Task PutObject_String_VerifySuccess(string content)
         {
@@ -88,9 +89,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
                 // Verify expected results
                 Assert.NotNull(metadata);
-                Assert.NotNull(metadata.Name);
-                Assert.True(Guid.TryParse(metadata.Name, out _));
+                Assert.NotNull(metadata.MemoryMapName);
+                Assert.True(Guid.TryParse(metadata.MemoryMapName, out _));
                 Assert.Equal(content.Length, metadata.Count);
+            }
+        }
+
+        /// <summary>
+        /// Put an empty <see cref="string"/> object into shared memory.
+        /// </summary>
+        [Fact]
+        public async Task PutObject_EmptyString_VerifyFailure()
+        {
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            {
+                // Put into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(string.Empty);
+
+                // Verify expected results
+                Assert.Null(metadata);
+            }
+        }
+
+        /// <summary>
+        /// Put an empty <see cref="byte[]"/> object into shared memory.
+        /// </summary>
+        [Fact]
+        public async Task PutObject_EmptyByteArray_VerifyFailure()
+        {
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            {
+                // Put into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(new byte[0]);
+
+                // Verify expected results
+                Assert.Null(metadata);
             }
         }
 
@@ -114,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
 
                 // Get object from shared memory
-                object readObject = await manager.GetObjectAsync(metadata.Name, 0, contentSize, typeof(byte[]));
+                object readObject = await manager.GetObjectAsync(metadata.MemoryMapName, 0, contentSize, typeof(byte[]));
                 byte[] readContent = readObject as byte[];
 
                 // Verify read content matches the content that was written
@@ -126,8 +159,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         /// Get a <see cref="string"/> object from shared memory.
         /// </summary>
         /// <param name="content">String content to put/get.</param>
-        [InlineData("")]
         [InlineData("foo")]
+        [InlineData("f")]
         [Theory]
         public async Task GetObject_String_VerifyMatches(string content)
         {
@@ -137,11 +170,61 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
 
                 // Get object from shared memory
-                object readObject = await manager.GetObjectAsync(metadata.Name, 0, content.Length, typeof(string));
+                object readObject = await manager.GetObjectAsync(metadata.MemoryMapName, 0, content.Length, typeof(string));
                 string readContent = readObject as string;
 
                 // Verify read content matches the content that was written
                 Assert.Equal(content, readContent);
+            }
+        }
+
+        /// <summary>
+        /// Get a <see cref="SharedMemoryObject"/> from shared memory.
+        /// </summary>
+        /// <param name="content">String content to put/get.</param>
+        [InlineData("a")]
+        [InlineData("foo123456789bar")]
+        [Theory]
+        public async Task GetObject_SharedMemoryObject_VerifyMatches(string content)
+        {
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            {
+                // Put content into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
+
+                // Get object from shared memory
+                object readObject = await manager.GetObjectAsync(metadata.MemoryMapName, 0, content.Length, typeof(SharedMemoryObject));
+                SharedMemoryObject readContent = readObject as SharedMemoryObject;
+                Stream readContentStream = readContent.Content;
+
+                Assert.NotNull(readContentStream);
+                Assert.Equal(metadata.MemoryMapName, readContent.MemoryMapName);
+                Assert.Equal(metadata.Count, readContent.Count);
+
+                using (StreamReader reader = new StreamReader(readContentStream))
+                {
+                    string readContentString = await reader.ReadToEndAsync();
+
+                    // Verify read content matches the content that was written
+                    Assert.Equal(content, readContentString);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get a <see cref="SharedMemoryObject"/> from shared memory for an object with zero-byte content.
+        /// </summary>
+        [Fact]
+        public async Task GetObject_EmptyContent_SharedMemoryObject_VerifyException()
+        {
+            using (SharedMemoryManager manager = new SharedMemoryManager(_loggerFactory, _mapAccessor))
+            using (Stream content = new MemoryStream())
+            {
+                // Put content into shared memory
+                SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
+
+                // Get object from shared memory
+                await Assert.ThrowsAnyAsync<Exception>(() => manager.GetObjectAsync(metadata.MemoryMapName, 0, (int)content.Length, typeof(SharedMemoryObject)));
             }
         }
 
@@ -219,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 // Put content into shared memory
                 SharedMemoryMetadata metadata = await manager.PutObjectAsync(content);
-                string mapName = metadata.Name;
+                string mapName = metadata.MemoryMapName;
 
                 // Free the shared memory map and try top open it after freeing; should not open
                 Assert.True(manager.TryFreeSharedMemoryMap(mapName));
@@ -246,10 +329,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             {
                 // Put content into shared memory and add mapping to invocations
                 SharedMemoryMetadata metadata1 = await manager.PutObjectAsync(content);
-                string mapName1 = metadata1.Name;
+                string mapName1 = metadata1.MemoryMapName;
                 manager.AddSharedMemoryMapForInvocation(invocationId1, mapName1);
                 SharedMemoryMetadata metadata2 = await manager.PutObjectAsync(content);
-                string mapName2 = metadata2.Name;
+                string mapName2 = metadata2.MemoryMapName;
                 manager.AddSharedMemoryMapForInvocation(invocationId2, mapName2);
 
                 // Free the shared memory maps for invocation1 and try top open it after freeing; should not open
@@ -351,10 +434,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             // Put content into shared memory and add mapping to invocations
             SharedMemoryMetadata metadata1 = await manager.PutObjectAsync(content);
-            string mapName1 = metadata1.Name;
+            string mapName1 = metadata1.MemoryMapName;
             manager.AddSharedMemoryMapForInvocation(invocationId1, mapName1);
             SharedMemoryMetadata metadata2 = await manager.PutObjectAsync(content);
-            string mapName2 = metadata2.Name;
+            string mapName2 = metadata2.MemoryMapName;
             manager.AddSharedMemoryMapForInvocation(invocationId2, mapName2);
 
             // Open the shared memory map; should open

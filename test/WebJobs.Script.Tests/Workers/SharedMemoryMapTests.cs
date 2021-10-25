@@ -185,6 +185,62 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         /// <summary>
+        /// Create a <see cref="SharedMemoryMap"/> and put some content in it using <see cref="byte[]"/> and try to read it back
+        /// as a <see cref="Stream"/>.
+        /// Since <see cref="byte[]"/> cannot be more than 2GB, that's the maximum we will try to put.
+        /// Verify that the content read matches what was written.
+        /// </summary>
+        /// <param name="contentSize">Size of content to put inside the <see cref="SharedMemoryMap"/>.</param>
+        [InlineData(10)]
+        [InlineData(100)]
+        [InlineData(1024)] // 1KB
+        [InlineData(1024 * 1024)] // 1MB
+        [InlineData(256 * 1024 * 1024)] // 256MB
+        [InlineData(1024 * 1024 * 1024, Skip = "Results in OOM when run on test infra")] // 1GB
+        [Theory]
+        public async Task GetStream_VerifyContentMatches(int contentSize)
+        {
+            string mapName = Guid.NewGuid().ToString();
+            SharedMemoryMap sharedMemoryMap = Create(mapName, contentSize);
+            byte[] content = TestUtils.GetRandomBytesInArray(contentSize);
+
+            long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
+            Assert.Equal(contentSize, bytesWritten);
+
+            Stream readContent = await sharedMemoryMap.GetStreamAsync();
+
+            // Read content into MemoryStream to easily put them into a byte[].
+            using (MemoryStream tempStream = new MemoryStream())
+            {
+                await readContent.CopyToAsync(tempStream);
+                byte[] readBytes = tempStream.ToArray();
+                Assert.Equal(content, readBytes);
+            }
+
+            sharedMemoryMap.Dispose();
+        }
+
+        /// <summary>
+        /// Create an empty content and try to read it back; verify that <see cref="SharedMemoryMap.GetStreamAsync"/>
+        /// returns <see cref="null"/>.
+        /// </summary>
+        [Fact]
+        public async Task GetStream_EmptyContent_VerifyContentMatches()
+        {
+            string mapName = Guid.NewGuid().ToString();
+            SharedMemoryMap sharedMemoryMap = Create(mapName, 0);
+            byte[] content = TestUtils.GetRandomBytesInArray(0);
+
+            long bytesWritten = await sharedMemoryMap.PutBytesAsync(content);
+            Assert.Equal(0, bytesWritten);
+
+            Stream readStream = await sharedMemoryMap.GetStreamAsync();
+            Assert.Null(readStream);
+
+            sharedMemoryMap.Dispose();
+        }
+
+        /// <summary>
         /// Create a <see cref="SharedMemoryMap"/> and put some content in it using <see cref="UnmanagedMemoryStream"/> and try to read it back.
         /// Since <see cref="UnmanagedMemoryStream"/> can hold more than 2GB data, we try it with larger inputs.
         /// Verify that the content read matches what was written.

@@ -218,6 +218,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_InitFilePresent()
+        {
+            var functionConfig = new JObject();
+            var files = new Dictionary<string, MockFileData>
+            {
+                { @"c:\functions\__init__.py", new MockFileData(string.Empty) },
+                { @"c:\functions\helloworld.py", new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt", new MockFileData(string.Empty) }
+            };
+            var fileSystem = new MockFileSystem(files);
+
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem);
+            Assert.Equal(@"c:\functions\__init__.py", scriptFile);
+        }
+
+        [Fact]
         public void DeterminePrimaryScriptFile_SingleFile()
         {
             var files = new Dictionary<string, MockFileData>
@@ -245,18 +261,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"c:\functions\run.js", scriptFile);
         }
 
-        [Fact]
-        public void DeterminePrimaryScriptFile_MultipleFiles_IndexFilePresent()
+        [Theory]
+        [InlineData("index.js", @"c:\functions\index.js")]
+        [InlineData("__init__.py", @"c:\functions\__init__.py")]
+        public void DeterminePrimaryScriptFile_MultipleFiles_DefaultFilePresent(string scriptFileProperty, string expectedScriptFilePath)
         {
             var files = new Dictionary<string, MockFileData>
             {
-                { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { expectedScriptFilePath, new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile("index.js", @"c:\functions", fileSystem);
-            Assert.Equal(@"c:\functions\index.js", scriptFile);
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
+            Assert.Equal(expectedScriptFilePath, scriptFile);
         }
 
         [Theory]
@@ -264,16 +282,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("queueTrigger.py", @"c:\functions\queueTrigger.py")]
         [InlineData("helper.py", @"c:\functions\helper.py")]
         [InlineData("test.txt", @"c:\functions\test.txt")]
-        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string scriptFileProperty, string expedtedScriptFilePath)
+        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string scriptFileProperty, string expectedScriptFilePath)
         {
             var files = new Dictionary<string, MockFileData>
             {
-                { expedtedScriptFilePath, new MockFileData(string.Empty) }
+                { expectedScriptFilePath, new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
             string actualScriptFilePath = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
-            Assert.Equal(expedtedScriptFilePath, actualScriptFilePath);
+            Assert.Equal(expectedScriptFilePath, actualScriptFilePath);
         }
 
         [Theory]
@@ -285,6 +303,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { @"c:\functions\queueTrigger.py", new MockFileData(string.Empty) },
                 { @"c:\functions\helper.py", new MockFileData(string.Empty) },
+                { @"c:\functions\__init__.py", new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);

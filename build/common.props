@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
     <MajorVersion>3</MajorVersion>
-    <MinorVersion>2</MinorVersion>
+    <MinorVersion>4</MinorVersion>
     <PatchVersion>0</PatchVersion>
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
@@ -45,9 +45,5 @@
   <ItemGroup>
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)..\stylecop.json" Link="stylecop.json" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="3.3.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.3.1" />
-  </ItemGroup>
+
 </Project>

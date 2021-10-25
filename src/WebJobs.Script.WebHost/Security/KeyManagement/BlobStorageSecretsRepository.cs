@@ -67,6 +67,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
+        public override string Name => nameof(BlobStorageSecretsRepository);
+
         protected virtual BlobContainerClient CreateBlobContainerClient(string connection)
         {
             if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connection))

@@ -20,6 +20,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -274,6 +275,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var hasWarning = logs.Any(p => p.Contains("project.json' should not be used to reference NuGet packages. Try creating a 'function.proj' file instead. Learn more: https://go.microsoft.com/fwlink/?linkid=2091419"));
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             Assert.Equal(true, hasWarning);
+        }
+
+        [Fact]
+        public void MultipleTriggers_ShowsHelpfulMessage()
+        {
+            var logs = Fixture.Host.StartupLogs.Where(p => p.Level == LogLevel.Error && p.FormattedMessage.Contains("MultipleTriggers")).Select(p => p.FormattedMessage).Where(p => p != null).ToArray();
+            var log = logs.Single();
+            Assert.Equal("The 'MultipleTriggers' function is in error: Multiple trigger bindings defined. A function can only have a single trigger binding.", log);
         }
 
         [Fact]
@@ -578,7 +587,8 @@ namespace SecondaryDependency
                         "QueueTriggerToBlob",
                         "Scenarios",
                         "FunctionIndexingError",
-                        "MissingAssemblies"
+                        "MissingAssemblies",
+                        "MultipleTriggers"
                     };
                 });
 

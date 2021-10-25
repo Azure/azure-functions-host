@@ -60,6 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                .Subscribe(WorkerRestart);
         }
 
+        // For tests
+        internal HttpFunctionInvocationDispatcher()
+        {
+        }
+
         public FunctionInvocationDispatcherState State { get; private set; }
 
         public int ErrorEventsThreshold { get; private set; }
@@ -118,6 +123,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger.LogDebug("Handling WorkerRestartEvent for workerId:{workerId}", workerRestart.WorkerId);
                 await DisposeAndRestartWorkerChannel(workerRestart.WorkerId);
             }
+        }
+
+        public Task StartWorkerChannel()
+        {
+            // currently only one worker
+            return Task.CompletedTask;
         }
 
         private async Task DisposeAndRestartWorkerChannel(string workerId)

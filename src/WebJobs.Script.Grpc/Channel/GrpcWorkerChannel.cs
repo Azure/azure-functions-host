@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -40,6 +41,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly IEnvironment _environment;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private readonly ISharedMemoryManager _sharedMemoryManager;
+        private readonly List<TimeSpan> _workerStatusLatencyHistory = new List<TimeSpan>();
+        private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -68,6 +71,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
 
+        private object _syncLock = new object();
+        private System.Timers.Timer _timer;
+
         internal GrpcWorkerChannel(
            string workerId,
            IScriptEventManager eventManager,
@@ -78,7 +84,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
            int attemptCount,
            IEnvironment environment,
            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           ISharedMemoryManager sharedMemoryManager)
+           ISharedMemoryManager sharedMemoryManager,
+           IFunctionDataCache functionDataCache,
+           IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -90,6 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _environment = environment;
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
+            _workerConcurrencyOptions = workerConcurrencyOptions;
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
@@ -133,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
         }
 
-        public async Task StartWorkerProcessAsync()
+        public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
@@ -173,6 +182,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
             }
 
+            workerStatus.IsReady = IsChannelReadyForInvocations();
+            if (_environment.IsWorkerDynamicConcurrencyEnabled())
+            {
+                workerStatus.LatencyHistory = GetLatencies();
+            }
+
             return workerStatus;
         }
 
@@ -192,6 +207,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
                 initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
+            }
+
+            if (ScriptHost.IsFunctionDataCacheEnabled)
+            {
+                // FunctionDataCache is available from the host side - we send this to the worker.
+                // As long as the worker replies back with the SharedMemoryDataTransfer capability, the cache
+                // can be used.
+                initRequest.Capabilities.Add(RpcWorkerConstants.FunctionDataCache, "true");
             }
 
             SendStreamingMessage(new StreamingMessage
@@ -238,6 +261,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
+
+            if (!_isSharedMemoryDataTransferEnabled)
+            {
+                // If the worker does not support using shared memory data transfer, caching must also be disabled
+                ScriptHost.IsFunctionDataCacheEnabled = false;
+            }
+
             _workerInitTask.SetResult(true);
         }
 
@@ -505,7 +535,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 case ParameterBindingType.RpcSharedMemory:
                     // Data was transferred by the worker using shared memory
-                    return await binding.RpcSharedMemory.ToObjectAsync(_workerChannelLogger, invocationId, _sharedMemoryManager);
+                    return await binding.RpcSharedMemory.ToObjectAsync(_workerChannelLogger, invocationId, _sharedMemoryManager, ScriptHost.IsFunctionDataCacheEnabled);
                 case ParameterBindingType.Data:
                     // Data was transferred by the worker using RPC
                     return binding.Data.ToObject();
@@ -579,7 +609,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 finally
                 {
-                    // Free memory allocated by the host (for input bindings)
+                    // Free memory allocated by the host (for input bindings) which was needed only for the duration of this invocation
                     if (!_sharedMemoryManager.TryFreeSharedMemoryMapsForInvocation(invokeResponse.InvocationId))
                     {
                         _workerChannelLogger.LogWarning($"Cannot free all shared memory resources for invocation: {invokeResponse.InvocationId}");
@@ -602,6 +632,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         /// <param name="outputMaps">List of names of shared memory maps to close from the worker.</param>
         internal void SendCloseSharedMemoryResourcesForInvocationRequest(IList<string> outputMaps)
         {
+            // Request the worker to drop its references to any shared memory maps that it had produced.
+            // This is because the host has read them (or holds a reference to them if caching is enabled.)
+            // The worker will not delete the resources allocated for the memory maps; it will only drop its reference
+            // so that the worker process does not prevent the OS from freeing the memory maps when the host attempts
+            // to free them (either right away after reading them or if caching is enabled, then when the cache decides
+            // to evict that object based on its eviction policy).
             CloseSharedMemoryResourcesRequest closeSharedMemoryResourcesRequest = new CloseSharedMemoryResourcesRequest();
             closeSharedMemoryResourcesRequest.MapNames.AddRange(outputMaps);
 
@@ -736,6 +772,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _startLatencyMetric?.Dispose();
                     _startSubscription?.Dispose();
+                    _timer?.Dispose();
 
                     // unlink function inputs
                     foreach (var link in _inputLinks)
@@ -828,6 +865,65 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.SharedMemoryDataTransfer));
             _workerChannelLogger.LogDebug("IsSharedMemoryDataTransferEnabled: {SharedMemoryDataTransferEnabled}", capabilityEnabled);
             return capabilityEnabled;
+        }
+
+        internal void EnsureTimerStarted()
+        {
+            if (_environment.IsWorkerDynamicConcurrencyEnabled())
+            {
+                lock (_syncLock)
+                {
+                    if (_timer == null)
+                    {
+                        _timer = new System.Timers.Timer()
+                        {
+                            AutoReset = false,
+                            Interval = _workerConcurrencyOptions.Value.CheckInterval.TotalMilliseconds,
+                        };
+
+                        _timer.Elapsed += OnTimer;
+                        _timer.Start();
+                    }
+                }
+            }
+        }
+
+        internal IEnumerable<TimeSpan> GetLatencies()
+        {
+            EnsureTimerStarted();
+            return _workerStatusLatencyHistory;
+        }
+
+        internal async void OnTimer(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                WorkerStatus workerStatus = await GetWorkerStatusAsync();
+                AddSample(_workerStatusLatencyHistory, workerStatus.Latency);
+            }
+            catch
+            {
+                // Don't allow background execptions to escape
+                // E.g. when a rpc channel is shutting down we can process exceptions
+            }
+            _timer.Start();
+        }
+
+        private void AddSample<T>(List<T> samples, T sample)
+        {
+            lock (_syncLock)
+            {
+                if (samples.Count == _workerConcurrencyOptions.Value.HistorySize)
+                {
+                    samples.RemoveAt(0);
+                }
+                samples.Add(sample);
+            }
         }
     }
 }

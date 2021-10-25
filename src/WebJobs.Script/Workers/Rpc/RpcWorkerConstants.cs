@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string FunctionsWorkerSharedMemoryDataTransferEnabledSettingName = "FUNCTIONS_WORKER_SHARED_MEMORY_DATA_TRANSFER_ENABLED";
+
         // Comma-separated list of directories where shared memory maps can be created for data transfer between host and worker.
         // This will override the default directories.
         public const string FunctionsUnixSharedMemoryDirectories = "FUNCTIONS_UNIX_SHARED_MEMORY_DIRECTORIES";
@@ -43,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string WorkerStatus = "WorkerStatus";
         public const string UseNullableValueDictionaryForHttp = "UseNullableValueDictionaryForHttp";
         public const string SharedMemoryDataTransfer = "SharedMemoryDataTransfer";
+        public const string FunctionDataCache = "FunctionDataCache";
 
         // Host Capabilites
         public const string V2Compatable = "V2Compatable";
@@ -51,5 +53,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string DotNetExecutableName = "dotnet";
         public const string DotNetExecutableNameWithExtension = DotNetExecutableName + ".exe";
         public const string DotNetFolderName = "dotnet";
+
+        // Language worker concurrency limits
+        public const string FunctionsWorkerDynamicConcurrencyEnabled = "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED";
+        public const string FunctionsWorkerRemoveConcurrencyLimits = "FUNCTIONS_WORKER_REMOVE_CONCURRENCY_LIMITS";
+        public const string PythonThreadpoolThreadCount = "PYTHON_THREADPOOL_THREAD_COUNT";
+        public const string PSWorkerInProcConcurrencyUpperBound = "PSWorkerInProcConcurrencyUpperBound";
+        public const string DefaultConcurrencyLimit = "1000";
     }
 }

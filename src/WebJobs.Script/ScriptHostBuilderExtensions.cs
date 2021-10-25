@@ -253,6 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.AddSingleton<IScriptJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IJobHost>(p => p.GetRequiredService<ScriptHost>());
                 services.AddSingleton<IFunctionProvider, ProxyFunctionProvider>();
+                services.AddSingleton<IHostedService, WorkerConcurrencyManager>();
 
                 services.AddSingleton<ITypeLocator, ScriptTypeLocator>();
                 services.AddSingleton<ScriptSettingsManager>();
@@ -273,6 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 services.ConfigureOptions<JobHostFunctionTimeoutOptionsSetup>();
                 // LanguageWorkerOptionsSetup should be registered in WebHostServiceCollection as well to enable starting worker processing in placeholder mode.
                 services.ConfigureOptions<LanguageWorkerOptionsSetup>();
+                services.AddOptions<WorkerConcurrencyOptions>();
                 services.ConfigureOptions<HttpWorkerOptionsSetup>();
                 services.ConfigureOptions<ManagedDependencyOptionsSetup>();
                 services.AddOptions<FunctionResultAggregatorOptions>()
@@ -330,6 +332,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // to be careful with caching, etc. E.g. these services will get
             // initially created in placeholder mode and live on through the
             // specialized app.
+            services.AddSingleton<HostNameProvider>();
+            services.AddSingleton<HostIdValidator>();
             services.AddSingleton<IHostIdProvider, ScriptHostIdProvider>();
             services.TryAddSingleton<IScriptEventManager, ScriptEventManager>();
 
@@ -345,6 +349,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IEnvironment>(SystemEnvironment.Instance);
             services.TryAddSingleton<HostPerformanceManager>();
             services.ConfigureOptions<HostHealthMonitorOptionsSetup>();
+
             AddProcessRegistry(services);
         }
 

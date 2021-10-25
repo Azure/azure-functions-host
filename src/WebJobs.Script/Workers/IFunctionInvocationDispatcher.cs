@@ -30,5 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Task FinishInitialization(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 
         Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata();
+
+        Task StartWorkerChannel();
     }
 }
