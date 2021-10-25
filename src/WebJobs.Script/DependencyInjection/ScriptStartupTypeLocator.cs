@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
     /// </summary>
     public class ScriptStartupTypeLocator : IWebJobsStartupTypeLocator
     {
+        private const string ApplicationInsightsStartupType = "Microsoft.Azure.WebJobs.Extensions.ApplicationInsights.ApplicationInsightsWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.ApplicationInsights, Version=1.0.0.0, Culture=neutral, PublicKeyToken=9475d07f10cb09df";
+
         private readonly string _rootScriptPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
@@ -161,6 +163,13 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             foreach (var extensionItem in extensionItems)
             {
+                // We need to explicitly ignore ApplicationInsights extension
+                if (extensionItem.TypeName.Equals(ApplicationInsightsStartupType, StringComparison.Ordinal))
+                {
+                    _logger.LogWarning("The Application Insights extension is no longer supported. Package references to Microsoft.Azure.WebJobs.Extensions.ApplicationInsights can be removed.");
+                    continue;
+                }
+
                 if (!bundleConfigured
                     || extensionItem.Bindings.Count == 0
                     || extensionItem.Bindings.Intersect(bindingsSet, StringComparer.OrdinalIgnoreCase).Any())
