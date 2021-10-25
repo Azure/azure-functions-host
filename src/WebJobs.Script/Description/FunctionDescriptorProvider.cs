@@ -211,15 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
         {
-            if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
-            {
-                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
-            }
-
-            if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
-            {
-                throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
-            }
+            Utility.ValidateBinding(bindingMetadata);
 
             if (bindingMetadata.Type == null)
             {

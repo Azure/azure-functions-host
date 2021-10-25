@@ -26,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     public class WorkerFunctionMetadataProvider : IFunctionMetadataProvider
     {
-        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
@@ -145,17 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
 
-                // validate binding name
-                if (functionBinding.Name == null || !BindingNameValidationRegex.IsMatch(functionBinding.Name))
-                {
-                    throw new ArgumentException($"The binding name {functionBinding.Name} is invalid. Please assign a valid name to the binding.");
-                }
-
-                // validate that output binding has correct direction
-                if (functionBinding.IsReturn && functionBinding.Direction != BindingDirection.Out)
-                {
-                    throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
-                }
+                Utility.ValidateBinding(functionBinding);
 
                 // Ensure no duplicate binding names exist
                 if (bindingNames.Contains(functionBinding.Name))

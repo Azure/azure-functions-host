@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                _provider.ValidateBinding(bindingMetadata);
+                Utility.ValidateBinding(bindingMetadata);
             });
 
             Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                _provider.ValidateBinding(bindingMetadata);
+                Utility.ValidateBinding(bindingMetadata);
             }
             catch (ArgumentException)
             {
