@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
              };
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task ZipPackageFailure_DetectedOnSpecialization()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task InitializeAsync_WithSpecializedSite_SkipsWarmupFunctionsAndLogs()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
