@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var function = rawFunction.Metadata;
                 try
                 {
-                    ValidateName(function.Name);
+                    Utility.ValidateName(function.Name);
 
                     function.Language = SystemEnvironment.Instance.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
 
@@ -126,14 +126,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             return validatedMetadata;
-        }
-
-        internal static void ValidateName(string name, bool isProxy = false)
-        {
-            if (!Utility.IsValidFunctionName(name))
-            {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
-            }
         }
 
         internal static FunctionMetadata ValidateBindings(IEnumerable<string> rawBindings, FunctionMetadata function)

@@ -197,16 +197,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("_binding")]
         [InlineData("binding-test")]
         [InlineData("binding name")]
-        public void ValidateBinding_InvalidName_Throws(string bindingName)
+        public void ValidateBinding_InvalidType_Throws(string bindingName)
         {
             BindingMetadata bindingMetadata = new BindingMetadata
             {
-                Name = bindingName
+                Name = bindingName,
+                Type = null
             };
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                Utility.ValidateBinding(bindingMetadata);
+                _provider.ValidateBinding(bindingMetadata);
             });
 
             Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
@@ -216,7 +217,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("bindingName")]
         [InlineData("binding1")]
         [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
-        public void ValidateBinding_ValidName_DoesNotThrow(string bindingName)
+        public void ValidateBinding_ValidType_DoesNotThrow(string bindingName)
         {
             BindingMetadata bindingMetadata = new BindingMetadata
             {
@@ -231,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                Utility.ValidateBinding(bindingMetadata);
+                _provider.ValidateBinding(bindingMetadata);
             }
             catch (ArgumentException)
             {

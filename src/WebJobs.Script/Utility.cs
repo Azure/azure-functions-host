@@ -560,6 +560,14 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static void ValidateName(string name, bool isProxy = false)
+        {
+            if (!IsValidFunctionName(name))
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
+            }
+        }
+
         internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
         {
             json = null;
