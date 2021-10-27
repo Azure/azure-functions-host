@@ -367,7 +367,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 tcs.SetException(new Exception());
             }
 
-            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(addWebhostChannel: true, mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager);
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(addWebhostChannel: true, mockwebHostLanguageWorkerChannelManager: mockWebHostChannelManager, runtime: RpcWorkerConstants.JavaLanguageWorkerName);
 
             FunctionMetadata func1 = new FunctionMetadata()
             {
