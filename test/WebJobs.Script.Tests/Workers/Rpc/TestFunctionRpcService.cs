@@ -206,7 +206,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     Metadata = indexingResponse,
                 };
 
-                overallResponse.Results.Add(loadRequest);
+                overallResponse.FunctionLoadRequestsResults.Add(loadRequest);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()

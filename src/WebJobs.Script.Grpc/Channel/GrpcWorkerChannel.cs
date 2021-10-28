@@ -490,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var functions = new List<RawFunctionMetadata>();
 
-            foreach (var metadataResponse in functionMetadataResponses.Results)
+            foreach (var metadataResponse in functionMetadataResponses.FunctionLoadRequestsResults)
             {
                 var metadata = metadataResponse.Metadata;
                 if (metadata != null)

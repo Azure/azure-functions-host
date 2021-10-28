@@ -271,7 +271,7 @@ message RpcFunctionMetadata {
   // Function language
   string language = 9;
 
-  // Raw binding info: string of jsonified binding metadata. One string = one binding
+  // Raw binding info
   repeated string raw_bindings = 10;
 
   // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
@@ -290,10 +290,10 @@ message FunctionsMetadataRequest {
 // Worker sends function metadata back to host
 message FunctionMetadataResponses {
   // list of function indexing responses
-  repeated FunctionLoadRequest results = 1;
+  repeated FunctionLoadRequest function_load_requests_results = 1;
 
   // status of overall metadata request
-  StatusResult overall_status = 2;
+  StatusResult result = 2;
 }
 
 // Host requests worker to invoke a Function
