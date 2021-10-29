@@ -10,3 +10,12 @@ if ($buildReason -eq "PullRequest") {
     Write-Host "Setting 'BuildArtifacts' to true."
   }
 }
+
+$buildNumber = $env:buildNumber
+Write-Host "BuildNumber: '$buildNumber'"
+
+Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
+$version = Get-AzureFunctionsVersion $buildNumber $buildNumber
+
+Write-Host "Site extension version: $version"
+Write-Host "##vso[build.updatebuildnumber]$version"

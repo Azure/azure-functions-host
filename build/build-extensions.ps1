@@ -6,21 +6,10 @@ param (
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
-$hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
-$suffixCmd = ""
-if ($hasSuffix) {
-  $suffixCmd = "/p:VersionSuffix=$suffix"
-}
-
-# use the same logic as the projects to generate the site extension version
-$cmd = "build", "$rootDir\build\common.props", "/t:GenerateSiteExtensionVersion", "-restore:False", "-o", "$buildOutput", "/p:BuildNumber=$buildNumber", $suffixCmd, "-v", "q", "--nologo", "-clp:NoSummary"
-& dotnet $cmd
-
-$versionTxt = "$rootDir\buildoutput\version.txt"
-$extensionVersion = Get-Content $versionTxt -First 1
-
-Write-Host "Found site extension version in '$versionTxt': $extensionVersion"
+Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
+$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix
+Write-Host "Site extension version: $extensionVersion"
 
 function ZipContent([string] $sourceDirectory, [string] $target)
 {
