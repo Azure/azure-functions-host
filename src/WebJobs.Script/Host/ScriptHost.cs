@@ -76,7 +76,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
         private string _workerRuntime;
-
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
 
