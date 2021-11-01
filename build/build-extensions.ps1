@@ -141,10 +141,6 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
 
-    # Create directory for content
-    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
-    New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
-
     # Copy extensions.xml as is
     Copy-Item "$siteExtensionPath\extension.xml" -Destination "$patchedContentDirectory\extension.xml"
 
@@ -251,6 +247,10 @@ function CreateSiteExtensions() {
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+
+    # Create directory for content even if there is no patch build. This makes artifact uploading easier.
+    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
+    New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
 
     # Construct patch
     if($isPatch)
