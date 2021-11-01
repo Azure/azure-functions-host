@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.IO;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
@@ -32,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Contains("System.Exception : some outer exception ---> System.InvalidOperationException : Some inner exception", exceptionDetails);
             Assert.Contains("End of inner exception", exceptionDetails);
             Assert.Contains("at Microsoft.Azure.WebJobs.Script.Tests.Extensions.ExceptionExtensionsTests.GetExceptionDetails_ReturnsExpectedResult()", exceptionDetails);
-            Assert.Contains($"{Path.Combine("Extensions", "ExceptionExtensionsTests.cs")} : 21", exceptionDetails);
+            Assert.Contains("ExceptionExtensionsTests.cs : 20", exceptionDetails);
         }
     }
 }
