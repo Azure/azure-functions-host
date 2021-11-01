@@ -6,30 +6,30 @@
     <MajorVersion>4</MajorVersion>
     <MinorVersion>0</MinorVersion>
     <PatchVersion>1</PatchVersion>
-    <BuildNumber Condition=" '$(BuildNumber)' == '' ">0</BuildNumber>
-    <PreviewVersion></PreviewVersion>
-    <PreviewString Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</PreviewString>
+    <BuildNumber Condition="'$(BuildNumber)' == '' ">0</BuildNumber>
+    <PreviewVersion></PreviewVersion>        
+    
+    <!-- During previews, always generate this suffix, even for official releases -->
+    <_VersionSuffix Condition="'$(PreviewVersion)' != ''">-preview.$(PreviewVersion).$(BuildNumber)</_VersionSuffix>
+    <!-- Otherwise, use the suffix directly, adding a '-' -->
+    <_VersionSuffix Condition="'$(PreviewVersion)' == '' and '$(VersionSuffix)' != ''">-$(VersionSuffix)</_VersionSuffix>
+    
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
-    <VersionSuffixWithDash Condition=" '$(VersionSuffix)' != '' ">-$(VersionSuffix)</VersionSuffixWithDash>
-    <Version>$(VersionPrefix)$(PreviewString)$(VersionSuffixWithDash)</Version>
-    <AssemblyVersion>$(MajorVersion).0.0.0</AssemblyVersion>
+    <Version>$(VersionPrefix)$(_VersionSuffix)</Version>
+    <AssemblyVersion>$(MajorVersion).$(MinorVersion).0.0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).$(BuildNumber)</FileVersion>
 
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\src.ruleset</CodeAnalysisRuleSet>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
 
-    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true"</ContinuousIntegrationBuild>
+    <ContinuousIntegrationBuild Condition="'$(TF_BUILD)' == 'true'">true</ContinuousIntegrationBuild>
     <DebugType>embedded</DebugType>
     <GenerateRuntimeConfigDevFile>true</GenerateRuntimeConfigDevFile><!-- https://github.com/dotnet/runtime/issues/54684 -->
     <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>    
   </PropertyGroup>
 
-  <Target Name="GenerateSiteExtensionVersion">
-      <PropertyGroup>
-          <VersionFile>$(OutputPath)\version.txt</VersionFile>
-      </PropertyGroup>
-      <Message Importance="high" Text="Writing '$(Version)' to $(VersionFile)" />
-      <WriteLinesToFile File="$(VersionFile)" Lines="$(Version)" Overwrite="true" />
+  <Target Name="EchoVersion">
+      <Message Importance="high" Text="$(Version)" />
   </Target>
 
   <ItemGroup>

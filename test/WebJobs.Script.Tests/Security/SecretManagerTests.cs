@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             _loggerProvider = loggerProvider;
 
-            _logger = _loggerProvider.CreateLogger(LogCategories.CreateFunctionCategory("test"));
+            _logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory("test"));
 
             _hostNameProvider = new HostNameProvider(_testEnvironment);
             _startupContextProvider = new StartupContextProvider(_testEnvironment, loggerFactory.CreateLogger<StartupContextProvider>());

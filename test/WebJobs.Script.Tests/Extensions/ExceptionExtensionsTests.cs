@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Contains("System.Exception : some outer exception ---> System.InvalidOperationException : Some inner exception", exceptionDetails);
             Assert.Contains("End of inner exception", exceptionDetails);
             Assert.Contains("at Microsoft.Azure.WebJobs.Script.Tests.Extensions.ExceptionExtensionsTests.GetExceptionDetails_ReturnsExpectedResult()", exceptionDetails);
-            Assert.Contains("Extensions\\ExceptionExtensionsTests.cs : 20", exceptionDetails);
+            Assert.Contains("ExceptionExtensionsTests.cs : 20", exceptionDetails);
         }
     }
 }
