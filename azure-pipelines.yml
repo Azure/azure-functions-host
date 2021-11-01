@@ -262,6 +262,8 @@ jobs:
       contents: '**\CodeSignSummary-*.md'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
+  - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
+    artifact: PatchedSiteExtension    
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
