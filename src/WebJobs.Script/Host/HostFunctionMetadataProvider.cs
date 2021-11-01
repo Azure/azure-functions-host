@@ -39,6 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
+            _functions = default(ImmutableArray<FunctionMetadata>);
+
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
                 _logger.FunctionMetadataProviderParsingFunctions();
