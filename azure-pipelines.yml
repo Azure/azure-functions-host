@@ -271,7 +271,7 @@ jobs:
     displayName: 'Set isPatchVersion'   
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
-    condition: and(succeeded(), ne(variables['isPatchVersion'], 'true'))
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
