@@ -228,7 +228,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
                 _logger.LogInformation($"{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {workerRuntime}. Skipping WorkerConfig for language:{workerDescriptionLanguage}");
-
                 return false;
             }
             return true;
