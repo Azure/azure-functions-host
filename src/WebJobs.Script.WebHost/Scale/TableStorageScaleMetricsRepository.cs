@@ -377,7 +377,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // best effort - if purge fails we log an ignore
                     // we'll try again another time
-                    _logger.LogError(e, "Error occured when attempting to delete old metrics tables.");
+                    _logger.LogError(e, "Error occurred when attempting to delete old metrics tables.");
                 }
             });
         }
