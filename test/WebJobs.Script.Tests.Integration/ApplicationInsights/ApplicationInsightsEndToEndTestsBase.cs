@@ -267,6 +267,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.StartsWith("Host Status")
             ).ToArray();
 
+            traces = traces.Where(t =>
+                !t.Message.Contains("Skipping WorkerConfig for language")
+            ).ToArray();
+
             int expectedCount = 14;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
