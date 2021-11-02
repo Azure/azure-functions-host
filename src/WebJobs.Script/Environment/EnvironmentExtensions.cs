@@ -494,7 +494,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static HashSet<string> GetLanguageWorkerListToStartInPlaceholder(this IEnvironment environment)
         {
             string placeholderList = environment.GetEnvironmentVariableOrDefault(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, string.Empty);
-            var placeholderRuntimeSet = new HashSet<string>(placeholderList.Split(';'));
+            var placeholderRuntimeSet = new HashSet<string>(placeholderList.Split(';', StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim());
             string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             if (!string.IsNullOrEmpty(workerRuntime))
             {
