@@ -267,29 +267,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
                 !t.Message.StartsWith("Host Status")
             ).ToArray();
 
-
-            /* code added for logging */
-            var hostBuilder = new HostBuilder()
-                .ConfigureAppConfiguration(c =>
-                {
-                    c.AddInMemoryCollection(new Dictionary<string, string>
-                    {
-                        { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" },
-                    });
-                })
-                .ConfigureDefaultTestWebScriptHost(b =>
-                {
-                    b.Services.AddSingleton<ITelemetryChannel>(_fixture.Channel);
-                });
-
-            using (var host = hostBuilder.Build())
-            {
-                ILoggerFactory loggerFactory = host.Services.GetService<ILoggerFactory>();
-                ILogger logger = loggerFactory.CreateLogger(LogCategories.CreateFunctionCategory("Test"));
-                logger.LogInformation(traces.ToString());
-            }
-            /* code added for logging ends */
-
             int expectedCount = 14;
             Assert.True(traces.Length == expectedCount, $"Expected {expectedCount} messages, but found {traces.Length}. Actual logs:{Environment.NewLine}{string.Join(Environment.NewLine, traces.Select(t => t.Message))}");
 
