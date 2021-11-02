@@ -271,6 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         [InlineData(null, null, "")]
         [InlineData("node", "python;java", "node;python;java")]
         [InlineData("", "node;python", "node;python")]
+        [InlineData("", "python;java;", "python;java")]
         [InlineData("node", "", "node")]
         public void GetLanguageWorkerListToStartInPlaceholder_ReturnsExpectedResult(string workerRuntime, string workerRuntimeList, string expected)
         {
