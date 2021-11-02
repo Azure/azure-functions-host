@@ -34,12 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
-        {
-            return GetFunctionMetadataAsync(forceRefresh).GetAwaiter().GetResult();
-        }
-
-        internal async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
             IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
