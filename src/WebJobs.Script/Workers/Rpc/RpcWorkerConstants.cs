@@ -8,6 +8,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     public static class RpcWorkerConstants
     {
         public const string FunctionWorkerRuntimeSettingName = "FUNCTIONS_WORKER_RUNTIME";
+        // semicolon seperated string - list of runtimes to start in placeholder mode
+        public const string FunctionWorkerPlaceholderModeListSettingName = "FUNCTIONS_WORKER_RUNTIME_PLACEHOLDERMODE_LIST";
         public const string FunctionWorkerRuntimeVersionSettingName = "FUNCTIONS_WORKER_RUNTIME_VERSION";
         public const string FunctionsWorkerProcessCountSettingName = "FUNCTIONS_WORKER_PROCESS_COUNT";
         public const string FunctionsWorkerSharedMemoryDataTransferEnabledSettingName = "FUNCTIONS_WORKER_SHARED_MEMORY_DATA_TRANSFER_ENABLED";

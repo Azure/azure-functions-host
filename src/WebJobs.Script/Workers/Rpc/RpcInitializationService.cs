@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -22,36 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
-
-        private Dictionary<OSPlatform, List<string>> _hostingOSToRuntimesAllowList = new Dictionary<OSPlatform, List<string>>()
-        {
-            {
-                OSPlatform.Windows,
-                new List<string>() { RpcWorkerConstants.JavaLanguageWorkerName }
-            },
-            {
-                OSPlatform.Linux,
-                new List<string>()
-                {
-                    RpcWorkerConstants.PythonLanguageWorkerName,
-                    RpcWorkerConstants.NodeLanguageWorkerName
-                }
-            }
-        };
-
-        // _webHostLevelWhitelistedRuntimes are started at webhost level when running in Azure and locally
-        private List<string> _webHostLeveldRuntimesAllowList = new List<string>()
-        {
-            RpcWorkerConstants.JavaLanguageWorkerName
-        };
-
-        private List<string> _placeholderPoolRuntimesAllowList = new List<string>()
-        {
-            RpcWorkerConstants.JavaLanguageWorkerName,
-            RpcWorkerConstants.NodeLanguageWorkerName,
-            RpcWorkerConstants.PowerShellLanguageWorkerName,
-            RpcWorkerConstants.PythonLanguageWorkerName
-        };
+        private HashSet<string> _placeholderLanguageWorkersList;
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
@@ -62,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _rpcServerShutdownTimeoutInMilliseconds = 5000;
             _webHostRpcWorkerChannelManager = rpcWorkerChannelManager ?? throw new ArgumentNullException(nameof(rpcWorkerChannelManager));
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _placeholderLanguageWorkersList = _environment.GetLanguageWorkerListToStartInPlaceholder();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -127,79 +98,22 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
             catch (Exception grpcInitEx)
             {
-                var hostInitEx = new HostInitializationException($"Failed to start Rpc Server. Check if your app is hitting connection limits.", grpcInitEx);
+                throw new HostInitializationException($"Failed to start Rpc Server. Check if your app is hitting connection limits.", grpcInitEx);
             }
         }
 
         internal Task InitializeChannelsAsync()
         {
-            // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534
-            if (ShouldStartAsPlaceholderPool())
+            if (_environment.IsPlaceholderModeEnabled())
             {
-                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
+                if (_placeholderLanguageWorkersList != null && _placeholderLanguageWorkersList.Count() != 0)
+                {
+                    _logger.LogDebug("Initializing language worker channels {placholderChannelList} in placeholder mode.", string.Join(",", _placeholderLanguageWorkersList));
+                    return Task.WhenAll(_placeholderLanguageWorkersList.Select(runtime =>
+                    _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
+                }
             }
-            else if (ShouldStartStandbyPlaceholderChannels())
-            {
-                return InitializePlaceholderChannelsAsync();
-            }
-
-            return InitializeWebHostRuntimeChannelsAsync();
-        }
-
-        private Task InitializePlaceholderChannelsAsync()
-        {
-            if (_environment.IsLinuxAzureManagedHosting())
-            {
-                return InitializePlaceholderChannelsAsync(OSPlatform.Linux);
-            }
-
-            return InitializePlaceholderChannelsAsync(OSPlatform.Windows);
-        }
-
-        private Task InitializePlaceholderChannelsAsync(OSPlatform os)
-        {
-            return Task.WhenAll(_hostingOSToRuntimesAllowList[os].Select(runtime =>
-                _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
-        }
-
-        private Task InitializeWebHostRuntimeChannelsAsync()
-        {
-            if (_webHostLeveldRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase))
-            {
-                return _webHostRpcWorkerChannelManager.InitializeChannelAsync(_workerRuntime);
-            }
-
             return Task.CompletedTask;
         }
-
-        internal bool ShouldStartStandbyPlaceholderChannels()
-        {
-            if (string.IsNullOrEmpty(_workerRuntime) && _environment.IsPlaceholderModeEnabled())
-            {
-                if (_environment.IsLinuxAzureManagedHosting())
-                {
-                    return true;
-                }
-                // On Windows AppService Env, only start worker processes for legacy template site: FunctionsPlaceholderTemplateSite
-                return _environment.IsLegacyPlaceholderTemplateSite();
-            }
-            return false;
-        }
-
-        internal bool ShouldStartAsPlaceholderPool()
-        {
-            // We are in placeholder mode but a worker runtime IS set
-            _logger.LogDebug($"Placeholder mode enabled is {_environment.IsPlaceholderModeEnabled()} for worker {_workerRuntime}");
-
-            var ret = _environment.IsPlaceholderModeEnabled()
-                && !string.IsNullOrEmpty(_workerRuntime)
-                && _placeholderPoolRuntimesAllowList.Contains(_workerRuntime, StringComparer.OrdinalIgnoreCase);
-
-            _logger.LogDebug($"Starting language worker in placeholder mode: {ret}");
-            return ret;
-        }
-
-        // To help with unit tests
-        internal void AddSupportedWebHostLevelRuntime(string language) => _webHostLeveldRuntimesAllowList.Add(language);
     }
 }
