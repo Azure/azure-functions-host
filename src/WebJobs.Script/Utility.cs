@@ -560,7 +560,7 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        public static void ValidateName(string name, bool isProxy = false)
+        public static void ValidateName(string name)
         {
             if (!IsValidFunctionName(name))
             {
