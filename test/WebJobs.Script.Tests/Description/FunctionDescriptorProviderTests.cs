@@ -201,7 +201,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             BindingMetadata bindingMetadata = new BindingMetadata
             {
-                Name = bindingName
+                Name = bindingName,
+                Type = null
             };
 
             var ex = Assert.Throws<ArgumentException>(() =>

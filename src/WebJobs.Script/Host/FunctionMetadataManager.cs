@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 ? new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher)
                 : _functionMetadataProvider;
 
-            immutableFunctionMetadata = metadataProvider.GetFunctionMetadata(workerConfigs, forceRefresh);
+            immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, forceRefresh).GetAwaiter().GetResult();
 
             var functionMetadataList = new List<FunctionMetadata>();
             _functionErrors = new Dictionary<string, ICollection<string>>();
