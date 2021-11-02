@@ -564,7 +564,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (!IsValidFunctionName(name))
             {
-                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, isProxy ? "proxy" : "function"));
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, "function"));
             }
         }
 
