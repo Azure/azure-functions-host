@@ -238,8 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void ReadLanguageWorkerFile(string workerPath)
         {
             if (_environment.IsPlaceholderModeEnabled() &&
-                 !string.IsNullOrEmpty(_workerRuntime) &&
-                 _workerRuntime.Equals(RpcWorkerConstants.JavaLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                 !string.IsNullOrEmpty(_workerRuntime))
                 {
                     if (File.Exists(workerPath))
                     {
