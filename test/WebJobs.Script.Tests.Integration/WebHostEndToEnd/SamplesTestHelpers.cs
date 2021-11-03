@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using System.Net;
 using System.Net.Http;
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             string masterKey = await fixture.Host.GetMasterKeyAsync();
             string uri = $"admin/host/drain?code={masterKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             return await fixture.Host.HttpClient.SendAsync(request);
@@ -64,6 +65,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 
             return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task<HttpResponseMessage> InvokeResume(EndToEndTestFixture fixture)
+        {
+            string masterKey = await fixture.Host.GetMasterKeyAsync();
+            string uri = $"admin/host/resume?code={masterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task SetHostStateAsync(EndToEndTestFixture fixture, string state)
+        {
+            var masterKey = await fixture.Host.GetMasterKeyAsync();
+            var request = new HttpRequestMessage(HttpMethod.Put, "admin/host/state");
+            request.Content = new StringContent($"'{state}'");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
+            var response = await fixture.Host.HttpClient.SendAsync(request);
+            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
         }
 
         public static async Task InvokeAndValidateHttpTriggerWithoutContentType(EndToEndTestFixture fixture, string functionName)
