@@ -65,8 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 resetEvent.Set();
             });
 
-            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-LongRun");
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
@@ -97,9 +97,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 resetEvent.Set();
             });
 
-            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-LongRun");
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-            bool result = resetEvent.WaitOne(60000);
+            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
 
@@ -123,9 +123,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 resetEvent.Set();
             });
 
-            var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-LongRun");
-            Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-            bool result = resetEvent.WaitOne(60000);
+            var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
     }
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         public ResumeTestFixture()
-            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+            : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeResume"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
         {
         }
 
