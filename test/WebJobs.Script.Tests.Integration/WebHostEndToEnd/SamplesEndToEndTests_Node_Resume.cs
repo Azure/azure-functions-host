@@ -102,32 +102,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
+        // [Fact]
+        // public async Task HostOffline_ReturnsServiceUnavailable()
+        // {
+        //     // Take host offline
+        //     await SamplesTestHelpers.SetHostStateAsync(this, "offline");
 
-        [Fact]
-        public async Task HostOffline_ReturnsServiceUnavailable()
-        {
-            // Take host offline
-            await SamplesTestHelpers.SetHostStateAsync(this, "offline");
+        //     ManualResetEvent resetEvent = new ManualResetEvent(false);
+        //     _ = Task.Run(async () =>
+        //     {
+        //         // Validate we get a 503 if we call resume when the host is not running
+        //         await TestHelpers.Await(async () =>
+        //         {
+        //             var response = await SamplesTestHelpers.InvokeResume(this);
 
-            ManualResetEvent resetEvent = new ManualResetEvent(false);
-            _ = Task.Run(async () =>
-            {
-                // Validate we get a 503 if we call resume when the host is not running
-                await TestHelpers.Await(async () =>
-                {
-                    var response = await SamplesTestHelpers.InvokeResume(this);
+        //             return response.StatusCode == HttpStatusCode.ServiceUnavailable;
+        //         }, 20000);
 
-                    return response.StatusCode == HttpStatusCode.ServiceUnavailable;
-                }, 20000);
+        //         resetEvent.Set();
+        //     });
 
-                resetEvent.Set();
-            });
-
-            var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
-            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-            bool result = resetEvent.WaitOne(30000);
-            Assert.True(result);
-        }
+        //     May need to reinitialize TestFunctionHost to reset IApplicationLifetime
+            //  await fixture.InitializeAsync();
+        //     var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+        //     Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        //     bool result = resetEvent.WaitOne(30000);
+        //     Assert.True(result);
+        // }
     }
 
     public class ResumeTestFixture : EndToEndTestFixture
