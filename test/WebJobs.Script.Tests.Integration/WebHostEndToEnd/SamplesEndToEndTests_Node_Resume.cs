@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             });
 
             var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
         }
