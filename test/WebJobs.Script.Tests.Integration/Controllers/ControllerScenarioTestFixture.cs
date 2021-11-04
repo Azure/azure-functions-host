@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             HostOptions = new ScriptApplicationHostOptions
             {
                 IsSelfHost = true,
-                ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"),
+                ScriptPath = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "csharp"),
                 LogPath = Path.Combine(Path.GetTempPath(), @"Functions"),
                 SecretsPath = Path.Combine(Path.GetTempPath(), @"FunctionsTests\Secrets"),
                 HasParentScope = true
@@ -76,10 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 .ConfigureAppConfiguration(c => c.AddEnvironmentVariables());
 
             ConfigureWebHostBuilder(webHostBuilder);
-            
-            // TODO: https://github.com/Azure/azure-functions-host/issues/4876
-            HttpServer = new TestServer(webHostBuilder);
 
+            HttpServer = new TestServer(webHostBuilder);
             HttpClient = HttpServer.CreateClient();
             HttpClient.BaseAddress = new Uri("https://localhost/");
 

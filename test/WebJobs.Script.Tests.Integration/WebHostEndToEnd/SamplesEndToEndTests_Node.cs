@@ -288,7 +288,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(initialTimestamp, timestamp);
 
             // now "touch" a file in the shared directory to trigger a restart
-            string sharedModulePath = Path.Combine(_fixture.Host.ScriptPath, "Shared\\test.js");
+            string sharedModulePath = Path.Combine(_fixture.Host.ScriptPath, "Shared", "test.js");
             File.SetLastWriteTimeUtc(sharedModulePath, DateTime.UtcNow);
 
             // wait for the module to be reloaded
@@ -362,7 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Microsoft.Azure.WebJobs.Extensions.EventHubs
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "node"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
             {
             }
 
