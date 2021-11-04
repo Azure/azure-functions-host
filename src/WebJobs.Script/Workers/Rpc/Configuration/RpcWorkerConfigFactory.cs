@@ -238,14 +238,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void ReadLanguageWorkerFile(string workerPath)
         {
             if (_environment.IsPlaceholderModeEnabled() &&
-                 !string.IsNullOrEmpty(_workerRuntime))
-                {
-                    if (File.Exists(workerPath))
-                    {
-                        // Read lanaguage worker file to avoid disk reads during specialization
-                        File.ReadAllBytes(workerPath);
-                    }
-                }
+                 !string.IsNullOrEmpty(_workerRuntime) &&
+                 File.Exists(workerPath))
+            {
+                // Read lanaguage worker file to avoid disk reads during specialization
+                File.ReadAllBytes(workerPath);
+            }
         }
     }
 }
