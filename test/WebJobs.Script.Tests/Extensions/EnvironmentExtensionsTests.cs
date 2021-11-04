@@ -269,6 +269,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 
         [Theory]
         [InlineData(null, null, "")]
+        [InlineData("", "", "")]
         [InlineData("node", "python;java", "node;python;java")]
         [InlineData("", "node;python", "node;python")]
         [InlineData("", "python;java;", "python;java")]

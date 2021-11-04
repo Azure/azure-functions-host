@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private readonly string _workerRuntime;
         private readonly int _rpcServerShutdownTimeoutInMilliseconds;
-        private HashSet<string> _placeholderLanguageWorkersList;
+        private HashSet<string> _placeholderLanguageWorkersList = new HashSet<string>();
 
         public RpcInitializationService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment, IRpcServer rpcServer, IWebHostRpcWorkerChannelManager rpcWorkerChannelManager, ILogger<RpcInitializationService> logger)
         {
@@ -104,11 +104,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal Task InitializeChannelsAsync()
         {
+            if (_placeholderLanguageWorkersList == null)
+            {
+                throw new ArgumentNullException(nameof(_placeholderLanguageWorkersList));
+            }
+
             if (_environment.IsPlaceholderModeEnabled())
             {
-                if (_placeholderLanguageWorkersList != null && _placeholderLanguageWorkersList.Count() != 0)
+                _logger.LogDebug("Initializing language worker channels '{placholderChannelList}' in placeholder mode.", string.Join(",", _placeholderLanguageWorkersList));
+
+                if (_placeholderLanguageWorkersList.Count() != 0)
                 {
-                    _logger.LogDebug("Initializing language worker channels {placholderChannelList} in placeholder mode.", string.Join(",", _placeholderLanguageWorkersList));
                     return Task.WhenAll(_placeholderLanguageWorkersList.Select(runtime =>
                     _webHostRpcWorkerChannelManager.InitializeChannelAsync(runtime)));
                 }
