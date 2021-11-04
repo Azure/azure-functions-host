@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+// Copied from https://github.com/dotnet/runtime/blob/2e1273019cb3d946798e2cb50e716d0d81309391/eng/actions/backport/index.js
 
 function BackportException(message, postToGitHub = true) {
     this.message = message;
