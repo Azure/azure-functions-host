@@ -13,8 +13,8 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_Resume : ResumeTestFixture
+    [Trait(TestTraits.Group, TestTraits.DrainModeEndToEnd)]
+    public class DrainModeResumeEndToEndTests : ResumeTestFixture
     {
         [Fact]
         public async Task DrainModeEnabled_RunningHost_StartsNewHost_ReturnsOk()
