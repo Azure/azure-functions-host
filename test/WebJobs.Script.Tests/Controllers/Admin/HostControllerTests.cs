@@ -315,11 +315,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public async Task ResumeHost_HostIsNull_ReturnsServiceUnavailable()
+        public async Task ResumeHost_DrainModeManagerIsNull_ReturnsServiceUnavailable()
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
 
             var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object);
+
             Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
         }
     }

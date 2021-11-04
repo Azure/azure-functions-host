@@ -160,17 +160,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager)
         {
-            _logger.LogDebug($"Received request to resume a draining host.");
+            _logger.LogDebug($"Received request to resume a draining host - host status: {scriptHostManager?.State.ToString()}");
+
+            if (scriptHostManager?.State != ScriptHostState.Running)
+            {
+                _logger.LogWarning("The host is not in a state where we can resume. The host's state needs to be 'Running' and drain mode must be enabled for resume to work.");
+                return StatusCode(StatusCodes.Status409Conflict);
+            }
 
             if (Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
             {
-                _logger.LogDebug($"Host status: {scriptHostManager.State.ToString()}. Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
-
-                if (scriptHostManager.State != ScriptHostState.Running)
-                {
-                    _logger.LogDebug("Host is not running, cannot resume");
-                    return StatusCode(StatusCodes.Status409Conflict);
-                }
+                _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
 
                 if (!drainModeManager.IsDrainModeEnabled)
                 {
