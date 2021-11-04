@@ -77,58 +77,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Validate the drain state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
             var responseString = response.Content.ReadAsStringAsync().Result;
-            var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
+            var drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
-            Assert.Equal(status.State, DrainModeState.Disabled);
+            Assert.Equal(drainStatus.State, DrainModeState.Disabled);
 
-            ManualResetEvent resetEvent = new ManualResetEvent(false);
-            _ = Task.Run(async () =>
-            {
-                // Validate host is "Running" after resume is called and drain mode is not active
-                await TestHelpers.Await(async () =>
-                {
-                    var response = await SamplesTestHelpers.InvokeResume(this);
-                    var responseString = response.Content.ReadAsStringAsync().Result;
-                    var status = JObject.Parse(responseString);
+            // Validate host is "Running" after resume is called and drain mode is not active
+            response = await SamplesTestHelpers.InvokeResume(this);
+            responseString = response.Content.ReadAsStringAsync().Result;
+            var resumeStatus = JObject.Parse(responseString);
 
-                    return (string)status["hostStatus"] == ScriptHostState.Running.ToString();
-                }, 20000);
+            Assert.Equal(ScriptHostState.Running.ToString(), (string)resumeStatus["hostStatus"]);
 
-                resetEvent.Set();
-            });
-
+            // Validate HttpTrigger function is still working
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            bool result = resetEvent.WaitOne(30000);
-            Assert.True(result);
         }
-        // [Fact]
-        // public async Task HostOffline_ReturnsServiceUnavailable()
-        // {
-        //     // Take host offline
-        //     await SamplesTestHelpers.SetHostStateAsync(this, "offline");
-
-        //     ManualResetEvent resetEvent = new ManualResetEvent(false);
-        //     _ = Task.Run(async () =>
-        //     {
-        //         // Validate we get a 503 if we call resume when the host is not running
-        //         await TestHelpers.Await(async () =>
-        //         {
-        //             var response = await SamplesTestHelpers.InvokeResume(this);
-
-        //             return response.StatusCode == HttpStatusCode.ServiceUnavailable;
-        //         }, 20000);
-
-        //         resetEvent.Set();
-        //     });
-
-        //     May need to reinitialize TestFunctionHost to reset IApplicationLifetime
-            //  await fixture.InitializeAsync();
-        //     var response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
-        //     Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        //     bool result = resetEvent.WaitOne(30000);
-        //     Assert.True(result);
-        // }
     }
 
     public class ResumeTestFixture : EndToEndTestFixture
