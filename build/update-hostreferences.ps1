@@ -101,7 +101,7 @@ if (-not (Test-Path $path))
     WriteLog "Failed to find '$path' to update package references" -Throw
 }
 
-$URL = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V3/HostBuild.json"
+$URL = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V4/HostBuild.json"
 $SOURCE = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
 
 WriteLog "Get the list of packages to update"
