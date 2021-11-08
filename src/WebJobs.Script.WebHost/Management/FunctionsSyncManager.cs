@@ -35,6 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string DurableTaskV2StorageOptions = "storageProvider";
         private const string DurableTaskV2StorageConnectionName = "connectionStringName";
         private const string DurableTask = "durableTask";
+        private const string StorageProviderType = "storageProviderType";
+        private const string NetheriteStorageConnectionName = "netheriteStorageConnectionName";
+        private const string NetheriteEventHubsConnectionName = "netheriteEventHubsConnectionName";
 
         // 45 alphanumeric characters gives us a buffer in our table/queue/blob container names.
         private const int MaxTaskHubNameSize = 45;
@@ -477,6 +480,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     trigger[Connection] = durableTaskConfig.Connection;
                 }
+
+                if (durableTaskConfig.StorageType != null)
+                {
+                    trigger[StorageProviderType] = durableTaskConfig.StorageType;
+                }
+
+                if (durableTaskConfig.NetheriteStorageConnectionName != null)
+                {
+                    trigger[NetheriteStorageConnectionName] = durableTaskConfig.NetheriteStorageConnectionName;
+                }
+
+                if (durableTaskConfig.NetheriteEventHubsConnectionName != null)
+                {
+                    trigger[NetheriteEventHubsConnectionName] = durableTaskConfig.NetheriteEventHubsConnectionName;
+                }
             }
             return trigger;
         }
@@ -587,7 +605,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (durableHostConfig.TryGetValue(DurableTaskV2StorageOptions, StringComparison.OrdinalIgnoreCase, out JToken storageOptions) && (storageOptions as JObject) != null)
                 {
-                    if (((JObject)storageOptions).TryGetValue(DurableTaskV2StorageConnectionName, StringComparison.OrdinalIgnoreCase, out nameValue) && nameValue != null)
+                    if (((JObject)storageOptions).TryGetValue("type", StringComparison.OrdinalIgnoreCase, out JToken typeValue) && typeValue != null)
+                    {
+                        config.StorageType = typeValue.ToString();
+
+                        if (string.Equals(config.StorageType, "Netherite", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((JObject)storageOptions).TryGetValue("StorageConnectionName", StringComparison.OrdinalIgnoreCase, out JToken storageConnectionName) && storageConnectionName != null)
+                            {
+                                config.NetheriteStorageConnectionName = storageConnectionName.ToString();
+                            }
+
+                            if (((JObject)storageOptions).TryGetValue("EventHubsConnectionName", StringComparison.OrdinalIgnoreCase, out JToken eventHubsConnectionName) && eventHubsConnectionName != null)
+                            {
+                                config.NetheriteEventHubsConnectionName = eventHubsConnectionName.ToString();
+                            }
+                        }
+                    }
+                    else if (((JObject)storageOptions).TryGetValue(DurableTaskV2StorageConnectionName, StringComparison.OrdinalIgnoreCase, out nameValue) && nameValue != null)
                     {
                         config.Connection = nameValue.ToString();
                     }
@@ -716,6 +751,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             public string HubName { get; set; }
 
             public string Connection { get; set; }
+
+            public string StorageType { get; set; }
+
+            public string NetheriteStorageConnectionName { get; set; }
+
+            public string NetheriteEventHubsConnectionName { get; set; }
 
             public bool HasValues()
             {
