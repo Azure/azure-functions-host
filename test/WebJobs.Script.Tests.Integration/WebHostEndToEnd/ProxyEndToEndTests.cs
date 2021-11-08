@@ -378,18 +378,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 // copy test files to temp directory, since accessing the metadata APIs will result
                 // in file creations (for test data files)
-                var scriptSource = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\Proxies");
+                var scriptSource = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "TestScripts", "Proxies");
                 _testHome = Path.Combine(Path.GetTempPath(), @"ProxyTests");
-                var scriptRoot = Path.Combine(_testHome, @"site\wwwroot");
+                var scriptRoot = Path.Combine(_testHome, "site", "wwwroot");
                 FileUtility.CopyDirectory(scriptSource, scriptRoot);
 
                 HostOptions = new ScriptApplicationHostOptions
                 {
                     IsSelfHost = true,
                     ScriptPath = scriptRoot,
-                    LogPath = Path.Combine(_testHome, @"LogFiles\Application\Functions"),
-                    SecretsPath = Path.Combine(_testHome, @"data\Functions\Secrets"),
-                    TestDataPath = Path.Combine(_testHome, @"data\Functions\SampleData")
+                    LogPath = Path.Combine(_testHome, "LogFiles", "Application", "Functions"),
+                    SecretsPath = Path.Combine(_testHome, "data", "Functions", "Secrets"),
+                    TestDataPath = Path.Combine(_testHome, "data", "Functions", "SampleData")
                 };
 
                 FileUtility.EnsureDirectoryExists(HostOptions.TestDataPath);

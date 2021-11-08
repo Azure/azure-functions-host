@@ -57,11 +57,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostOptions = new ScriptApplicationHostOptions
             {
-                ScriptPath = @"x:\root",
+                ScriptPath = Path.Combine("x:", "root"),
                 IsSelfHost = false,
-                LogPath = @"x:\tmp\log",
-                SecretsPath = @"x:\secrets",
-                TestDataPath = @"x:\sampledata"
+                LogPath = Path.Combine("x:", "tmp", "log"),
+                SecretsPath = Path.Combine("x:", "secrets"),
+                TestDataPath = Path.Combine("x:", "sampledata")
             };
 
             var jobHostOptions = new ScriptJobHostOptions
