@@ -302,12 +302,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // Gets metadata from worker
         public async Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
         {
-            var channels = (await GetAllWorkerChannelsAsync()).ToArray();
-            if (channels.Length > 0)
-            {
-                return await channels.First().GetFunctionMetadata();
-            }
-            return null;
+            var channels = (await GetInitializedWorkerChannelsAsync()).ToArray();
+            return (channels != null && channels.Length > 0) ? await channels.First().GetFunctionMetadata() : null;
         }
 
         // Second part of split InitializeAsync - can only be done after the host receives function metadata from worker
