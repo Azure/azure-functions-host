@@ -86,6 +86,12 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
+        public static bool AzureFilesAppSettingsExist(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesConnectionString)) &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
