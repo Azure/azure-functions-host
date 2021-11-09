@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Binding;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Extensions.Logging;
@@ -229,9 +230,10 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             }
 
             // apply the retry settings from function.json
-            if (functionMetadata.Retry != null)
+            RetryOptions retryOptions = functionMetadata.GetRetry();
+            if (retryOptions != null)
             {
-                CustomAttributeBuilder retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(functionMetadata.Retry);
+                CustomAttributeBuilder retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(retryOptions);
                 if (retryCustomAttributeBuilder != null)
                 {
                     methodAttributes.Add(retryCustomAttributeBuilder);

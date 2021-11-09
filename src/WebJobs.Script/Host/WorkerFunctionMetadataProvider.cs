@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
+using RetryOptions = Microsoft.Azure.WebJobs.Host.RetryOptions;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -98,8 +99,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     // retry option validation
                     if (!string.IsNullOrEmpty(rawFunction.RetryOptions))
                     {
-                        function.Retry = JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>();
-                        Utility.ValidateRetryOptions(function.Retry);
+                        function.SetRetry(JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>());
+                        Utility.ValidateRetryOptions(function.GetRetry());
                     }
 
                     // binding validation

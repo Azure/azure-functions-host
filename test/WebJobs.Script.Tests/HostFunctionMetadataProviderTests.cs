@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json.Linq;
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
-            var retry = functionMetadataWithRetry.FirstOrDefault().Retry;
+            var retry = functionMetadataWithRetry.FirstOrDefault().GetRetry();
             Assert.NotNull(retry);
             Assert.Equal(RetryStrategy.FixedDelay, retry.Strategy);
             Assert.Equal(4, retry.MaxRetryCount);
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
-            Assert.Null(functionMetadata.FirstOrDefault().Retry);
+            Assert.Null(functionMetadata.FirstOrDefault().GetRetry());
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)

@@ -4,7 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Script.Description;
+using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -14,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string IsDisabledKey = "IsDisabled";
         private const string IsCodelessKey = "IsCodeless";
         private const string FunctionIdKey = "FunctionId";
+        private const string RetryKey = "Retry";
 
         public static bool IsHttpInAndOutFunction(this FunctionMetadata metadata)
         {
@@ -88,6 +91,12 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static void SetIsCodeless(this FunctionMetadata metadata, bool value) =>
             metadata.Properties[IsCodelessKey] = value;
+
+        public static void SetRetry(this FunctionMetadata metadata, RetryOptions value) =>
+            metadata.Properties[RetryKey] = value;
+
+        public static RetryOptions GetRetry(this FunctionMetadata metadata) =>
+            metadata.Properties.ContainsKey(RetryKey) ? metadata.Properties[RetryKey] as RetryOptions : null;
 
         private static bool GetBoolProperty(IDictionary<string, object> properties, string propertyKey)
         {

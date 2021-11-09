@@ -5,7 +5,6 @@ using System;
 using System.Reflection;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Host;
-using Microsoft.Azure.WebJobs.Script.Description;
 
 namespace Microsoft.Azure.WebJobs.Script
 {

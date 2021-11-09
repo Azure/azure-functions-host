@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\build\common.props" />
     <PropertyGroup>
-    <Version>1.0.3-preview</Version>
+    <Version>1.0.4-preview</Version>
     <BuildNumber Condition=" '$(BuildNumber)' == '' ">1</BuildNumber>
     <MajorMinorProductVersion>1.0</MajorMinorProductVersion>
     <AssemblyVersion>$(MajorMinorProductVersion).0.0</AssemblyVersion>

@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
+using RetryOptions = Microsoft.Azure.WebJobs.Host.RetryOptions;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
@@ -155,8 +156,8 @@ namespace Microsoft.Azure.WebJobs.Script
             functionMetadata.EntryPoint = (string)configMetadata["entryPoint"];
 
             //Retry
-            functionMetadata.Retry = configMetadata.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>();
-            Utility.ValidateRetryOptions(functionMetadata.Retry);
+            functionMetadata.SetRetry(configMetadata.Property(ConfigurationSectionNames.Retry)?.Value?.ToObject<RetryOptions>());
+            Utility.ValidateRetryOptions(functionMetadata.GetRetry());
 
             return functionMetadata;
         }
