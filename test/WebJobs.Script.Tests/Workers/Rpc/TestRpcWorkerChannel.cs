@@ -149,5 +149,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _executingInvocations = new HashSet<string>();
             return true;
         }
+
+        public void SendWorkerMetadataRequest()
+        {
+            return;
+        }
+
+        public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
+        {
+            return null;
+        }
     }
 }

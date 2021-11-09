@@ -14,12 +14,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionMetadataProviderTests
+    public class HostFunctionMetadataProviderTests
     {
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
-        public FunctionMetadataProviderTests()
+        public HostFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            Assert.Equal(18, metadataProvider.GetFunctionMetadata(workerConfigs, false).Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
         }
 
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            var functionMetadatas = metadataProvider.GetFunctionMetadata(workerConfigs, false);
+            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result;
 
             Assert.Equal(2, functionMetadatas.Length);
 
@@ -85,53 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             return hasBegun && hasEnded && (metricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionsMetadata)
                 && metricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionsMetadata));
-        }
-
-        [Theory]
-        [InlineData("")]
-        [InlineData("host")]
-        [InlineData("Host")]
-        [InlineData("-function")]
-        [InlineData("_function")]
-        [InlineData("function test")]
-        [InlineData("function.test")]
-        [InlineData("function0.1")]
-        public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
-
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-            {
-                metadataProvider.ValidateName(functionName);
-            });
-
-            Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
-        }
-
-        [Theory]
-        [InlineData("testwithhost")]
-        [InlineData("hosts")]
-        [InlineData("myfunction")]
-        [InlineData("myfunction-test")]
-        [InlineData("myfunction_test")]
-        public void ValidateFunctionName_DoesNotThrowOnValidName(string functionName)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
-
-            try
-            {
-                metadataProvider.ValidateName(functionName);
-            }
-            catch (InvalidOperationException)
-            {
-                Assert.True(false, $"Valid function name {functionName} failed validation.");
-            }
         }
 
         [Theory]
