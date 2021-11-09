@@ -64,10 +64,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public long ProcessUptime { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the filesystem is read-only
+        /// Gets or sets a value indicating whether the function app content can be edited. For example, if it's running from loose files, not from zip.
         /// </summary>
-        [JsonProperty(PropertyName = "isFunctionAppEditable", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public bool IsFunctionAppEditable { get; set; }
+        [JsonProperty(PropertyName = "isFunctionAppContentEditable", DefaultValueHandling = DefaultValueHandling.Include)]
+        public bool IsFunctionAppContentEditable { get; set; }
 
         /// <summary>
         /// Gets or sets the information related to Extension bundles
