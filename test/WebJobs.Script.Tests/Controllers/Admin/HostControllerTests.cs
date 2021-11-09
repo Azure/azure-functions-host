@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -36,13 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IExtensionBundleManager> _extensionBundleManager;
         private readonly Mock<HostPerformanceManager> _mockHostPerformanceManager;
         private readonly HostHealthMonitorOptions _hostHealthMonitorOptions;
+        private readonly ScriptApplicationHostOptions _applicationHostOptions;
 
         public HostControllerTests()
         {
             _scriptPath = Path.GetTempPath();
-            var applicationHostOptions = new ScriptApplicationHostOptions();
-            applicationHostOptions.ScriptPath = _scriptPath;
-            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+            _applicationHostOptions = new ScriptApplicationHostOptions();
+            _applicationHostOptions.ScriptPath = _scriptPath;
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(_applicationHostOptions);
+
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -64,6 +67,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 File.Delete(_appOfflineFilePath);
             }
+        }
+
+        [Theory]
+        [InlineData(false, false, false)]
+        [InlineData(false, true, true)]
+        [InlineData(true, true, false)]
+        [InlineData(true, false, false)]
+        public async Task GetHostStatus_TestFunctionAppEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, bool isFunctionAppEditable)
+        {
+            _mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
+            var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
+            var mockserviceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            mockserviceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+
+            _applicationHostOptions.IsFileSystemReadOnly = isFileSystemReadOnly;
+            if (azureFilesAppSettingsExist)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)).Returns("test value");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare)).Returns("test value");
+            }
+
+            var result = (OkObjectResult)(await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockserviceProvider.Object));
+            var status = (HostStatus)result.Value;
+            Assert.Equal(status.IsFunctionAppEditable, isFunctionAppEditable);
         }
 
         [Theory]
