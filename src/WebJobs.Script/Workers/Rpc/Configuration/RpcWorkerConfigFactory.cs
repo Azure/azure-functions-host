@@ -241,7 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                  !string.IsNullOrEmpty(_workerRuntime) &&
                  File.Exists(workerPath))
             {
-                // Read lanaguage worker file to avoid disk reads during specialization
+                // Read lanaguage worker file to avoid disk reads during specialization. This is only to page-in bytes.
                 File.ReadAllBytes(workerPath);
             }
         }
