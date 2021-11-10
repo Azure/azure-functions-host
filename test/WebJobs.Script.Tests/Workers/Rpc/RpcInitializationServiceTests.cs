@@ -88,15 +88,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await testRpcServer.ShutdownAsync();
         }
 
-        [Fact]
-        public async Task RpcInitializationService_Initializes_RpcServer_RpcChannels_PlaceholderMode()
+        [Theory]
+        [InlineData("")]
+        [InlineData("node")]
+        public async Task RpcInitializationService_Initializes_RpcServer_RpcChannels_PlaceholderMode(string workerRuntime)
         {
             IRpcServer testRpcServer = new TestRpcServer();
             var mockEnvironment = new Mock<IEnvironment>();
             mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode)).Returns("1");
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(RpcWorkerConstants.NodeLanguageWorkerName);
-            mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName)).Returns($"{RpcWorkerConstants.PythonLanguageWorkerName};{RpcWorkerConstants.JavaLanguageWorkerName};");
-
+            mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName)).Returns(workerRuntime);
+            if (string.IsNullOrEmpty(workerRuntime))
+            {
+                mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName)).Returns($"{RpcWorkerConstants.PythonLanguageWorkerName};{RpcWorkerConstants.JavaLanguageWorkerName};{RpcWorkerConstants.NodeLanguageWorkerName}");
+            }
+            else
+            {
+                mockEnvironment.Setup(p => p.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName)).Returns($"{RpcWorkerConstants.PythonLanguageWorkerName};{RpcWorkerConstants.JavaLanguageWorkerName};");
+            }
             _rpcInitializationService = new RpcInitializationService(_optionsMonitor, mockEnvironment.Object, testRpcServer, _mockLanguageWorkerChannelManager.Object, _logger);
             await _rpcInitializationService.StartAsync(CancellationToken.None);
             _mockLanguageWorkerChannelManager.Verify(m => m.InitializeChannelAsync(RpcWorkerConstants.NodeLanguageWorkerName), Times.Once);
