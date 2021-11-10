@@ -3,7 +3,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -21,7 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public static FunctionMetadataManager GetFunctionMetadataManager(IOptions<ScriptJobHostOptions> jobHostOptions,
-            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
+            IFunctionMetadataProvider functionMetadataProvider, IList<IFunctionProvider> functionProviders, IOptions<HttpWorkerOptions> httpOptions,
+            ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions)
         {
             var managerMock = new Mock<IScriptHostManager>();
 
@@ -37,7 +41,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(IOptions<LanguageWorkerOptions>))).Returns(languageWorkerOptions);
             managerMock.As<IServiceProvider>().Setup(m => m.GetService(typeof(ILoggerFactory))).Returns(loggerFactory);
 
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions);
+            var options = new ScriptApplicationHostOptions()
+            {
+                IsSelfHost = true,
+                ScriptPath = TestHelpers.FunctionsTestDirectory,
+                LogPath = TestHelpers.GetHostLogFileDirectory().FullName
+            };
+            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+            var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, SystemEnvironment.Instance);
         }
     }
 }
