@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.ObjectModel;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
@@ -67,7 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// Gets or sets a value indicating whether the function app content can be edited. For example, if it's running from loose files, not from zip.
         /// </summary>
         [JsonProperty(PropertyName = "isFunctionAppContentEditable", DefaultValueHandling = DefaultValueHandling.Include)]
-        public bool IsFunctionAppContentEditable { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
+        public FunctionAppContentEditable IsFunctionAppContentEditable { get; set; }
 
         /// <summary>
         /// Gets or sets the information related to Extension bundles

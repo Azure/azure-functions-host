@@ -6,7 +6,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -90,6 +92,23 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesConnectionString)) &&
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
+        }
+
+        public static FunctionAppContentEditable IsFunctionAppContentEditable(this IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
+        {
+            // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
+            if (!environment.IsLinuxConsumption())
+            {
+                return FunctionAppContentEditable.Unknown;
+            }
+            if (!applicationHostOptions.Value.IsFileSystemReadOnly && environment.AzureFilesAppSettingsExist())
+            {
+                return FunctionAppContentEditable.Editable;
+            }
+            else
+            {
+                return FunctionAppContentEditable.NotEditable;
+            }
         }
 
         public static bool IsCoreTools(this IEnvironment environment)

@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -70,17 +71,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, false)]
-        [InlineData(false, true, true)]
-        [InlineData(true, true, false)]
-        [InlineData(true, false, false)]
-        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, bool isFunctionAppContentEditable)
+        [InlineData(false, false, FunctionAppContentEditable.NotEditable)]
+        [InlineData(false, true, FunctionAppContentEditable.Editable)]
+        [InlineData(true, true, FunctionAppContentEditable.NotEditable)]
+        [InlineData(true, false, FunctionAppContentEditable.NotEditable)]
+        [InlineData(true, true, FunctionAppContentEditable.Unknown, false)]
+        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditable isFunctionAppContentEditable, bool isLinuxConsumption = true)
         {
             _mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
             var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
             mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
             var mockserviceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
             mockserviceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+
+            if (isLinuxConsumption)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("test-container");
+            }
 
             _applicationHostOptions.IsFileSystemReadOnly = isFileSystemReadOnly;
             if (azureFilesAppSettingsExist)
