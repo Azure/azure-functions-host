@@ -265,5 +265,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, processCountValue);
             Assert.Equal(expected, environment.IsWorkerDynamicConcurrencyEnabled());
         }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData(null, "test", false)]
+        [InlineData("test", null, false)]
+        [InlineData("test", "test", true)]
+        public void AzureFilesAppSettingsExist_ReturnsExpectedResult(string connectionString, string contentShare, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(AzureFilesConnectionString, connectionString);
+            environment.SetEnvironmentVariable(AzureFilesContentShare, contentShare);
+            Assert.Equal(expected, environment.AzureFilesAppSettingsExist());
+        }
     }
 }

@@ -94,23 +94,6 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
-        public static FunctionAppContentEditingState IsFunctionAppContentEditable(this IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
-        {
-            // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
-            if (!environment.IsLinuxConsumption())
-            {
-                return FunctionAppContentEditingState.Unknown;
-            }
-            if (!applicationHostOptions.Value.IsFileSystemReadOnly && environment.AzureFilesAppSettingsExist())
-            {
-                return FunctionAppContentEditingState.Allowed;
-            }
-            else
-            {
-                return FunctionAppContentEditingState.NotAllowed;
-            }
-        }
-
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
