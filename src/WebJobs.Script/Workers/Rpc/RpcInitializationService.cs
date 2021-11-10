@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (_environment.IsPlaceholderModeEnabled())
             {
-                _logger.LogDebug("Initializing language worker channels '{placholderChannelList}' in placeholder mode.", string.Join(",", _placeholderLanguageWorkersList));
+                _logger.LogDebug("Initializing language worker channels. {workerRuntimeSetting}: '{workerRuntime}', placeholderChannelList: '{placeholderChannelList}' in placeholder mode.", nameof(RpcWorkerConstants.FunctionWorkerRuntimeSettingName), _workerRuntime, string.Join(",", _placeholderLanguageWorkersList));
 
                 if (_placeholderLanguageWorkersList.Count() != 0)
                 {
