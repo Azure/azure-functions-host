@@ -354,12 +354,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 result.Add("concurrency", concurrencyPayload);
             }
 
-            JObject kedaPayload = GetHostJsonSection(jsonPayload, "kedaScalingAlgorithm", _logger);
-            if (kedaPayload != null)
-            {
-                result.Add("kedaScalingAlgorithm", kedaPayload);
-            }
-
             // Add functions secrets to the payload
             // Only secret types we own/control can we cache directly
             // Encryption is handled by Antares before storage
