@@ -115,7 +115,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // storage access in non-Kubernetes environments.
                     result.Success = false;
                     result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
-                    _logger.LogWarning(result.Error);
+                  //  _logger.LogWarning(result.Error);   // TODO check if it is really need
                     return result;
                 }
 
@@ -127,12 +127,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // where it's site content is empty. Doing the empty sync can cause the app
                     // to go idle when it shouldn't.
                     result.Success = false;
-                    _logger.LogDebug("[GLENNA] No functions found. Skipping Sync operation.");
-                    _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation.");
+                    _logger.LogDebug("No functions found. Skipping Sync operation."); // TODO check if it is really need
+                    // _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation."); // TODO check if it is really need
                     return result;
                 }
 
-                _logger.LogTrace($"Was able to get some payload back. Count={payload.Count}");
+                // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -144,7 +144,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}");
+                    // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
@@ -155,8 +155,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    _logger.LogTrace($"[GLENNA] ShouldSyncTriggers=false. isBackgroundSync={isBackgroundSync}, " +
-                        $"newHash != null = {newHash != null}");
+                    // _logger.LogTrace($"[GLENNA] ShouldSyncTriggers=false. isBackgroundSync={isBackgroundSync}, " +
+                    //     $"newHash != null = {newHash != null}");  // TODO check if it is really need
                 }
             }
             catch (Exception ex)
@@ -322,7 +322,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (!ArmCacheEnabled)
             {
-                _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing");
+                // _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing"); // TODO check if it is really need
             }
 
             // Add triggers to the payload
@@ -402,7 +402,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
-                _logger.LogWarning($"[glenna]: SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
+                //             _logger.LogWarning($"[glenna]: SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!"); // TODO check if it is really need
             }
 
             return new SyncTriggersPayload
@@ -442,7 +442,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 return (JObject)token;
             }
 
-            logger.LogError($"[GLENNA]: Could not find section='{section}' in data!");
+            // logger.LogError($"[GLENNA]: Could not find section='{section}' in data!");
             return null;
         }
 
@@ -697,7 +697,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
                 }
 
-                _logger.LogDebug($"[Glenna]: Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
                 var response = await _httpClient.SendAsync(request);
 
