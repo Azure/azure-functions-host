@@ -830,6 +830,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
 
             Assert.Equal(Utility.GetFunctionAppContentEditingState(environment, optionsWrapper), isFunctionAppContentEditable);
+        }
 
         [Theory]
         [InlineData(false, true, false)]
