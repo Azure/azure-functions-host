@@ -22,9 +22,11 @@ using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -953,6 +955,23 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsValidZipUrl(string appSetting)
         {
             return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+        }
+
+        public static FunctionAppContentEditingState GetFunctionAppContentEditingState(IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
+        {
+            // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
+            if (!environment.IsLinuxConsumption())
+            {
+                return FunctionAppContentEditingState.Unknown;
+            }
+            if (!applicationHostOptions.Value.IsFileSystemReadOnly && environment.AzureFilesAppSettingsExist())
+            {
+                return FunctionAppContentEditingState.Allowed;
+            }
+            else
+            {
+                return FunctionAppContentEditingState.NotAllowed;
+            }
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
