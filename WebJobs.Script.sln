@@ -337,19 +337,27 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NodeRetry", "NodeRetry", "{
 		sample\NodeRetry\host.json = sample\NodeRetry\host.json
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-FunctionJsonRetry", "HttpTrigger-FunctionJsonRetry", "{7935A7A4-191A-4A9B-B8DD-173968309EBF}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-RetryFunctionJson", "HttpTrigger-RetryFunctionJson", "{7935A7A4-191A-4A9B-B8DD-173968309EBF}"
 	ProjectSection(SolutionItems) = preProject
 		sample\NodeRetry\HttpTrigger-RetryFunctionJson\function.json = sample\NodeRetry\HttpTrigger-RetryFunctionJson\function.json
 		sample\NodeRetry\HttpTrigger-RetryFunctionJson\index.js = sample\NodeRetry\HttpTrigger-RetryFunctionJson\index.js
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-HostJsonRetry", "HttpTrigger-HostJsonRetry", "{CF6D9CDA-2290-46DF-B162-2D422477288A}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-RetryHostJson", "HttpTrigger-RetryHostJson", "{CF6D9CDA-2290-46DF-B162-2D422477288A}"
 	ProjectSection(SolutionItems) = preProject
 		sample\NodeRetry\HttpTrigger-RetryHostJson\function.json = sample\NodeRetry\HttpTrigger-RetryHostJson\function.json
 		sample\NodeRetry\HttpTrigger-RetryHostJson\index.js = sample\NodeRetry\HttpTrigger-RetryHostJson\index.js
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Script.Tests.Benchmarks", "test\Benchmarks\Microsoft.Azure.WebJobs.Script.Tests.Benchmarks.csproj", "{09D16953-A048-4E6B-B366-1E0D7E5EF86E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NodeDrain", "NodeDrain", "{6FE94892-4E58-403D-BA32-4A35C0EE1E46}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-LongRun", "HttpTrigger-LongRun", "{1EE80AFE-8B64-4670-9462-3DEA692D4457}"
+	ProjectSection(SolutionItems) = preProject
+		sample\NodeDrain\HttpTrigger-LongRun\function.json = sample\NodeDrain\HttpTrigger-LongRun\function.json
+		sample\NodeDrain\HttpTrigger-LongRun\index.js = sample\NodeDrain\HttpTrigger-LongRun\index.js
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
@@ -460,6 +468,8 @@ Global
 		{7935A7A4-191A-4A9B-B8DD-173968309EBF} = {EEBAC197-FAD8-4214-9A12-76334BB3021A}
 		{CF6D9CDA-2290-46DF-B162-2D422477288A} = {EEBAC197-FAD8-4214-9A12-76334BB3021A}
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
+		{6FE94892-4E58-403D-BA32-4A35C0EE1E46} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
+		{1EE80AFE-8B64-4670-9462-3DEA692D4457} = {6FE94892-4E58-403D-BA32-4A35C0EE1E46}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}

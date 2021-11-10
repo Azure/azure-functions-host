@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private IWorkerProcess _rpcWorkerProcess;
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TaskCompletionSource<List<FunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<FunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
 
@@ -423,7 +423,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             try
             {
-                // do not send invocation requests for functions that failed to load or for functions that could not be indexed by the worker
+                // do not send invocation requests for functions that failed to load or could not be indexed by the worker
                 if (_functionLoadErrors.ContainsKey(context.FunctionMetadata.GetFunctionId()))
                 {
                     _workerChannelLogger.LogDebug($"Function {context.FunctionMetadata.Name} failed to load");
@@ -459,64 +459,72 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // gets metadata from worker
-        public Task<List<FunctionMetadata>> WorkerGetFunctionMetadata()
+        public Task<List<RawFunctionMetadata>> GetFunctionMetadata()
         {
-            return SendWorkerMetadataRequest();
+            return SendFunctionMetadataRequest();
         }
 
-        internal Task<List<FunctionMetadata>> SendWorkerMetadataRequest()
+        internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerFunctionMetadataResponse)
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionMetadataResponses)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessMetadata(msg.Message.WorkerFunctionMetadataResponse), HandleWorkerMetadataRequestError));
+                        .Subscribe((msg) => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponses), HandleWorkerMetadataRequestError));
 
             _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
             // sends the function app directory path to worker for indexing
             SendStreamingMessage(new StreamingMessage
             {
-                WorkerFunctionMetadataRequest = new WorkerFunctionMetadataRequest()
+                FunctionsMetadataRequest = new FunctionsMetadataRequest()
                 {
-                    Directory = _applicationHostOptions.CurrentValue.ScriptPath
+                    FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
                 }
             });
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into FunctionMetadata objects
-        internal void ProcessMetadata(WorkerFunctionMetadataResponse workerFunctionMetadataResponse)
+        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
+        internal void ProcessFunctionMetadataResponses(FunctionMetadataResponses functionMetadataResponses)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
-            var responseStatus = workerFunctionMetadataResponse.OverallStatus;
+            var functions = new List<RawFunctionMetadata>();
 
-            var functions = new List<FunctionMetadata>();
-
-            foreach (var metadata in workerFunctionMetadataResponse.Results)
+            foreach (var metadataResponse in functionMetadataResponses.FunctionLoadRequestsResults)
             {
-                if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
+                var metadata = metadataResponse.Metadata;
+                if (metadata != null)
                 {
-                    _workerChannelLogger.LogError($"Worker failed to index function {metadata.Id}");
-                    _metadataRequestErrors[metadata.Id] = metadataRequestEx;
-                }
-                var functionMetadata = new FunctionMetadata()
-                {
-                    FunctionDirectory = metadata.Directory,
-                    ScriptFile = metadata.ScriptFile,
-                    EntryPoint = metadata.EntryPoint,
-                    Name = metadata.Name,
-                    Language = metadata.Language
-                };
+                    if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
+                    {
+                        _workerChannelLogger.LogError($"Worker failed to index function {metadataResponse.FunctionId}");
+                        _metadataRequestErrors[metadataResponse.FunctionId] = metadataRequestEx;
+                    }
+                    var functionMetadata = new FunctionMetadata()
+                    {
+                        FunctionDirectory = metadata.Directory,
+                        ScriptFile = metadata.ScriptFile,
+                        EntryPoint = metadata.EntryPoint,
+                        Name = metadata.Name
+                    };
 
-                functionMetadata.SetFunctionId(metadata.Id);
+                    functionMetadata.SetFunctionId(metadataResponse.FunctionId);
 
-                foreach (string binding in metadata.Bindings)
-                {
-                    var functionBinding = BindingMetadata.Create(JObject.Parse(binding));
-                    functionMetadata.Bindings.Add(functionBinding);
+                    var bindings = new List<string>();
+                    foreach (string binding in metadata.RawBindings)
+                    {
+                        bindings.Add(binding);
+                    }
+
+                    functions.Add(new RawFunctionMetadata()
+                    {
+                        Metadata = functionMetadata,
+                        Bindings = bindings,
+                        RetryOptions = metadata.RetryOptions,
+                        ConfigurationSource = metadata.ConfigSource
+                    });
                 }
-                functions.Add(functionMetadata);
             }
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);

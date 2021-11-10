@@ -47,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpResponseMessage response = await _fixture.HttpClient.GetAsync("/admin/host/status");
 
             string content = await response.Content.ReadAsStringAsync();
-            Assert.True(response.StatusCode.ToString("D") == "401", "/admin/* endpoints cannot be overriden by function routes.");
-            Assert.True(content == string.Empty, "/admin/* endpoints cannot be overriden by function routes.");
+            Assert.True(response.StatusCode.ToString("D") == "401", "/admin/* endpoints cannot be overridden by function routes.");
+            Assert.True(content == string.Empty, "/admin/* endpoints cannot be overridden by function routes.");
         }
 
         public class TestFixture : IDisposable
@@ -60,18 +60,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 // copy test files to temp directory, since accessing the metadata APIs will result
                 // in file creations (for test data files)
-                var scriptSource = Path.Combine(Environment.CurrentDirectory, @"..\..\..\TestScripts\WarmupFunction");
+                var scriptSource = Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "TestScripts", "WarmupFunction");
                 _testHome = Path.Combine(Path.GetTempPath(), @"WarmupFunction");
-                var scriptRoot = Path.Combine(_testHome, @"site\wwwroot");
+                var scriptRoot = Path.Combine(_testHome, "site", "wwwroot");
                 FileUtility.CopyDirectory(scriptSource, scriptRoot);
 
                 HostOptions = new ScriptApplicationHostOptions
                 {
                     IsSelfHost = true,
                     ScriptPath = scriptRoot,
-                    LogPath = Path.Combine(_testHome, @"LogFiles\Application\Functions"),
-                    SecretsPath = Path.Combine(_testHome, @"data\Functions\Secrets"),
-                    TestDataPath = Path.Combine(_testHome, @"data\Functions\SampleData")
+                    LogPath = Path.Combine(_testHome, "LogFiles", "Application", "Functions"),
+                    SecretsPath = Path.Combine(_testHome, "data", "Functions", "Secrets"),
+                    TestDataPath = Path.Combine(_testHome, "data", "Functions", "SampleData")
                 };
 
                 FileUtility.EnsureDirectoryExists(HostOptions.TestDataPath);

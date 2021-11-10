@@ -963,7 +963,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
                 MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }

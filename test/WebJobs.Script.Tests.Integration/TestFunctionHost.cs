@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -107,8 +108,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
                           var scriptManager = sp.GetService<IScriptHostManager>();
                           var loggerFactory = sp.GetService<ILoggerFactory>();
+                          var environment = sp.GetService<IEnvironment>();
 
-                          return GetMetadataManager(montior, scriptManager, loggerFactory);
+                          return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
                       }, ServiceLifetime.Singleton));
 
                       services.SkipDependencyValidation();
@@ -380,12 +382,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestStartup
         {
-            private Startup _startup;
+            private WebHost.Startup _startup;
             private readonly PostConfigureServices _postConfigure;
 
             public TestStartup(IConfiguration configuration, PostConfigureServices postConfigure)
             {
-                _startup = new Startup(configuration);
+                _startup = new WebHost.Startup(configuration);
                 _postConfigure = postConfigure;
             }
 
@@ -405,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory)
+        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory, IEnvironment environment)
         {
             var workerOptions = new LanguageWorkerOptions
             {
@@ -416,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), metadataProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions));
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), environment);
 
             return metadataManager;
         }

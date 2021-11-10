@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 TestDataPath = @"x:\test"
             };
 
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample");
 
             var fileSystem = CreateFileSystem(_hostOptions);
             var loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
@@ -303,10 +303,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             string testData2 = "Test Data 2";
             string testData3 = TestHelpers.NewRandomString(ScriptConstants.MaxTestDataInlineStringLength + 1);
 
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(function1);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1", "main.py"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1", "function.json"))).Returns(function1);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function1));
             });
@@ -315,10 +315,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 return new MemoryStream(Encoding.UTF8.GetBytes(testData1));
             });
 
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2\main.js"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2\function.json"))).Returns(function2);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function2\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function2", "main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function2", "function.json"))).Returns(function2);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function2", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function2));
             });
@@ -327,10 +327,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 return new MemoryStream(Encoding.UTF8.GetBytes(testData2));
             });
 
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\function.json"))).Returns(true);
-            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3\main.js"))).Returns(true);
-            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3\function.json"))).Returns(function3);
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3", "function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function3", "main.js"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function3", "function.json"))).Returns(function3);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function3", "function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(function3));
             });

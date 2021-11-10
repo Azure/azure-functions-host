@@ -32,6 +32,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -283,10 +284,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
+                // get worker config information and check to see if worker should index or not
+                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
+
+                // Generate Functions
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -304,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
@@ -313,15 +319,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
-
-                // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Dispatcher not needed for codeless function.
-                // Disptacher needed for non-dotnet codeless functions
-                var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-
+                if (!workerIndexing)
+                {
+                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
+                    // Dispatcher not needed for codeless function.
+                    // Disptacher needed for non-dotnet codeless functions
+                    var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
+                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                }
                 GenerateFunctions(directTypes);
-
                 ScheduleFileSystemCleanup();
             }
         }
@@ -369,10 +375,20 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets metadata collection of functions configured.
         /// </summary>
-        /// <returns>A metadata collection of functions configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        /// <returns>A metadata collection of functions and proxies configured.</returns>
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
+            IEnumerable<FunctionMetadata> functionMetadata;
+            if (workerIndexing)
+            {
+                _logger.LogInformation("Worker indexing is enabled");
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
+            }
+            else
+            {
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
+            }
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());

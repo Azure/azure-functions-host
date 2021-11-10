@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -37,8 +38,10 @@ namespace Microsoft.Azure.WebJobs.Script
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public ImmutableArray<FunctionMetadata> GetFunctionMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
         {
+            _functions = default(ImmutableArray<FunctionMetadata>);
+
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
                 _logger.FunctionMetadataProviderParsingFunctions();
@@ -47,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 _functions = functionMetadata.ToImmutableArray();
             }
 
-            return _functions;
+            return await Task.FromResult(_functions);
         }
 
         internal Collection<FunctionMetadata> ReadFunctionsMetadata(IEnumerable<RpcWorkerConfig> workerConfigs, IFileSystem fileSystem = null)
@@ -93,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     functionName = Path.GetFileName(functionDirectory);
 
-                    ValidateName(functionName);
+                    Utility.ValidateName(functionName);
 
                     JObject functionConfig = JObject.Parse(json);
 
@@ -105,14 +108,6 @@ namespace Microsoft.Azure.WebJobs.Script
                     Utility.AddFunctionError(_functionErrors, functionName, Utility.FlattenException(ex, includeSource: false), isFunctionShortName: true);
                 }
                 return null;
-            }
-        }
-
-        internal void ValidateName(string name)
-        {
-            if (!Utility.IsValidFunctionName(name))
-            {
-                throw new InvalidOperationException($"'{name}' is not a valid function name.");
             }
         }
 

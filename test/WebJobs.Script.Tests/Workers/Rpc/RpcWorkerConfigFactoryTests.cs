@@ -160,6 +160,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
             }
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            }
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
             RpcWorkerConfigFactory rpcWorkerConfigFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
