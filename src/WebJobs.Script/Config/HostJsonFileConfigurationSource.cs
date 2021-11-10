@@ -198,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                     JObject hostConfigObject;
                     try
                     {
-                        string json = File.ReadAllText(configFilePath);
+                        string json = FileUtility.ReadAllText(configFilePath);
                         hostConfigObject = JObject.Parse(json);
                     }
                     catch (JsonException ex)
@@ -249,7 +249,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     try
                     {
-                        File.WriteAllText(filePath, content.ToString(Formatting.Indented));
+                        FileUtility.WriteAllText(filePath, content.ToString(Formatting.Indented));
                     }
                     catch
                     {

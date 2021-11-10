@@ -15,6 +15,7 @@ using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -114,9 +115,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
                     // storage access in non-Kubernetes environments.
-                    result.Success = false;
-                    result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
-                    _logger.LogWarning(result.Error);
+
+                    // Glenna's change
+                    //  result.Success = false;
+                    //  result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
+                    //  _logger.LogWarning(result.Error);   // TODO check if it is really need
                     return result;
                 }
 
@@ -127,13 +130,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // We've seen error cases where a site temporarily gets into a situation
                     // where it's site content is empty. Doing the empty sync can cause the app
                     // to go idle when it shouldn't.
-                    result.Success = false;
-                    _logger.LogDebug("[GLENNA] No functions found. Skipping Sync operation.");
-                    _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation.");
+                     // Glenna's change
+                    //    result.Success = false;
+                    _logger.LogDebug("No functions found. Skipping Sync operation."); // TODO check if it is really need
+                    // _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation."); // TODO check if it is really need
                     return result;
                 }
 
-                _logger.LogTrace($"Was able to get some payload back. Count={payload.Count}");
+                // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -145,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}");
+                    // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
@@ -156,8 +160,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
                 else
                 {
-                    _logger.LogTrace($"[GLENNA] ShouldSyncTriggers=false. isBackgroundSync={isBackgroundSync}, " +
-                        $"newHash != null = {newHash != null}");
+                    // _logger.LogTrace($"[GLENNA] ShouldSyncTriggers=false. isBackgroundSync={isBackgroundSync}, " +
+                    //     $"newHash != null = {newHash != null}");  // TODO check if it is really need
                 }
             }
             catch (Exception ex)
@@ -326,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (!ArmCacheEnabled)
             {
-                _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing");
+                // _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing"); // TODO check if it is really need
             }
 
             // Add triggers to the payload
@@ -335,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Add all listable functions details to the payload
             JObject functions = new JObject();
-            string routePrefix = await WebFunctionsManager.GetRoutePrefix(hostOptions.RootScriptPath);
+
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
@@ -344,15 +348,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Add the host.json extensions to the payload
 
             // Glenna testing: Include the extensions payload for all apps
-            JObject jsonPayload = await GetHostJsonAsync(_applicationHostOptions, _logger);
-
-            JObject extensionsPayload = GetHostJsonSection(jsonPayload, "extensions", _logger);
+            JToken hostJsonPayload = _configuration.Convert("AzureFunctionsJobHost");
+            JToken extensionsPayload = hostJsonPayload["extensions"];
             if (extensionsPayload != null)
             {
                 result.Add("extensions", extensionsPayload);
             }
 
-            JObject concurrencyPayload = GetHostJsonSection(jsonPayload, "concurrency", _logger);
+            JToken concurrencyPayload = hostJsonPayload["concurrency"];
             if (concurrencyPayload != null)
             {
                 result.Add("concurrency", concurrencyPayload);
@@ -415,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // The settriggers call to the FE enforces a max request size
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
-                _logger.LogWarning($"[glenna]: SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!");
+                //             _logger.LogWarning($"[glenna]: SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Ignoring!!"); // TODO check if it is really need
             }
 
             return new SyncTriggersPayload
@@ -423,39 +426,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Content = json,
                 Count = count
             };
-        }
-
-        internal static async Task<JObject> GetHostJsonAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
-        {
-            var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
-            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
-            if (FileUtility.FileExists(hostJsonPath))
-            {
-                try
-                {
-                    string data = await FileUtility.ReadAsync(hostJsonPath);
-                    var hostJson = JObject.Parse(data);
-                    return hostJson;
-                }
-                catch (JsonException ex)
-                {
-                    logger.LogWarning($"[glenna]: Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
-                    return null;
-                }
-            }
-
-            return null;
-        }
-
-        internal static JObject GetHostJsonSection(JObject hostJson, string section, ILogger logger)
-        {
-            if (hostJson.TryGetValue(section, out JToken token))
-            {
-                return (JObject)token;
-            }
-
-            logger.LogError($"[GLENNA]: Could not find section='{section}' in data!");
-            return null;
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
@@ -702,7 +672,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     request.Headers.Add(ScriptConstants.KubernetesManagedAppNamespace, _environment.GetEnvironmentVariable(EnvironmentSettingNames.PodNamespace));
                 }
 
-                _logger.LogDebug($"[Glenna]: Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
+                _logger.LogDebug($"Making SyncTriggers request (RequestId={requestId}, Uri={request.RequestUri.ToString()}, Content={sanitizedContentString}).");
 
                 var response = await _httpClient.SendAsync(request);
 

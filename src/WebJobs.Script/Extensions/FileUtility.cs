@@ -114,6 +114,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static string ReadAllText(string path) => Instance.File.ReadAllText(path);
 
+        public static void WriteAllText(string path, string contents) => Instance.File.WriteAllText(path, contents);
+
         public static Stream OpenFile(string path, FileMode mode, FileAccess access = FileAccess.ReadWrite, FileShare share = FileShare.None)
         {
             return Instance.File.Open(path, mode, access, share);

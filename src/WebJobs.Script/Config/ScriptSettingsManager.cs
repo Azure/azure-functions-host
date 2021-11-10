@@ -2,7 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
@@ -91,6 +94,19 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             return new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", optional: true)
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+        }
+
+        public static IConfiguration BuildDefaultConfigration(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        {
+            return CreateDefaultConfigurationWithHostJsonFileBuilder(applicationHostOptions, environment, loggerFactory, metricsLogger).Build();
+        }
+
+        internal static IConfigurationBuilder CreateDefaultConfigurationWithHostJsonFileBuilder(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        {
+            return new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: true)
+                .Add(new HostJsonFileConfigurationSource(applicationHostOptions, environment, loggerFactory, metricsLogger))
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
         }
     }
