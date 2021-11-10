@@ -66,11 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public long ProcessUptime { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the function app content can be edited. For example, if it's running from loose files, not from zip.
+        /// Gets or sets a value indicating function app content editing state.
+        /// For example, if an app is running from loose files, not from zip, then it can be edited.
         /// </summary>
-        [JsonProperty(PropertyName = "isFunctionAppContentEditable", DefaultValueHandling = DefaultValueHandling.Include)]
+        [JsonProperty(PropertyName = "functionAppContentEditingState", DefaultValueHandling = DefaultValueHandling.Include)]
         [JsonConverter(typeof(StringEnumConverter))]
-        public FunctionAppContentEditable IsFunctionAppContentEditable { get; set; }
+        public FunctionAppContentEditingState FunctionAppContentEditingState { get; set; }
 
         /// <summary>
         /// Gets or sets the information related to Extension bundles

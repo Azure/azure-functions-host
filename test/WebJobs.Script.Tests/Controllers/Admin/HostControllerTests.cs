@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
-        [InlineData(false, false, FunctionAppContentEditable.NotEditable)]
-        [InlineData(false, true, FunctionAppContentEditable.Editable)]
-        [InlineData(true, true, FunctionAppContentEditable.NotEditable)]
-        [InlineData(true, false, FunctionAppContentEditable.NotEditable)]
-        [InlineData(true, true, FunctionAppContentEditable.Unknown, false)]
-        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditable isFunctionAppContentEditable, bool isLinuxConsumption = true)
+        [InlineData(false, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(false, true, FunctionAppContentEditingState.Allowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.Unknown, false)]
+        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditingState isFunctionAppContentEditable, bool isLinuxConsumption = true)
         {
             _mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
             var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (OkObjectResult)(await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockserviceProvider.Object));
             var status = (HostStatus)result.Value;
-            Assert.Equal(status.IsFunctionAppContentEditable, isFunctionAppContentEditable);
+            Assert.Equal(status.FunctionAppContentEditingState, isFunctionAppContentEditable);
         }
 
         [Theory]
