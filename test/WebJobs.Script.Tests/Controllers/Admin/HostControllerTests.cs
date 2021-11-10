@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -13,6 +14,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -36,13 +38,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IExtensionBundleManager> _extensionBundleManager;
         private readonly Mock<HostPerformanceManager> _mockHostPerformanceManager;
         private readonly HostHealthMonitorOptions _hostHealthMonitorOptions;
+        private readonly ScriptApplicationHostOptions _applicationHostOptions;
 
         public HostControllerTests()
         {
             _scriptPath = Path.GetTempPath();
-            var applicationHostOptions = new ScriptApplicationHostOptions();
-            applicationHostOptions.ScriptPath = _scriptPath;
-            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+            _applicationHostOptions = new ScriptApplicationHostOptions();
+            _applicationHostOptions.ScriptPath = _scriptPath;
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(_applicationHostOptions);
+
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -64,6 +68,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 File.Delete(_appOfflineFilePath);
             }
+        }
+
+        [Theory]
+        [InlineData(false, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(false, true, FunctionAppContentEditingState.Allowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.Unknown, false)]
+        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditingState isFunctionAppContentEditable, bool isLinuxConsumption = true)
+        {
+            _mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
+            var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
+            var mockserviceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            mockserviceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+
+            if (isLinuxConsumption)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("test-container");
+            }
+
+            _applicationHostOptions.IsFileSystemReadOnly = isFileSystemReadOnly;
+            if (azureFilesAppSettingsExist)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)).Returns("test value");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare)).Returns("test value");
+            }
+
+            var result = (OkObjectResult)(await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockserviceProvider.Object));
+            var status = (HostStatus)result.Value;
+            Assert.Equal(status.FunctionAppContentEditingState, isFunctionAppContentEditable);
         }
 
         [Theory]

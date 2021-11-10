@@ -73,7 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 InstanceId = _environment.GetInstanceId(),
                 ComputerName = _environment.GetAntaresComputerName(),
                 Id = await hostIdProvider.GetHostIdAsync(CancellationToken.None),
-                ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds
+                ProcessUptime = (long)(DateTime.UtcNow - Process.GetCurrentProcess().StartTime).TotalMilliseconds,
+                FunctionAppContentEditingState = Utility.GetFunctionAppContentEditingState(_environment, _applicationHostOptions)
             };
 
             var bundleManager = serviceProvider.GetService<IExtensionBundleManager>();
