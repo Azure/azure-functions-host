@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -475,6 +476,91 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData("")]
+        [InlineData("host")]
+        [InlineData("Host")]
+        [InlineData("-function")]
+        [InlineData("_function")]
+        [InlineData("function test")]
+        [InlineData("function.test")]
+        [InlineData("function0.1")]
+        public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                Utility.ValidateName(functionName);
+            });
+
+            Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
+        }
+
+        [Theory]
+        [InlineData("testwithhost")]
+        [InlineData("hosts")]
+        [InlineData("myfunction")]
+        [InlineData("myfunction-test")]
+        [InlineData("myfunction_test")]
+        public void ValidateFunctionName_DoesNotThrowOnValidName(string functionName)
+        {
+            try
+            {
+                Utility.ValidateName(functionName);
+            }
+            catch (InvalidOperationException)
+            {
+                Assert.True(false, $"Valid function name {functionName} failed validation.");
+            }
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("_binding")]
+        [InlineData("binding-test")]
+        [InlineData("binding name")]
+        public void ValidateBinding_InvalidName_Throws(string bindingName)
+        {
+            BindingMetadata bindingMetadata = new BindingMetadata
+            {
+                Name = bindingName
+            };
+
+            var ex = Assert.Throws<ArgumentException>(() =>
+            {
+                Utility.ValidateBinding(bindingMetadata);
+            });
+
+            Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData("bindingName")]
+        [InlineData("binding1")]
+        [InlineData(ScriptConstants.SystemReturnParameterBindingName)]
+        public void ValidateBinding_ValidName_DoesNotThrow(string bindingName)
+        {
+            BindingMetadata bindingMetadata = new BindingMetadata
+            {
+                Name = bindingName,
+                Type = "Blob"
+            };
+
+            if (bindingMetadata.IsReturn)
+            {
+                bindingMetadata.Direction = BindingDirection.Out;
+            }
+
+            try
+            {
+                Utility.ValidateBinding(bindingMetadata);
+            }
+            catch (ArgumentException)
+            {
+                Assert.True(false, $"Valid binding name '{bindingName}' failed validation.");
+            }
+        }
+
+        [Theory]
         [InlineData("createIsolationEnvironment", "tr-TR", true)]
         [InlineData("HttpTrigger2", "en-US", true)]
         [InlineData("HttptRIGGER", "ja-JP", true)]
@@ -714,6 +800,80 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.False(Utility.IsCodelessDotNetLanguageFunction(func2));
                 Assert.False(Utility.IsCodelessDotNetLanguageFunction(nodeFunc));
             }
+        }
+
+        [Theory]
+        [InlineData(false, true, false)]
+        [InlineData(false, false, false)]
+        [InlineData(true, false, false)]
+        [InlineData(true, true, true)]
+        public void VerifyWorkerIndexingDecisionLogic(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool expected)
+        {
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
+            if (workerIndexingFeatureFlag)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
+            RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            Assert.Equal(expected, workerShouldIndex);
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        public void WorkerIndexingDecisionLogic_NullConfig(bool workerIndexingFeatureFlag, bool expected)
+        {
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
+            if (workerIndexingFeatureFlag)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
+            bool workerShouldIndex = Utility.CanWorkerIndex(null, testEnv);
+            Assert.Equal(expected, workerShouldIndex);
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        public void WorkerIndexingDecisionLogic_NullConfigDescription(bool workerIndexingFeatureFlag, bool expected)
+        {
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
+            if (workerIndexingFeatureFlag)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
+            RpcWorkerConfig workerConfig = new RpcWorkerConfig();
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            Assert.Equal(expected, workerShouldIndex);
+        }
+
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        public void WorkerIndexingDecisionLogic_NullWorkerIndexingProperty(bool workerIndexingFeatureFlag, bool expected)
+        {
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
+            if (workerIndexingFeatureFlag)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
+            }
+            RpcWorkerConfig workerConfig = new RpcWorkerConfig()
+            {
+                Description = new RpcWorkerDescription()
+                {
+                    Extensions = new List<string>(),
+                    Language = "python",
+                    WorkerDirectory = "testDir",
+                    WorkerIndexing = null
+                }
+            };
+            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
+            Assert.Equal(expected, workerShouldIndex);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)

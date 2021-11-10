@@ -14,12 +14,12 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class FunctionMetadataProviderTests
+    public class HostFunctionMetadataProviderTests
     {
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
-        public FunctionMetadataProviderTests()
+        public HostFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
@@ -28,25 +28,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void ReadFunctionMetadata_Succeeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            Assert.Equal(18, metadataProvider.GetFunctionMetadata(workerConfigs, false).Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
         }
 
         [Fact]
         public void ReadFunctionMetadata_With_Retry_Succeeds()
         {
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\noderetry");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "noderetry");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            var functionMetadatas = metadataProvider.GetFunctionMetadata(workerConfigs, false);
+            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result;
 
             Assert.Equal(2, functionMetadatas.Length);
 
@@ -85,53 +85,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
             return hasBegun && hasEnded && (metricsLogger.EventsBegan.Contains(MetricEventNames.ReadFunctionsMetadata)
                 && metricsLogger.EventsEnded.Contains(MetricEventNames.ReadFunctionsMetadata));
-        }
-
-        [Theory]
-        [InlineData("")]
-        [InlineData("host")]
-        [InlineData("Host")]
-        [InlineData("-function")]
-        [InlineData("_function")]
-        [InlineData("function test")]
-        [InlineData("function.test")]
-        [InlineData("function0.1")]
-        public void ValidateFunctionName_ThrowsOnInvalidName(string functionName)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
-
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-            {
-                metadataProvider.ValidateName(functionName);
-            });
-
-            Assert.Equal(string.Format("'{0}' is not a valid function name.", functionName), ex.Message);
-        }
-
-        [Theory]
-        [InlineData("testwithhost")]
-        [InlineData("hosts")]
-        [InlineData("myfunction")]
-        [InlineData("myfunction-test")]
-        [InlineData("myfunction_test")]
-        public void ValidateFunctionName_DoesNotThrowOnValidName(string functionName)
-        {
-            string functionsPath = "c:\testdir";
-            _scriptApplicationHostOptions.ScriptPath = functionsPath;
-            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
-
-            try
-            {
-                metadataProvider.ValidateName(functionName);
-            }
-            catch (InvalidOperationException)
-            {
-                Assert.True(false, $"Valid function name {functionName} failed validation.");
-            }
         }
 
         [Theory]
@@ -218,6 +171,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_InitFilePresent()
+        {
+            var functionConfig = new JObject();
+            var files = new Dictionary<string, MockFileData>
+            {
+                { @"c:\functions\__init__.py", new MockFileData(string.Empty) },
+                { @"c:\functions\helloworld.py", new MockFileData(string.Empty) },
+                { @"c:\functions\test.txt", new MockFileData(string.Empty) }
+            };
+            var fileSystem = new MockFileSystem(files);
+
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(null, @"c:\functions", fileSystem);
+            Assert.Equal(@"c:\functions\__init__.py", scriptFile);
+        }
+
+        [Fact]
         public void DeterminePrimaryScriptFile_SingleFile()
         {
             var files = new Dictionary<string, MockFileData>
@@ -245,18 +214,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(@"c:\functions\run.js", scriptFile);
         }
 
-        [Fact]
-        public void DeterminePrimaryScriptFile_MultipleFiles_IndexFilePresent()
+        [Theory]
+        [InlineData("index.js", @"c:\functions\index.js")]
+        [InlineData("__init__.py", @"c:\functions\__init__.py")]
+        public void DeterminePrimaryScriptFile_MultipleFiles_DefaultFilePresent(string scriptFileProperty, string expectedScriptFilePath)
         {
             var files = new Dictionary<string, MockFileData>
             {
-                { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { expectedScriptFilePath, new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
-            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile("index.js", @"c:\functions", fileSystem);
-            Assert.Equal(@"c:\functions\index.js", scriptFile);
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
+            Assert.Equal(expectedScriptFilePath, scriptFile);
         }
 
         [Theory]
@@ -264,16 +235,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("queueTrigger.py", @"c:\functions\queueTrigger.py")]
         [InlineData("helper.py", @"c:\functions\helper.py")]
         [InlineData("test.txt", @"c:\functions\test.txt")]
-        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string scriptFileProperty, string expedtedScriptFilePath)
+        public void DeterminePrimaryScriptFile_MultipleFiles_ConfigTrumpsConvention(string scriptFileProperty, string expectedScriptFilePath)
         {
             var files = new Dictionary<string, MockFileData>
             {
-                { expedtedScriptFilePath, new MockFileData(string.Empty) }
+                { expectedScriptFilePath, new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
             string actualScriptFilePath = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
-            Assert.Equal(expedtedScriptFilePath, actualScriptFilePath);
+            Assert.Equal(expectedScriptFilePath, actualScriptFilePath);
         }
 
         [Theory]
@@ -285,6 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { @"c:\functions\queueTrigger.py", new MockFileData(string.Empty) },
                 { @"c:\functions\helper.py", new MockFileData(string.Empty) },
+                { @"c:\functions\__init__.py", new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);

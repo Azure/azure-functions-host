@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Functions.Analyzers
         {
             var methodSymbol = (IMethodSymbol)context.Symbol;
 
-            if (!methodSymbol.IsFunction(context) || !methodSymbol.IsAsync || !methodSymbol.ReturnsVoid)
+            if (!methodSymbol.IsFunction(context.Compilation) || !methodSymbol.IsAsync || !methodSymbol.ReturnsVoid)
             {
                 return;
             }

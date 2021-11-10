@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Timers
 {
     /// <summary>
     /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
-    /// This is an overriden implementation based off the StorageScheduleMonitor in Microsoft.Azure.WebJobs.Extensions package.
+    /// This is an overridden implementation based off the StorageScheduleMonitor in Microsoft.Azure.WebJobs.Extensions package.
     /// <see cref="ScheduleMonitor"/> that stores schedule information in blob storage.
     /// </summary>
     internal class AzureStorageScheduleMonitor : ScheduleMonitor

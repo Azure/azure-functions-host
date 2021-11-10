@@ -21,5 +21,11 @@ namespace Microsoft.Azure.Functions.Analyzers
                 messageFormat: "Async void can lead to unexpected behavior. Return Task instead.",
                 category: Constants.DiagnosticsCategories.Usage,
                 severity: DiagnosticSeverity.Error);
+
+        public static DiagnosticDescriptor AvoidNonStaticHttpClient { get; }
+            = Create(id: "AZF0002", title: "Inefficient HttpClient usage",
+                messageFormat: "Reuse HttpClient instances to avoid holding more connections than necessary. See helplink for more information.",
+                category: Constants.DiagnosticsCategories.Reliability,
+                severity: DiagnosticSeverity.Warning);
     }
 }

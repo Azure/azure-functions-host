@@ -1,0 +1,37 @@
+[
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "// All repos\r\n$REPOS=repo:azure/azure-functions-host repo:azure/azure-functions-core-tools repo:azure/azure-functions-docker repo:azure/azure-functions-dotnet-worker repo:azure/azure-functions-nodejs-worker repo:azure/azure-functions-java-worker repo:azure/azure-functions-python-worker repo:azure/azure-functions-powershell-worker\r\n\r\n// Configuration\r\n$IS_OPEN_PR=is:pr is:open \r\n$AUTHORED_BY=author:@me\r\n$REVIEW_REQUESTED=review-requested:@me\r\n$TEAM=author:fabiocav author:brettsam author:soninaren author:madelinegordon author:liliankasem author:kashimiz author:kshyju author:satvu author:surgupta-msft"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# PRs created by me"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$REPOS $IS_OPEN_PR $AUTHORED_BY"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# PR Reviews assigned to me"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$REPOS $IS_OPEN_PR $REVIEW_REQUESTED"
+  },
+  {
+    "kind": 1,
+    "language": "markdown",
+    "value": "# PRs created by my team"
+  },
+  {
+    "kind": 2,
+    "language": "github-issues",
+    "value": "$REPOS $IS_OPEN_PR $TEAM"
+  }
+]

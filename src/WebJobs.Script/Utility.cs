@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Dynamic;
 using System.Globalization;
 using System.IO;
@@ -18,6 +19,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -40,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string SasVersionQueryParam = "sv";
 
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
@@ -259,6 +262,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public static IReadOnlyDictionary<string, string> ToStringValues(this IReadOnlyDictionary<string, object> data)
         {
             return data.ToDictionary(p => p.Key, p => p.Value != null ? p.Value.ToString() : null, StringComparer.OrdinalIgnoreCase);
+        }
+
+        public static string GetValueOrNull(this StringDictionary dictionary, string key)
+        {
+            return dictionary.ContainsKey(key) ? dictionary[key] : null;
         }
 
         // "Namespace.Class.Method" --> "Method"
@@ -537,6 +545,27 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionErrors[functionName] = functionErrorCollection = new Collection<string>();
             }
             functionErrorCollection.Add(error);
+        }
+
+        public static void ValidateBinding(BindingMetadata bindingMetadata)
+        {
+            if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
+            {
+                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
+            }
+
+            if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
+            {
+                throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
+            }
+        }
+
+        public static void ValidateName(string name)
+        {
+            if (!IsValidFunctionName(name))
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, "function"));
+            }
         }
 
         internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
@@ -859,6 +888,26 @@ namespace Microsoft.Azure.WebJobs.Script
                     _ = new ExponentialBackoffRetryAttribute(retryOptions.MaxRetryCount.Value, retryOptions.MinimumInterval.ToString(), retryOptions.MaximumInterval.ToString());
                     break;
             }
+        }
+
+        public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
+        {
+            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            if (workerConfigs != null)
+            {
+                var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
+                // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
+                    && (workerConfig != null
+                        && workerConfig.Description != null
+                        && workerConfig.Description.WorkerIndexing != null
+                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)

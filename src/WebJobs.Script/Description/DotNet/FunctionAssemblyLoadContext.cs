@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly ConcurrentDictionary<string, int> _sharedContextAssembliesInFallbackLoad = new ConcurrentDictionary<string, int>();
         private static readonly RuntimeAssembliesInfo _runtimeAssembliesInfo = new RuntimeAssembliesInfo();
 
-        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
+        private static Lazy<FunctionAssemblyLoadContext> _defaultContext = new (() => CreateSharedContext(ResolveFunctionBaseProbingPath()), true);
 
         private readonly List<string> _probingPaths = new List<string>();
         private readonly IDictionary<string, RuntimeAsset[]> _depsAssemblies;
@@ -51,9 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public static FunctionAssemblyLoadContext Shared => _defaultContext.Value;
 
-        internal static void ResetSharedContext()
+        internal static void ResetSharedContext(string baseProbingPath = null)
         {
-            _defaultContext = new Lazy<FunctionAssemblyLoadContext>(CreateSharedContext, true);
+            baseProbingPath ??= ResolveFunctionBaseProbingPath();
+
+            _defaultContext = new Lazy<FunctionAssemblyLoadContext>(() => CreateSharedContext(baseProbingPath), true);
             _runtimeAssembliesInfo.ResetIfStale();
         }
 
@@ -105,9 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             return runtimeAssemblyGroups.GetDefaultRuntimeFileAssets().Select(a => new RuntimeAsset(null, Path.GetFileName(a.Path), a.AssemblyVersion));
         }
 
-        private static FunctionAssemblyLoadContext CreateSharedContext()
+        private static FunctionAssemblyLoadContext CreateSharedContext(string baseProbingPath)
         {
-            var sharedContext = new FunctionAssemblyLoadContext(ResolveFunctionBaseProbingPath());
+            var sharedContext = new FunctionAssemblyLoadContext(baseProbingPath);
             Default.Resolving += HandleDefaultContextFallback;
 
             return sharedContext;

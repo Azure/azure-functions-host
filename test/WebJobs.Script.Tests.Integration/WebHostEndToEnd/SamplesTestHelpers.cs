@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -39,6 +40,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         {
             string functionKey = await fixture.Host.GetFunctionSecretAsync($"{functionName}");
             string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task<HttpResponseMessage> InvokeDrain(EndToEndTestFixture fixture)
+        {
+            string masterKey = await fixture.Host.GetMasterKeyAsync();
+            string uri = $"admin/host/drain?code={masterKey}";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+            return await fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        public static async Task<HttpResponseMessage> InvokeDrainStatus(EndToEndTestFixture fixture)
+        {
+            string masterKey = await fixture.Host.GetMasterKeyAsync();
+            string uri = $"admin/host/drain/status?code={masterKey}";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
 

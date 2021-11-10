@@ -32,6 +32,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -46,7 +47,6 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const string GeneratedTypeName = "Functions";
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly IScriptHostManager _scriptHostManager;
-        private readonly string _storageConnectionString;
         private readonly IDistributedLockManager _distributedLockManager;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly string _instanceId;
         private readonly IEnvironment _environment;
+        private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IHttpRoutesManager httpRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
+            IFunctionDataCache functionDataCache,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
             ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
@@ -116,7 +118,6 @@ namespace Microsoft.Azure.WebJobs.Script
             _instanceId = Guid.NewGuid().ToString();
             _hostOptions = options;
             _configuration = configuration;
-            _storageConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Storage);
             _distributedLockManager = distributedLockManager;
             _functionMetadataManager = functionMetadataManager;
             _fileLoggingStatusManager = fileLoggingStatusManager;
@@ -153,6 +154,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     HandleHostError(evt.Exception);
                 }));
+
+            _functionDataCache = functionDataCache;
         }
 
         public event EventHandler HostInitializing;
@@ -172,6 +175,8 @@ namespace Microsoft.Azure.WebJobs.Script
         public ILogger Logger { get; internal set; }
 
         public ScriptJobHostOptions ScriptOptions { get; private set; }
+
+        public static bool IsFunctionDataCacheEnabled { get; set; }
 
         /// <summary>
         /// Gets the collection of all valid Functions. For functions that are in error
@@ -279,10 +284,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
+                // get worker config information and check to see if worker should index or not
+                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
+
+                // Generate Functions
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -300,24 +310,43 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
 
+                IsFunctionDataCacheEnabled = GetIsFunctionDataCacheEnabled();
+
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
-
-                // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Dispatcher not needed for non-proxy codeless function.
-                // Disptacher needed for non-dotnet codeless functions
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-
+                if (!workerIndexing)
+                {
+                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
+                    // Dispatcher not needed for non-proxy codeless function.
+                    // Disptacher needed for non-dotnet codeless functions
+                    var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
+                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                }
                 GenerateFunctions(directTypes);
-
                 ScheduleFileSystemCleanup();
             }
+        }
+
+        /// <summary>
+        /// Checks if the conditions to use <see cref="IFunctionDataCache"/> are met (if a valid implementation was found at runtime,
+        /// if the setting was enabled, the app is using out-of-proc languages which communicate with the host over shared memory).
+        /// </summary>
+        /// <returns><see cref="true"/> if <see cref="IFunctionDataCache"/> can be used, <see cref="false"/> otherwise.</returns>
+        private bool GetIsFunctionDataCacheEnabled()
+        {
+            if (Utility.IsDotNetLanguageFunction(_workerRuntime) ||
+                ContainsDotNetFunctionDescriptorProvider() ||
+                _functionDataCache == null)
+            {
+                return false;
+            }
+
+            return _functionDataCache.IsEnabled;
         }
 
         private async Task LogInitializationAsync()
@@ -347,9 +376,19 @@ namespace Microsoft.Azure.WebJobs.Script
         /// Gets metadata collection of functions and proxies configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
+            IEnumerable<FunctionMetadata> functionMetadata;
+            if (workerIndexing)
+            {
+                _logger.LogInformation("Worker indexing is enabled");
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
+            }
+            else
+            {
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
+            }
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
@@ -528,6 +567,15 @@ namespace Microsoft.Azure.WebJobs.Script
             // In addition to descriptors already added here, we need to ensure all codeless functions
             // also have associated descriptors.
             AddCodelessDescriptors(functionMetadata);
+        }
+
+        /// <summary>
+        /// Checks if the list of descriptors contains any <see cref="DotNetFunctionDescriptorProvider"/>.
+        /// </summary>
+        /// <returns><see cref="true"/> if <see cref="DotNetFunctionDescriptorProvider"/> found, <see cref="false"/> otherwise.</returns>
+        private bool ContainsDotNetFunctionDescriptorProvider()
+        {
+            return _descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider);
         }
 
         /// <summary>

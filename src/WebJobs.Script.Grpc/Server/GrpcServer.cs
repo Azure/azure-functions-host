@@ -8,17 +8,19 @@ using System.Threading.Tasks;
 using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     public class GrpcServer : IRpcServer, IDisposable
     {
+        private readonly ILogger<GrpcServer> _logger;
         private int _shutdown = 0;
         private Server _server;
         private bool _disposed = false;
         public const int MaxMessageLengthBytes = int.MaxValue;
 
-        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl)
+        public GrpcServer(FunctionRpc.FunctionRpcBase serviceImpl, ILogger<GrpcServer> logger)
         {
             ChannelOption maxReceiveMessageLength = new ChannelOption(ChannelOptions.MaxReceiveMessageLength, MaxMessageLengthBytes);
             ChannelOption maxSendMessageLength = new ChannelOption(ChannelOptions.MaxSendMessageLength, MaxMessageLengthBytes);
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 Services = { FunctionRpc.BindService(serviceImpl) },
                 Ports = { new ServerPort("127.0.0.1", ServerPort.PickUnused, ServerCredentials.Insecure) }
             };
+            _logger = logger;
         }
 
         public Uri Uri => new Uri($"http://127.0.0.1:{_server.Ports.First().BoundPort}");
@@ -35,6 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public Task StartAsync()
         {
             _server.Start();
+            _logger.LogDebug($"Started {nameof(GrpcServer)} on {Uri}.");
             return Task.CompletedTask;
         }
 

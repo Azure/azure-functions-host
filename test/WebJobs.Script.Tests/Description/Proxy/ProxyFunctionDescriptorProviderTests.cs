@@ -191,6 +191,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var jobHostOptionsWrapped = new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions);
             var nullLogger = new NullLoggerFactory();
             var proxyMetadataProvider = new ProxyFunctionProvider(jobHostOptionsWrapped, new Mock<IEnvironment>().Object, new Mock<IScriptEventManager>().Object, nullLogger);
+
+            // create function metadata provider factory to pass into metadata manager constructor
+            var options = new ScriptApplicationHostOptions()
+            {
+                IsSelfHost = true,
+                ScriptPath = TestHelpers.FunctionsTestDirectory,
+                LogPath = TestHelpers.GetHostLogFileDirectory().FullName
+            };
+            var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
+            var source = new TestChangeTokenSource<ScriptApplicationHostOptions>();
+            var changeTokens = new[] { source };
+            var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
+
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(jobHostOptionsWrapped, new Mock<IFunctionMetadataProvider>().Object,
                 new List<IFunctionProvider>() { proxyMetadataProvider }, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), nullLogger, new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 

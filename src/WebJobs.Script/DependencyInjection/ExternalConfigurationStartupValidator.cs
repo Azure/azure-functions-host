@@ -43,8 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
             foreach (var function in functions)
             {
-                var trigger = function.Bindings.SingleOrDefault(b => b.IsTrigger);
-
+                // Only a single trigger per function is supported. For our purposes here we just take
+                // the first. If multiple are defined, that error will be handled on indexing.
+                var trigger = function.Bindings.FirstOrDefault(b => b.IsTrigger);
                 if (trigger == null)
                 {
                     continue;

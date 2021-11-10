@@ -102,16 +102,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
                 new EventId(514, nameof(StartupOperationWasCanceled)),
                 "Host startup operation '{operationId}' was canceled.");
 
-        private static readonly Action<ILogger, Guid, Exception> _errorOccuredDuringStartupOperation =
+        private static readonly Action<ILogger, Guid, Exception> _errorOccurredDuringStartupOperation =
             LoggerMessage.Define<Guid>(
                 LogLevel.Error,
-                new EventId(515, nameof(ErrorOccuredDuringStartupOperation)),
+                new EventId(515, nameof(ErrorOccurredDuringStartupOperation)),
                 "A host error has occurred during startup operation '{operationId}'.");
 
-        private static readonly Action<ILogger, Guid, Exception> _errorOccuredInactive =
+        private static readonly Action<ILogger, Guid, Exception> _errorOccurredInactive =
             LoggerMessage.Define<Guid>(
                 LogLevel.Warning,
-                new EventId(516, nameof(ErrorOccuredInactive)),
+                new EventId(516, nameof(ErrorOccurredInactive)),
                 "A host error has occurred on an inactive host during startup operation '{operationId}'.");
 
         private static readonly Action<ILogger, Guid, Exception> _cancellationRequested =
@@ -261,14 +261,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             _startupOperationWasCanceled(logger, operationId, null);
         }
 
-        public static void ErrorOccuredDuringStartupOperation(this ILogger logger, Guid operationId, Exception ex)
+        public static void ErrorOccurredDuringStartupOperation(this ILogger logger, Guid operationId, Exception ex)
         {
-            _errorOccuredDuringStartupOperation(logger, operationId, ex);
+            _errorOccurredDuringStartupOperation(logger, operationId, ex);
         }
 
-        public static void ErrorOccuredInactive(this ILogger logger, Guid operationId, Exception ex)
+        public static void ErrorOccurredInactive(this ILogger logger, Guid operationId, Exception ex)
         {
-            _errorOccuredInactive(logger, operationId, ex);
+            _errorOccurredInactive(logger, operationId, ex);
         }
 
         public static void CancellationRequested(this ILogger logger, Guid operationId)
