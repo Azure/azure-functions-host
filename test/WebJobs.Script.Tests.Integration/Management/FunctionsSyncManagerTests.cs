@@ -285,13 +285,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private void VerifyResultWithCacheOff()
         {
             string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload();
-            var triggers = JArray.Parse(_contentBuilder.ToString());
+            var result = JObject.Parse(_contentBuilder.ToString()); // TODO: Originally It was array by ArmCachedEnabled feature.
+            var triggers = result["triggers"];
             Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
 
-            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-            var log = logs[0];
-            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
-            int endIdx = log.FormattedMessage.LastIndexOf(')');
+            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(x => x.FormattedMessage.Contains("Content=")).ToList();
+            var log = logs.FirstOrDefault();
+           
+            int startIdx = log.FormattedMessage.IndexOf("\"triggers\":") + 11;
+            int endIdx = log.FormattedMessage.LastIndexOf("],\"functions\":")+1;
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             Assert.Equal(expectedSyncTriggersPayload, triggersLog);
         }
@@ -740,6 +742,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
             fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+
             fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
 
             var durableConfig = new JObject
@@ -756,9 +759,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "extensions", extensionsConfig }
             };
             hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
-            var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
-            testHostJsonStream.Position = 0;
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testHostJsonStream);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            {
+                hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
+                var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
+                testHostJsonStream.Position = 0;
+                return testHostJsonStream;
+            });
 
             if (extensionsJsonContent != null)
             {

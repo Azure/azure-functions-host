@@ -412,10 +412,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal static async Task<JObject> GetHostJsonAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
+        private static async Task<JObject> GetHostJsonAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
         {
             var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
+
             if (FileUtility.FileExists(hostJsonPath))
             {
                 try
