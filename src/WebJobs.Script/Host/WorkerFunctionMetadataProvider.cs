@@ -96,9 +96,9 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
 
                     // retry option validation
-                    if (!string.IsNullOrEmpty(rawFunction.RetryOptions))
+                    if (rawFunction.RetryOptions != null)
                     {
-                        function.Retry = JObject.Parse(rawFunction.RetryOptions).ToObject<RetryOptions>();
+                        function.Retry = rawFunction.RetryOptions;
                         Utility.ValidateRetryOptions(function.Retry);
                     }
 

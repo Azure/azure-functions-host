@@ -520,7 +520,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         Metadata = functionMetadata,
                         Bindings = bindings,
-                        RetryOptions = metadata.RetryOptions,
+                        RetryOptions = new Description.RetryOptions()
+                        {
+                            Strategy = (Description.RetryStrategy)Enum.Parse(typeof(Description.RetryStrategy), metadata.RetryOptions.Strategy.ToString(), true),
+                            MaxRetryCount = metadata.RetryOptions.MaxRetryCount,
+                            DelayInterval = metadata.RetryOptions.DelayInterval,
+                            MaximumInterval = metadata.RetryOptions.MaximumInterval,
+                            MinimumInterval = metadata.RetryOptions.MinimumInterval
+                        },
                         ConfigurationSource = metadata.ConfigSource
                     });
                 }

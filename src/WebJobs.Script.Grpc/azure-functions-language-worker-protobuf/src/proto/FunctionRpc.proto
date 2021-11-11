@@ -275,7 +275,7 @@ message RpcFunctionMetadata {
   repeated string raw_bindings = 10;
 
   // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
-  string retry_options = 11;
+  RetryOptions retry_options = 11;
 
   // Configuration Source: string representation of JToken configuration source property in function metadata
   string config_source = 12;
@@ -339,6 +339,33 @@ message RetryContext {
 
   // Exception that caused the retry
   RpcException exception = 3;
+}
+
+// Host retry options
+message RetryOptions {
+  // 
+  RetryStrategy strategy = 1;
+
+  // 
+  int32 maxRetryCount = 2 ;
+
+  //
+  google.protobuf.Duration delayInterval = 3;
+
+  //
+  google.protobuf.Duration minimumInterval = 4;
+
+  //
+  google.protobuf.Duration maximumInterval = 5;
+}
+
+// Host retry strategy
+enum RetryStrategy {
+  // 
+  ExponentialBackoff = 1;
+
+  // 
+  FixedDelay = 2;
 }
 
 // Host requests worker to cancel invocation

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public IEnumerable<string> Bindings { get; set; }
 
-        public string RetryOptions { get; set; }
+        public RetryOptions RetryOptions { get; set; }
 
         public string ConfigurationSource { get; set; }
     }
