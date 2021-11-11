@@ -113,8 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
                     // storage access in non-Kubernetes environments.
-                    result.Success = false;
-                    result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
+
+                    // Glenna's change
+                    //  result.Success = false;
+                  //  result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
                   //  _logger.LogWarning(result.Error);   // TODO check if it is really need
                     return result;
                 }
@@ -126,7 +128,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // We've seen error cases where a site temporarily gets into a situation
                     // where it's site content is empty. Doing the empty sync can cause the app
                     // to go idle when it shouldn't.
-                    result.Success = false;
+                     // Glenna's change
+                    //    result.Success = false;
                     _logger.LogDebug("No functions found. Skipping Sync operation."); // TODO check if it is really need
                     // _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation."); // TODO check if it is really need
                     return result;
