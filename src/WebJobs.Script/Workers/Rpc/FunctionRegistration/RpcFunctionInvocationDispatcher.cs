@@ -302,7 +302,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // Gets metadata from worker
         public async Task<IEnumerable<RawFunctionMetadata>> GetWorkerMetadata()
         {
-            var channels = (await GetInitializedWorkerChannelsAsync()).ToArray();
+            // calling GetAllWorkerChannelsAsync() instead of GetInitializedWorkerChannelsAsync() as invocation buffers are not setup yet
+            var channels = (await GetAllWorkerChannelsAsync()).ToArray();
             return (channels != null && channels.Length > 0) ? await channels.First().GetFunctionMetadata() : null;
         }
 
