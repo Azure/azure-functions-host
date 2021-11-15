@@ -344,7 +344,7 @@
           "lib/netstandard1.1/Autofac.dll": {}
         }
       },
-      "Azure.Core/1.17.0": {
+      "Azure.Core/1.19.0": {
         "dependencies": {
           "Microsoft.Bcl.AsyncInterfaces": "1.0.0",
           "System.Buffers": "4.5.1",
@@ -358,8 +358,8 @@
         },
         "runtime": {
           "lib/netcoreapp2.1/Azure.Core.dll": {
-            "assemblyVersion": "1.17.0.0",
-            "fileVersion": "1.1700.21.40204"
+            "assemblyVersion": "1.19.0.0",
+            "fileVersion": "1.1900.21.45105"
           }
         },
         "compile": {
@@ -368,7 +368,7 @@
       },
       "Azure.Identity/1.4.1": {
         "dependencies": {
-          "Azure.Core": "1.17.0",
+          "Azure.Core": "1.19.0",
           "Microsoft.Identity.Client": "4.30.1",
           "Microsoft.Identity.Client.Extensions.Msal": "2.18.4",
           "System.Memory": "4.5.4",
@@ -403,7 +403,7 @@
       },
       "Azure.Storage.Common/12.8.0": {
         "dependencies": {
-          "Azure.Core": "1.17.0"
+          "Azure.Core": "1.19.0"
         },
         "runtime": {
           "lib/netstandard2.0/Azure.Storage.Common.dll": {
@@ -2088,9 +2088,9 @@
           "lib/netstandard1.3/Microsoft.DotNet.PlatformAbstractions.dll": {}
         }
       },
-      "Microsoft.Extensions.Azure/1.1.0-beta.2": {
+      "Microsoft.Extensions.Azure/1.1.1": {
         "dependencies": {
-          "Azure.Core": "1.17.0",
+          "Azure.Core": "1.19.0",
           "Azure.Identity": "1.4.1",
           "Microsoft.Extensions.Configuration.Abstractions": "3.1.9",
           "Microsoft.Extensions.Configuration.Binder": "3.1.9",
@@ -2100,8 +2100,8 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Extensions.Azure.dll": {
-            "assemblyVersion": "1.1.0.0",
-            "fileVersion": "1.100.21.10801"
+            "assemblyVersion": "1.1.1.0",
+            "fileVersion": "1.100.121.45201"
           }
         },
         "compile": {
@@ -4471,7 +4471,7 @@
       },
       "Microsoft.Azure.WebJobs.Script/3.4.0": {
         "dependencies": {
-          "Azure.Core": "1.17.0",
+          "Azure.Core": "1.19.0",
           "Azure.Identity": "1.4.1",
           "Azure.Storage.Blobs": "12.9.0",
           "Microsoft.AspNetCore.Http.Features": "3.1.0",
@@ -4493,7 +4493,7 @@
           "Microsoft.CodeAnalysis.CSharp.Scripting": "3.3.1",
           "Microsoft.CodeAnalysis.Common": "3.3.1",
           "Microsoft.DotNet.PlatformAbstractions": "2.1.0",
-          "Microsoft.Extensions.Azure": "1.1.0-beta.2",
+          "Microsoft.Extensions.Azure": "1.1.1",
           "Microsoft.Extensions.DiagnosticAdapter": "1.1.0",
           "Microsoft.Extensions.Hosting.Abstractions": "3.1.0",
           "Microsoft.Extensions.Logging": "3.1.9",
@@ -6180,12 +6180,12 @@
       "path": "autofac/4.6.2",
       "hashPath": "autofac.4.6.2.nupkg.sha512"
     },
-    "Azure.Core/1.17.0": {
+    "Azure.Core/1.19.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-ByJGsP7zqeMG+QFLEpd0ILzWVlRtB1ZWwgkqNWEN2KV0axRyWZDm6uPsKtsfBkNeiPtr4fUW0NSZez69TBSGrA==",
-      "path": "azure.core/1.17.0",
-      "hashPath": "azure.core.1.17.0.nupkg.sha512"
+      "sha512": "sha512-lcDjG635DPE4fU5tqSueVMmzrx0QrIfPuY0+y6evHN5GanQ0GB+/4nuMHMmoNPwEow6OUPkJu4cZQxfHJQXPdA==",
+      "path": "azure.core/1.19.0",
+      "hashPath": "azure.core.1.19.0.nupkg.sha512"
     },
     "Azure.Identity/1.4.1": {
       "type": "package",
@@ -6950,12 +6950,12 @@
       "path": "microsoft.dotnet.platformabstractions/2.1.0",
       "hashPath": "microsoft.dotnet.platformabstractions.2.1.0.nupkg.sha512"
     },
-    "Microsoft.Extensions.Azure/1.1.0-beta.2": {
+    "Microsoft.Extensions.Azure/1.1.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-yBNWSyp8gyPkP9F+q7cO7IsgaBRJnmH6+hdzRN13Ji4Vxsqg3Kq63kId0nKKkZNBa8YiZKBQY95/qwFgQ5QSCA==",
-      "path": "microsoft.extensions.azure/1.1.0-beta.2",
-      "hashPath": "microsoft.extensions.azure.1.1.0-beta.2.nupkg.sha512"
+      "sha512": "sha512-3BruEhX5qrQ7wSX/2qw6rQJNBuXgXg3gHZyN/64eVpZRPjkgE4+OhrRIpWbNqw+XPg9pGzzjfwdri9v4eOdtsw==",
+      "path": "microsoft.extensions.azure/1.1.1",
+      "hashPath": "microsoft.extensions.azure.1.1.1.nupkg.sha512"
     },
     "Microsoft.Extensions.Caching.Abstractions/2.2.0": {
       "type": "package",
