@@ -2,15 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -19,12 +17,20 @@ using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
-using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
     public class ExtensionsManager : IExtensionsManager
     {
+        private const string ExtensionsProjectSdkAttributeName = "Sdk";
+        private const string ExtensionsProjectSdkPackageId = "Microsoft.NET.Sdk";
+        private const string ProjectElementName = "Project";
+        private const string TargetFrameworkElementName = "TargetFramework";
+        private const string PropertyGroupElementName = "PropertyGroup";
+        private const string WarningsAsErrorsElementName = "WarningsAsErrors";
+        private const string TargetFrameworkNetStandard2 = "netstandard2.0";
+        private const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
+        private const string MetadataGeneratorPackageVersion = "1.1.*";
         private readonly string _scriptRootPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
@@ -66,14 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             await SaveAndProcessProjectAsync(project);
         }
 
-        private async Task SaveAndProcessProjectAsync(XmlDocument project)
+        private async Task SaveAndProcessProjectAsync(XDocument project)
         {
             string baseFolder = Path.GetTempPath();
 
             var tempFolder = Path.Combine(baseFolder, "Functions", "Extensions", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempFolder);
 
-            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.InnerXml);
+            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.ToString());
 
             await ProcessExtensionsProject(tempFolder);
         }
@@ -103,15 +109,15 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             }
 
             var project = await GetOrCreateProjectAsync(extensionsProjectPath);
-            var projectElements = project.SelectNodes("//*").OfType<XmlElement>();
 
-            return projectElements
-                .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal)
-                    && !MetadataGeneratorPackageId.Equals(i.Attributes[PackageReferenceIncludeElementName].Value, StringComparison.Ordinal))
+            return project.Descendants()?
+                .Where(i => PackageReferenceElementName.Equals(i.Name.LocalName, StringComparison.Ordinal) &&
+                            ItemGroupElementName.Equals(i.Parent.Name.LocalName, StringComparison.Ordinal) &&
+                            !MetadataGeneratorPackageId.Equals(i.Attribute(PackageReferenceIncludeElementName)?.Value, StringComparison.Ordinal))
                 .Select(i => new ExtensionPackageReference
                 {
-                    Id = i.Attributes[PackageReferenceIncludeElementName]?.Value,
-                    Version = i.Attributes[PackageReferenceVersionElementName]?.Value
+                    Id = i.Attribute(PackageReferenceIncludeElementName)?.Value,
+                    Version = i.Attribute(PackageReferenceVersionElementName)?.Value
                 })
                 .ToList();
         }
@@ -265,30 +271,37 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), DefaultExtensionsProjectPath, true);
         }
 
-        private Task<XmlDocument> GetOrCreateProjectAsync(string path)
+        private Task<XDocument> GetOrCreateProjectAsync(string path)
         {
             return Task.Run(() =>
             {
-                XmlDocument root = null;
+                XDocument root = null;
                 if (File.Exists(path))
                 {
-                    root = new XmlDocument();
-                    root.Load(path);
+                    root = XDocument.Load(path);
                 }
 
                 return root ?? CreateDefaultProject(path);
             });
         }
 
-        private XmlDocument CreateDefaultProject(string path)
+        private XDocument CreateDefaultProject(string path)
         {
-            XmlDocument doc = new XmlDocument();
+            XDocument document = new XDocument();
 
-            doc.CreateProject();
-            doc.AddTargetFramework("netstandard2.0");
-            doc.AddPackageReference(MetadataGeneratorPackageId, MetadataGeneratorPackageVersion);
+            XElement project =
+                new XElement(ProjectElementName,
+                    new XAttribute(ExtensionsProjectSdkAttributeName, ExtensionsProjectSdkPackageId),
+                    new XElement(PropertyGroupElementName,
+                        new XElement(WarningsAsErrorsElementName),
+                        new XElement(TargetFrameworkElementName, new XText(TargetFrameworkNetStandard2))),
+                    new XElement(ItemGroupElementName,
+                        new XElement(PackageReferenceElementName,
+                            new XAttribute(PackageReferenceIncludeElementName, MetadataGeneratorPackageId),
+                            new XAttribute(PackageReferenceVersionElementName, MetadataGeneratorPackageVersion))));
 
-            return doc;
+            document.AddFirst(project);
+            return document;
         }
     }
 }

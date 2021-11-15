@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
@@ -198,15 +199,14 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             using (var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(projectFilePath))))
             {
-                XmlDocument root = new XmlDocument();
-                root.Load(reader);
+                XDocument root = XDocument.Load(reader);
 
-                return root.SelectNodes("//*").OfType<XmlElement>()
-                    .Where(i => PackageReferenceElementName.Equals(i.Name, StringComparison.Ordinal))
+                return root.Descendants()?
+                    .Where(i => PackageReferenceElementName.Equals(i.Name.LocalName, StringComparison.Ordinal))
                     .Select(i => new LibraryRange
                     {
-                        Name = i.Attributes[PackageReferenceIncludeElementName]?.Value,
-                        VersionRange = VersionRange.Parse(i.Attributes[PackageReferenceVersionElementName]?.Value)
+                        Name = i.Attribute(PackageReferenceIncludeElementName)?.Value,
+                        VersionRange = VersionRange.Parse(i.Attribute(PackageReferenceVersionElementName)?.Value)
                     })
                     .ToList();
             }
