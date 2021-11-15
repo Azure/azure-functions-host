@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v6.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.0.1": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1.0": {
         "dependencies": {
           "Azure.Identity": "1.4.1",
           "Azure.Security.KeyVault.Secrets": "4.2.0",
@@ -16,16 +16,14 @@
           "Microsoft.Azure.Cosmos.Table": "1.0.8",
           "Microsoft.Azure.Functions.PythonWorker": "3.1.2.6",
           "Microsoft.Azure.Storage.File": "11.1.7",
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.0-beta.1",
-          "Microsoft.Azure.WebJobs.Script": "4.0.1",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.0.1",
+          "Microsoft.Azure.WebJobs.Script": "4.1.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1.0",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.SourceLink.GitHub": "1.0.0",
           "StyleCop.Analyzers": "1.1.0-beta004",
-          "System.Net.NameResolution": "4.3.0",
-          "System.Runtime.Handles": "4.3.0",
-          "System.Runtime.InteropServices": "4.3.0"
+          "System.Net.NameResolution": "4.3.0"
         },
         "runtime": {
           "Microsoft.Azure.WebJobs.Script.WebHost.dll": {}
@@ -648,9 +646,9 @@
           }
         }
       },
-      "Microsoft.Azure.WebJobs/3.0.31": {
+      "Microsoft.Azure.WebJobs/3.0.32-11886": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs.Core": "3.0.31",
+          "Microsoft.Azure.WebJobs.Core": "3.0.32-11886",
           "Microsoft.Extensions.Configuration": "6.0.0",
           "Microsoft.Extensions.Configuration.Abstractions": "6.0.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "2.1.1",
@@ -665,26 +663,26 @@
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.Host.dll": {
-            "assemblyVersion": "3.0.31.0",
-            "fileVersion": "3.0.31.0"
+            "assemblyVersion": "3.0.32.0",
+            "fileVersion": "3.0.32.0"
           }
         }
       },
-      "Microsoft.Azure.WebJobs.Core/3.0.31": {
+      "Microsoft.Azure.WebJobs.Core/3.0.32-11886": {
         "dependencies": {
           "System.ComponentModel.Annotations": "4.4.0",
           "System.Diagnostics.TraceSource": "4.3.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebJobs.dll": {
-            "assemblyVersion": "3.0.31.0",
-            "fileVersion": "3.0.31.0"
+            "assemblyVersion": "3.0.32.0",
+            "fileVersion": "3.0.32.0"
           }
         }
       },
       "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.1": {
         "dependencies": {
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "NCrontab.Signed": "3.3.2"
         },
         "runtime": {
@@ -701,7 +699,7 @@
           "Microsoft.AspNetCore.Mvc.Formatters.Json": "2.2.0",
           "Microsoft.AspNetCore.Mvc.WebApiCompatShim": "2.2.0",
           "Microsoft.AspNetCore.Routing": "2.2.0",
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "System.Text.Encodings.Web": "6.0.0"
         },
         "runtime": {
@@ -727,7 +725,7 @@
       "Microsoft.Azure.WebJobs.Host.Storage/5.0.0-beta.1": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.9.0",
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "Microsoft.Extensions.Azure": "1.1.1"
         },
         "runtime": {
@@ -748,7 +746,7 @@
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.17.0",
           "Microsoft.AspNetCore.Http.Abstractions": "2.2.0",
           "Microsoft.AspNetCore.Http.Extensions": "2.2.0",
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
           "System.Diagnostics.TraceSource": "4.3.0",
           "System.Threading": "4.3.0",
@@ -794,6 +792,7 @@
           }
         }
       },
+      "Microsoft.Build.Tasks.Git/1.0.0": {},
       "Microsoft.CodeAnalysis.Analyzers/2.9.4": {},
       "Microsoft.CodeAnalysis.Common/3.3.1": {
         "dependencies": {
@@ -1610,12 +1609,6 @@
           "Microsoft.NETCore.Targets": "1.1.0"
         }
       },
-      "runtime.native.System.IO.Compression/4.3.0": {
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "3.1.0",
-          "Microsoft.NETCore.Targets": "1.1.0"
-        }
-      },
       "runtime.native.System.Net.Http/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "3.1.0",
@@ -1890,25 +1883,6 @@
           }
         }
       },
-      "System.IO.Compression/4.3.0": {
-        "dependencies": {
-          "Microsoft.NETCore.Platforms": "3.1.0",
-          "System.Buffers": "4.5.1",
-          "System.Collections": "4.3.0",
-          "System.Diagnostics.Debug": "4.3.0",
-          "System.IO": "4.3.0",
-          "System.Resources.ResourceManager": "4.3.0",
-          "System.Runtime": "4.3.0",
-          "System.Runtime.Extensions": "4.3.0",
-          "System.Runtime.Handles": "4.3.0",
-          "System.Runtime.InteropServices": "4.3.0",
-          "System.Text.Encoding": "4.3.0",
-          "System.Threading": "4.3.0",
-          "System.Threading.Tasks": "4.3.0",
-          "runtime.native.System": "4.3.0",
-          "runtime.native.System.IO.Compression": "4.3.0"
-        }
-      },
       "System.IO.FileSystem/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "3.1.0",
@@ -1969,7 +1943,7 @@
           "System.Linq": "4.3.0",
           "System.Linq.Expressions": "4.1.0",
           "System.Reflection": "4.3.0",
-          "System.Reflection.Extensions": "4.0.1",
+          "System.Reflection.Extensions": "4.3.0",
           "System.Resources.ResourceManager": "4.3.0",
           "System.Runtime": "4.3.0"
         }
@@ -2229,7 +2203,7 @@
           "System.Runtime": "4.3.0"
         }
       },
-      "System.Reflection.Extensions/4.0.1": {
+      "System.Reflection.Extensions/4.3.0": {
         "dependencies": {
           "Microsoft.NETCore.Platforms": "3.1.0",
           "Microsoft.NETCore.Targets": "1.1.0",
@@ -2293,7 +2267,7 @@
       },
       "System.Runtime.InteropServices.RuntimeInformation/4.0.0": {
         "dependencies": {
-          "Microsoft.NETCore.Platforms": "2.1.2",
+          "Microsoft.NETCore.Platforms": "3.1.0",
           "System.Reflection": "4.3.0",
           "System.Resources.ResourceManager": "4.3.0",
           "System.Runtime": "4.3.0",
@@ -2673,7 +2647,7 @@
           "System.Xml.XmlDocument": "4.3.0"
         }
       },
-      "Microsoft.Azure.WebJobs.Script/4.0.1": {
+      "Microsoft.Azure.WebJobs.Script/4.1.0": {
         "dependencies": {
           "Azure.Core": "1.19.0",
           "Azure.Identity": "1.4.1",
@@ -2683,7 +2657,7 @@
           "Microsoft.Azure.Functions.NodeJsWorker": "3.0.0",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.1049",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.1128",
-          "Microsoft.Azure.WebJobs": "3.0.31",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "Microsoft.Azure.WebJobs.Extensions": "5.0.0-beta.1",
           "Microsoft.Azure.WebJobs.Extensions.Http": "3.1.1",
           "Microsoft.Azure.WebJobs.Extensions.Timers.Storage": "1.0.0-beta.1",
@@ -2705,10 +2679,10 @@
           "Microsoft.Azure.WebJobs.Script.dll": {}
         }
       },
-      "Microsoft.Azure.WebJobs.Script.Grpc/4.0.1": {
+      "Microsoft.Azure.WebJobs.Script.Grpc/4.1.0": {
         "dependencies": {
           "Grpc.AspNetCore": "2.39.0",
-          "Microsoft.Azure.WebJobs.Script": "4.0.1",
+          "Microsoft.Azure.WebJobs.Script": "4.1.0",
           "System.IO.FileSystem.Primitives": "4.3.0"
         },
         "runtime": {
@@ -2718,7 +2692,7 @@
     }
   },
   "libraries": {
-    "Microsoft.Azure.WebJobs.Script.WebHost/4.0.1": {
+    "Microsoft.Azure.WebJobs.Script.WebHost/4.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -3143,19 +3117,19 @@
       "path": "microsoft.azure.storage.file/11.1.7",
       "hashPath": "microsoft.azure.storage.file.11.1.7.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs/3.0.31": {
+    "Microsoft.Azure.WebJobs/3.0.32-11886": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-Jn6E7OgT7LkwVB6lCpjXJcoQIvKrbJT+taVLA4CekEpa21pzZv6nQ2sYRSNzPz5ul3FAcYhmrCQgV7v2iopjgA==",
-      "path": "microsoft.azure.webjobs/3.0.31",
-      "hashPath": "microsoft.azure.webjobs.3.0.31.nupkg.sha512"
+      "sha512": "sha512-xxGIQoDN4Kok2xb/Zz13hsjL2hZGqgpCYj4JKAPQ72pdtd5wAjm0ZkCkazkr2USCgxU6t8JgvZsSDxnVq6mSVQ==",
+      "path": "microsoft.azure.webjobs/3.0.32-11886",
+      "hashPath": "microsoft.azure.webjobs.3.0.32-11886.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Core/3.0.31": {
+    "Microsoft.Azure.WebJobs.Core/3.0.32-11886": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-iStV0MQ9env8R2F+8cbaynMK4TDkU6bpPVLdOzIs83iriHYMF+uWF6WZWI8ZJahWR37puQWc86u1YCsoIZEocA==",
-      "path": "microsoft.azure.webjobs.core/3.0.31",
-      "hashPath": "microsoft.azure.webjobs.core.3.0.31.nupkg.sha512"
+      "sha512": "sha512-jA0zGK9eD9vGC2shJGL+96sjRZlJ0MLHraEPgO81Uq/rYn0RmGGLhiliyQywdJS3yjHW7uZeLhtjhi2PcwQvaQ==",
+      "path": "microsoft.azure.webjobs.core/3.0.32-11886",
+      "hashPath": "microsoft.azure.webjobs.core.3.0.32-11886.nupkg.sha512"
     },
     "Microsoft.Azure.WebJobs.Extensions/5.0.0-beta.1": {
       "type": "package",
@@ -3212,6 +3186,13 @@
       "sha512": "sha512-K63Y4hORbBcKLWH5wnKgzyn7TOfYzevIEwIedQHBIkmkEBA9SCqgvom+XTuE+fAFGvINGkhFItaZ2dvMGdT5iw==",
       "path": "microsoft.bcl.asyncinterfaces/1.0.0",
       "hashPath": "microsoft.bcl.asyncinterfaces.1.0.0.nupkg.sha512"
+    },
+    "Microsoft.Build.Tasks.Git/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-z2fpmmt+1Jfl+ZnBki9nSP08S1/tbEOxFdsK1rSR+LBehIJz1Xv9/6qOOoGNqlwnAGGVGis1Oj6S8Kt9COEYlQ==",
+      "path": "microsoft.build.tasks.git/1.0.0",
+      "hashPath": "microsoft.build.tasks.git.1.0.0.nupkg.sha512"
     },
     "Microsoft.CodeAnalysis.Analyzers/2.9.4": {
       "type": "package",
@@ -4144,12 +4125,12 @@
       "path": "system.reflection.emit.lightweight/4.3.0",
       "hashPath": "system.reflection.emit.lightweight.4.3.0.nupkg.sha512"
     },
-    "System.Reflection.Extensions/4.0.1": {
+    "System.Reflection.Extensions/4.3.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-GYrtRsZcMuHF3sbmRHfMYpvxZoIN2bQGrYGerUiWLEkqdEUQZhH3TRSaC/oI4wO0II1RKBPlpIa1TOMxIcOOzQ==",
-      "path": "system.reflection.extensions/4.0.1",
-      "hashPath": "system.reflection.extensions.4.0.1.nupkg.sha512"
+      "sha512": "sha512-rJkrJD3kBI5B712aRu4DpSIiHRtr6QlfZSQsb0hYHrDCZORXCFjQfoipo2LaMUHoT9i1B7j7MnfaEKWDFmFQNQ==",
+      "path": "system.reflection.extensions/4.3.0",
+      "hashPath": "system.reflection.extensions.4.3.0.nupkg.sha512"
     },
     "System.Reflection.Metadata/1.6.0": {
       "type": "package",
@@ -4487,12 +4468,12 @@
       "path": "system.xml.xmlserializer/4.3.0",
       "hashPath": "system.xml.xmlserializer.4.3.0.nupkg.sha512"
     },
-    "Microsoft.Azure.WebJobs.Script/4.0.1": {
+    "Microsoft.Azure.WebJobs.Script/4.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "Microsoft.Azure.WebJobs.Script.Grpc/4.0.1": {
+    "Microsoft.Azure.WebJobs.Script.Grpc/4.1.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
