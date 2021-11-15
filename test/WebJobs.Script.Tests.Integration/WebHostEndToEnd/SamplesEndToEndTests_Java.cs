@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task JavaProcess_Same_AfterHostRestart()
+        public async Task JavaProcess_Different_AfterHostRestart()
         {
             IEnumerable<int> javaProcessesBefore = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesBefore.Count() > 0);
