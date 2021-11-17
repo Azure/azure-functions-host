@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(expectedState != DrainModeState.Disabled);
 
             var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
-            Assert.Equal((result.Value as DrainModeStatus).State, expectedState);
+            Assert.Equal(expectedState, (result.Value as DrainModeStatus).State);
         }
 
         [Fact]
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
 
             var result = (StatusCodeResult)_hostController.Drain(scriptHostManagerMock.Object);
-            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
         }
 
         [Fact]
@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
 
             var result = (StatusCodeResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
-            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, result.StatusCode);
         }
 
         [Theory]
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(drainModeEnabled);
 
             var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object);
-            Assert.Equal(result.StatusCode, expectedCode);
+            Assert.Equal(expectedCode, result.StatusCode);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
         }
 
@@ -287,11 +287,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostManagerMock.Setup(p => p.RestartHostAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(true);
 
-            var expectedReturnBody = new { hostStatus = ScriptHostState.Running }.ToString();
+            var expectedBody = new HostStatus { State = ScriptHostState.Running.ToString() };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object);
+            var resultBody = (HostStatus)result.Value;
 
-            Assert.Equal(result.StatusCode, StatusCodes.Status200OK);
-            Assert.Equal(result.Value.ToString(), expectedReturnBody);
+            Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
+            Assert.Equal(expectedBody.State, resultBody.State);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Once());
         }
 
@@ -306,23 +307,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(false);
 
-            var expectedReturnBody = new { hostStatus = ScriptHostState.Running }.ToString();
+            var expectedBody = new HostStatus { State = ScriptHostState.Running.ToString() };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object);
+            var resultBody = (HostStatus)result.Value;
 
-            Assert.Equal(result.StatusCode, StatusCodes.Status200OK);
-            Assert.Equal(result.Value.ToString(), expectedReturnBody);
+            Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
+            Assert.Equal(expectedBody.State, resultBody.State);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
-        }
-
-        [Fact]
-        public async Task ResumeHost_DrainModeManagerIsNull_ReturnsServiceUnavailable()
-        {
-            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
-            scriptHostManagerMock.SetupGet(p => p.State).Returns(ScriptHostState.Running);
-
-            var result = (StatusCodeResult)await _hostController.Resume(scriptHostManagerMock.Object);
-
-            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
         }
     }
 }

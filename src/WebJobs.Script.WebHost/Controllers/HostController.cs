@@ -162,31 +162,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             _logger.LogDebug($"Received request to resume a draining host - host status: {scriptHostManager?.State.ToString()}");
 
-            if (scriptHostManager?.State != ScriptHostState.Running)
+            if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager)
+                || scriptHostManager?.State != ScriptHostState.Running)
             {
-                _logger.LogWarning("The host is not in a state where we can resume. The host's state needs to be 'Running' and drain mode must be enabled for resume to work.");
+                _logger.LogWarning("The host is not in a state where we can resume.");
                 return StatusCode(StatusCodes.Status409Conflict);
             }
 
-            if (Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
+            _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
+
+            if (drainModeManager.IsDrainModeEnabled)
             {
-                _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
-
-                if (!drainModeManager.IsDrainModeEnabled)
-                {
-                    _logger.LogWarning("Resume request received when not in drain mode");
-                    return Ok(new { hostStatus = scriptHostManager.State.ToString() });
-                }
-
-                _logger.LogDebug("Host is running and in drain mode, starting a new host");
+                _logger.LogDebug("Restarting host");
                 await scriptHostManager.RestartHostAsync();
+            }
 
-                return Ok(new { hostStatus = scriptHostManager.State.ToString() });
-            }
-            else
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable);
-            }
+            var status = new HostStatus { State = scriptHostManager.State.ToString() };
+            return Ok(status);
         }
 
         [HttpGet]

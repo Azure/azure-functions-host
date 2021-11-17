@@ -14,10 +14,5 @@
       "direction": "out",
       "name": "res"
     }
-  ],
-  "retry": {
-    "strategy": "fixedDelay",
-    "maxRetryCount": 2,
-    "delayInterval": "00:00:03"
-  }
+  ]
 }

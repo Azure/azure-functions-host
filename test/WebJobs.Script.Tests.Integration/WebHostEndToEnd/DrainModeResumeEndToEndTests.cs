@@ -22,53 +22,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Validate the drain state is "Disabled" initially
             var response = await SamplesTestHelpers.InvokeDrainStatus(this);
             var responseString = response.Content.ReadAsStringAsync().Result;
-            var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
+            var drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
-            Assert.Equal(status.State, DrainModeState.Disabled);
+            Assert.Equal(drainStatus.State, DrainModeState.Disabled);
 
-            ManualResetEvent resetEvent = new ManualResetEvent(false);
-            _ = Task.Run(async () =>
-            {
-                // Put the host in drain mode
-                response = await SamplesTestHelpers.InvokeDrain(this);
+            // Get pre-drain instance Id
+            // response = await SamplesTestHelpers.InvokeHostStatus(this);
+            // responseString = response.Content.ReadAsStringAsync().Result;
+            // var hostStatus = JsonConvert.DeserializeObject<HostStatus>(responseString);
+            // var originalInstanceId = hostStatus.InstanceId;
 
-                // Validate the drain state is changed to "InProgress"
-                await TestHelpers.Await(async () =>
-                {
-                    var response = await SamplesTestHelpers.InvokeDrainStatus(this);
-                    var responseString = response.Content.ReadAsStringAsync().Result;
-                    var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
-
-                    return status.State == DrainModeState.InProgress;
-                }, 20000);
-
-                // Validate host is "Running" after resume is called
-                await TestHelpers.Await(async () =>
-                {
-                    var response = await SamplesTestHelpers.InvokeResume(this);
-                    var responseString = response.Content.ReadAsStringAsync().Result;
-                    var status = JObject.Parse(responseString);
-
-                    return (string)status["hostStatus"] == ScriptHostState.Running.ToString();
-                }, 20000);
-
-                // Validate the drain state is changed to "Disabled"
-                await TestHelpers.Await(async () =>
-                {
-                    var response = await SamplesTestHelpers.InvokeDrainStatus(this);
-                    var responseString = response.Content.ReadAsStringAsync().Result;
-                    var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
-
-                    return status.State == DrainModeState.Disabled;
-                }, 20000);
-
-                resetEvent.Set();
-            });
-
+            // Validate ability to call HttpTrigger without issues
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            bool result = resetEvent.WaitOne(30000);
-            Assert.True(result);
+
+            // Put the host in drain mode
+            response = await SamplesTestHelpers.InvokeDrain(this);
+
+            // Validate the drain state is changed to "Completed"
+            response = await SamplesTestHelpers.InvokeDrainStatus(this);
+            responseString = response.Content.ReadAsStringAsync().Result;
+            drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
+
+            Assert.Equal(DrainModeState.Completed, drainStatus.State);
+
+            // Validate host is "Running" after resume is called
+            response = await SamplesTestHelpers.InvokeResume(this);
+            responseString = response.Content.ReadAsStringAsync().Result;
+            var hostStatus = JsonConvert.DeserializeObject<HostStatus>(responseString);
+
+            Assert.Equal(ScriptHostState.Running.ToString(), hostStatus.State);
+
+            // Validate the drain state is changed to "Disabled"
+            response = await SamplesTestHelpers.InvokeDrainStatus(this);
+            responseString = response.Content.ReadAsStringAsync().Result;
+            drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
+
+            Assert.Equal(DrainModeState.Disabled, drainStatus.State);
+
+            // Get post-resume instance Id and verify it is different to the old instance Id
+            // response = await SamplesTestHelpers.InvokeHostStatus(this);
+            // responseString = response.Content.ReadAsStringAsync().Result;
+            // hostStatus = JsonConvert.DeserializeObject<HostStatus>(responseString);
+            // var newInstanceId = hostStatus.InstanceId;
+
+            // Assert.NotEqual(originalInstanceId, newInstanceId);
+
+            // Validate HttpTrigger function is still working
+            response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -84,12 +88,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Validate host is "Running" after resume is called and drain mode is not active
             response = await SamplesTestHelpers.InvokeResume(this);
             responseString = response.Content.ReadAsStringAsync().Result;
-            var resumeStatus = JObject.Parse(responseString);
+            var hostStatus = JsonConvert.DeserializeObject<HostStatus>(responseString);
 
-            Assert.Equal(ScriptHostState.Running.ToString(), (string)resumeStatus["hostStatus"]);
+            Assert.Equal(ScriptHostState.Running.ToString(), hostStatus.State);
 
             // Validate HttpTrigger function is still working
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
+
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
     }
