@@ -67,7 +67,7 @@ message StreamingMessage {
 
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
-
+    
     FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
     FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
@@ -487,8 +487,9 @@ message RpcLog {
 
   // Category of the log. Defaults to User if not specified.
   enum RpcLogCategory {
-	User = 0;
-	System = 1;
+    User = 0;
+    System = 1;
+    CustomMetric = 2;
   }
 
   // Unique id for invocation (if exists)
@@ -510,11 +511,14 @@ message RpcLog {
   // Exception (if exists)
   RpcException exception = 6;
 
-  // json serialized property bag, or could use a type scheme like map<string, TypedData>
+  // json serialized property bag
   string properties = 7;
 
-  // Category of the log. Either user(default) or system.
+  // Category of the log. Either user(default), system, or custom metric.
   RpcLogCategory log_category = 8;
+
+  // strongly-typed (ish) property bag
+  map<string, TypedData> propertiesMap = 9;
 }
 
 // Encapsulates an Exception 
