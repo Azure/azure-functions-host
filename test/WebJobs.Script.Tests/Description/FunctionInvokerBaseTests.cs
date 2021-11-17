@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -253,9 +254,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             public ImmutableDictionary<string, ImmutableArray<string>> Errors =>
                 ImmutableDictionary<string, ImmutableArray<string>>.Empty;
 
-            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true)
+            public ImmutableArray<FunctionMetadata> GetFunctionMetadata(bool forceRefresh = false, bool applyAllowlist = true, bool includeCustomProviders = true, IFunctionInvocationDispatcher dispatcher = null)
             {
                 return _functions.ToImmutableArray();
+            }
+
+            public List<FunctionMetadata> GetValidMetadata(List<FunctionMetadata> functions)
+            {
+                throw new NotImplementedException();
             }
 
             public bool TryGetFunctionMetadata(string functionName, out FunctionMetadata functionMetadata, bool forceRefresh)

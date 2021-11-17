@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     /// <summary>
     /// TODO: TEMP - implementation should be moved https://github.com/Azure/azure-webjobs-sdk/issues/2710
-    /// This is an overriden implementation based off the StorageBaseDistributedLockManager in Microsoft.Azure.WebJobs.Host.Storage package.
+    /// This is an overridden implementation based off the StorageBaseDistributedLockManager in Microsoft.Azure.WebJobs.Host.Storage package.
     /// Provides a BlobClient lease-based implementation of the <see cref="IDistributedLockManager"/> service for singleton locking.
     /// </summary>
     internal class BlobLeaseDistributedLockManager : IDistributedLockManager

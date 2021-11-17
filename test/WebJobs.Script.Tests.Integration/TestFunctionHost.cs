@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
@@ -107,8 +108,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                           var montior = sp.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
                           var scriptManager = sp.GetService<IScriptHostManager>();
                           var loggerFactory = sp.GetService<ILoggerFactory>();
+                          var environment = sp.GetService<IEnvironment>();
 
-                          return GetMetadataManager(montior, scriptManager, loggerFactory);
+                          return GetMetadataManager(montior, scriptManager, loggerFactory, environment);
                       }, ServiceLifetime.Singleton));
 
                       // Allows us to configure services as the last step, thereby overriding anything
@@ -167,7 +169,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // store off a bit of the creation stack for easier debugging if this host doesn't shut down.
             var stack = new StackTrace(true).ToString().Split(Environment.NewLine).Take(5);
             _createdStack = string.Join($"{Environment.NewLine}    ", stack);
+
+            // cache startup logs since tests clear logs from time to time
+            StartupLogs = GetScriptHostLogMessages();
         }
+
+        public IList<LogMessage> StartupLogs { get; }
 
         public IServiceProvider JobHostServices => _hostService.Services;
 
@@ -372,12 +379,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         private class TestStartup
         {
-            private Startup _startup;
+            private WebHost.Startup _startup;
             private readonly PostConfigureServices _postConfigure;
 
             public TestStartup(IConfiguration configuration, PostConfigureServices postConfigure)
             {
-                _startup = new Startup(configuration);
+                _startup = new WebHost.Startup(configuration);
                 _postConfigure = postConfigure;
             }
 
@@ -397,7 +404,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory)
+        private FunctionMetadataManager GetMetadataManager(IOptionsMonitor<ScriptApplicationHostOptions> optionsMonitor, IScriptHostManager manager, ILoggerFactory factory, IEnvironment environment)
         {
             var workerOptions = new LanguageWorkerOptions
             {
@@ -408,7 +415,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var metadataManager = new FunctionMetadataManager(managerServiceProvider.GetService<IOptions<ScriptJobHostOptions>>(), metadataProvider,
-                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions));
+                managerServiceProvider.GetService<IOptions<HttpWorkerOptions>>(), manager, factory, new OptionsWrapper<LanguageWorkerOptions>(workerOptions), environment);
 
             return metadataManager;
         }

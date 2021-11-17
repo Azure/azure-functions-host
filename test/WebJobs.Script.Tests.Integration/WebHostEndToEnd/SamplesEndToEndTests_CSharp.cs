@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(8, jsonContent.Properties().Count());
+            Assert.Equal(9, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
@@ -963,7 +963,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
                 MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }

@@ -9,7 +9,7 @@ namespace Microsoft.Azure.Functions.Analyzers
 {
     internal static class MethodSymbolExtensions
     {
-        public static bool IsFunction(this IMethodSymbol symbol, SymbolAnalysisContext analysisContext)
+        public static bool IsFunction(this IMethodSymbol symbol, Compilation compilation)
         {
             var attributes = symbol.GetAttributes();
 
@@ -18,7 +18,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                 return false;
             }
 
-            var attributeType = analysisContext.Compilation.GetTypeByMetadataName(Constants.Types.FunctionNameAttribute);
+            var attributeType = compilation.GetTypeByMetadataName(Constants.Types.FunctionNameAttribute);
 
             return attributes.Any(a => attributeType.IsAssignableFrom(a.AttributeClass, true));
         }

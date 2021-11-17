@@ -18,6 +18,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
         }
 
+        public override string Name => nameof(BlobStorageSasSecretsRepository);
+
         protected override BlobContainerClient CreateBlobContainerClient(string containerSasUri)
         {
             return new BlobContainerClient(new Uri(containerSasUri));

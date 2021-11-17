@@ -34,10 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var formattedEventTimestamp = eventTimestamp.ToString(EventTimestampFormat);
             var hostVersion = ScriptHost.Version;
             var hostName = _hostNameProvider.Value;
-            FunctionsSystemLogsEventSource.Instance.SetActivityId(activityId);
-
-            var logger = _loggerFactory.GetOrCreate(FunctionsLogsCategory);
-            WriteEvent(logger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+            using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
+            {
+                var logger = _loggerFactory.GetOrCreate(FunctionsLogsCategory);
+                WriteEvent(logger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+            }
         }
 
         public override void LogFunctionMetricEvent(string subscriptionId, string appName, string functionName, string eventName, long average,

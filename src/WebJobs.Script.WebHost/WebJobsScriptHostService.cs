@@ -147,7 +147,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            CheckFileSystem();
             if (ShutdownRequested)
             {
                 return;
@@ -176,9 +175,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private void CheckFileSystem()
         {
-            // Shutdown if RunFromZipFailed
             if (_environment.ZipDeploymentAppSettingsExist())
             {
+                // Check for marker file indicating a zip package failure, and if found stop the application.
+                // We never want to run with an incorrect file system.
                 string path = Path.Combine(_applicationHostOptions.CurrentValue.ScriptPath, ScriptConstants.RunFromPackageFailedFileName);
                 if (File.Exists(path))
                 {
@@ -222,6 +222,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private async Task UnsynchronizedStartHostAsync(ScriptHostStartupOperation activeOperation, int attemptCount = 0, JobHostStartupMode startupMode = JobHostStartupMode.Normal)
         {
+            CheckFileSystem();
+            if (ShutdownRequested)
+            {
+                return;
+            }
+
             IHost localHost = null;
             var currentCancellationToken = activeOperation.CancellationTokenSource.Token;
             _logger.StartupOperationStarting(activeOperation.Id);
@@ -310,14 +316,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     LastError = exc;
                     State = ScriptHostState.Error;
-                    logger.ErrorOccuredDuringStartupOperation(activeOperation.Id, exc);
+                    logger.ErrorOccurredDuringStartupOperation(activeOperation.Id, exc);
                 }
                 else
                 {
                     // Another host has been created before this host
                     // threw its startup exception. We want to make sure it
                     // doesn't control the state of the service.
-                    logger.ErrorOccuredInactive(activeOperation.Id, exc);
+                    logger.ErrorOccurredInactive(activeOperation.Id, exc);
                 }
 
                 attemptCount++;

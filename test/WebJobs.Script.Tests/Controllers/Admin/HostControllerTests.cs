@@ -5,15 +5,20 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Controllers;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -33,13 +38,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private readonly Mock<IExtensionBundleManager> _extensionBundleManager;
         private readonly Mock<HostPerformanceManager> _mockHostPerformanceManager;
         private readonly HostHealthMonitorOptions _hostHealthMonitorOptions;
+        private readonly ScriptApplicationHostOptions _applicationHostOptions;
 
         public HostControllerTests()
         {
             _scriptPath = Path.GetTempPath();
-            var applicationHostOptions = new ScriptApplicationHostOptions();
-            applicationHostOptions.ScriptPath = _scriptPath;
-            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+            _applicationHostOptions = new ScriptApplicationHostOptions();
+            _applicationHostOptions.ScriptPath = _scriptPath;
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(_applicationHostOptions);
+
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
@@ -61,6 +68,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 File.Delete(_appOfflineFilePath);
             }
+        }
+
+        [Theory]
+        [InlineData(false, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(false, true, FunctionAppContentEditingState.Allowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.Unknown, false)]
+        public async Task GetHostStatus_TestFunctionAppContentEditable(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditingState isFunctionAppContentEditable, bool isLinuxConsumption = true)
+        {
+            _mockScriptHostManager.SetupGet(p => p.LastError).Returns((Exception)null);
+            var mockHostIdProvider = new Mock<IHostIdProvider>(MockBehavior.Strict);
+            mockHostIdProvider.Setup(p => p.GetHostIdAsync(CancellationToken.None)).ReturnsAsync("test123");
+            var mockserviceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
+            mockserviceProvider.Setup(p => p.GetService(typeof(IExtensionBundleManager))).Returns(null);
+
+            if (isLinuxConsumption)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.ContainerName)).Returns("test-container");
+            }
+
+            _applicationHostOptions.IsFileSystemReadOnly = isFileSystemReadOnly;
+            if (azureFilesAppSettingsExist)
+            {
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString)).Returns("test value");
+                _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare)).Returns("test value");
+            }
+
+            var result = (OkObjectResult)(await _hostController.GetHostStatus(_mockScriptHostManager.Object, mockHostIdProvider.Object, mockserviceProvider.Object));
+            var status = (HostStatus)result.Value;
+            Assert.Equal(status.FunctionAppContentEditingState, isFunctionAppContentEditable);
         }
 
         [Theory]
@@ -198,6 +236,49 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var result = (StatusCodeResult)(await _hostController.Ping(_mockScriptHostManager.Object));
             Assert.Equal((int)HttpStatusCode.OK, result.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(0, 0, DrainModeState.Disabled)]
+        [InlineData(0, 0, DrainModeState.Completed)]
+        [InlineData(2, 0, DrainModeState.InProgress)]
+        [InlineData(0, 10, DrainModeState.InProgress)]
+        [InlineData(5, 1, DrainModeState.InProgress)]
+        public void GetDrainStatus_HostRunning_ReturnsExpected(int outstandingRetries, int outstandingInvocations, DrainModeState expectedState)
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var functionActivityStatusProvider = new Mock<IFunctionActivityStatusProvider>(MockBehavior.Strict);
+            var drainModeManager = new Mock<IDrainModeManager>(MockBehavior.Strict);
+            functionActivityStatusProvider.Setup(x => x.GetStatus()).Returns(new FunctionActivityStatus()
+            {
+                OutstandingRetries = outstandingRetries,
+                OutstandingInvocations = outstandingInvocations
+            });
+            var serviceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            serviceProviderMock.Setup(x => x.GetService(typeof(IFunctionActivityStatusProvider))).Returns(functionActivityStatusProvider.Object);
+            serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
+            drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(expectedState != DrainModeState.Disabled);
+
+            var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
+            Assert.Equal((result.Value as DrainModeStatus).State, expectedState);
+        }
+
+        [Fact]
+        public void GetDrain_HostNotRunning_ReturnsServiceUnavailable()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+
+            var result = (StatusCodeResult)_hostController.Drain(scriptHostManagerMock.Object);
+            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
+        }
+
+        [Fact]
+        public void GetDrainStatus_HostNotRunning_ReturnsServiceUnavailable()
+        {
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+
+            var result = (StatusCodeResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
+            Assert.Equal(result.StatusCode, StatusCodes.Status503ServiceUnavailable);
         }
     }
 }

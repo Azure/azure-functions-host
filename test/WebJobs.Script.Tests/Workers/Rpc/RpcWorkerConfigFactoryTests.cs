@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
@@ -158,6 +159,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             if (placeholderMode)
             {
                 _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
+            }
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             }
             var config = new ConfigurationBuilder().Build();
             var testLogger = new TestLogger("test");
