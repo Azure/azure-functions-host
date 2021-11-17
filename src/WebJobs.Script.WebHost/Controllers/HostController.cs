@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
             if (drainModeManager.IsDrainModeEnabled)
             {
-                _logger.LogDebug("Restarting host");
+                _logger.LogDebug("Starting a new host");
                 await scriptHostManager.RestartHostAsync();
             }
 
