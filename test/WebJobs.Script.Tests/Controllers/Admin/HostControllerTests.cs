@@ -289,10 +289,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var expectedBody = new HostStatus { State = ScriptHostState.Running.ToString() };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object);
-            var resultBody = (HostStatus)result.Value;
 
             Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
-            Assert.Equal(expectedBody.State, resultBody.State);
+            Assert.Equal(expectedBody.State, (result.Value as HostStatus).State);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Once());
         }
 
@@ -309,10 +308,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var expectedBody = new HostStatus { State = ScriptHostState.Running.ToString() };
             var result = (OkObjectResult)await _hostController.Resume(scriptHostManagerMock.Object);
-            var resultBody = (HostStatus)result.Value;
 
             Assert.Equal(StatusCodes.Status200OK, result.StatusCode);
-            Assert.Equal(expectedBody.State, resultBody.State);
+            Assert.Equal(expectedBody.State, (result.Value as HostStatus).State);
             scriptHostManagerMock.Verify(p => p.RestartHostAsync(It.IsAny<CancellationToken>()), Times.Never());
         }
     }
