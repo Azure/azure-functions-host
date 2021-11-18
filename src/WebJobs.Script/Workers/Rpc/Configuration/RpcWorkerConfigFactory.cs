@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
@@ -31,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
+            _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
@@ -146,6 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             CountOptions = workerProcessCount,
                         };
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
+                        ReadLanguageWorkerFile(arguments.WorkerPath);
                         _logger.LogDebug($"Added WorkerConfig for language: {workerDescription.Language}");
                     }
                 }
@@ -213,24 +216,34 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal bool ShouldAddWorkerConfig(string workerDescriptionLanguage)
         {
-            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
             if (_environment.IsPlaceholderModeEnabled())
             {
                 return true;
             }
 
-            if (!string.IsNullOrEmpty(workerRuntime))
+            if (!string.IsNullOrEmpty(_workerRuntime))
             {
-                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {workerRuntime}");
-                if (workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
+                _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {_workerRuntime}");
+                if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
                 // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
-                _logger.LogInformation($"{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {workerRuntime}. Skipping WorkerConfig for language:{workerDescriptionLanguage}");
+                _logger.LogInformation($"{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {_workerRuntime}. Skipping WorkerConfig for language:{workerDescriptionLanguage}");
                 return false;
             }
             return true;
+        }
+
+        internal void ReadLanguageWorkerFile(string workerPath)
+        {
+            if (_environment.IsPlaceholderModeEnabled() &&
+                 !string.IsNullOrEmpty(_workerRuntime) &&
+                 File.Exists(workerPath))
+            {
+                // Read lanaguage worker file to avoid disk reads during specialization. This is only to page-in bytes.
+                File.ReadAllBytes(workerPath);
+            }
         }
     }
 }

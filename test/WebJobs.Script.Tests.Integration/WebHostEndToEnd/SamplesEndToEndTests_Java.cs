@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task JavaProcess_Same_AfterHostRestart()
+        public async Task JavaProcess_Different_AfterHostRestart()
         {
             IEnumerable<int> javaProcessesBefore = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesBefore.Count() > 0);
@@ -50,8 +50,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(javaProcessesAfter.Count() > 0);
             // Verify number of java processes before and after restart are the same.
             Assert.Equal(javaProcessesBefore.Count(), javaProcessesAfter.Count());
-            // Verify Java same java process is used after host restart
-            var result = javaProcessesBefore.Where(pId1 => !javaProcessesAfter.Any(pId2 => pId2 == pId1));
+            // Verify Java different java process is used after host restart
+            var result = javaProcessesBefore.Where(pId1 => javaProcessesAfter.Any(pId2 => pId2 == pId1));
             Assert.Equal(0, result.Count());
         }
 
@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             }
 
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\java"), "samples", RpcWorkerConstants.JavaLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "java"), "samples", RpcWorkerConstants.JavaLanguageWorkerName)
             {
             }
 

@@ -66,7 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
                 {
                     // best effort - if purge fails we log and ignore
                     // we'll try again another time
-                    logger.LogError(e, "Error occured when attempting to delete old diagnostic events tables.");
+                    logger.LogError(e, "Error occurred when attempting to delete old diagnostic events tables.");
                 }
             });
         }

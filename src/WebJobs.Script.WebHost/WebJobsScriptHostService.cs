@@ -329,14 +329,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     LastError = exc;
                     _state = ScriptHostState.Error;
-                    logger.ErrorOccuredDuringStartupOperation(activeOperation.Id, exc);
+                    logger.ErrorOccurredDuringStartupOperation(activeOperation.Id, exc);
                 }
                 else
                 {
                     // Another host has been created before this host
                     // threw its startup exception. We want to make sure it
                     // doesn't control the state of the service.
-                    logger.ErrorOccuredInactive(activeOperation.Id, exc);
+                    logger.ErrorOccurredInactive(activeOperation.Id, exc);
                 }
 
                 attemptCount++;

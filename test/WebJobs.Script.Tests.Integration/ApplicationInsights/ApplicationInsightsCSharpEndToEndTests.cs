@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
         {
             private const string ScriptRoot = @"TestScripts\CSharp";
 
-            public TestFixture() : base(ScriptRoot, "csharp")
+            public TestFixture() : base(ScriptRoot, "dotnet")
             {
             }
         }
