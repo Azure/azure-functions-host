@@ -46,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly Task _hostStarted;
 
         private IHost _host;
+        private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             _hostStarted = _hostStartedSource.Task;
 
-            State = ScriptHostState.Default;
+            _state = ScriptHostState.Default;
 
             if (ShouldMonitorHostHealth)
             {
@@ -130,7 +131,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public IServiceProvider Services => ActiveHost?.Services;
 
-        public ScriptHostState State { get; private set; }
+        public ScriptHostState State
+        {
+            get
+            {
+                return _state;
+            }
+
+            private set
+            {
+                _state = value;
+                _logger?.HostStateChanged(_state);
+            }
+        }
 
         public Exception LastError { get; private set; }
 
@@ -236,15 +249,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 currentCancellationToken.ThrowIfCancellationRequested();
 
-                // if we were in an error state retain that,
+                // if we were in an error State retain that,
                 // otherwise move to default
-                if (State != ScriptHostState.Error)
+                if (_state != ScriptHostState.Error)
                 {
-                    State = ScriptHostState.Default;
+                    _state = ScriptHostState.Default;
                 }
 
                 bool isOffline = Utility.CheckAppOffline(_applicationHostOptions.CurrentValue.ScriptPath);
-                State = isOffline ? ScriptHostState.Offline : State;
+                _state = isOffline ? ScriptHostState.Offline : State;
                 bool hasNonTransientErrors = startupMode.HasFlag(JobHostStartupMode.HandlingNonTransientError);
                 bool handlingError = startupMode.HasFlag(JobHostStartupMode.HandlingError);
 
@@ -298,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     if (!isOffline)
                     {
-                        State = ScriptHostState.Running;
+                        _state = ScriptHostState.Running;
                     }
                 }
             }
@@ -315,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (isActiveHost)
                 {
                     LastError = exc;
-                    State = ScriptHostState.Error;
+                    _state = ScriptHostState.Error;
                     logger.ErrorOccuredDuringStartupOperation(activeOperation.Id, exc);
                 }
                 else
@@ -408,7 +421,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             _startupLoopTokenSource?.Cancel();
 
-            State = ScriptHostState.Stopping;
+            _state = ScriptHostState.Stopping;
             _logger.Stopping();
 
             var currentHost = ActiveHost;
@@ -425,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 _logger.ShutDownCompleted();
             }
 
-            State = ScriptHostState.Stopped;
+            _state = ScriptHostState.Stopped;
         }
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)
@@ -466,13 +479,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     await _hostStartSemaphore.WaitAsync();
 
-                    if (State == ScriptHostState.Stopping || State == ScriptHostState.Stopped)
+                    if (_state == ScriptHostState.Stopping || _state == ScriptHostState.Stopped)
                     {
                         _logger.SkipRestart(State.ToString());
                         return;
                     }
 
-                    State = ScriptHostState.Default;
+                    _state = ScriptHostState.Default;
                     _logger.Restarting();
 
                     var previousHost = ActiveHost;
@@ -553,7 +566,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private void OnHostInitialized(object sender, EventArgs e)
         {
-            State = ScriptHostState.Initialized;
+            _state = ScriptHostState.Initialized;
         }
 
         private IHost BuildHost(bool skipHostStartup, bool skipHostJsonConfiguration)
@@ -620,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             bool isHealthy = IsHostHealthy();
             _healthCheckWindow.AddEvent(isHealthy);
 
-            if (!isHealthy && State == ScriptHostState.Running)
+            if (!isHealthy && _state == ScriptHostState.Running)
             {
                 // This periodic check allows us to break out of the host run
                 // loop. The health check performed in OnHostInitializing will then
