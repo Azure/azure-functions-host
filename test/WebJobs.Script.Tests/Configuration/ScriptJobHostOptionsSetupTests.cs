@@ -142,7 +142,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(TimeSpan.FromSeconds(30), options.FunctionTimeout);
         }
 
-
         [Fact]
         public void Configure_TimeoutDefaultsNull_IfNotDynamic()
         {
