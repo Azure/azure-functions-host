@@ -77,16 +77,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await fixture.Host.HttpClient.SendAsync(request);
         }
 
-        public static async Task<HttpResponseMessage> InvokeHostStatus(EndToEndTestFixture fixture)
-        {
-            string masterKey = await fixture.Host.GetMasterKeyAsync();
-            string uri = $"admin/host/status?code={masterKey}";
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
-
-            return await fixture.Host.HttpClient.SendAsync(request);
-        }
-
         public static async Task SetHostStateAsync(EndToEndTestFixture fixture, string state)
         {
             var masterKey = await fixture.Host.GetMasterKeyAsync();

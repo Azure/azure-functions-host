@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 await scriptHostManager.RestartHostAsync();
             }
 
-            var status = new HostStatus { State = scriptHostManager.State.ToString() };
+            var status = new ResumeStatus { HostStatus = new HostStatus { State = scriptHostManager.State.ToString() } };
             return Ok(status);
         }
 
