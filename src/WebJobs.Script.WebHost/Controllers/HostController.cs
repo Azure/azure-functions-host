@@ -42,6 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
+        private readonly SemaphoreSlim _drainModeSemaphore = new SemaphoreSlim(1, 1);
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
@@ -108,20 +109,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [HttpPost]
         [Route("admin/host/drain")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
-        public IActionResult Drain([FromServices] IScriptHostManager scriptHostManager)
+        public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager)
         {
             _logger.LogDebug("Received request for draining host");
 
-            if (Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
-            {
-                // Stop call to some listeners get stuck, not waiting for the stop call to complete
-                drainModeManager.EnableDrainModeAsync(CancellationToken.None).ConfigureAwait(false);
-                return Ok();
-            }
-            else
+            if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
+
+            await _drainModeSemaphore.WaitAsync();
+
+            // Stop call to some listeners gets stuck, not waiting for the stop call to complete
+            _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
+                                .ContinueWith(
+                                    antecedent =>
+                                    {
+                                        if (antecedent.Status == TaskStatus.Faulted)
+                                        {
+                                            _logger.LogDebug($"Something went wrong enabling drain mode: {antecedent.Exception.GetBaseException().Message}");
+                                        }
+
+                                        _drainModeSemaphore.Release();
+                                    });
+            return Ok();
         }
 
         [HttpGet]
@@ -161,25 +172,36 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager)
         {
-            _logger.LogDebug($"Received request to resume a draining host - host status: {scriptHostManager?.State.ToString()}");
+            var currentState = scriptHostManager.State;
 
-            if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager)
-                || scriptHostManager?.State != ScriptHostState.Running)
+            _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
+
+            if (currentState != ScriptHostState.Running
+                || !Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
             {
-                _logger.LogWarning("The host is not in a state where we can resume.");
+                _logger.LogDebug("The host is not in a state where we can resume.");
                 return StatusCode(StatusCodes.Status409Conflict);
             }
 
-            _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
-
-            if (drainModeManager.IsDrainModeEnabled)
+            try
             {
-                _logger.LogDebug("Starting a new host");
-                await scriptHostManager.RestartHostAsync();
-            }
+                await _drainModeSemaphore.WaitAsync();
 
-            var status = new ResumeStatus { HostStatus = new HostStatus { State = scriptHostManager.State.ToString() } };
-            return Ok(status);
+                _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
+
+                if (drainModeManager.IsDrainModeEnabled)
+                {
+                    _logger.LogDebug("Starting a new host");
+                    await scriptHostManager.RestartHostAsync();
+                }
+
+                var status = new ResumeStatus { State = scriptHostManager.State };
+                return Ok(status);
+            }
+            finally
+            {
+                _drainModeSemaphore.Release();
+            }
         }
 
         [HttpGet]

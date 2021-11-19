@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             responseString = response.Content.ReadAsStringAsync().Result;
             var resumeStatus = JsonConvert.DeserializeObject<ResumeStatus>(responseString);
 
-            Assert.Equal(ScriptHostState.Running.ToString(), resumeStatus.HostStatus.State);
+            Assert.Equal(ScriptHostState.Running, resumeStatus.State);
 
             // Validate the drain state is changed to "Disabled"
             response = await SamplesTestHelpers.InvokeDrainStatus(this);
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             responseString = response.Content.ReadAsStringAsync().Result;
             var resumeStatus = JsonConvert.DeserializeObject<ResumeStatus>(responseString);
 
-            Assert.Equal(ScriptHostState.Running.ToString(), resumeStatus.HostStatus.State);
+            Assert.Equal(ScriptHostState.Running, resumeStatus.State);
 
             // Validate HttpTrigger function is still working
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");

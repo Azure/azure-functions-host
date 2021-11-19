@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
     public class ResumeStatus
     {
-        [JsonProperty(PropertyName = "hostStatus", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public HostStatus HostStatus { get; set; }
+        [JsonProperty(PropertyName = "state", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public ScriptHostState State { get; set; }
     }
 }
