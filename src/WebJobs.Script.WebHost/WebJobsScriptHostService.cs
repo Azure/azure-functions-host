@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 currentCancellationToken.ThrowIfCancellationRequested();
 
-                // if we were in an error State retain that,
+                // if we were in an error state retain that,
                 // otherwise move to default
                 if (State != ScriptHostState.Error)
                 {
