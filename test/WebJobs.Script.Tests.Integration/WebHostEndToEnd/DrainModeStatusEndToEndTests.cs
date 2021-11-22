@@ -64,13 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
     }
 
-    public class DrainTestFixture : EndToEndTestFixture
+    public class DrainStatusTestFixture : EndToEndTestFixture
     {
-        static DrainTestFixture()
+        static DrainStatusTestFixture()
         {
         }
 
-        public DrainTestFixture()
+        public DrainStatusTestFixture()
             : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
         {
         }
