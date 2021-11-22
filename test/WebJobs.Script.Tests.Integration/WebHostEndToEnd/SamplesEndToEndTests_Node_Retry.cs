@@ -35,16 +35,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal("retryCount: 4", body);
         }
 
-        [Fact]
-        public async Task HttpTrigger_RetryHostJson_Get_Succeeds()
-        {
-            var response = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger-RetryHostJson");
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("retryCount: 2", body);
-        }
-
         public class TestFixture : EndToEndTestFixture
         {
             static TestFixture()
