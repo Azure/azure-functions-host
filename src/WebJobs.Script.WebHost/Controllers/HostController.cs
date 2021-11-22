@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                                     {
                                         if (antecedent.Status == TaskStatus.Faulted)
                                         {
-                                            _logger.LogDebug($"Something went wrong enabling drain mode: {antecedent.Exception.GetBaseException().Message}");
+                                            _logger.LogError("Something went wrong enabling drain mode", antecedent.Exception);
                                         }
 
                                         _drainModeSemaphore.Release();
@@ -172,20 +172,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> Resume([FromServices] IScriptHostManager scriptHostManager)
         {
-            var currentState = scriptHostManager.State;
-
-            _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
-
-            if (currentState != ScriptHostState.Running
-                || !Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
-            {
-                _logger.LogDebug("The host is not in a state where we can resume.");
-                return StatusCode(StatusCodes.Status409Conflict);
-            }
-
             try
             {
                 await _drainModeSemaphore.WaitAsync();
+
+                ScriptHostState currentState = scriptHostManager.State;
+
+                _logger.LogDebug($"Received request to resume a draining host - host status: {currentState.ToString()}");
+
+                if (currentState != ScriptHostState.Running
+                    || !Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
+                {
+                    _logger.LogDebug("The host is not in a state where we can resume.");
+                    return StatusCode(StatusCodes.Status409Conflict);
+                }
 
                 _logger.LogDebug($"Drain mode enabled: {drainModeManager.IsDrainModeEnabled}");
 

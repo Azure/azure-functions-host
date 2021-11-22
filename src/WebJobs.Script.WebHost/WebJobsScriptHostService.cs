@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (_state != value)
                 {
-                    _logger.HostStateChanged(_state);
+                    _logger.HostStateChanged(_state, value);
                 }
 
                 _state = value;
