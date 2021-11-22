@@ -31,7 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             // Validate ability to call HttpTrigger without issues
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");
-
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
             // Put the host in drain mode
