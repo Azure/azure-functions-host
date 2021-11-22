@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
+        private ConcurrentDictionary<(string, string, bool, bool), string> _eventDataCache = new ConcurrentDictionary<(string, string, bool, bool), string>();
         private ConcurrentDictionary<BindingMetadata, string> _bindingMetricEventNames = new ConcurrentDictionary<BindingMetadata, string>();
 
         public FunctionInstanceLogger(
@@ -80,11 +81,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // log events for each of the binding types used
             foreach (var binding in metadata.Bindings)
             {
-                string eventName = _bindingMetricEventNames.GetOrAdd(binding, (existing) =>
+                string eventName = _bindingMetricEventNames.GetOrAdd(binding, static (b) =>
                 {
-                    return binding.IsTrigger ?
-                        string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
-                        string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
+                    return b.IsTrigger ?
+                        string.Format(MetricEventNames.FunctionBindingTypeFormat, b.Type) :
+                        string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, b.Type, b.Direction);
                 });
                 _metrics.LogEvent(eventName, metadata.Name);
             }
@@ -103,7 +104,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var function = startedEvent.FunctionMetadata;
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
             string functionName = function != null ? function.Name : string.Empty;
-            string data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            var key = (startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            if (!_eventDataCache.TryGetValue(key, out var data))
+            {
+                data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+                _eventDataCache[key] = data;
+            }
             _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
 
             startedEvent.Data = data;

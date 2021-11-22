@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
-    public enum ExecutionStage
+    public enum ExecutionStage : byte
     {
         Started,
         InProgress,
@@ -12,11 +12,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         Succeeded
     }
 
-    public class FunctionMetrics
+    public struct FunctionMetrics
     {
-        private string _functionName;
-        private ExecutionStage _executionStage;
-        private long _executionTimeInMS;
+        private readonly string _functionName;
+        private readonly ExecutionStage _executionStage;
+        private readonly long _executionTimeInMS;
 
         public FunctionMetrics(string functionName, ExecutionStage executionStage, long executionTimeInMS)
         {

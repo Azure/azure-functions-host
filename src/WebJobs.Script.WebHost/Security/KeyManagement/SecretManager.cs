@@ -750,7 +750,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             // We're only serializing access to secrets per-function, not across all functions,
             // so we need to ensure we're using a single shared lock per-function.
-            return _functionSecretsLocks.GetOrAdd(functionName, k => new SemaphoreSlim(1, 1));
+            return _functionSecretsLocks.GetOrAdd(functionName, static k => new SemaphoreSlim(1, 1));
         }
     }
 }

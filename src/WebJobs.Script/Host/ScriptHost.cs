@@ -172,6 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal IExtensionBundleManager ExtensionBundleManager { get; }
 
+        public ILoggerFactory LoggerFactory => _loggerFactory;
+
         public ILogger Logger { get; internal set; }
 
         public ScriptJobHostOptions ScriptOptions { get; private set; }

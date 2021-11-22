@@ -27,10 +27,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class FunctionInvocationMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IPolicyEvaluator _policyEvaluator;
 
-        public FunctionInvocationMiddleware(RequestDelegate next)
+        public FunctionInvocationMiddleware(RequestDelegate next, IApplicationLifetime applicationLifetime, ILoggerFactory loggerFactory, IPolicyEvaluator policyEvaluator)
         {
             _next = next;
+            _applicationLifetime = applicationLifetime;
+            _loggerFactory = loggerFactory;
+            _policyEvaluator = policyEvaluator;
         }
 
         public async Task Invoke(HttpContext context)
@@ -86,8 +92,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             {
                 // Add the request to the logging scope. This allows the App Insights logger to
                 // record details about the request.
-                ILoggerFactory loggerFactory = context.RequestServices.GetService<ILoggerFactory>();
-                ILogger logger = loggerFactory.CreateLogger(functionExecution.Descriptor.LogCategory);
+                ILogger logger = functionExecution.Descriptor.Logger;
                 var scopeState = new Dictionary<string, object>()
                 {
                     [ScriptConstants.LoggerHttpRequest] = context.Request,
@@ -95,8 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
                 using (logger.BeginScope(scopeState))
                 {
-                    var applicationLifetime = context.RequestServices.GetService<IApplicationLifetime>();
-                    CancellationToken cancellationToken = applicationLifetime != null ? applicationLifetime.ApplicationStopping : CancellationToken.None;
+                    CancellationToken cancellationToken = _applicationLifetime != null ? _applicationLifetime.ApplicationStopping : CancellationToken.None;
                     await functionExecution.ExecuteAsync(context.Request, cancellationToken);
 
                     if (context.Items.TryGetValue(ScriptConstants.AzureFunctionsDuplicateHttpHeadersKey, out object value))
@@ -147,12 +151,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             if (RequiresAuthz(context.Request, descriptor))
             {
                 // Authenticate the request
-                var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
                 var policy = AuthUtility.DefaultFunctionPolicy;
-                var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
+                var authenticateResult = await _policyEvaluator.AuthenticateAsync(policy, context);
 
                 // Authorize using the function policy and resource
-                var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
+                var authorizeResult = await _policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, descriptor);
 
                 return authorizeResult.Succeeded;
             }

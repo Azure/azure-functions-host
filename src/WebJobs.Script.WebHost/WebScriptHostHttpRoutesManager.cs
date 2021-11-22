@@ -1,7 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Text;
+using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Constraints;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -16,13 +19,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IWebJobsRouter _router;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IPolicyEvaluator _policyEvaluator;
 
-        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment)
+        public WebScriptHostHttpRoutesManager(IOptions<HttpOptions> httpOptions, IWebJobsRouter router, ILoggerFactory loggerFactory, IEnvironment environment, IApplicationLifetime applicationLifetime, IPolicyEvaluator policyEvaluator)
         {
             _httpOptions = httpOptions;
             _router = router;
             _loggerFactory = loggerFactory;
             _environment = environment;
+            _applicationLifetime = applicationLifetime;
+            _policyEvaluator = policyEvaluator;
         }
 
         public void InitializeHttpFunctionRoutes(IScriptJobHost host)
@@ -33,12 +40,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _router.ClearRoutes();
 
             // TODO: FACAVAL Instantiation of the ScriptRouteHandler should be cleaned up
-            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, false), _httpOptions.Value.RoutePrefix);
+            WebJobsRouteBuilder routesBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, _applicationLifetime, _policyEvaluator, false), _httpOptions.Value.RoutePrefix);
 
             WebJobsRouteBuilder warmupRouteBuilder = null;
             if (!_environment.IsLinuxConsumption() && !_environment.IsWindowsConsumption())
             {
-                warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, isWarmup: true), routePrefix: "admin");
+                warmupRouteBuilder = _router.CreateBuilder(new ScriptRouteHandler(_loggerFactory, host, _environment, _applicationLifetime, _policyEvaluator, isWarmup: true), routePrefix: "admin");
             }
 
             foreach (var function in host.Functions)

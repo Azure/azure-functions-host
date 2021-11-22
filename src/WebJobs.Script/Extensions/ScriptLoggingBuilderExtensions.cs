@@ -36,7 +36,7 @@ namespace Microsoft.Extensions.Logging
 
         private static bool IsFiltered(string category)
         {
-            return _filteredCategoryCache.GetOrAdd(category, c => ScriptConstants.SystemLogCategoryPrefixes.Where(p => category.StartsWith(p)).Any());
+            return _filteredCategoryCache.GetOrAdd(category, static cat => ScriptConstants.SystemLogCategoryPrefixes.Any(p => cat.StartsWith(p)));
         }
 
         public static void AddConsoleIfEnabled(this ILoggingBuilder builder, HostBuilderContext context)

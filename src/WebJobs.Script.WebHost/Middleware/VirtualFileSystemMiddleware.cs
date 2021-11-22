@@ -17,10 +17,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class VirtualFileSystemMiddleware : IMiddleware
     {
         private readonly VirtualFileSystem _vfs;
+        private readonly IAuthorizationPolicyProvider _authorizationPolicyProvider;
+        private readonly IPolicyEvaluator _policyEvaluator;
 
-        public VirtualFileSystemMiddleware(VirtualFileSystem vfs)
+        public VirtualFileSystemMiddleware(VirtualFileSystem vfs, IAuthorizationPolicyProvider authorizationPolicyProvider, IPolicyEvaluator policyEvaluator)
         {
             _vfs = vfs;
+            _authorizationPolicyProvider = authorizationPolicyProvider;
+            _policyEvaluator = policyEvaluator;
         }
 
         /// <summary>
@@ -100,14 +104,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         private async Task<bool> AuthenticateAndAuthorize(HttpContext context)
         {
-            var authorizationPolicyProvider = context.RequestServices.GetRequiredService<IAuthorizationPolicyProvider>();
-            var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
-
-            var policy = await authorizationPolicyProvider.GetPolicyAsync(PolicyNames.AdminAuthLevel);
-            var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
+            var policy = await _authorizationPolicyProvider.GetPolicyAsync(PolicyNames.AdminAuthLevel);
+            var authenticateResult = await _policyEvaluator.AuthenticateAsync(policy, context);
 
             // For admin, resource is null.
-            var authorizeResult = await policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, resource: null);
+            var authorizeResult = await _policyEvaluator.AuthorizeAsync(policy, authenticateResult, context, resource: null);
 
             return authorizeResult.Succeeded;
         }

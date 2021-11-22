@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
     public class ScriptLoggerFactory : ILoggerFactory
     {
         private readonly LoggerFactory _factory;
+        private readonly ConcurrentDictionary<string, ILogger> _loggerCache = new ConcurrentDictionary<string, ILogger>();
 
         public ScriptLoggerFactory(IEnumerable<ILoggerProvider> providers, IOptionsMonitor<LoggerFilterOptions> filterOption)
         {
@@ -31,7 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             try
             {
-                return _factory.CreateLogger(categoryName);
+                // To avoid the lock contention in factory.CreateLogger
+                if (_loggerCache.TryGetValue(categoryName, out var result))
+                {
+                    return result;
+                }
+                return _loggerCache[categoryName] = _factory.CreateLogger(categoryName);
             }
             catch (ObjectDisposedException ex)
             {

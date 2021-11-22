@@ -3,12 +3,17 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization.Policy;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
 using Microsoft.Extensions.Logging;
 
@@ -19,15 +24,19 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
         private readonly IScriptJobHost _scriptHost;
         private readonly ILoggerFactory _loggerFactory;
         private readonly IEnvironment _environment;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IPolicyEvaluator _policyEvaluator;
         private readonly bool _isWarmup;
         private static int _warmupExecuted;
         private readonly ConcurrentDictionary<string, FunctionDescriptor> _functionMap = new ConcurrentDictionary<string, FunctionDescriptor>(System.StringComparer.OrdinalIgnoreCase);
 
-        public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, IEnvironment environment, bool isWarmup = false)
+        public ScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, IEnvironment environment, IApplicationLifetime applicationLifetime, IPolicyEvaluator policyEvaluator, bool isWarmup = false)
         {
             _scriptHost = scriptHost;
             _loggerFactory = loggerFactory;
             _environment = environment;
+            _applicationLifetime = applicationLifetime;
+            _policyEvaluator = policyEvaluator;
             _isWarmup = isWarmup;
         }
 
