@@ -8,13 +8,13 @@ variables:
 pr:
   branches:
     include:
-    - v4.x
+    - dev
     - release/4.*
 
 trigger:
   branches:
     include:
-    - v4.x
+    - dev
     - release/4.*
 
 jobs:

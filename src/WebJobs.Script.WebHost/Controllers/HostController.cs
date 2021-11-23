@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                                     {
                                         if (antecedent.Status == TaskStatus.Faulted)
                                         {
-                                            _logger.LogError("Something went wrong enabling drain mode", antecedent.Exception);
+                                            _logger.LogError(antecedent.Exception, "Something went wrong enabling drain mode");
                                         }
 
                                         _drainModeSemaphore.Release();
