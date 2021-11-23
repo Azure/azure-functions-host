@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -63,14 +64,27 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 await DelayUntilFunctionDispatcherInitializedOrShutdown();
             }
 
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             var bindingData = context.Binder.BindingData;
             object triggerValue = TransformInput(parameters[0], bindingData);
             var triggerInput = (_bindingMetadata.Name, _bindingMetadata.DataType ?? DataType.String, triggerValue);
             IEnumerable<(string, DataType, object)> inputs = new[] { triggerInput };
-            if (_inputBindings.Count > 1)
+            string invocationId = context.ExecutionContext.InvocationId.ToString();
+
+            try
             {
-                var nonTriggerInputs = await BindInputsAsync(context.Binder);
-                inputs = inputs.Concat(nonTriggerInputs);
+                if (_inputBindings.Count > 1)
+                {
+                    var nonTriggerInputs = await BindInputsAsync(context.Binder);
+                    inputs = inputs.Concat(nonTriggerInputs);
+                }
+            }
+            finally
+            {
+                string log = $"$$$ BindInputsAsync_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {invocationId}";
+                Console.WriteLine(log);
             }
 
             var invocationContext = new ScriptInvocationContext
@@ -90,13 +104,48 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Logger = context.Logger
             };
 
-            string invocationId = context.ExecutionContext.InvocationId.ToString();
             _logger.LogTrace($"Sending invocation id:{invocationId}");
-            await _functionDispatcher.InvokeAsync(invocationContext);
-            var result = await invocationContext.ResultSource.Task;
 
-            await BindOutputsAsync(triggerValue, context.Binder, result);
-            return result.Return;
+            stopWatch.Restart();
+
+            try
+            {
+                await _functionDispatcher.InvokeAsync(invocationContext);
+            }
+            finally
+            {
+                string log = $"$$$ DispatchInvocation_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {invocationId}";
+                Console.WriteLine(log);
+            }
+
+            stopWatch.Restart();
+
+            string logExecution = string.Empty;
+            string logBindOutputs = string.Empty;
+
+            try
+            {
+                var result = await invocationContext.ResultSource.Task;
+                logExecution = $"$$$ Execution_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {invocationId}";
+
+                stopWatch.Restart();
+
+                await BindOutputsAsync(triggerValue, context.Binder, result);
+                logBindOutputs = $"$$$ BindOutputsAsync_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {invocationId}";
+
+                // Insert the InvocationID into the HTTP response header so we can parse that for logging purposes
+                var dynamicDict = result.Return as IDictionary<string, object>;
+                var headersDict = (Dictionary<string, object>)dynamicDict["headers"];
+                headersDict.Add("InvocationID", invocationId);
+                dynamicDict["headers"] = headersDict;
+
+                return result.Return;
+            }
+            finally
+            {
+                Console.WriteLine(logExecution);
+                Console.WriteLine(logBindOutputs);
+            }
         }
 
         private bool IsDispatcherReady()

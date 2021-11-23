@@ -420,6 +420,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             try
             {
                 // do not send invocation requests for functions that failed to load or could not be indexed by the worker
@@ -454,6 +457,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             catch (Exception invokeEx)
             {
                 context.ResultSource.TrySetException(invokeEx);
+            }
+            finally
+            {
+                string log = $"$$$ SendInvocationRequestGrpc_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {context.ExecutionContext.InvocationId}";
+                Console.WriteLine(log);
             }
         }
 
@@ -565,6 +573,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal async Task InvokeResponse(InvocationResponse invokeResponse)
         {
+            Stopwatch stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: {Id}", invokeResponse.InvocationId);
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
@@ -622,6 +633,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         // If this invocation was using any shared memory maps produced by the worker, close them to free memory
                         SendCloseSharedMemoryResourcesForInvocationRequest(outputMaps);
                     }
+
+                    string log = $"$$$ InvokeResponseGrpc_ms_runtime: {stopWatch.Elapsed.TotalMilliseconds}, InvocationID: {invokeResponse.InvocationId}";
+                    Console.WriteLine(log);
                 }
             }
         }

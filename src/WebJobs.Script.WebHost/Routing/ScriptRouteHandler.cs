@@ -39,6 +39,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.Http
 
         public Task InvokeAsync(HttpContext context, string functionName)
         {
+            Console.WriteLine($"GOHAR: Calling {functionName}");
             if (_isProxy)
             {
                 ProxyFunctionExecutor proxyFunctionExecutor = new ProxyFunctionExecutor(_scriptHost);

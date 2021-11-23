@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public AspNetCoreGrpcServer(IScriptEventManager scriptEventManager, ILogger<AspNetCoreGrpcServer> logger)
         {
             int port = WorkerUtilities.GetUnusedTcpPort();
-            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(scriptEventManager, port);
+            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(scriptEventManager, port, _logger);
             _logger = logger;
             Uri = new Uri($"http://{WorkerConstants.HostName}:{port}");
         }
