@@ -1,32 +1,22 @@
 param (
-  [string]$buildNumber,
-  [string]$majorMinorVersion,
-  [string]$patchVersion,
-  [string]$v2CompatibleExtensionVersion = "2.1.0",  
-  [string]$suffix = "",
-  [string]$commitHash = "N/A",
+  [string]$buildNumber = "0",  
+  [string]$suffix = "",  
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
-$extensionVersion = "$majorMinorVersion.$patchVersion"
-Write-Host "ExtensionVersion is $extensionVersion"
-Write-Host "BuildNumber is $buildNumber"
-
 $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
-$hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
-if(![string]::IsNullOrEmpty($buildNumber)) {
-  $v2CompatibleExtensionVersion = "2.1.$buildNumber"
-}
+Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
+$extensionVersion = Get-AzureFunctionsVersion $buildNumber $suffix
+Write-Host "Site extension version: $extensionVersion"
 
-$extensionVersionNoSuffix = $extensionVersion
-$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
-
-if ($hasSuffix) {
-  $extensionVersion = "$extensionVersion-$suffix"  
-  $v2CompatibleExtensionVersion = "$v2CompatibleExtensionVersion-$suffix"
-}
+# Construct variables for strings like "4.1.0-15898" and "4.1.0"
+$versionParts = ($extensionVersion -Split "-")[0] -Split "\."
+$majorMinorVersion = $versionParts[0] + "." + $versionParts[1]
+$patchVersion = [int]$versionParts[2]
+$isPatch = $patchVersion -gt 0
+Write-Host "MajorMinorVersion is '$majorMinorVersion'. Patch version is '$patchVersion'. IsPatch: '$isPatch'"
 
 function ZipContent([string] $sourceDirectory, [string] $target)
 {
@@ -54,18 +44,13 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $publishTarget = "$buildOutput\publish\$targetRid"
     $symbolsTarget = "$buildOutput\symbols\$targetRid"
 
-    $suffixCmd = ""
-    if ($hasSuffix) {
-      $suffixCmd = "/p:VersionSuffix=$suffix"
-    }
-
     $projectPath = "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj"
     if (-not (Test-Path $projectPath))
     {
         throw "Project path '$projectPath' does not exist."
     }
 
-    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "/p:PublishReadyToRun=true", "/p:PublishReadyToRunEmitSymbols=true", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "/p:CommitHash=$commitHash", "-c", "Release", $suffixCmd
+    $cmd = "publish", "$PSScriptRoot\..\src\WebJobs.Script.WebHost\WebJobs.Script.WebHost.csproj", "-r", "$targetRid", "--self-contained", "$isSelfContained", "-o", "$publishTarget", "-v", "m", "/p:BuildNumber=$buildNumber", "/p:IsPackable=false", "-c", "Release", $suffixCmd
 
     Write-Host "======================================"
     Write-Host "Building $targetRid"
@@ -77,6 +62,11 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     
     & dotnet $cmd
+
+    if ($LASTEXITCODE -ne 0)
+    {
+      exit $LASTEXITCODE
+    }
 
     Write-Host ""
     Write-Host "Moving symbols to $symbolsTarget"
@@ -130,7 +120,7 @@ function CleanOutput([string] $rootPath) {
 function CreatePatchedSiteExtension([string] $siteExtensionPath) {
   try {
     Write-Host "SiteExtensionPath is $siteExtensionPath"
-    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     $baseVersion = "$majorMinorVersion.0"
     $baseZipPath = "$buildOutput\BaseZipDirectory"
     $baseExtractedPath = "$buildOutput\BaseZipDirectory\Extracted"
@@ -150,10 +140,6 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     # Create directory for patch
     $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
-
-    # Create directory for content
-    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
-    New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
 
     # Copy extensions.xml as is
     Copy-Item "$siteExtensionPath\extension.xml" -Destination "$patchedContentDirectory\extension.xml"
@@ -187,7 +173,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
       if((!$hashForBase.ContainsKey($key)) -or ($hashForPatched[$key] -ne $hashForBase[$key])) {
         $filePath = $key.Replace(".\","")
         $sourcePath = "$officialSiteExtensionPath\$filePath"
-        $destinationPath = "$patchedContentDirectory\$extensionVersionNoSuffix\$filePath"
+        $destinationPath = "$patchedContentDirectory\$extensionVersion\$filePath"
         Write-Host "Copying $sourcePath to $destinationPath"
         $ValidPath = Test-Path "$destinationPath"
 
@@ -199,7 +185,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 
         # Get it into info
         $infoKeyValuePairs.Add("FileName", $key)
-        $infoKeyValuePairs.Add("SourceVersion", $extensionVersionNoSuffix)
+        $infoKeyValuePairs.Add("SourceVersion", $extensionVersion)
         $infoKeyValuePairs.Add("HashValue", $hashForPatched[$key])
         $informationJson.Add($infoKeyValuePairs)
         continue
@@ -211,10 +197,10 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
       $infoKeyValuePairs.Add("HashValue", $hashForBase[$key])
       $informationJson.Add($infoKeyValuePairs)
     }
-    $informationJson | ConvertTo-Json -depth 100 | Out-File "$patchedContentDirectory\$extensionVersionNoSuffix\HardlinksMetadata.json"
+    $informationJson | ConvertTo-Json -depth 100 | Out-File "$patchedContentDirectory\$extensionVersion\HardlinksMetadata.json"
 
     # Zip it up
-    ZipContent $patchedContentDirectory "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
+    ZipContent $patchedContentDirectory "$zipOutput\Functions.$extensionVersion.zip"
 
     # Clean up
     Remove-Item $patchedContentDirectory -Recurse -Force > $null
@@ -229,12 +215,10 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
-    $v2CompatibleSiteExtensionPath = "$buildOutput\temp_extension_v2"
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
-    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
-    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix"
+    $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -255,31 +239,21 @@ function CreateSiteExtensions() {
 
     Write-Host "======================================"
     Write-Host "Generating hashes for hard links"
-    WriteHashesFile $siteExtensionPath/$extensionVersionNoSuffix
-    Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersionNoSuffix"
+    WriteHashesFile $siteExtensionPath/$extensionVersion
+    Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersion"
     Write-Host "======================================"
     Write-Host
     
-    Write-Host "======================================"
-    $stopwatch.Reset()
-    Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
-    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix -Force -Recurse > $null
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
-    Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
-    Write-Host "======================================"
-    Write-Host
-
-    $zipOutput = "$buildOutput\V2SiteExtension"
-    New-Item -Itemtype directory -path $zipOutput -Force > $null
-    ZipContent $officialV2CompatibleSiteExtensionPath "$zipOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
-
-    # This needs to be determined if it's patch or not.
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
 
+    # Create directory for content even if there is no patch build. This makes artifact uploading easier.
+    $patchedContentDirectory = "$buildOutput\PatchedSiteExtension"
+    New-Item -Itemtype directory -path $patchedContentDirectory -Force > $null
+
     # Construct patch
-    if(([int]$patchVersion) -gt 0)
+    if($isPatch)
     {
       Write-Host "======================================"
       Write-Host "Generating patch file"
@@ -290,7 +264,6 @@ function CreateSiteExtensions() {
     }
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null    
-    Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
     
     Write-Host "======================================"
     $stopwatch.Reset()
@@ -318,15 +291,15 @@ function WriteHashesFile([string] $directoryPath) {
   Remove-Item "$directoryPath/../temp_hashes" -Recurse -Force > $null
 }
 
-Write-Host ""
-dotnet --version
+Write-Host
+dotnet --info
+Write-Host
 Write-Host "Output directory: $buildOutput"
 if (Test-Path $buildOutput) {
     Write-Host "  Existing build output found. Deleting."
     Remove-Item $buildOutput -Recurse -Force
 }
 Write-Host "Extensions version: $extensionVersion"
-Write-Host "V2 compatible Extensions version: $v2CompatibleExtensionVersion"
 Write-Host ""
 
 BuildRuntime "win-x86"

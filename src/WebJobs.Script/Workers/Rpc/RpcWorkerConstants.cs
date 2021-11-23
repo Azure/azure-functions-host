@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         // Language worker concurrency limits
         public const string FunctionsWorkerDynamicConcurrencyEnabled = "FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED";
-        public const string FunctionsWorkerRemoveConcurrencyLimits = "FUNCTIONS_WORKER_REMOVE_CONCURRENCY_LIMITS";
         public const string PythonThreadpoolThreadCount = "PYTHON_THREADPOOL_THREAD_COUNT";
         public const string PSWorkerInProcConcurrencyUpperBound = "PSWorkerInProcConcurrencyUpperBound";
         public const string DefaultConcurrencyLimit = "1000";

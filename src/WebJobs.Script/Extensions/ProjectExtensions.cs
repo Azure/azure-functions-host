@@ -1,52 +1,65 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Linq;
-using Microsoft.Build.Construction;
+using System.Xml.Linq;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
 
 namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
     internal static class ProjectExtensions
     {
-        public static void AddPackageReference(this ProjectRootElement project, string packageId, string version)
+        public static void AddPackageReference(this XDocument document, string packageId, string version)
         {
-            ProjectItemElement existingPackageReference = project.Items
-                .FirstOrDefault(item => item.ItemType == PackageReferenceElementName && item.Include == packageId);
+            XElement existingPackageReference = document.Descendants()?.FirstOrDefault(
+                                                        item =>
+                                                        PackageReferenceElementName.Equals(item.Name?.LocalName, StringComparison.Ordinal) &&
+                                                        item.Attribute(PackageReferenceIncludeElementName)?.Value == packageId);
 
             if (existingPackageReference != null)
             {
-                // If the package is already present, move on...
-                if (existingPackageReference.Metadata.Any(m => m.Name == PackageReferenceVersionElementName && m.Value == version))
+                // If the package with the same version is already present, move on...
+                if (existingPackageReference.Attribute(PackageReferenceVersionElementName)?.Value == version)
                 {
                     return;
                 }
 
-                existingPackageReference.Parent.RemoveChild(existingPackageReference);
+                existingPackageReference.Remove();
             }
 
-            ProjectItemGroupElement group = GetUniformItemGroupOrNew(project, PackageReferenceElementName);
-
-            group.AddItem(PackageReferenceElementName, packageId)
-                 .AddMetadata(PackageReferenceVersionElementName, version, true);
+            XElement group = document.GetUniformItemGroupOrNew(PackageReferenceElementName);
+            XElement element = new XElement(PackageReferenceElementName,
+                                    new XAttribute(PackageReferenceIncludeElementName, packageId),
+                                    new XAttribute(PackageReferenceVersionElementName, version));
+            group.Add(element);
         }
 
-        public static void RemovePackageReference(this ProjectRootElement project, string packageId)
+        public static void RemovePackageReference(this XDocument document, string packageId)
         {
-            ProjectItemElement existingPackageReference = project.Items
-                .FirstOrDefault(item => item.ItemType == PackageReferenceElementName && item.Include == packageId);
-
+            XElement existingPackageReference = document.Descendants()?.FirstOrDefault(
+                                                        item =>
+                                                        PackageReferenceElementName.Equals(item.Name?.LocalName, StringComparison.Ordinal) &&
+                                                        item.Attribute(PackageReferenceIncludeElementName)?.Value == packageId);
             if (existingPackageReference != null)
             {
-                existingPackageReference.Parent.RemoveChild(existingPackageReference);
+                existingPackageReference.Remove();
             }
         }
 
-        public static ProjectItemGroupElement GetUniformItemGroupOrNew(this ProjectRootElement project, string itemName)
+        internal static XElement GetUniformItemGroupOrNew(this XDocument document, string itemName)
         {
-            ProjectItemGroupElement group = project.ItemGroupsReversed.FirstOrDefault(g => g.Items.All(i => i.ItemType == itemName));
+            XElement group = document.Descendants(ItemGroupElementName)
+                                        .LastOrDefault(g => g.Elements()
+                                            .All(i => itemName.Equals(i.Name?.LocalName, StringComparison.Ordinal)));
 
-            return group ?? project.AddItemGroup();
+            if (group == null)
+            {
+                document.Root.Add(new XElement(ItemGroupElementName));
+                group = document.Descendants(ItemGroupElementName).LastOrDefault();
+            }
+
+            return group;
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿#r "Newtonsoft.Json"
-#r "Microsoft.WindowsAzure.Storage"
 
 using System;
 using System.Collections.Generic;
@@ -8,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
-using Microsoft.WindowsAzure.Storage.Blob;
 using Newtonsoft.Json;
 
 public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
@@ -22,18 +20,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
     dynamic data = JsonConvert.DeserializeObject(requestBody);
     name = name ?? data?.name ?? "";
 
-    // This is just to warmup storage calls in placeholder process to improve cold startup time.
-    CloudBlockBlob output = new CloudBlockBlob(new Uri("https://functionswarmup.blob.core.windows.net/warmup/warmup"));
-
-    try
-    {
-        Task blobTask = output.DownloadTextAsync();
-        await Task.WhenAny(blobTask, Task.Delay(TimeSpan.FromSeconds(5)));
-    }
-    catch
-    {
-    }
-
+    
     HashSet<Guid> hashSet = new HashSet<Guid>();
     hashSet.Add(Guid.NewGuid());
     hashSet.Add(Guid.NewGuid());

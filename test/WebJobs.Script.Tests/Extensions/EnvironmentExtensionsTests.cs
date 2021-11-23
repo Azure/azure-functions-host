@@ -141,6 +141,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, true)]
+        public void IsConsumption_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isLinuxConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isWindowsConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            }
+
+            Assert.Equal(expectedValue, env.IsConsumptionSku());
+        }
+
+        [Theory]
         [InlineData("~2", "true", true)]
         [InlineData("~2", "false", true)]
         [InlineData("~2", null, true)]

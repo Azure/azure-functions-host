@@ -15,10 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFunctionsColdStartKey = "MS_AzureFunctionsColdStart";
         public const string AzureFunctionsRequestTimer = "MS_AzureFunctionsRequestTimer";
         public const string AzureFunctionsHttpRequestKey = "MS_AzureFunctionsHttpRequest";
-        public const string AzureProxyFunctionExecutorKey = "MS_AzureProxyFunctionExecutor";
         public const string AzureFunctionsHostKey = "MS_AzureFunctionsHost";
-        public const string AzureFunctionsNestedProxyCount = "MS_AzureFunctionsNestedProxyCount";
-        public const string AzureFunctionsProxyResult = "MS_AzureFunctionsProxyResult";
         public const string AzureFunctionsDuplicateHttpHeadersKey = "MS_AzureFunctionsDuplicateHttpHeaders";
         public const string JobHostMiddlewarePipelineRequestDelegate = "MS_JobHostMiddlewarePipelineRequestDelegate";
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
@@ -74,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HostMetadataFileName = "host.json";
         public const string FunctionMetadataFileName = "function.json";
         public const string AutorestGeenratedMetadataFileName = ".autorest_generated.json";
-        public const string ProxyMetadataFileName = "proxies.json";
         public const string ExtensionsMetadataFileName = "extensions.json";
         public const string AppOfflineFileName = "app_offline.htm";
         public const string RunFromPackageFailedFileName = "FAILED TO INITIALIZE RUN FROM PACKAGE.txt";
@@ -103,19 +99,13 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string ElasticPremiumSku = "ElasticPremium";
         public const string DefaultProductionSlotName = "production";
 
-        public const string AzureProxyFunctionLocalRedirectKey = "MS_ProxyLocalRedirectCount";
-        public const int AzureProxyFunctionMaxLocalRedirects = 10;
-
         public const string FeatureFlagDisableShadowCopy = "DisableShadowCopy";
         public const string FeatureFlagsEnableDynamicExtensionLoading = "EnableDynamicExtensionLoading";
         public const string FeatureFlagEnableActionResultHandling = "EnableActionResultHandling";
         public const string FeatureFlagAllowSynchronousIO = "AllowSynchronousIO";
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
-        public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
-        public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
-        public const string FeatureFlagDisableAspNetCoreGrpc = "DisableAspNetCoreGrpc";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
@@ -143,10 +133,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public const int MaxTestDataInlineStringLength = 4 * 1024;
 
         public const string ExtensionsProjectFileName = "extensions.csproj";
-        public const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
-        public const string MetadataGeneratorPackageVersion = "1.1.*";
+        public const string ItemGroupElementName = "ItemGroup";
         public const string PackageReferenceElementName = "PackageReference";
         public const string PackageReferenceVersionElementName = "Version";
+        public const string PackageReferenceIncludeElementName = "Include";
+
         public const int HostTimeoutSeconds = 30;
         public const int HostPollingIntervalMilliseconds = 25;
         public const int MaximumSecretBackupCount = 10;

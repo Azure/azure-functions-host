@@ -62,13 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 startInfo.Arguments = SanitizeExpandedArgument(startInfo.Arguments);
             }
 
-            if (bool.TryParse(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerRemoveConcurrencyLimits), out bool removeConcurrencyLimits))
-            {
-                if (removeConcurrencyLimits)
-                {
-                    ApplyWorkerConcurrencyLimits(startInfo);
-                }
-            }
+            ApplyWorkerConcurrencyLimits(startInfo);
 
             return new Process { StartInfo = startInfo };
         }

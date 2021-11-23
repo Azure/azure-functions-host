@@ -41,6 +41,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 // Log this to the WebHost's logger so we can track
                 ILogger logger = _rootProvider.GetService<ILogger<DependencyValidator>>();
                 logger.LogError(ex, "Invalid host services detected.");
+
+                // rethrow to prevent host startup
+                throw new HostInitializationException("Invalid host services detected.", ex);
             }
 
             if (_provider == null)

@@ -34,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             // Add the default files we need to watch
             options.WatchFiles.Add(ScriptConstants.HostMetadataFileName);
             options.WatchFiles.Add(ScriptConstants.FunctionMetadataFileName);
-            options.WatchFiles.Add(ScriptConstants.ProxyMetadataFileName);
 
             // Set default logging mode
             options.FileLoggingMode = FileLoggingMode.DebugOnly;
@@ -52,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     options.FileLoggingMode = fileLoggingMode.Value;
                 }
-                Utility.ValidateRetryOptions(options.Retry);
             }
 
             // FunctionTimeout
@@ -79,9 +77,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
         {
             if (options.FunctionTimeout == null)
             {
-                options.FunctionTimeout = _environment.IsWindowsConsumption() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
+                options.FunctionTimeout = _environment.IsConsumptionSku() ? DefaultFunctionTimeoutDynamic : DefaultFunctionTimeout;
             }
-            else if (!_environment.IsWindowsConsumption() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
+            else if (!_environment.IsConsumptionSku() && TimeSpan.Compare(options.FunctionTimeout.Value, TimeSpan.FromDays(-1)) == 0)
             {
                 // If a value of -1 is specified on a dedicated host, it should result in an infinite timeout
                 options.FunctionTimeout = null;
@@ -97,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             if (timeoutValue != null)
             {
                 var maxTimeout = TimeSpan.MaxValue;
-                if (_environment.IsWindowsConsumption())
+                if (_environment.IsConsumptionSku())
                 {
                     maxTimeout = MaxFunctionTimeoutDynamic;
                 }

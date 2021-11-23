@@ -2,30 +2,35 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
+using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Build.Construction;
-using Microsoft.Build.Evaluation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.ScriptConstants;
-using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 {
     public class ExtensionsManager : IExtensionsManager
     {
+        private const string ExtensionsProjectSdkAttributeName = "Sdk";
+        private const string ExtensionsProjectSdkPackageId = "Microsoft.NET.Sdk";
+        private const string ProjectElementName = "Project";
+        private const string TargetFrameworkElementName = "TargetFramework";
+        private const string PropertyGroupElementName = "PropertyGroup";
+        private const string WarningsAsErrorsElementName = "WarningsAsErrors";
+        private const string TargetFrameworkNetStandard2 = "netstandard2.0";
+        private const string MetadataGeneratorPackageId = "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator";
+        private const string MetadataGeneratorPackageVersion = "1.1.*";
         private readonly string _scriptRootPath;
         private readonly ILogger _logger;
         private readonly IExtensionBundleManager _extensionBundleManager;
@@ -67,14 +72,14 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             await SaveAndProcessProjectAsync(project);
         }
 
-        private async Task SaveAndProcessProjectAsync(ProjectRootElement project)
+        private async Task SaveAndProcessProjectAsync(XDocument project)
         {
             string baseFolder = Path.GetTempPath();
 
             var tempFolder = Path.Combine(baseFolder, "Functions", "Extensions", Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempFolder);
 
-            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.RawXml);
+            File.WriteAllText(Path.Combine(tempFolder, ExtensionsProjectFileName), project.ToString());
 
             await ProcessExtensionsProject(tempFolder);
         }
@@ -105,12 +110,14 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
 
             var project = await GetOrCreateProjectAsync(extensionsProjectPath);
 
-            return project.Items
-                .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal) && !MetadataGeneratorPackageId.Equals(i.Include, StringComparison.Ordinal))
+            return project.Descendants()?
+                .Where(i => PackageReferenceElementName.Equals(i.Name.LocalName, StringComparison.Ordinal) &&
+                            ItemGroupElementName.Equals(i.Parent.Name.LocalName, StringComparison.Ordinal) &&
+                            !MetadataGeneratorPackageId.Equals(i.Attribute(PackageReferenceIncludeElementName)?.Value, StringComparison.Ordinal))
                 .Select(i => new ExtensionPackageReference
                 {
-                    Id = i.Include,
-                    Version = i.Metadata.FirstOrDefault(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal))?.Value
+                    Id = i.Attribute(PackageReferenceIncludeElementName)?.Value,
+                    Version = i.Attribute(PackageReferenceVersionElementName)?.Value
                 })
                 .ToList();
         }
@@ -264,35 +271,37 @@ namespace Microsoft.Azure.WebJobs.Script.BindingExtensions
             File.Copy(Path.Combine(tempFolder, ExtensionsProjectFileName), DefaultExtensionsProjectPath, true);
         }
 
-        private Task<ProjectRootElement> GetOrCreateProjectAsync(string path)
+        private Task<XDocument> GetOrCreateProjectAsync(string path)
         {
             return Task.Run(() =>
             {
-                ProjectRootElement root = null;
+                XDocument root = null;
                 if (File.Exists(path))
                 {
-                    var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(path)));
-                    root = ProjectRootElement.Create(reader);
+                    root = XDocument.Load(path);
                 }
 
                 return root ?? CreateDefaultProject(path);
             });
         }
 
-        private ProjectRootElement CreateDefaultProject(string path)
+        private XDocument CreateDefaultProject(string path)
         {
-            var root = ProjectRootElement.Create(path, NewProjectFileOptions.None);
-            root.Sdk = "Microsoft.NET.Sdk";
+            XDocument document = new XDocument();
 
-            var propGroup = root.AddPropertyGroup();
-            propGroup.AddProperty("TargetFramework", "netstandard2.0");
-            propGroup.AddProperty("WarningsAsErrors", string.Empty);
+            XElement project =
+                new XElement(ProjectElementName,
+                    new XAttribute(ExtensionsProjectSdkAttributeName, ExtensionsProjectSdkPackageId),
+                    new XElement(PropertyGroupElementName,
+                        new XElement(WarningsAsErrorsElementName),
+                        new XElement(TargetFrameworkElementName, new XText(TargetFrameworkNetStandard2))),
+                    new XElement(ItemGroupElementName,
+                        new XElement(PackageReferenceElementName,
+                            new XAttribute(PackageReferenceIncludeElementName, MetadataGeneratorPackageId),
+                            new XAttribute(PackageReferenceVersionElementName, MetadataGeneratorPackageVersion))));
 
-            root.AddItemGroup()
-                .AddItem(PackageReferenceElementName, MetadataGeneratorPackageId)
-                .AddMetadata(PackageReferenceVersionElementName, MetadataGeneratorPackageVersion, true);
-
-            return root;
+            document.AddFirst(project);
+            return document;
         }
     }
 }

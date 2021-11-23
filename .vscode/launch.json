@@ -10,7 +10,7 @@
       "request": "launch",
       "preLaunchTask": "build",
       // If you have changed target frameworks, make sure to update the program path.
-      "program": "${workspaceFolder}/src/WebJobs.Script.WebHost/bin/Debug/netcoreapp2.2/Microsoft.Azure.WebJobs.Script.WebHost.dll",
+      "program": "${workspaceFolder}/src/WebJobs.Script.WebHost/bin/Debug/net6.0/Microsoft.Azure.WebJobs.Script.WebHost.dll",
       "args": [],
       "cwd": "${workspaceFolder}/sample/Node",
       "stopAtEntry": false,
@@ -20,7 +20,8 @@
         "pattern": "^\\s*Now listening on:\\s+(https?://\\S+)"
       },
       "env": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
       },
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/Views"

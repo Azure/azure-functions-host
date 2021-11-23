@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -59,15 +60,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureStorageProvider azureStorageProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
-            _httpClient = httpClient;
+            _httpClient = httpClientFactory.CreateClient();
             _secretManagerProvider = secretManagerProvider;
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
-            _azureStorageProvider = azureStorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -286,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (_hashBlobClient == null)
             {
-                if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobClient, ConnectionStringNames.Storage))
+                if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobClient))
                 {
                     string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
                     var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
@@ -300,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
+            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata();
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
@@ -359,7 +360,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 };
 
                 // add function secrets
-                var httpFunctions = functionsMetadata.Where(p => !p.IsProxy() && p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name).ToArray();
+                var httpFunctions = functionsMetadata.Where(p => p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name).ToArray();
                 functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
                 for (int i = 0; i < httpFunctions.Length; i++)
                 {
@@ -433,7 +434,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
             var triggers = (await functionsMetadata
-                .Where(f => !f.IsProxy())
                 .Select(f => f.ToFunctionTrigger(hostOptions))
                 .WhenAll())
                 .Where(t => t != null);
@@ -446,12 +446,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     triggers = triggers.Select(t => UpdateDurableFunctionConfig(t, durableTaskConfig));
                 }
-            }
-
-            if (FileUtility.FileExists(Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
-            {
-                // This is because we still need to scale function apps that are proxies only
-                triggers = triggers.Append(JObject.FromObject(new { type = "routingTrigger" }));
             }
 
             return triggers;

@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Azure;
 using Azure.Storage.Blobs;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Properties;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -26,10 +27,10 @@ namespace Microsoft.Azure.WebJobs.Script
     public class HostIdValidator
     {
         public const string BlobPathFormat = "ids/usage/{0}";
-        private const LogLevel DefaultLevel = LogLevel.Warning;
+        private const LogLevel DefaultLevel = LogLevel.Error;
 
         private readonly IEnvironment _environment;
-        private readonly IAzureStorageProvider _storageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private readonly IApplicationLifetime _applicationLifetime;
         private readonly HostNameProvider _hostNameProvider;
         private readonly ILogger _logger;
@@ -37,11 +38,11 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly object _syncLock = new object();
         private bool _validationScheduled;
 
-        public HostIdValidator(IEnvironment environment, IAzureStorageProvider storageProvider, IApplicationLifetime applicationLifetime,
+        public HostIdValidator(IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider, IApplicationLifetime applicationLifetime,
             HostNameProvider hostNameProvider, ILogger<HostIdValidator> logger)
         {
             _environment = environment;
-            _storageProvider = storageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
             _applicationLifetime = applicationLifetime;
             _hostNameProvider = hostNameProvider;
             _logger = logger;
@@ -67,12 +68,12 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             try
             {
-                if (!_storageProvider.ConnectionExists(ConnectionStringNames.Storage))
+                if (!_azureBlobStorageProvider.TryCreateHostingBlobContainerClient(out var blobContainerClient))
                 {
                     return;
                 }
 
-                HostIdInfo hostIdInfo = await ReadHostIdInfoAsync(hostId);
+                HostIdInfo hostIdInfo = await ReadHostIdInfoAsync(hostId, blobContainerClient);
 
                 if (hostIdInfo != null)
                 {
@@ -87,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     {
                         Hostname = _hostNameProvider.Value
                     };
-                    await WriteHostIdAsync(hostId, hostIdInfo);
+                    await WriteHostIdAsync(hostId, hostIdInfo, blobContainerClient);
                 }
             }
             catch (Exception ex)
@@ -116,26 +117,25 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             string message = string.Format(Resources.HostIdCollisionFormat, hostId);
-            if (level == LogLevel.Error)
+            if (level == LogLevel.Warning)
             {
-                _logger.LogError(message);
-                _applicationLifetime.StopApplication();
+                _logger.LogWarning(message);
             }
             else
             {
                 // we only allow Warning/Error levels to be specified, so anything other than
-                // Error is treated as warning
-                _logger.LogWarning(message);
+                // Warning is treated as Error
+                _logger.LogError(message);
+                _applicationLifetime.StopApplication();
             }
         }
 
-        internal async Task WriteHostIdAsync(string hostId, HostIdInfo hostIdInfo)
+        internal async Task WriteHostIdAsync(string hostId, HostIdInfo hostIdInfo, BlobContainerClient blobContainerClient)
         {
             try
             {
-                var containerClient = _storageProvider.GetBlobContainerClient();
                 string blobPath = string.Format(BlobPathFormat, hostId);
-                BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+                BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
                 BinaryData data = BinaryData.FromObjectAsJson(hostIdInfo);
                 await blobClient.UploadAsync(data);
 
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 // Another instance wrote the blob between the time when we initially
                 // checked and when we attempted to write. Read the blob and validate it.
-                hostIdInfo = await ReadHostIdInfoAsync(hostId);
+                hostIdInfo = await ReadHostIdInfoAsync(hostId, blobContainerClient);
                 if (hostIdInfo != null)
                 {
                     CheckForCollision(hostId, hostIdInfo);
@@ -158,16 +158,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
-        internal async Task<HostIdInfo> ReadHostIdInfoAsync(string hostId)
+        internal async Task<HostIdInfo> ReadHostIdInfoAsync(string hostId, BlobContainerClient blobContainerClient)
         {
             HostIdInfo hostIdInfo = null;
 
             try
             {
                 // check storage to see if a record already exists for this host ID
-                var containerClient = _storageProvider.GetBlobContainerClient();
                 string blobPath = string.Format(BlobPathFormat, hostId);
-                BlobClient blobClient = containerClient.GetBlobClient(blobPath);
+                BlobClient blobClient = blobContainerClient.GetBlobClient(blobPath);
                 var downloadResponse = await blobClient.DownloadAsync();
                 string content;
                 using (StreamReader reader = new StreamReader(downloadResponse.Value.Content))

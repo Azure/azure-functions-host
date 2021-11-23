@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // JobHost/ScriptHost scoped services.
             builder.UseMiddleware<ScriptHostRequestServiceProviderMiddleware>();
 
-            if (environment.IsLinuxConsumption())
+            if (environment.IsLinuxAzureManagedHosting())
             {
                 builder.UseMiddleware<AppServiceHeaderFixupMiddleware>();
             }
