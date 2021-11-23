@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
-        private readonly SemaphoreSlim _drainModeSemaphore = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim _drainModeSemaphore = new SemaphoreSlim(1, 1);
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
