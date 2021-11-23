@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Null(functionStatus.Errors);
 
             // take host offline
-            await SetHostStateAsync("offline");
+            await SamplesTestHelpers.SetHostStateAsync(_fixture, "offline");
 
             // when testing taking the host offline doesn't seem to stop all
             // application services, so we issue a restart
@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await VerifyOfflineResponse(response);
 
             // bring host back online
-            await SetHostStateAsync("running");
+            await SamplesTestHelpers.SetHostStateAsync(_fixture, "running");
 
             await AwaitHostStateAsync(ScriptHostState.Running);
 
@@ -886,17 +886,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, await _fixture.Host.GetMasterKeyAsync());
             return await _fixture.Host.HttpClient.SendAsync(request);
-        }
-
-        private async Task SetHostStateAsync(string state)
-        {
-            var masterKey = await _fixture.Host.GetMasterKeyAsync();
-            var request = new HttpRequestMessage(HttpMethod.Put, "admin/host/state");
-            request.Content = new StringContent($"'{state}'");
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
-            var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
         }
 
         private async Task<HttpResponseMessage> GetFunctionStatusAsync(string functionName)

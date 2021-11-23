@@ -15,8 +15,8 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_DrainStatus : DrainTestFixture
+    [Trait(TestTraits.Group, TestTraits.DrainModeEndToEnd)]
+    public class DrainModeStatusEndToEndTests : DrainTestFixture
     {
         [Fact]
         public async Task DrainStatus_RunningHost_ReturnsExpected()
@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
-        }   
+        }
     }
 
     public class DrainTestFixture : EndToEndTestFixture
