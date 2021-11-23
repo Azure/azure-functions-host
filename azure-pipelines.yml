@@ -1,18 +1,18 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ] 
+  buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
 
 pr:
   branches:
     include:
-    - dev
+    - v3.x
     - release/3.0*
     - release/ExtensionsMetadataGenerator/*
 
 trigger:
   branches:
     include:
-    - dev
+    - v3.x
     - release/3.0*
     - release/ExtensionsMetadataGenerator/*
 
@@ -51,7 +51,7 @@ jobs:
     minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
     patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
-    vmImage: 'windows-2019' 
+    vmImage: 'windows-2019'
   steps:
   - task: UseDotNet@2
     inputs:
@@ -83,13 +83,13 @@ jobs:
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
-  
+
   - pwsh: |
       foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
-      {    
+      {
         $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
         $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
-        if (-not (test-path $sourcePath))    
+        if (-not (test-path $sourcePath))
         {
           throw "Unable to find '$packageName' at './package'"
         }
@@ -105,7 +105,7 @@ jobs:
       nuGetFeedType: 'internal'
       publishVstsFeed: 'e6a70c92-4128-439f-8012-382fe78d6396/f37f760c-aebd-443e-9714-ce725cd427df'
       allowPackageConflicts: true
- 
+
   - task: DotNetCoreCLI@2
     displayName: 'Build performance package'
     inputs:
@@ -232,7 +232,7 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
-    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))  
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
@@ -254,22 +254,22 @@ jobs:
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
-       [
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetSign",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           },
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetVerify",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           }
-       ]
+        [
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetSign",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            },
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetVerify",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            }
+        ]
     condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
@@ -294,7 +294,7 @@ jobs:
 - job: RunUnitTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
+  steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
@@ -314,14 +314,14 @@ jobs:
 - job: RunNonE2EIntegrationTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
+  steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
       version: '3.1.x'
       performMultiLevelLookup: true
   - task: UseNode@1
-    inputs:      
+    inputs:
       version: '10.x'
   - task: PowerShell@2
     displayName: 'Install Az.Storage Powershell module'
@@ -371,7 +371,7 @@ jobs:
 - job: RunIntegrationTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
+  steps:
   - task: UseDotNet@2
     inputs:
       packageType: 'sdk'
@@ -437,7 +437,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Node end to end tests"    
+    displayName: "Node end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -446,7 +446,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Direct load end to end tests"    
+    displayName: "Direct load end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -455,7 +455,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "F# end to end tests"    
+    displayName: "F# end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -464,7 +464,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Language worker end to end tests"    
+    displayName: "Language worker end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -473,7 +473,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Node script host end to end tests"    
+    displayName: "Node script host end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -482,7 +482,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Raw assembly end to end tests"    
+    displayName: "Raw assembly end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -491,7 +491,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Samples end to end tests"    
+    displayName: "Samples end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -500,7 +500,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Windows"    
+    displayName: "Standby mode end to end tests Windows"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -509,7 +509,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Linux"    
+    displayName: "Standby mode end to end tests Linux"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -518,7 +518,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Linux container end to end tests Windows"    
+    displayName: "Linux container end to end tests Windows"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -527,7 +527,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Release verification tests"    
+    displayName: "Release verification tests"
     condition: eq(variables['isReleaseBranch'], 'True')
     inputs:
       command: 'test'
