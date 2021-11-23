@@ -66,6 +66,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     ConfigureRegisteredBuilders(webJobsBuilder, rootServiceProvider);
 
                     webJobsBuilder.Services.AddSingleton<IHttpRoutesManager, WebScriptHostHttpRoutesManager>();
+                    webJobsBuilder.Services.AddSingleton<IMemoryTriggerRoutesManager, WebScriptHostMemoryTriggerRoutesManager>();
                 })
                 .ConfigureAppConfiguration(configurationBuilder =>
                 {

@@ -1,0 +1,60 @@
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System;
+using System.Collections.Concurrent;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Features;
+using Microsoft.Extensions.Logging;
+
+namespace Microsoft.Azure.WebJobs.Extensions
+{
+    public class MemoryTriggerScriptRouteHandler
+    {
+        private readonly IScriptJobHost _scriptHost;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IEnvironment _environment;
+        private readonly bool _isWarmup;
+        private static int _warmupExecuted;
+        private readonly ConcurrentDictionary<string, FunctionDescriptor> _functionMap = new ConcurrentDictionary<string, FunctionDescriptor>(System.StringComparer.OrdinalIgnoreCase);
+
+        public MemoryTriggerScriptRouteHandler(ILoggerFactory loggerFactory, IScriptJobHost scriptHost, IEnvironment environment, bool isWarmup = false)
+        {
+            _scriptHost = scriptHost;
+            _loggerFactory = loggerFactory;
+            _environment = environment;
+            _isWarmup = isWarmup;
+        }
+
+        public Task InvokeAsync(string functionName)
+        {
+            if (_isWarmup)
+            {
+                // warmup function will get executed just once for the process.
+                if (Interlocked.CompareExchange(ref _warmupExecuted, 1, 0) != 0)
+                {
+                    return Task.CompletedTask;
+                }
+            }
+
+            var descriptor = _functionMap.GetOrAdd(functionName, (name) =>
+            {
+                return _scriptHost.Functions.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            });
+
+            if (_isWarmup && descriptor == null)
+            {
+                // TODO: further optimization, If there is no warmup trigger provided we should call a simple warmup function for the given language of the function app.
+                return Task.CompletedTask;
+            }
+
+            var executionFeature = new MemoryTriggerFunctionExecutionFeature(_scriptHost, descriptor, _environment, _loggerFactory);
+
+            return Task.CompletedTask;
+        }
+    }
+}

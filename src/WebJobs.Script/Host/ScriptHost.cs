@@ -52,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IFileLoggingStatusManager _fileLoggingStatusManager;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IHttpRoutesManager _httpRoutesManager;
+        private readonly IMemoryTriggerRoutesManager _memoryTriggerRoutesManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
         private readonly Stopwatch _stopwatch = new Stopwatch();
@@ -104,6 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IJobHostMetadataProvider metadataProvider,
             IHostIdProvider hostIdProvider,
             IHttpRoutesManager httpRoutesManager,
+            IMemoryTriggerRoutesManager memoryTriggerRoutesManager,
             IApplicationLifetime applicationLifetime,
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
@@ -124,6 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _applicationLifetime = applicationLifetime;
             _hostIdProvider = hostIdProvider;
             _httpRoutesManager = httpRoutesManager;
+            _memoryTriggerRoutesManager = memoryTriggerRoutesManager;
             _isHttpWorker = httpWorkerOptions.Value.Description != null;
             _httpWorkerOptions = httpWorkerOptions.Value;
             ScriptOptions = scriptHostOptions.Value;
@@ -955,6 +958,8 @@ namespace Microsoft.Azure.WebJobs.Script
             ApplyJobHostMetadata();
 
             _httpRoutesManager.InitializeHttpFunctionRoutes(this);
+
+            _memoryTriggerRoutesManager.InitializeMemoryTriggerFunctionRoutes(this);
 
             _logger.ScriptHostInitialized(_stopwatch.ElapsedMilliseconds);
 
