@@ -8,20 +8,20 @@ variables:
 pr:
   branches:
     include:
-    - v4.x
+    - dev
     - release/4.*
 
 trigger:
   branches:
     include:
-    - v4.x
+    - dev
     - release/4.*
 
 jobs:
 - job: InitializePipeline
   pool:
     vmImage: 'windows-2019'
-  steps: 
+  steps:
   - task: PowerShell@2
     displayName: 'Initialize'
     name: Initialize
@@ -239,22 +239,22 @@ jobs:
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
-       [
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetSign",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           },
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetVerify",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           }
-       ]
+        [
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetSign",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            },
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetVerify",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            }
+        ]
     condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
@@ -268,7 +268,7 @@ jobs:
         Write-Host "Patched site extension detected."
         Write-Host "##vso[task.setvariable variable=isPatchVersion;isOutput=true]true"
       }
-    displayName: 'Set isPatchVersion'   
+    displayName: 'Set isPatchVersion'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
     condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
@@ -303,7 +303,7 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: UseNode@1
-    inputs:      
+    inputs:
       version: '14.x'
   - task: PowerShell@2
     displayName: 'Install Az.Storage Powershell module'
