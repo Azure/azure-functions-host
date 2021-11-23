@@ -21,7 +21,8 @@
       },
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
+        "AZURE_FUNCTIONS_ENVIRONMENT": "Development",
+        "AzureWebJobsSecretStorageType": "Files"
       },
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/Views"
