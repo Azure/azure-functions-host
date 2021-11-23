@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer
 
         public void AddSharedMemoryMapForInvocation(string invocationId, string mapName)
         {
-            HashSet<string> sharedMemoryMaps = InvocationSharedMemoryMaps.GetOrAdd(invocationId, (key) => new HashSet<string>());
+            HashSet<string> sharedMemoryMaps = InvocationSharedMemoryMaps.GetOrAdd(invocationId, static (key) => new HashSet<string>());
             sharedMemoryMaps.Add(mapName);
         }
 

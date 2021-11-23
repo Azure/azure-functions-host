@@ -12,6 +12,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 
@@ -41,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             // create the FunctionDefinition
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters, null, null, null);
+            LoggerFactory loggerFactory = new LoggerFactory();
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", invoker, metadata, parameters, null, null, null, loggerFactory);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 

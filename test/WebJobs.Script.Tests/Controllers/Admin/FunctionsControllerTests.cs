@@ -44,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string triggerParameterName = "testTrigger";
             string testInput = Guid.NewGuid().ToString();
             bool functionInvoked = false;
+            var loggerFactory = new LoggerFactory();
 
             var scriptHostMock = new Mock<IScriptJobHost>();
             scriptHostMock.Setup(p => p.CallAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, object>>(), CancellationToken.None))
@@ -71,7 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     IsTrigger = true
                 }
             };
-            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters, null, null, null));
+            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters, null, null, null, loggerFactory));
 
             FunctionInvocation invocation = new FunctionInvocation
             {
@@ -84,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
             var functionsManagerMock = new Mock<IWebFunctionsManager>();
             var mockRouter = new Mock<IWebJobsRouter>();
-            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory(), optionsWrapper);
+            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, loggerFactory, optionsWrapper);
             IActionResult response = testController.Invoke(testFunctionName, invocation, scriptHostMock.Object);
             Assert.IsType<AcceptedResult>(response);
 

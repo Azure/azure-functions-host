@@ -114,19 +114,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            var scopeProps = _scopeProvider.GetScopeDictionaryOrNull();
             string functionName = _functionName ?? stateFunctionName ?? string.Empty;
-            if (string.IsNullOrEmpty(functionName) && scopeProps?.Count > 0)
+            if (string.IsNullOrEmpty(functionName))
             {
-                if (Utility.TryGetFunctionName(scopeProps, out string scopeFunctionName))
+                // Note: Utility is in a lower layer than our extensions, this needs more shuffling to change to an iterator fetch
+                // e.g. Utility.TryGetFunctionName(IExternalScopeProvider)
+                // It's likely worth moving though, as we don't want to allocate the dictionaries in the existing extension
+                var scopeProps = _scopeProvider.GetScopeDictionaryOrNull();
+                if (scopeProps != null && Utility.TryGetFunctionName(scopeProps, out string scopeFunctionName))
                 {
                     functionName = scopeFunctionName;
                 }
             }
 
             string invocationId = string.Empty;
-            object scopeValue = null;
-            if (scopeProps != null && scopeProps.TryGetValue(ScriptConstants.LogPropertyFunctionInvocationIdKey, out scopeValue) && scopeValue != null)
+            object scopeValue = _scopeProvider.GetScopeEntry(ScriptConstants.LogPropertyFunctionInvocationIdKey);
+            if (scopeValue != null)
             {
                 invocationId = scopeValue.ToString();
             }

@@ -798,7 +798,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "SomeFunction",
                 ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
             };
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
+            LoggerFactory loggerFactory = new LoggerFactory();
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null, loggerFactory);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.False(result);
@@ -810,7 +811,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "HttpTriggerNode",
                 ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
             };
-            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
+            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null, loggerFactory);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.True(result);
@@ -1348,7 +1349,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             parameters.Add(new ParameterDescriptor("param1", typeof(string)));
             var metadata = new FunctionMetadata();
             var invoker = new TestInvoker();
-            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null);
+            var loggerFactory = new LoggerFactory();
+            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null, loggerFactory);
             scriptHost.Functions.Add(function);
 
             var errors = new Collection<string>();
