@@ -19,8 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public virtual LinuxAppServiceFileLogger GetOrCreate(string category)
         {
-            return Loggers.GetOrAdd(category,
-                c => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, _logRootPath, new FileSystem()))).Value;
+            return Loggers.GetOrAdd(category, 
+                static (c, path) => new Lazy<LinuxAppServiceFileLogger>(() => new LinuxAppServiceFileLogger(c, path, new FileSystem())), _logRootPath).Value;
         }
     }
 }

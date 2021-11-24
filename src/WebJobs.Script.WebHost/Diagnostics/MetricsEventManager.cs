@@ -498,12 +498,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     executionTimespan = runningFunctionInfo.Duration.TotalMilliseconds;
                 }
 
+                // Don't allocate the GUID string twice, though we can probably optimize this further upstream.
+                var invocationId = runningFunctionInfo.InvocationId.ToString();
+
                 MetricsEventGenerator.LogFunctionExecutionEvent(
                     _executionId,
                     _appServiceOptions.AppName,
                     concurrency,
                     runningFunctionInfo.FunctionMetadata.Name,
-                    runningFunctionInfo.InvocationId.ToString(),
+                    invocationId,
                     executionStage.ToString(),
                     (long)executionTimespan,
                     runningFunctionInfo.Success);
@@ -512,7 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 {
                     _metricsPublisher.AddFunctionExecutionActivity(
                         runningFunctionInfo.FunctionMetadata.Name,
-                        runningFunctionInfo.InvocationId.ToString(),
+                        invocationId,
                         concurrency,
                         executionStage.ToString(),
                         runningFunctionInfo.Success,
