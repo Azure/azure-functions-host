@@ -343,6 +343,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-RetryFunctionJs
 		sample\NodeRetry\HttpTrigger-RetryFunctionJson\index.js = sample\NodeRetry\HttpTrigger-RetryFunctionJson\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-RetryHostJson", "HttpTrigger-RetryHostJson", "{CF6D9CDA-2290-46DF-B162-2D422477288A}"
+	ProjectSection(SolutionItems) = preProject
+		sample\NodeRetry\HttpTrigger-RetryHostJson\function.json = sample\NodeRetry\HttpTrigger-RetryHostJson\function.json
+		sample\NodeRetry\HttpTrigger-RetryHostJson\index.js = sample\NodeRetry\HttpTrigger-RetryHostJson\index.js
+	EndProjectSection
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Script.Tests.Benchmarks", "test\Benchmarks\Microsoft.Azure.WebJobs.Script.Tests.Benchmarks.csproj", "{09D16953-A048-4E6B-B366-1E0D7E5EF86E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "NodeDrain", "NodeDrain", "{6FE94892-4E58-403D-BA32-4A35C0EE1E46}"
@@ -460,6 +466,7 @@ Global
 		{821D5B92-2C3E-44F0-AA92-8B996DCB8E6C} = {9D87C796-7914-4A43-B843-579562393E10}
 		{EEBAC197-FAD8-4214-9A12-76334BB3021A} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{7935A7A4-191A-4A9B-B8DD-173968309EBF} = {EEBAC197-FAD8-4214-9A12-76334BB3021A}
+		{CF6D9CDA-2290-46DF-B162-2D422477288A} = {EEBAC197-FAD8-4214-9A12-76334BB3021A}
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{6FE94892-4E58-403D-BA32-4A35C0EE1E46} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{1EE80AFE-8B64-4670-9462-3DEA692D4457} = {6FE94892-4E58-403D-BA32-4A35C0EE1E46}
