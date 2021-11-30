@@ -15,8 +15,8 @@ using Xunit;
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
     [Trait(TestTraits.Category, TestTraits.EndToEnd)]
-    [Trait(TestTraits.Group, TestTraits.SamplesEndToEnd)]
-    public class SamplesEndToEndTests_Node_DrainStatus : DrainTestFixture
+    [Trait(TestTraits.Group, TestTraits.DrainModeEndToEnd)]
+    public class DrainModeStatusEndToEndTests : DrainStatusTestFixture
     {
         [Fact]
         public async Task DrainStatus_RunningHost_ReturnsExpected()
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var responseString = response.Content.ReadAsStringAsync().Result;
             var status = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
-            Assert.Equal(status.State, DrainModeState.Disabled);
+            Assert.Equal(DrainModeState.Disabled, status.State);
 
             ManualResetEvent resetEvent = new ManualResetEvent(false);
             _ = Task.Run(async () =>
@@ -61,16 +61,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
             bool result = resetEvent.WaitOne(30000);
             Assert.True(result);
-        }   
+        }
     }
 
-    public class DrainTestFixture : EndToEndTestFixture
+    public class DrainStatusTestFixture : EndToEndTestFixture
     {
-        static DrainTestFixture()
+        static DrainStatusTestFixture()
         {
         }
 
-        public DrainTestFixture()
+        public DrainStatusTestFixture()
             : base(Path.Combine(Environment.CurrentDirectory, "..", "..", "..", "..", "..", "sample", "NodeDrain"), "samples", RpcWorkerConstants.NodeLanguageWorkerName)
         {
         }

@@ -11,3 +11,5 @@ build/python.props @vrdmr @Hazhzeng
 
 # Deps.json validation file
 test/WebJobs.Script.Tests/Microsoft.Azure.WebJobs.Script.WebHost.deps.json @fabiocav @brettsam @mathewc
+
+tools/ExtensionsMetadataGenerator @fabiocav @brettsam

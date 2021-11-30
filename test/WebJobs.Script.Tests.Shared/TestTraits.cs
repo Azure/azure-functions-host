@@ -25,6 +25,11 @@ namespace Microsoft.WebJobs.Script.Tests
         public const string SamplesEndToEnd = "SamplesEndToEndTests";
 
         /// <summary>
+        /// Drain mode specific tests.
+        /// </summary>
+        public const string DrainModeEndToEnd = "DrainModeEndToEndTests";
+
+        /// <summary>
         /// Standby mode tests are special in that they set uni-directional
         /// static state, and benefit from test isolation.
         /// </summary>
