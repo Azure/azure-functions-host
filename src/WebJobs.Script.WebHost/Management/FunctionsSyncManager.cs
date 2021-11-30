@@ -106,8 +106,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             {
                 await _syncSemaphore.WaitAsync();
 
-                PrepareSyncTriggers();
-
                 var hashBlobClient = await GetHashBlobAsync();
                 if (isBackgroundSync && hashBlobClient == null && !_environment.IsKubernetesManagedHosting())
                 {
@@ -160,28 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// SyncTriggers is performed whenever deployments or other changes are made to the application.
-        /// There are some operations we want to perform whenever this happens.
-        /// </summary>
-        private void PrepareSyncTriggers()
-        {
-            // We clear cache to ensure that secrets are reloaded. This is important because secrets are part
-            // of the StartupContext payload (see StartupContextProvider) and that payload comes from the
-            // SyncTriggers operation. So there's a chicken and egg situation here. Consider the following scenario:
-            //   - app is using blob storage for keys
-            //   - a SyncTriggers operation has happened previously and the StartupContext has key info
-            //   - app instances initialize keys from StartupContext (keys aren't loaded from storage)
-            //   - user updates the app to use a new storage account
-            //   - a SyncTriggers operation is performed
-            //   - the app initializes from StartupContext, and **previous old key info is loaded**
-            //   - the SyncTriggers operation uses this old key info, so trigger cache is never updated with new key info
-            //   - Portal/ARM APIs will continue to show old key info.
-            // By clearing cache, we ensure that this host instance reloads keys when they're requested, and the SyncTriggers
-            // operation will contain current keys.
-            _secretManagerProvider.Current.ClearCache();
         }
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)

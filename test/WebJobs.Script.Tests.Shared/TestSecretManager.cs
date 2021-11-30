@@ -90,10 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             };
         }
 
-        public void ClearCache()
-        {
-        }
-
         public async Task<(string, AuthorizationLevel)> GetAuthorizationLevelOrNullAsync(string key, string functionName = null)
         {
             return await SecretManager.GetAuthorizationLevelAsync(this, key, functionName);
