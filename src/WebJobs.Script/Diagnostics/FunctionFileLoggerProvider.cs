@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 // Make sure that we return the same fileWriter if multiple loggers write to the same path. This happens
                 // with Function logs as Function.{FunctionName} and Function.{FunctionName}.User both go to the same file.
-                IFileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (p) => _fileWriterFactory.Create(Path.Combine(_roogLogPath, filePath)));
+                IFileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (path) => _fileWriterFactory.Create(Path.Combine(_roogLogPath, path)));
                 return new FileLogger(categoryName, fileWriter, _isFileLoggingEnabled, _isPrimary, LogType.Function, _scopeProvider);
             }
 
