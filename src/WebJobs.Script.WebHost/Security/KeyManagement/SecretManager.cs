@@ -651,13 +651,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        public void ClearCache()
-        {
-            _authorizationCache.Clear();
-            _hostSecrets = null;
-            _functionSecrets.Clear();
-        }
-
         private async Task<string> AnalyzeSnapshots(string[] secretBackups)
         {
             string analyzeResult = string.Empty;
