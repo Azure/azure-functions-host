@@ -25,37 +25,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _scriptHostManager = scriptHostManager;
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public Task Invoke(HttpContext httpContext)
         {
-            if (_scriptHostManager.State != ScriptHostState.Offline)
+            // Slow path with async/await for spin-up only
+            static async Task InvokeAwaited(HttpContext context, RequestDelegate next, ILogger<HostAvailabilityCheckMiddleware> logger, IScriptHostManager scriptHostManager)
             {
-                bool hostReady = _scriptHostManager.CanInvoke();
-                if (!hostReady)
+                using (Logger.VerifyingHostAvailabilityScope(logger, context.TraceIdentifier))
                 {
-                    using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
+                    Logger.InitiatingHostAvailabilityCheck(logger);
+
+                    bool hostReady = await scriptHostManager.DelayUntilHostReady();
+                    if (!hostReady)
                     {
-                        Logger.InitiatingHostAvailabilityCheck(_logger);
+                        Logger.HostUnavailableAfterCheck(logger);
 
-                        hostReady = await _scriptHostManager.DelayUntilHostReady();
-                        if (!hostReady)
-                        {
-                            Logger.HostUnavailableAfterCheck(_logger);
+                        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                        await context.Response.WriteAsync("Function host is not running.");
 
-                            httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                            await httpContext.Response.WriteAsync("Function host is not running.");
-
-                            return;
-                        }
-
-                        Logger.HostAvailabilityCheckSucceeded(_logger);
+                        return;
                     }
+
+                    Logger.HostAvailabilityCheckSucceeded(logger);
                 }
 
-                await _next.Invoke(httpContext);
+                await next.Invoke(context);
+            }
+
+            if (_scriptHostManager.State != ScriptHostState.Offline)
+            {
+                if (!_scriptHostManager.CanInvoke())
+                {
+                    return InvokeAwaited(httpContext, _next, _logger, _scriptHostManager);
+                }
+
+                return _next.Invoke(httpContext);
             }
             else
             {
-                await httpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
+                return httpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
             }
         }
     }
