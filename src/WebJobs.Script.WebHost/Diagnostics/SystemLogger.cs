@@ -25,10 +25,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly IDebugStateProvider _debugStateProvider;
         private readonly IScriptEventManager _eventManager;
         private readonly IExternalScopeProvider _scopeProvider;
-        private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
+        private AppServiceOptions _appServiceOptions;
 
         public SystemLogger(string hostInstanceId, string categoryName, IEventGenerator eventGenerator, IEnvironment environment,
-            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptions)
+            IDebugStateProvider debugStateProvider, IScriptEventManager eventManager, IExternalScopeProvider scopeProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
         {
             _environment = environment;
             _eventGenerator = eventGenerator;
@@ -40,7 +40,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _debugStateProvider = debugStateProvider;
             _eventManager = eventManager;
             _scopeProvider = scopeProvider;
-            _appServiceOptions = appServiceOptions;
+
+            appServiceOptionsMonitor.OnChange(newOptions => _appServiceOptions = newOptions);
+            _appServiceOptions = appServiceOptionsMonitor.CurrentValue;
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
@@ -135,10 +137,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string summary = formattedMessage ?? string.Empty;
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
             string activityId = stateActivityId ?? string.Empty;
-            string subscriptionId = _appServiceOptions.CurrentValue.SubscriptionId ?? string.Empty;
-            string appName = _appServiceOptions.CurrentValue.AppName ?? string.Empty;
-            string runtimeSiteName = _appServiceOptions.CurrentValue.RuntimeSiteName ?? string.Empty;
-            string slotName = _appServiceOptions.CurrentValue.SlotName ?? string.Empty;
+            var options = _appServiceOptions;
+            string subscriptionId = options.SubscriptionId ?? string.Empty;
+            string appName = options.AppName ?? string.Empty;
+            string runtimeSiteName = options.RuntimeSiteName ?? string.Empty;
+            string slotName = options.SlotName ?? string.Empty;
 
             string innerExceptionType = string.Empty;
             string innerExceptionMessage = string.Empty;
