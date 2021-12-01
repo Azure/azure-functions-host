@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _appServiceOptions = appServiceOptions;
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
-            QueuedEvents = new ConcurrentDictionary<string, SystemMetricEvent>(StringComparer.OrdinalIgnoreCase);
+            QueuedEvents = new ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>>();
 
             // Initialize the periodic log flush timer
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
@@ -51,7 +51,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// <summary>
         /// Gets the collection of events that will be flushed on the next flush interval.
         /// </summary>
-        public ConcurrentDictionary<string, SystemMetricEvent> QueuedEvents { get; }
+        public ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>> QueuedEvents { get; }
+
+        public readonly record struct EventKey(string eventName, string functionName);
 
         public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
@@ -86,10 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // event aggregation is based on this key
                 // for each unique key, there will be only 1
                 // queued event that we aggregate into
-                string key = GetAggregateKey(evt.EventName, evt.FunctionName);
-
-                QueuedEvents.AddOrUpdate(key,
-                    (name) =>
+                var queuedEvent = QueuedEvents.GetOrAdd(new EventKey(evt.EventName, evt.FunctionName),
+                    name => new Lazy<SystemMetricEvent>(() =>
                     {
                         // create the default event that will be added
                         // if an event isn't already queued for this key
@@ -99,23 +99,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                             EventName = evt.EventName,
                             Minimum = latencyMS,
                             Maximum = latencyMS,
-                            Average = latencyMS,
-                            Count = 1,
+                            // Intentionally 0, as they'll immediately be incremented blindly belo2
+                            Average = 0,
+                            Count = 0,
                             Data = evt.Data
                         };
-                    },
-                    (name, evtToUpdate) =>
-                    {
-                        // Aggregate into the existing event
-                        // While we'll be performing an aggregation later,
-                        // we retain the count so weighted averages can be performed
-                        evtToUpdate.Maximum = Math.Max(evtToUpdate.Maximum, latencyMS);
-                        evtToUpdate.Minimum = Math.Min(evtToUpdate.Minimum, latencyMS);
-                        evtToUpdate.Average += latencyMS;  // the average is calculated later - for now we sum
-                        evtToUpdate.Count++;
+                    })).Value;
 
-                        return evtToUpdate;
-                    });
+                queuedEvent.Maximum = Math.Max(queuedEvent.Maximum, latencyMS);
+                queuedEvent.Minimum = Math.Min(queuedEvent.Minimum, latencyMS);
+                queuedEvent.Average += latencyMS;  // the average is calculated later - for now we sum
+                queuedEvent.Count++;
             }
         }
 
@@ -128,27 +122,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             eventName = Sanitizer.Sanitize(eventName);
 
-            string key = GetAggregateKey(eventName, functionName);
-            QueuedEvents.AddOrUpdate(key,
-                (name) =>
+            var queuedEvent = QueuedEvents.GetOrAdd(new EventKey(eventName, functionName), (name) =>
+            new Lazy<SystemMetricEvent>(() =>
                 {
                     // create the default event that will be added
                     // if an event isn't already queued for this key
+                    // note the count is 0, so that we can always blindly increment below outside the concurrency monitor waits
                     return new SystemMetricEvent
                     {
                         FunctionName = functionName,
                         EventName = eventName.ToLowerInvariant(),
-                        Count = 1,
+                        Count = 0,
                         Data = data
                     };
-                },
-                (name, evtToUpdate) =>
-                {
-                    // update the existing event
-                    evtToUpdate.Count++;
+                }));
 
-                    return evtToUpdate;
-                });
+            queuedEvent.Value.Count++;
         }
 
         internal void FunctionStarted(FunctionStartedEvent startedEvent)
@@ -229,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 return;
             }
 
-            SystemMetricEvent[] eventsToFlush = QueuedEvents.Values.ToArray();
+            SystemMetricEvent[] eventsToFlush = QueuedEvents.Values.Select(e => e.Value).ToArray();
             QueuedEvents.Clear();
 
             // Use the same timestamp for all events. Since these are
