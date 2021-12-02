@@ -284,7 +284,7 @@ message FunctionsMetadataRequest {
 // Worker sends function metadata back to host
 message FunctionMetadataResponse {
   // list of function indexing responses
-  repeated RpcFunctionMetadata function_load_requests_results = 1;
+  repeated RpcFunctionMetadata function_metadata_results = 1;
 
   // status of overall metadata request
   StatusResult result = 2;
