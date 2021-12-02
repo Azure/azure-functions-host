@@ -29,15 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             var requestId = SetRequestId(context.Request);
 
-            var sw = Stopwatch.StartNew();
+            var startTicks = Stopwatch.GetTimestamp();
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
             _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
 
             await _next.Invoke(context);
 
-            sw.Stop();
+            var elapsed = Utility.GetDuration(startTicks);
             string identities = GetIdentities(context);
-            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, sw.ElapsedMilliseconds);
+            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)elapsed.TotalMilliseconds);
         }
 
         internal static string SetRequestId(HttpRequest request)
