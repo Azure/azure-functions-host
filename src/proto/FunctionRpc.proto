@@ -288,6 +288,9 @@ message FunctionMetadataResponses {
 
   // status of overall metadata request
   StatusResult result = 2;
+
+  // if set to true then host will perform indexing
+  bool useDefaultMetadataIndexing = 3;
 }
 
 // Host requests worker to invoke a Function
