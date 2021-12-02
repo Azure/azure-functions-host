@@ -25,6 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _secretManager = secretManager;
         }
 
+        public bool SecretsEnabled => true;
+
         public ISecretManager Current => _secretManager ?? new SecretManager();
     }
 }
