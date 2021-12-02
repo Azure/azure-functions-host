@@ -506,9 +506,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             object scopeValue = null;
             if (scopeProps != null && scopeProps.Count > 0 &&
-                (scopeProps.TryGetValue("functionName", out scopeValue) ||
-                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue) ||
-                 scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue)) && scopeValue != null)
+                (scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue) ||
+                 scopeProps.TryGetValue("functionName", out scopeValue) ||
+                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue)) && scopeValue != null)
             {
                 functionName = scopeValue.ToString();
             }
@@ -518,9 +518,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsFunctionName(KeyValuePair<string, object> p)
         {
-            return string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
