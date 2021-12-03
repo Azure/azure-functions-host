@@ -268,28 +268,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData(null, null, "")]
-        [InlineData("", "", "")]
-        [InlineData("node", "python;java", "node;python;java")]
-        [InlineData("", "node;python", "node;python")]
-        [InlineData("", "python;java;", "python;java")]
-        [InlineData("node", "", "node")]
-        public void GetLanguageWorkerListToStartInPlaceholder_ReturnsExpectedResult(string workerRuntime, string workerRuntimeList, string expected)
-        {
-            var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, workerRuntimeList);
-            var resultSet = environment.GetLanguageWorkerListToStartInPlaceholder();
-            if (string.IsNullOrEmpty(expected))
-            {
-                Assert.Empty(resultSet);
-                return;
-            }
-            var expectedSet = new HashSet<string>(expected.Split(';'));
-            Assert.True(resultSet.SetEquals(expectedSet));
-        }
-
-        [Theory]
         [InlineData(null, null, false)]
         [InlineData(null, "test", false)]
         [InlineData("test", null, false)]

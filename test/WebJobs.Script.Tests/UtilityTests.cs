@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
@@ -830,80 +829,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
 
             Assert.Equal(Utility.GetFunctionAppContentEditingState(environment, optionsWrapper), isFunctionAppContentEditable);
-        }
-
-        [Theory]
-        [InlineData(false, true, false)]
-        [InlineData(false, false, false)]
-        [InlineData(true, false, false)]
-        [InlineData(true, true, true)]
-        public void VerifyWorkerIndexingDecisionLogic(bool workerIndexingFeatureFlag, bool workerIndexingConfigProperty, bool expected)
-        {
-            var testEnv = new TestEnvironment();
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (workerIndexingFeatureFlag)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
-            }
-            RpcWorkerConfig workerConfig = new RpcWorkerConfig() { Description = TestHelpers.GetTestWorkerDescription("python", "none", workerIndexingConfigProperty) };
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
-            Assert.Equal(expected, workerShouldIndex);
-        }
-
-        [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, false)]
-        public void WorkerIndexingDecisionLogic_NullConfig(bool workerIndexingFeatureFlag, bool expected)
-        {
-            var testEnv = new TestEnvironment();
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (workerIndexingFeatureFlag)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
-            }
-            bool workerShouldIndex = Utility.CanWorkerIndex(null, testEnv);
-            Assert.Equal(expected, workerShouldIndex);
-        }
-
-        [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, false)]
-        public void WorkerIndexingDecisionLogic_NullConfigDescription(bool workerIndexingFeatureFlag, bool expected)
-        {
-            var testEnv = new TestEnvironment();
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (workerIndexingFeatureFlag)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
-            }
-            RpcWorkerConfig workerConfig = new RpcWorkerConfig();
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
-            Assert.Equal(expected, workerShouldIndex);
-        }
-
-        [Theory]
-        [InlineData(true, false)]
-        [InlineData(false, false)]
-        public void WorkerIndexingDecisionLogic_NullWorkerIndexingProperty(bool workerIndexingFeatureFlag, bool expected)
-        {
-            var testEnv = new TestEnvironment();
-            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.PythonLanguageWorkerName);
-            if (workerIndexingFeatureFlag)
-            {
-                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
-            }
-            RpcWorkerConfig workerConfig = new RpcWorkerConfig()
-            {
-                Description = new RpcWorkerDescription()
-                {
-                    Extensions = new List<string>(),
-                    Language = "python",
-                    WorkerDirectory = "testDir",
-                    WorkerIndexing = null
-                }
-            };
-            bool workerShouldIndex = Utility.CanWorkerIndex(new List<RpcWorkerConfig>() { workerConfig }, testEnv);
-            Assert.Equal(expected, workerShouldIndex);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
