@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
@@ -241,6 +242,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("RpcFunctionInvocationDispatcher received no functions");
                 return;
             }
+
+            CheckPackageJson();
 
             _functions = functions ?? new List<FunctionMetadata>();
             _maxProcessCount = _environment.IsWorkerDynamicConcurrencyEnabled()
@@ -607,6 +610,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             return false;
+        }
+
+        internal void CheckPackageJson()
+        {
+            if (_workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName && _environment.AzureFilesAppSettingsExist())
+            {
+                Utility.ExecuteAfterColdStartDelay(_environment, () =>
+                {
+                    if (!File.Exists(Path.Combine(_scriptOptions.RootScriptPath, "package.json")))
+                    {
+                        _logger.LogDebug("package.json is not found in Azure Files - cold start for NodeJs can be affected.");
+                    }
+                });
+            }
         }
     }
 }

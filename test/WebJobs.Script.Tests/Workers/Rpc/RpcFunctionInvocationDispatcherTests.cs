@@ -604,8 +604,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.True(testLogs.Any(m => m.FormattedMessage.Contains("Removing errored webhost language worker channel for runtime")));
         }
 
+        [Fact]
+        public async Task FunctionDispatcher_LogsPackageJsonWarning()
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(addWebhostChannel: true, runtime: RpcWorkerConstants.NodeLanguageWorkerName, azureFiles: true);
+            functionDispatcher.CheckPackageJson();
+
+            await TestHelpers.Await(() =>
+            {
+                var messages = _testLoggerProvider.GetAllLogMessages().Where(x =>
+                    x.FormattedMessage == "package.json is not found in Azure Files - cold start for NodeJs can be affected.");
+                return messages.Count() == 1;
+            }, timeout: 10000, throwWhenDebugging: true);
+        }
+
         private static RpcFunctionInvocationDispatcher GetTestFunctionDispatcher(int maxProcessCountValue = 1, bool addWebhostChannel = false,
-            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null, string runtime = null, bool workerIndexing = false)
+            Mock<IWebHostRpcWorkerChannelManager> mockwebHostLanguageWorkerChannelManager = null, bool throwOnProcessStartUp = false, TimeSpan? startupIntervals = null,
+            string runtime = null, bool workerIndexing = false, bool azureFiles = false)
         {
             var eventManager = new ScriptEventManager();
             var metricsLogger = new Mock<IMetricsLogger>();
@@ -622,9 +638,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableWorkerIndexing);
             }
+            if (azureFiles)
+            {
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString, "test");
+                testEnv.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare, "test");
+            }
 
             var options = new ScriptJobHostOptions
             {
+                RootScriptPath = Path.GetTempPath(),
                 RootLogPath = Path.GetTempPath()
             };
 
