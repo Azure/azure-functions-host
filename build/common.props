@@ -4,8 +4,13 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>7.2</LangVersion>
     <MajorVersion>3</MajorVersion>
+<<<<<<< HEAD
     <MinorVersion>5</MinorVersion>
     <PatchVersion>0</PatchVersion>
+=======
+    <MinorVersion>4</MinorVersion>
+    <PatchVersion>1</PatchVersion>
+>>>>>>> release/3.0
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <Version Condition=" '$(BuildNumber)' != '' ">$(VersionPrefix)-$(BuildNumber)</Version>
     <Version Condition=" '$(Version)' == '' ">$(VersionPrefix)</Version>

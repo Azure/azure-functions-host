@@ -268,6 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+<<<<<<< HEAD
         [InlineData(null, null, "")]
         [InlineData("", "", "")]
         [InlineData("node", "python;java", "node;python;java")]
@@ -290,6 +291,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+=======
+>>>>>>> release/3.0
         [InlineData(null, null, false)]
         [InlineData(null, "test", false)]
         [InlineData("test", null, false)]
