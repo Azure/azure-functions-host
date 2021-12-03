@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -59,6 +60,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             Assert.Same(manager1, manager2);
             Assert.NotSame(manager1, manager3);
+        }
+
+        [Fact]
+        public void TryGetSecretsRepositoryType_ReturnsExpectedValue()
+        {
+            bool result = _provider.TryGetSecretsRepositoryType(out Type repositoryType);
+            Assert.True(result);
+            Assert.Equal(typeof(BlobStorageSecretsRepository), repositoryType);
+        }
+
+        [Fact]
+        public void SecretsEnabled_ReturnsExpectedValue()
+        {
+            Assert.True(_provider.SecretsEnabled);
+
+            // we'll return a cached value here
+            Assert.True(_provider.SecretsEnabled);
+
+            // force creation of the manager
+            Assert.NotNull(_provider.Current);
+
+            // will short circuit here
+            Assert.True(_provider.SecretsEnabled);
         }
     }
 }

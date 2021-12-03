@@ -45,12 +45,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly Mock<ISecretManagerProvider> _secretManagerProviderMock;
         private readonly Mock<ISecretManager> _secretManagerMock;
         private string _function1;
         private bool _emptyContent;
+        private bool _secretsEnabled;
 
         public FunctionsSyncManagerTests()
         {
+            _secretsEnabled = true;
             _testRootScriptPath = Path.GetTempPath();
             _testHostConfigFilePath = Path.Combine(_testRootScriptPath, ScriptConstants.HostMetadataFileName);
             FileUtility.DeleteFileSafe(_testHostConfigFilePath);
@@ -89,9 +92,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
+            _secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
             _secretManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-            secretManagerProviderMock.SetupGet(p => p.Current).Returns(_secretManagerMock.Object);
+            _secretManagerProviderMock.SetupGet(p => p.Current).Returns(_secretManagerMock.Object);
+            _secretManagerProviderMock.SetupGet(p => p.SecretsEnabled).Returns(() => _secretsEnabled);
             var hostSecretsInfo = new HostSecretsInfo();
             hostSecretsInfo.MasterKey = "aaa";
             hostSecretsInfo.FunctionKeys = new Dictionary<string, string>
@@ -136,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
             var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
 
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
@@ -294,6 +298,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             int endIdx = log.FormattedMessage.LastIndexOf(')');
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             Assert.Equal(expectedSyncTriggersPayload, triggersLog);
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_SecretsEnabled_ClearsSecretsCache()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                _secretManagerMock.Verify(p => p.ClearCache(), Times.Once);
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_SecretsDisabled_DoesNotClearSecretsCache()
+        {
+            _secretsEnabled = false;
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                _secretManagerMock.Verify(p => p.ClearCache(), Times.Never);
+                _secretManagerProviderMock.Verify(p => p.Current, Times.Never);
+                _secretManagerProviderMock.Verify(p => p.SecretsEnabled, Times.Exactly(2));
+            }
         }
 
         [Fact]
