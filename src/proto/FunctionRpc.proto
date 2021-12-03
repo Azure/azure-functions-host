@@ -78,7 +78,7 @@ message StreamingMessage {
 
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
-    FunctionMetadataResponses function_metadata_responses = 30;
+    FunctionMetadataResponse function_metadata_response = 30;
   }
 }
 
