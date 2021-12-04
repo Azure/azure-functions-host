@@ -614,6 +614,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void CheckPackageJson()
         {
+            // On reading a js file with funciton code('require') NodeJs tries to find 'package.json' all the way up to the file system root.
+            // In Azure files it causes a delay during cold start as connection to Azure Files is an expensive operation.
             if (_workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName && _environment.AzureFilesAppSettingsExist())
             {
                 Utility.ExecuteAfterColdStartDelay(_environment, () =>
