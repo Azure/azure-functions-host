@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
             string functionName = function != null ? function.Name : string.Empty;
 
-            // This has low cadinality but we allocate the string every call (even though ironically it's often not used due to rollups)
+            // This has low cardinality but we allocate the string every call (even though ironically it's often not used due to rollups)
             // It's cheaper to cache and lookup rather than generate and pay for GC here.
             // Note: this would be faster with a readonly record struct key, but StyleCop is angry with it until an upcoming 1.2.x beta release
             var key = (startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
