@@ -622,7 +622,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     if (!File.Exists(Path.Combine(_scriptOptions.RootScriptPath, "package.json")))
                     {
-                        _logger.LogDebug("package.json is not found in Azure Files - cold start for NodeJs can be affected.");
+                        _logger.LogDebug("package.json is not found at the root of the Function App in Azure Files - cold start for NodeJs can be affected.");
                     }
                 });
             }

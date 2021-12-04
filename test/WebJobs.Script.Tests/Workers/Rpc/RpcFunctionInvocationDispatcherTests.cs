@@ -614,7 +614,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await TestHelpers.Await(() =>
             {
                 var messages = _testLoggerProvider.GetAllLogMessages().Where(x =>
-                    x.FormattedMessage == "package.json is not found in Azure Files - cold start for NodeJs can be affected.");
+                    x.FormattedMessage == "package.json is not found at the root of the Function App in Azure Files - cold start for NodeJs can be affected.");
                 return messages.Count() == 1;
             }, timeout: 10000, throwWhenDebugging: true);
         }
