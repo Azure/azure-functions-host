@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     return typedData.Double;
                 default:
                     // TODO better exception
-                    throw new InvalidOperationException($@"Unknown RpcDataType: {typedData.DataCase}");
+                    throw new InvalidOperationException($"Unknown RpcDataType: {typedData.DataCase}");
             }
         }
 
