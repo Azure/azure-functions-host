@@ -16,7 +16,7 @@ namespace Microsoft.Extensions.Logging
             {
                 if (scope is IEnumerable<KeyValuePair<string, object>> kvps)
                 {
-                    result = result ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                    result = result ?? new Dictionary<string, object>(16, StringComparer.OrdinalIgnoreCase);
 
                     foreach (var kvp in kvps)
                     {
