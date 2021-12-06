@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         private readonly ConcurrentDictionary<string, IFileWriter> _fileWriterCache = new ConcurrentDictionary<string, IFileWriter>(StringComparer.OrdinalIgnoreCase);
         private readonly Func<bool> _isFileLoggingEnabled;
         private readonly Func<bool> _isPrimary;
-        private readonly string _roogLogPath;
+        private readonly string _rootLogPath;
         private readonly string _hostInstanceId;
         private static readonly Regex _workerCategoryRegex = new Regex(@"^Worker\.[^\s]+\.[^\s]+");
         private readonly IFileWriterFactory _fileWriterFactory;
@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
         public FunctionFileLoggerProvider(IOptions<ScriptJobHostOptions> scriptOptions, IFileLoggingStatusManager fileLoggingStatusManager,
             IPrimaryHostStateProvider primaryHostStateProvider, IFileWriterFactory fileWriterFactory)
         {
-            _roogLogPath = scriptOptions.Value.RootLogPath;
+            _rootLogPath = scriptOptions.Value.RootLogPath;
             _isFileLoggingEnabled = () => fileLoggingStatusManager.IsFileLoggingEnabled;
             _isPrimary = () => primaryHostStateProvider.IsPrimary;
             _hostInstanceId = scriptOptions.Value.InstanceId;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
             {
                 // Make sure that we return the same fileWriter if multiple loggers write to the same path. This happens
                 // with Function logs as Function.{FunctionName} and Function.{FunctionName}.User both go to the same file.
-                IFileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (path) => _fileWriterFactory.Create(Path.Combine(_roogLogPath, path)));
+                IFileWriter fileWriter = _fileWriterCache.GetOrAdd(filePath, (path) => _fileWriterFactory.Create(Path.Combine(_rootLogPath, path)));
                 return new FileLogger(categoryName, fileWriter, _isFileLoggingEnabled, _isPrimary, LogType.Function, _scopeProvider);
             }
 
