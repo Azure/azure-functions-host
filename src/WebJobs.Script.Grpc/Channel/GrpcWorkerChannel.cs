@@ -659,15 +659,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     if (rpcLog.LogCategory == RpcLogCategory.CustomMetric)
                     {
-                        var rpcLogProperties = rpcLog.PropertiesMap.ToDictionary(i => i.Key, i => i.Value);
-                        if (rpcLogProperties.TryGetValue(LogConstants.NameKey, out var metricName)
-                            && rpcLogProperties.TryGetValue(LogConstants.MetricValueKey, out var metricValue))
+                        if (PropertiesMap.TryGetValue(LogConstants.NameKey, out var metricName)
+                            && PropertiesMap.TryGetValue(LogConstants.MetricValueKey, out var metricValue))
                         {
-                            // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
                             // Strip off the name/value entries in the dictionary passed to Log Message and include the rest as the property bag passed to the backing ILogger
-                            context.Logger.LogMetric(metricName.String, metricValue.Double, rpcLogProperties
-                                    .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
-                                    .ToDictionary(i => i.Key, i => i.Value.ToObject()));
+                            var rpcLogProperties = rpcLog.PropertiesMap
+                                                    .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
+                                                    .ToDictionary(i => i.Key, i => i.Value.ToObject());
+                            context.Logger.LogMetric(metricName.String, metricValue.Double, rpcLogProperties);
                         }
                     }
                     else
