@@ -278,11 +278,11 @@ jobs:
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
   - pwsh: |
-    if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
-    {
+      if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
+      {
         Write-Host "Patched site extension detected."
         Write-Host "##vso[task.setvariable variable=isPatchVersion;isOutput=true]true"
-    }
+      }
     displayName: 'Set isPatchVersion'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
