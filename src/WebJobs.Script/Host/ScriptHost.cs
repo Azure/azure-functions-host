@@ -846,7 +846,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (exception == null)
             {
-                throw new ArgumentNullException("exception");
+                throw new ArgumentNullException(nameof(exception));
             }
 
             // Note: We do not log to ILogger here as any error has already been logged.
