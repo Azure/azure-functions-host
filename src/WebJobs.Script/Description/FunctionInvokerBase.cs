@@ -84,14 +84,34 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         private static FunctionInvocationContext GetContextFromParameters(object[] parameters, FunctionMetadata metadata)
         {
+            ExecutionContext functionExecutionContext = null;
+            Binder binder = null;
+            ILogger logger = null;
+
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                switch (parameters[i])
+                {
+                    case ExecutionContext fc:
+                        functionExecutionContext ??= fc;
+                        break;
+                    case Binder b:
+                        binder ??= b;
+                        break;
+                    case ILogger l:
+                        logger ??= l;
+                        break;
+                }
+            }
+
             // We require the ExecutionContext, so this will throw if one is not found.
-            ExecutionContext functionExecutionContext = parameters.OfType<ExecutionContext>().First();
+            if (functionExecutionContext == null)
+            {
+                throw new ArgumentException("Function ExecutionContext was not found");
+            }
+
             functionExecutionContext.FunctionDirectory = metadata.FunctionDirectory;
             functionExecutionContext.FunctionName = metadata.Name;
-
-            // These may not be present, so null is okay.
-            Binder binder = parameters.OfType<Binder>().FirstOrDefault();
-            ILogger logger = parameters.OfType<ILogger>().FirstOrDefault();
 
             FunctionInvocationContext context = new FunctionInvocationContext
             {

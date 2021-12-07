@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
+        private ConcurrentDictionary<(string, string, bool, bool), string> _eventDataCache = new ConcurrentDictionary<(string, string, bool, bool), string>();
         private ConcurrentDictionary<BindingMetadata, string> _bindingMetricEventNames = new ConcurrentDictionary<BindingMetadata, string>();
 
         public FunctionInstanceLogger(
@@ -103,7 +104,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var function = startedEvent.FunctionMetadata;
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
             string functionName = function != null ? function.Name : string.Empty;
-            string data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+
+            // This has low cardinality but we allocate the string every call (even though ironically it's often not used due to rollups)
+            // It's cheaper to cache and lookup rather than generate and pay for GC here.
+            // Note: this would be faster with a readonly record struct key, but StyleCop is angry with it until an upcoming 1.2.x beta release
+            var key = (startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            if (!_eventDataCache.TryGetValue(key, out var data))
+            {
+                data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+                _eventDataCache[key] = data;
+            }
             _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
 
             startedEvent.Data = data;
