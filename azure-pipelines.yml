@@ -275,8 +275,6 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\V2SiteExtension
-    artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
