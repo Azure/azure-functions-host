@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
-            ArgumentNullException.ThrowIfNull(eventName, nameof(eventName));
+            ArgumentNullException.ThrowIfNull(eventName);
 
             return new SystemMetricEvent
             {
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void EndEvent(object eventHandle)
         {
-            ArgumentNullException.ThrowIfNull(eventHandle, nameof(eventHandle));
+            ArgumentNullException.ThrowIfNull(eventHandle);
 
             SystemMetricEvent evt = eventHandle as SystemMetricEvent;
             if (evt != null)
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogEvent(string eventName, string functionName = null, string data = null)
         {
-            ArgumentNullException.ThrowIfNull(eventName, nameof(eventName));
+            ArgumentNullException.ThrowIfNull(eventName);
 
             eventName = Sanitizer.Sanitize(eventName);
 
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         protected internal virtual void WriteMetricEvents(SystemMetricEvent[] metricEvents)
         {
-            ArgumentNullException.ThrowIfNull(metricEvents, nameof(metricEvents));
+            ArgumentNullException.ThrowIfNull(metricEvents);
 
             AppServiceOptions currentAppServiceOptions = _appServiceOptions;
             foreach (SystemMetricEvent metricEvent in metricEvents)

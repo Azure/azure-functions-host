@@ -91,8 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return true;
             }
 
-            ArgumentNullException.ThrowIfNull(stream1, nameof(stream1));
-            ArgumentNullException.ThrowIfNull(stream2, nameof(stream2));
+            ArgumentNullException.ThrowIfNull(stream1);
+            ArgumentNullException.ThrowIfNull(stream2);
 
             if (stream1.Length != stream2.Length)
             {

@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public FunctionsSyncService(ILoggerFactory loggerFactory, IScriptHostManager scriptHostManager, IPrimaryHostStateProvider primaryHostStateProvider, IFunctionsSyncManager functionsSyncManager)
         {
-            ArgumentNullException.ThrowIfNull(loggerFactory, nameof(loggerFactory));
+            ArgumentNullException.ThrowIfNull(loggerFactory);
 
             DueTime = 30 * 1000;
             _scriptHostManager = scriptHostManager;

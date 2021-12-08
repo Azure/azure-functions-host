@@ -29,9 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
-            ArgumentNullException.ThrowIfNull(secretSentinelDirectoryPath, nameof(secretSentinelDirectoryPath));
-            ArgumentNullException.ThrowIfNull(accountConnection, nameof(accountConnection));
-            ArgumentNullException.ThrowIfNull(siteSlotName, nameof(siteSlotName));
+            ArgumentNullException.ThrowIfNull(secretSentinelDirectoryPath);
+            ArgumentNullException.ThrowIfNull(accountConnection);
+            ArgumentNullException.ThrowIfNull(siteSlotName);
 
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            ArgumentNullException.ThrowIfNull(secrets, nameof(secrets));
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             try
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            ArgumentNullException.ThrowIfNull(secrets, nameof(secrets));
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             blobPath = SecretsUtility.GetNonDecryptableName(blobPath);

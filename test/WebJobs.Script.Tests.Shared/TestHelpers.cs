@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public static Task WaitOneAsync(this WaitHandle waitHandle)
         {
-            ArgumentNullException.ThrowIfNull(waitHandle, nameof(waitHandle));
+            ArgumentNullException.ThrowIfNull(waitHandle);
 
             var tcs = new TaskCompletionSource<bool>();
             var rwh = ThreadPool.RegisterWaitForSingleObject(waitHandle,

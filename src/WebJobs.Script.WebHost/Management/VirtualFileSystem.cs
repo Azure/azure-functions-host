@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         protected virtual Task<HttpResponseMessage> CreateDirectoryGetResponse(HttpRequest request, DirectoryInfoBase info, string localFilePath)
         {
-            ArgumentNullException.ThrowIfNull(info, nameof(info));
+            ArgumentNullException.ThrowIfNull(info);
 
             try
             {
@@ -481,7 +481,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         protected static Stream GetFileReadStream(string localFilePath)
         {
-            ArgumentNullException.ThrowIfNull(localFilePath, nameof(localFilePath));
+            ArgumentNullException.ThrowIfNull(localFilePath);
 
             // Open file exclusively for read-sharing
             return FileUtility.Instance.File.Open(localFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -492,7 +492,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         protected static Stream GetFileWriteStream(string localFilePath, bool fileExists)
         {
-            ArgumentNullException.ThrowIfNull(localFilePath, nameof(localFilePath));
+            ArgumentNullException.ThrowIfNull(localFilePath);
 
             // Create path if item doesn't already exist
             if (!fileExists)
@@ -509,7 +509,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         private static Stream GetFileDeleteStream(FileInfoBase file)
         {
-            ArgumentNullException.ThrowIfNull(file, nameof(file));
+            ArgumentNullException.ThrowIfNull(file);
 
             // Open file exclusively for delete sharing only
             return file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -520,7 +520,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         /// </summary>
         private static Microsoft.Net.Http.Headers.EntityTagHeaderValue CreateEntityTag(FileSystemInfoBase sysInfo)
         {
-            ArgumentNullException.ThrowIfNull(sysInfo, nameof(sysInfo));
+            ArgumentNullException.ThrowIfNull(sysInfo);
 
             var etag = BitConverter.GetBytes(sysInfo.LastWriteTimeUtc.Ticks);
 

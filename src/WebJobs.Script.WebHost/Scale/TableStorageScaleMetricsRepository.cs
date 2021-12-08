@@ -396,7 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private static bool IsNotFoundTableNotFound(StorageException exception)
         {
-            ArgumentNullException.ThrowIfNull(exception, nameof(exception));
+            ArgumentNullException.ThrowIfNull(exception);
 
             var result = exception.RequestInformation;
             if (result == null)

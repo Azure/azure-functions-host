@@ -23,8 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public BaseSecretsRepository(string secretsSentinelFilePath, ILogger logger, IEnvironment environment)
         {
-            ArgumentNullException.ThrowIfNull(secretsSentinelFilePath, nameof(secretsSentinelFilePath));
-            ArgumentNullException.ThrowIfNull(logger, nameof(logger));
+            ArgumentNullException.ThrowIfNull(secretsSentinelFilePath);
+            ArgumentNullException.ThrowIfNull(logger);
 
             _secretsSentinelFilePath = secretsSentinelFilePath;
             Logger = logger;
