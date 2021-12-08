@@ -78,7 +78,7 @@ message StreamingMessage {
 
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
-    FunctionMetadataResponses function_metadata_responses = 30;
+    FunctionMetadataResponse function_metadata_response = 30;
   }
 }
 
@@ -288,12 +288,15 @@ message FunctionsMetadataRequest {
 }
 
 // Worker sends function metadata back to host
-message FunctionMetadataResponses {
+message FunctionMetadataResponse {
   // list of function indexing responses
-  repeated FunctionLoadRequest function_load_requests_results = 1;
+  repeated RpcFunctionMetadata function_metadata_results = 1;
 
   // status of overall metadata request
   StatusResult result = 2;
+
+  // if set to true then host will perform indexing
+  bool useDefaultMetadataIndexing = 3;
 }
 
 // Host requests worker to invoke a Function

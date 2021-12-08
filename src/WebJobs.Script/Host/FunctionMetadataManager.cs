@@ -132,9 +132,12 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            IFunctionMetadataProvider metadataProvider = Utility.CanWorkerIndex(workerConfigs, _environment)
+            /* IFunctionMetadataProvider metadataProvider = Utility.CanWorkerIndex(workerConfigs, _environment)
                 ? new WorkerFunctionMetadataProvider(_loggerFactory.CreateLogger<WorkerFunctionMetadataProvider>(), dispatcher)
                 : _functionMetadataProvider;
+            */
+
+            IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider);
 
             immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, forceRefresh).GetAwaiter().GetResult();
 

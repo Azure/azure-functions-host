@@ -17,44 +17,57 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
-    public class WorkerFunctionMetadataProvider : IFunctionMetadataProvider
+    public class AggregateFunctionMetadataProvider : IFunctionMetadataProvider
     {
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
-        public WorkerFunctionMetadataProvider(ILogger<WorkerFunctionMetadataProvider> logger, IFunctionInvocationDispatcher invocationDispatcher)
+        public AggregateFunctionMetadataProvider(
+            ILogger<AggregateFunctionMetadataProvider> logger,
+            IFunctionInvocationDispatcher invocationDispatcher,
+            IFunctionMetadataProvider hostFunctionMetadataProvider)
         {
             _logger = logger;
             _dispatcher = invocationDispatcher ?? throw new ArgumentNullException(nameof(invocationDispatcher));
+            _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
            => _functionErrors.ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
 
-        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh)
+        public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh, IEnvironment environment)
         {
             IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                if (_dispatcher != null)
+                if (_dispatcher != null && Utility.CanWorkerIndex(workerConfigs, environment))
                 {
                     // start up GRPC channels
                     await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
 
                     // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
-                    functions = ValidateMetadata(rawFunctions);
 
-                    // set up invocation buffers and send load requests
-                    await _dispatcher.FinishInitialization(functions);
+                    if (rawFunctions == null)
+                    {
+                        _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, forceRefresh).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        functions = ValidateMetadata(rawFunctions);
+
+                        // set up invocation buffers and send load requests
+                        await _dispatcher.FinishInitialization(functions);
+                        _functions = functions.ToImmutableArray();
+                    }
                 }
             }
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());
-            _functions = functions.ToImmutableArray();
             return _functions;
         }
 
