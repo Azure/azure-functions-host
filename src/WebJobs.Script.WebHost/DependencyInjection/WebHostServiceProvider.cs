@@ -29,11 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 throw new ArgumentNullException(nameof(descriptors));
             }
 
-            // preferInterpretation will be set to true to significanly improve cold start in consumption mode
-            // it will be set to false for premium and appservice plans to make sure throughput is not impacted
-            // there is no throughput drop in consumption with this setting.
-            var preferInterpretation = SystemEnvironment.Instance.IsConsumptionSku() ? true : false;
-            _container = new Container(_defaultContainerRules, preferInterpretation: preferInterpretation);
+            _container = new Container(_defaultContainerRules);
             _container.Populate(descriptors);
             _container.UseInstance<IServiceProvider>(this);
             _container.UseInstance<IServiceScopeFactory>(this);
@@ -48,7 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IServiceScope CreateScope()
         {
-            return new JobHostServiceScope(_container.OpenScope(preferInterpretation: _container.PreferInterpretation));
+            return new JobHostServiceScope(_container.OpenScope());
         }
 
         public void Dispose()

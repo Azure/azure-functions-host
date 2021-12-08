@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             // it will be set to false for premium and appservice plans to make sure throughput is not impacted
             // there is no throughput drop in consumption with this setting.
             var preferInterpretation = SystemEnvironment.Instance.IsConsumptionSku() ? true : false;
-            var container = new Container(r => rules, preferInterpretation: preferInterpretation);
+            var container = new Container(r => rules);
 
             container.Populate(descriptors);
             container.UseInstance<IServiceProvider>(this);

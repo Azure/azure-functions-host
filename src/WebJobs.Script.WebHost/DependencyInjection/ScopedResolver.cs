@@ -41,8 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
         internal ServiceScope CreateChildScope(IServiceScopeFactory rootScopeFactory)
         {
             var scopedRoot = rootScopeFactory.CreateScope();
-            var preferInterpretation = (Container as Container).PreferInterpretation;
-            Container scopedContext = Container.OpenScope(preferInterpretation: preferInterpretation) as Container;
+            Container scopedContext = Container.OpenScope() as Container;
 
             Rules rules = scopedContext.Rules;
             foreach (var unknownServiceResolver in scopedContext.Rules.UnknownServiceResolvers)
@@ -57,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             var scope = new ServiceScope(resolver, scopedRoot);
 
-            scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
+            //scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
 
             ChildScopes.TryAdd(scope, null);
 
