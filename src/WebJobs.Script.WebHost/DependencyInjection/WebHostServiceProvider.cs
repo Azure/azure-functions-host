@@ -12,7 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     {
         private static readonly Rules _defaultContainerRules;
         private readonly Container _container;
-        private ScopedResolver _currentResolver;
 
         static WebHostServiceProvider()
         {
@@ -34,8 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             _container.Populate(descriptors);
             _container.UseInstance<IServiceProvider>(this);
             _container.UseInstance<IServiceScopeFactory>(this);
-
-            _currentResolver = new ScopedResolver(_container);
         }
 
         public object GetService(Type serviceType)
