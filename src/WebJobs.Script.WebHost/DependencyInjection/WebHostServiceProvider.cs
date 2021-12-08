@@ -24,10 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public WebHostServiceProvider(IServiceCollection descriptors)
         {
-            if (descriptors == null)
-            {
-                throw new ArgumentNullException(nameof(descriptors));
-            }
+            ArgumentNullException.ThrowIfNull(descriptors);
 
             // preferInterpretation will be set to true to significanly improve cold start in consumption mode
             // it will be set to false for premium and appservice plans to make sure throughput is not impacted
