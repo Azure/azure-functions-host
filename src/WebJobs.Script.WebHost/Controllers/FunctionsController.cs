@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                 // if we don't have any errors registered, make sure the function exists
                 // before returning empty errors
                 var result = await _functionsManager.GetFunctionsMetadata();
-                var function = result.FirstOrDefault(p => p.Name.ToLowerInvariant() == name.ToLowerInvariant());
+                var function = result.FirstOrDefault(p => string.Equals(p.Name, name, System.StringComparison.InvariantCultureIgnoreCase));
                 if (function == null)
                 {
                     return NotFound();

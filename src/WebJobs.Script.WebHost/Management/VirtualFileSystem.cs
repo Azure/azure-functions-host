@@ -525,12 +525,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var etag = BitConverter.GetBytes(sysInfo.LastWriteTimeUtc.Ticks);
 
             var result = new StringBuilder(2 + (etag.Length * 2));
-            result.Append("\"");
+            result.Append('"');
             foreach (byte b in etag)
             {
                 result.AppendFormat("{0:x2}", b);
             }
-            result.Append("\"");
+            result.Append('"');
             return new Microsoft.Net.Http.Headers.EntityTagHeaderValue(result.ToString());
         }
 

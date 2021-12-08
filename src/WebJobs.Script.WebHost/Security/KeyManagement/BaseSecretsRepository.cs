@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 var args = new SecretsChangedEventArgs { SecretsType = ScriptSecretsType.Host };
 
-                if (string.Compare(Path.GetFileName(e.FullPath), ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) != 0)
+                if (!string.Equals(Path.GetFileName(e.FullPath), ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase))
                 {
                     args.SecretsType = ScriptSecretsType.Function;
                     args.Name = Path.GetFileNameWithoutExtension(e.FullPath).ToLowerInvariant();

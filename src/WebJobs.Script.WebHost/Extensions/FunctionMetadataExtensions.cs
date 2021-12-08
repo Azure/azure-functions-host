@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         internal static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)
         {
-            var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Compare(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0);
+            var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Equals(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase));
 
             if (httpBinding != null)
             {

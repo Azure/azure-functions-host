@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // if we fail during specialization for whatever reason
                     // this is fatal, so we shutdown
-                    _logger.LogError(t.Exception, $"Specialization failed. Shutting down.");
+                    _logger.LogError(t.Exception, "Specialization failed. Shutting down.");
                     _applicationLifetime.StopApplication();
                 }
                 latencyEvent.Dispose();
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
             File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
-            _logger.LogInformation($"StandbyMode placeholder function directory created");
+            _logger.LogInformation("StandbyMode placeholder function directory created");
         }
 
         private async void OnSpecializationTimerTick(object state)

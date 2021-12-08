@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"{nameof(PublishContainerActivity)}");
+                _logger.LogError(e, nameof(PublishContainerActivity));
             }
         }
 
