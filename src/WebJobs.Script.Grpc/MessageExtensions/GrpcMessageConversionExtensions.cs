@@ -28,88 +28,54 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             switch (typedData.DataCase)
             {
-                case RpcDataType.Bytes:
-                case RpcDataType.Stream:
-                    return typedData.Bytes.ToByteArray();
+                case RpcDataType.None:
+                    return null;
                 case RpcDataType.String:
                     return typedData.String;
                 case RpcDataType.Json:
                     return JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings);
+                case RpcDataType.Bytes:
+                case RpcDataType.Stream:
+                    return typedData.Bytes.ToByteArray();
                 case RpcDataType.Http:
                     return GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http);
                 case RpcDataType.Int:
                     return typedData.Int;
                 case RpcDataType.Double:
                     return typedData.Double;
-                case RpcDataType.None:
-                    return null;
                 default:
                     // TODO better exception
-                    throw new InvalidOperationException("Unknown RpcDataType");
+                    throw new InvalidOperationException($"Unknown RpcDataType: {typedData.DataCase}");
             }
         }
 
         public static async Task<TypedData> ToRpc(this object value, ILogger logger, GrpcCapabilities capabilities)
         {
-            TypedData typedData = new TypedData();
-            if (value == null)
+            switch (value)
             {
-                return typedData;
+                case null:
+                    return new TypedData();
+                case byte[] arr:
+                    return new TypedData() { Bytes = ByteString.CopyFrom(arr) };
+                case JObject jobj:
+                    return new TypedData() { Json = jobj.ToString(Formatting.None) };
+                case string str:
+                    return new TypedData() { String = str };
+                case double dbl:
+                    return new TypedData() { Double = dbl };
+                case HttpRequest request:
+                    return await request.ToRpcHttp(logger, capabilities);
+                case byte[][] arrBytes when IsTypedDataCollectionSupported(capabilities):
+                    return arrBytes.ToRpcByteArray();
+                case string[] arrStr when IsTypedDataCollectionSupported(capabilities):
+                    return arrStr.ToRpcStringArray();
+                case double[] arrDouble when IsTypedDataCollectionSupported(capabilities):
+                    return arrDouble.ToRpcDoubleArray();
+                case long[] arrLong when IsTypedDataCollectionSupported(capabilities):
+                    return arrLong.ToRpcLongArray();
+                default:
+                    return value.ToRpcDefault();
             }
-
-            if (value is byte[] arr)
-            {
-                typedData.Bytes = ByteString.CopyFrom(arr);
-            }
-            else if (value is JObject jobj)
-            {
-                typedData.Json = jobj.ToString(Formatting.None);
-            }
-            else if (value is string str)
-            {
-                typedData.String = str;
-            }
-            else if (value.GetType().IsArray && IsTypedDataCollectionSupported(capabilities))
-            {
-                typedData = value.ToRpcCollection();
-            }
-            else if (value is HttpRequest request)
-            {
-                typedData = await request.ToRpcHttp(logger, capabilities);
-            }
-            else
-            {
-                typedData = value.ToRpcDefault();
-            }
-
-            return typedData;
-        }
-
-        internal static TypedData ToRpcCollection(this object value)
-        {
-            TypedData typedData;
-            if (value is byte[][] arrBytes)
-            {
-                typedData = arrBytes.ToRpcByteArray();
-            }
-            else if (value is string[] arrStr)
-            {
-                typedData = arrStr.ToRpcStringArray();
-            }
-            else if (value is double[] arrDouble)
-            {
-                typedData = arrDouble.ToRpcDoubleArray();
-            }
-            else if (value is long[] arrLong)
-            {
-                typedData = arrLong.ToRpcLongArray();
-            }
-            else
-            {
-                typedData = value.ToRpcDefault();
-            }
-
-            return typedData;
         }
 
         internal static async Task<TypedData> ToRpcHttp(this HttpRequest request, ILogger logger, GrpcCapabilities capabilities)
