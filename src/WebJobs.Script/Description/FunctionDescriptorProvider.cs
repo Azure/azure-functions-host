@@ -93,19 +93,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionInvoker == null)
             {
-                throw new ArgumentNullException("functionInvoker");
+                throw new ArgumentNullException(nameof(functionInvoker));
             }
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException("functionMetadata");
+                throw new ArgumentNullException(nameof(functionMetadata));
             }
             if (triggerMetadata == null)
             {
-                throw new ArgumentNullException("triggerMetadata");
+                throw new ArgumentNullException(nameof(triggerMetadata));
             }
             if (methodAttributes == null)
             {
-                throw new ArgumentNullException("methodAttributes");
+                throw new ArgumentNullException(nameof(methodAttributes));
             }
 
             ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
@@ -245,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (trigger == null)
             {
-                throw new ArgumentNullException("trigger");
+                throw new ArgumentNullException(nameof(trigger));
             }
 
             if (triggerParameterType == null)

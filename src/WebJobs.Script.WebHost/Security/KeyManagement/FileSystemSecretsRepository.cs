@@ -24,10 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public FileSystemSecretsRepository(string secretsPath, ILogger logger, IEnvironment environment) : base(secretsPath, logger, environment)
         {
-            if (secretsPath == null)
-            {
-                throw new ArgumentNullException(nameof(secretsPath));
-            }
+            ArgumentNullException.ThrowIfNull(secretsPath);
 
             _secretsPath = secretsPath;
             _hostSecretsPath = Path.Combine(_secretsPath, ScriptConstants.HostMetadataFileName);
