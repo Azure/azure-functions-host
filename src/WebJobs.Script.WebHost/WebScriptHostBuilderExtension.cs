@@ -31,6 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public static class WebScriptHostBuilderExtension
     {
+        /// <summary>
+        /// Adds bits needed for the ScriptHost: services, service provider, configuration, and logging.
+        /// </summary>
+        /// <param name="builder">The builder we're adding ScriptHost bits to.</param>
+        /// <param name="rootServiceProvider">The appliaction level service provider, so we can properly aggregate the ScriptHost-scoped services.</param>
+        /// <param name="rootServices">The appliaction level services, so we can properly aggregate the ScriptHost-scoped services.</param>
+        /// <param name="webHostOptions">Options for creating the web host.</param>
+        /// <param name="configureWebJobs">Additional configuration actions for the WebJobsBuilder, if any.</param>
+        /// <returns>A more-configured IHostBuilder with all the core services and configuration set.</returns>
         public static IHostBuilder AddWebScriptHost(this IHostBuilder builder, IServiceProvider rootServiceProvider, IServiceCollection rootServices,
            ScriptApplicationHostOptions webHostOptions, Action<IWebJobsBuilder> configureWebJobs = null)
         {
@@ -39,7 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             IMetricsLogger metricsLogger = rootServiceProvider.GetService<IMetricsLogger>();
             IEnvironment environment = rootServiceProvider.GetService<IEnvironment>();
 
-            builder.UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServices, validator))
+            builder
+                // Here we're repalcing the provider - note that it doesn't run *now*, it effectively runs when we hit .Build()
+                // *after* all of these services are added, then decides what to do with them and the root services internally.
+                // See JobHostScopedServiceProviderFactory for more information.
+                .UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServices, validator))
                 .ConfigureServices(services =>
                 {
                     // register default configuration
