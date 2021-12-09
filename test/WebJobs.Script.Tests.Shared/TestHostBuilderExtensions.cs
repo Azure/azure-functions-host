@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -57,6 +58,10 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
             AddMockedSingleton<IAzureBlobStorageProvider>(services);
+            // gRPC bits
+            AddMockedSingleton<ISharedMemoryManager>(services);
+            AddMockedSingleton<IFunctionDataCache>(services);
+            AddMockedSingleton<ISecretManagerProvider>(services);
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
