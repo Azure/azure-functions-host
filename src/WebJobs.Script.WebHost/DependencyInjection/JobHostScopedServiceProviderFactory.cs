@@ -9,32 +9,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
     /// <summary>
     /// An <see cref="IServiceProviderFactory{TContainerBuilder}"/> implementation that creates
-    /// and populates an <see cref="JobHostServiceProvider"/> that can be used as the <see cref="IServiceProvider"/>
+    /// and populates a child scope that can be used as the <see cref="IServiceProvider"/>.
     /// </summary>
     public class JobHostScopedServiceProviderFactory : IServiceProviderFactory<IServiceCollection>
     {
         private readonly IServiceProvider _rootProvider;
-        private readonly IServiceScopeFactory _rootScopeFactory;
+        private readonly IServiceCollection _rootServices;
         private readonly IDependencyValidator _validator;
-        private JobHostServiceProvider _provider;
 
-        public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory, IDependencyValidator validator)
+        public JobHostScopedServiceProviderFactory(IServiceProvider rootProvider, IServiceCollection rootServices, IDependencyValidator validator)
         {
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
-            _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
+            _rootServices = rootServices ?? throw new ArgumentNullException(nameof(rootServices));
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         }
 
-        public IServiceCollection CreateBuilder(IServiceCollection services)
-        {
-            return services;
-        }
+        public IServiceCollection CreateBuilder(IServiceCollection services) => services;
 
-        public IServiceProvider CreateServiceProvider(IServiceCollection containerBuilder)
+        public IServiceProvider CreateServiceProvider(IServiceCollection services)
         {
             try
             {
-                _validator.Validate(containerBuilder);
+                // Validating that a customer hasn't overridden things that they shouldn't
+                _validator.Validate(services);
             }
             catch (InvalidHostServicesException ex)
             {
@@ -46,12 +43,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 throw new HostInitializationException("Invalid host services detected.", ex);
             }
 
-            if (_provider == null)
+            // Start from the root (web app level) as a base
+            var jobHostServices = _rootProvider.CreateChildContainer(_rootServices);
+
+            // ...and then add all the child services to this container
+            foreach (var service in services)
             {
-                _provider = new JobHostServiceProvider(containerBuilder, _rootProvider, _rootScopeFactory);
+                jobHostServices.Add(service);
             }
 
-            return _provider;
+            return jobHostServices.BuildServiceProvider();
         }
     }
 }

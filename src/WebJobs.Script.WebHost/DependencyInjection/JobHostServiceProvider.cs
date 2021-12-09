@@ -2,10 +2,8 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using DryIoc;
-using DryIoc.Microsoft.DependencyInjection;
+using System.Linq;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -13,115 +11,215 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 {
     public class JobHostServiceProvider : IServiceProvider, IServiceScopeFactory, ISupportRequiredService, IDisposable
     {
-        private static readonly Rules _defaultContainerRules;
-        private static readonly Setup _jobHostRootScopeFactorySetup;
+        private readonly IServiceCollection _descriptors;
         private readonly IServiceProvider _rootProvider;
-        private readonly IServiceScopeFactory _rootScopeFactory;
-        private readonly Container _container;
-        private ScopedResolver _currentResolver;
+        private IServiceProvider _serviceProvider;
 
-        static JobHostServiceProvider()
+        public JobHostServiceProvider(IServiceCollection descriptors, IServiceProvider rootProvider)
         {
-            _jobHostRootScopeFactorySetup = Setup.With(preventDisposal: true);
-            _defaultContainerRules = Rules.Default
-                .With(FactoryMethod.ConstructorWithResolvableArguments)
-                .WithFactorySelector(Rules.SelectLastRegisteredFactory())
-                .WithTrackingDisposableTransients();
+            ArgumentNullException.ThrowIfNull(descriptors);
+            ArgumentNullException.ThrowIfNull(rootProvider);
+            _descriptors = descriptors;
+            _rootProvider = rootProvider;
         }
 
-        public JobHostServiceProvider(IServiceCollection descriptors, IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
+        public IServiceProvider ServiceProvider => _serviceProvider ??= CreateServiceProvider();
+
+        private IServiceProvider CreateServiceProvider()
         {
-            if (descriptors == null)
+            var serviceCollection = _rootProvider.CreateChildContainer(_descriptors);
+            return serviceCollection.BuildServiceProvider();
+        }
+
+        public object GetService(Type serviceType) => ServiceProvider.GetService(serviceType);
+
+        public object GetRequiredService(Type serviceType) => ServiceProvider.GetRequiredService(serviceType);
+
+        public IServiceScope CreateScope() => ServiceProvider.CreateScope();
+
+        public void Dispose() => (ServiceProvider as IDisposable)?.Dispose();
+    }
+
+    public static class ServiceProviderExtensions
+    {
+        /// <summary>
+        /// Creates a child container.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider to create a child container for.</param>
+        /// <param name="serviceCollection">The services to clone.</param>
+        public static IServiceCollection CreateChildContainer(this IServiceProvider serviceProvider, IServiceCollection serviceCollection)
+        {
+            IServiceCollection clonedCollection = new ServiceCollection();
+            var servicesByType = serviceCollection.GroupBy(s => s.ServiceType);
+
+            foreach (var services in servicesByType)
             {
-                throw new ArgumentNullException(nameof(descriptors));
-            }
-
-            _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
-            _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));
-
-            _container = BuildContainer(descriptors);
-            _currentResolver = new ScopedResolver(_container);
-        }
-
-        public IServiceProvider ServiceProvider => throw new NotImplementedException();
-
-        private Container BuildContainer(IServiceCollection descriptors)
-        {
-            Rules rules = _defaultContainerRules
-                .WithUnknownServiceResolvers(request =>
+                // Prevent hosting 'IStartupFilter' to re-add middlewares to the tenant pipeline.
+                // Don't re-register hosted services because they'd be running twice
+                if (services.Key == typeof(IStartupFilter)
+                    || services.Key == typeof(IManagedHostedService)
+                    || services.Key == typeof(IHostedService))
                 {
-                    if (request.ServiceType == typeof(IEnumerable<IHostedService>))
+                }
+
+                // A generic type definition is rather used to create other constructed generic types.
+                        else if (services.Key.IsGenericTypeDefinition)
+                {
+                    // So, we just need to pass the descriptor.
+                    foreach (var service in services)
                     {
-                        return new DelegateFactory(_ => null);
+                        clonedCollection.Add(service);
                     }
+                }
 
-                    return new DelegateFactory(_ => _rootProvider.GetService(request.ServiceType), setup: _jobHostRootScopeFactorySetup);
-                });
+                // If only one service of a given type.
+                else if (services.Count() == 1)
+                {
+                    var service = services.First();
 
-            // preferInterpretation will be set to true to significanly improve cold start in consumption mode
-            // it will be set to false for premium and appservice plans to make sure throughput is not impacted
-            // there is no throughput drop in consumption with this setting.
-            var preferInterpretation = SystemEnvironment.Instance.IsConsumptionSku() ? true : false;
-            var container = new Container(r => rules);
+                    if (service.Lifetime == ServiceLifetime.Singleton)
+                    {
+                        // An host singleton is shared across tenant containers but only registered instances are not disposed
+                        // by the DI, so we check if it is disposable or if it uses a factory which may return a different type.
 
-            container.Populate(descriptors);
-            container.UseInstance<IServiceProvider>(this);
-            container.UseInstance<IServiceScopeFactory>(this);
-            container.UseInstance<JobHostServiceProvider>(this);
+                        if (typeof(IDisposable).IsAssignableFrom(service.GetImplementationType()) || service.ImplementationFactory != null)
+                        {
+                            // If disposable, register an instance that we resolve immediately from the main container.
+                            clonedCollection.CloneSingleton(service, serviceProvider.GetService(service.ServiceType));
+                        }
+                        else
+                        {
+                            // If not disposable, the singleton can be resolved through a factory when first requested.
+                            clonedCollection.CloneSingleton(service, sp => serviceProvider.GetService(service.ServiceType));
 
-            return container;
-        }
+                            // Note: Most of the time a singleton of a given type is unique and not disposable. So,
+                            // most of the time it will be resolved when first requested through a tenant container.
+                        }
+                    }
+                    else
+                    {
+                        clonedCollection.Add(service);
+                    }
+                }
 
-        public object GetService(Type serviceType)
-        {
-            return GetService(serviceType, IfUnresolved.ReturnDefault);
-        }
+                // If all services of the same type are not singletons.
+                else if (services.All(s => s.Lifetime != ServiceLifetime.Singleton))
+                {
+                    // We don't need to resolve them.
+                    foreach (var service in services)
+                    {
+                        clonedCollection.Add(service);
+                    }
+                }
 
-        public object GetRequiredService(Type serviceType)
-        {
-            return GetService(serviceType, IfUnresolved.Throw);
-        }
+                // If all services of the same type are singletons.
+                else if (services.All(s => s.Lifetime == ServiceLifetime.Singleton))
+                {
+                    // We can resolve them from the main container.
+                    var instances = serviceProvider.GetServices(services.Key);
 
-        private object GetService(Type serviceType, IfUnresolved ifUnresolved)
-        {
-            if (serviceType == typeof(IServiceProvider))
-            {
-                return this;
+                    for (var i = 0; i < services.Count(); i++)
+                    {
+                        clonedCollection.CloneSingleton(services.ElementAt(i), instances.ElementAt(i));
+                    }
+                }
+
+                // If singletons and scoped services are mixed.
+                else
+                {
+                    // We need a service scope to resolve them.
+                    using var scope = serviceProvider.CreateScope();
+
+                    var instances = scope.ServiceProvider.GetServices(services.Key);
+
+                    // Then we only keep singleton instances.
+                    for (var i = 0; i < services.Count(); i++)
+                    {
+                        if (services.ElementAt(i).Lifetime == ServiceLifetime.Singleton)
+                        {
+                            clonedCollection.CloneSingleton(services.ElementAt(i), instances.ElementAt(i));
+                        }
+                        else
+                        {
+                            clonedCollection.Add(services.ElementAt(i));
+                        }
+                    }
+                }
             }
 
-            if (serviceType == typeof(IServiceScopeFactory))
-            {
-                return this;
-            }
+            return clonedCollection;
+        }
+    }
 
-            Debug.WriteLine(serviceType.Name);
-
-            return _currentResolver.Container.Resolve(serviceType, ifUnresolved);
+    internal static class ServiceCollectionExtensions
+    {
+        public static IServiceCollection CloneSingleton(
+            this IServiceCollection services,
+            ServiceDescriptor parent,
+            object implementationInstance)
+        {
+            // If the instance is null, then only a lambda result is valid
+            var cloned = implementationInstance == null
+                ? new ClonedSingletonDescriptor(parent, _ => null)
+                : new ClonedSingletonDescriptor(parent, implementationInstance);
+            services.Add(cloned);
+            return services;
         }
 
-        public IServiceScope CreateScope()
+        public static IServiceCollection CloneSingleton(
+            this IServiceCollection collection,
+            ServiceDescriptor parent,
+            Func<IServiceProvider, object> implementationFactory)
         {
-            try
-            {
-                return _currentResolver.CreateChildScope(_rootScopeFactory);
-            }
-            catch (ContainerException ex) when (ex.Error == Error.ContainerIsDisposed)
-            {
-                throw new HostDisposedException(_currentResolver.GetType().FullName, ex);
-            }
+            var cloned = new ClonedSingletonDescriptor(parent, implementationFactory);
+            collection.Add(cloned);
+            return collection;
+        }
+    }
+
+    public class ClonedSingletonDescriptor : ServiceDescriptor
+    {
+        public ClonedSingletonDescriptor(ServiceDescriptor parent, object implementationInstance)
+            : base(parent.ServiceType, implementationInstance)
+        {
+            Parent = parent;
         }
 
-        public void Dispose()
+        public ClonedSingletonDescriptor(ServiceDescriptor parent, Func<IServiceProvider, object> implementationFactory)
+            : base(parent.ServiceType, implementationFactory, ServiceLifetime.Singleton)
         {
-            Dispose(true);
+            Parent = parent;
         }
 
-        private void Dispose(bool disposing)
+        public ServiceDescriptor Parent { get; }
+    }
+
+    public static class ServiceDescriptorExtensions
+    {
+        public static Type GetImplementationType(this ServiceDescriptor descriptor)
         {
-            if (disposing)
+            if (descriptor is ClonedSingletonDescriptor cloned)
             {
-                _currentResolver.Dispose();
+                // Use the parent descriptor as it was before being cloned.
+                return cloned.Parent.GetImplementationType();
             }
+
+            if (descriptor.ImplementationType != null)
+            {
+                return descriptor.ImplementationType;
+            }
+
+            if (descriptor.ImplementationInstance != null)
+            {
+                return descriptor.ImplementationInstance.GetType();
+            }
+
+            if (descriptor.ImplementationFactory != null)
+            {
+                return descriptor.ImplementationFactory.GetType().GenericTypeArguments[1];
+            }
+
+            return null;
         }
     }
 }

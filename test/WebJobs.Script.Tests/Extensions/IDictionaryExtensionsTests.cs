@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ImTools;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests

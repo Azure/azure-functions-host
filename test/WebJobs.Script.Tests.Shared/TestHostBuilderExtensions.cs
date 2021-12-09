@@ -64,10 +64,10 @@ namespace Microsoft.WebJobs.Script.Tests
             services.AddFunctionMetadataManager(webHostOptions, metricsLogger);
             configureRootServices?.Invoke(services);
 
-            var rootProvider = new WebHostServiceProvider(services);
+            var rootProvider = services.BuildServiceProvider();
 
             builder
-                .AddWebScriptHost(rootProvider, rootProvider, webHostOptions, configureWebJobs)
+                .AddWebScriptHost(rootProvider, services, webHostOptions, configureWebJobs)
                 .ConfigureAppConfiguration(c =>
                 {
                     c.AddTestSettings();

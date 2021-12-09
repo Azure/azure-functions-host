@@ -20,12 +20,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             rootServices.AddSingleton<TestService>();
             var rootContainer = rootServices.BuildServiceProvider();
 
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-
             var jobHostServices = new ServiceCollection();
             jobHostServices.AddScoped<IService, TestService>();
-            IServiceProvider serviceProvider = new JobHostServiceProvider(jobHostServices, rootContainer, rootScopeFactory);
+            IServiceProvider serviceProvider = new JobHostServiceProvider(jobHostServices, rootContainer);
 
             // Create a scope on JobHost container
             IServiceScope scope = serviceProvider.CreateScope();
@@ -51,10 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             rootServices.AddScoped<TestService>();
             var rootContainer = rootServices.BuildServiceProvider();
 
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-
-            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer, rootScopeFactory);
+            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer);
 
             // Create a scope on JobHost container
             IServiceScope scope = serviceProvider.CreateScope();
@@ -75,10 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             rootServices.AddSingleton<TestService>();
             var rootContainer = rootServices.BuildServiceProvider();
 
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-
-            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer, rootScopeFactory);
+            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer);
 
             // The service resolution should fallback to the parent scope
             TestService rootService = serviceProvider.GetService<TestService>();
@@ -95,8 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             var services = new ServiceCollection();
             services.AddScoped<A>();
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootServiceProvider = new ServiceCollection().BuildServiceProvider();
+            var jobHostProvider = new JobHostServiceProvider(services, rootServiceProvider);
 
             var a1 = jobHostProvider.GetService<A>();
             jobHostProvider.CreateScope();
@@ -118,8 +109,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
                 return new A();
             });
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootServiceProvider = new ServiceCollection().BuildServiceProvider();
+            var jobHostProvider = new JobHostServiceProvider(services, rootServiceProvider);
 
             // Get this service twice.
             // The IServiceProvider passed to the factory should be different because they are separate scopes.
@@ -141,8 +132,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             services.AddScoped<A>();
             services.AddScoped<ServiceFactory>(provider => (type) => provider.GetRequiredService(type));
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootServiceProvider = new ServiceCollection().BuildServiceProvider();
+            var jobHostProvider = new JobHostServiceProvider(services, rootServiceProvider);
 
             var scope1 = jobHostProvider.CreateScope();
             var a1 = scope1.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
