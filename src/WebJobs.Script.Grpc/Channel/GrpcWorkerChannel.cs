@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -75,18 +76,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private System.Timers.Timer _timer;
 
         internal GrpcWorkerChannel(
-           string workerId,
-           IScriptEventManager eventManager,
-           RpcWorkerConfig workerConfig,
-           IWorkerProcess rpcWorkerProcess,
-           ILogger logger,
-           IMetricsLogger metricsLogger,
-           int attemptCount,
-           IEnvironment environment,
-           IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
-           ISharedMemoryManager sharedMemoryManager,
-           IFunctionDataCache functionDataCache,
-           IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            string workerId,
+            IScriptEventManager eventManager,
+            RpcWorkerConfig workerConfig,
+            IWorkerProcess rpcWorkerProcess,
+            ILogger logger,
+            IMetricsLogger metricsLogger,
+            int attemptCount,
+            IEnvironment environment,
+            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+            ISharedMemoryManager sharedMemoryManager,
+            IFunctionDataCache functionDataCache,
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse)));
 
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
-               .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
+                .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
@@ -657,14 +658,29 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // Restore the execution context from the original invocation. This allows AsyncLocal state to flow to loggers.
                 System.Threading.ExecutionContext.Run(context.AsyncExecutionContext, (s) =>
                 {
-                    if (rpcLog.Exception != null)
+                    if (rpcLog.LogCategory == RpcLogCategory.CustomMetric)
                     {
-                        var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
-                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                        if (rpcLog.PropertiesMap.TryGetValue(LogConstants.NameKey, out var metricName)
+                            && rpcLog.PropertiesMap.TryGetValue(LogConstants.MetricValueKey, out var metricValue))
+                        {
+                            // Strip off the name/value entries in the dictionary passed to Log Message and include the rest as the property bag passed to the backing ILogger
+                            var rpcLogProperties = rpcLog.PropertiesMap
+                                                    .Where(i => i.Key != LogConstants.NameKey && i.Key != LogConstants.MetricValueKey)
+                                                    .ToDictionary(i => i.Key, i => i.Value.ToObject());
+                            context.Logger.LogMetric(metricName.String, metricValue.Double, rpcLogProperties);
+                        }
                     }
                     else
                     {
-                        context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                        if (rpcLog.Exception != null)
+                        {
+                            var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
+                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
+                        }
+                        else
+                        {
+                            context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, null, (state, exc) => state);
+                        }
                     }
                 }, null);
             }
