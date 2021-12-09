@@ -674,6 +674,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         if (rpcLog.Exception != null)
                         {
+                            // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
                             var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
                             context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
                         }
