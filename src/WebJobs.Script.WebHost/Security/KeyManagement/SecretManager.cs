@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     HostSecrets hostSecrets;
                     try
                     {
-                        _logger.LogDebug($"Loading host secrets");
+                        _logger.LogDebug("Loading host secrets");
 
                         hostSecrets = await LoadSecretsAsync<HostSecrets>();
                         if (hostSecrets == null)

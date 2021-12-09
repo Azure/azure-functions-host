@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                 foreach (var secretFile in secretsDirectory.GetFiles("*.json"))
                 {
-                    if (string.Compare(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase) == 0
+                    if (string.Equals(secretFile.Name, ScriptConstants.HostMetadataFileName, StringComparison.OrdinalIgnoreCase)
                         || secretFile.Name.Contains(ScriptConstants.Snapshot))
                     {
                         // the secrets directory contains the host secrets file in addition
