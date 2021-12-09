@@ -350,8 +350,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // Encryption is handled by Antares before storage
                 var secretsStorageType = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
                 if (string.IsNullOrEmpty(secretsStorageType) ||
-                    string.Compare(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase) == 0 ||
-                    string.Compare(secretsStorageType, "blob", StringComparison.OrdinalIgnoreCase) == 0)
+                    string.Equals(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(secretsStorageType, "blob", StringComparison.OrdinalIgnoreCase))
                 {
                     var functionAppSecrets = new FunctionAppSecrets();
 
@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     };
 
                     // add function secrets
-                    var httpFunctions = functionsMetadata.Where(p => p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name).ToArray();
+                    var httpFunctions = functionsMetadata.Where(p => p.InputBindings.Any(q => q.IsTrigger && string.Equals(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase))).Select(p => p.Name).ToArray();
                     functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
                     for (int i = 0; i < httpFunctions.Length; i++)
                     {
@@ -687,7 +687,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug($"SyncTriggers call succeeded.");
+                    _logger.LogDebug("SyncTriggers call succeeded.");
                     return (true, null);
                 }
                 else

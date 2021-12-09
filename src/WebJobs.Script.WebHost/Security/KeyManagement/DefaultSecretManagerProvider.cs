@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (repository == null)
             {
-                throw new InvalidOperationException($"Secret initialization from Blob storage failed due to missing both an Azure Storage connection string and a SAS connection uri. " +
+                throw new InvalidOperationException("Secret initialization from Blob storage failed due to missing both an Azure Storage connection string and a SAS connection uri. " +
                         $"For Blob Storage, please provide at least one of these. If you intend to use files for secrets, add an App Setting key '{EnvironmentSettingNames.AzureWebJobsSecretStorageType}' with value '{FileStorage}'.");
             }
 
