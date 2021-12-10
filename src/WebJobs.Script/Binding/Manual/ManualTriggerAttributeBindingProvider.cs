@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
         {
             if (context == null)
             {
-                throw new ArgumentNullException("context");
+                throw new ArgumentNullException(nameof(context));
             }
 
             ParameterInfo parameter = context.Parameter;
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.Binding
             {
                 if (context == null)
                 {
-                    throw new ArgumentNullException("context");
+                    throw new ArgumentNullException(nameof(context));
                 }
 
                 return Task.FromResult<IListener>(new NullListener());

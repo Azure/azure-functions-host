@@ -25,38 +25,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _scriptHostManager = scriptHostManager;
         }
 
-        public async Task Invoke(HttpContext httpContext)
+        public Task Invoke(HttpContext httpContext)
         {
             if (_scriptHostManager.State != ScriptHostState.Offline)
             {
-                bool hostReady = _scriptHostManager.CanInvoke();
-                if (!hostReady)
+                if (!_scriptHostManager.CanInvoke())
                 {
-                    using (Logger.VerifyingHostAvailabilityScope(_logger, httpContext.TraceIdentifier))
-                    {
-                        Logger.InitiatingHostAvailabilityCheck(_logger);
-
-                        hostReady = await _scriptHostManager.DelayUntilHostReady();
-                        if (!hostReady)
-                        {
-                            Logger.HostUnavailableAfterCheck(_logger);
-
-                            httpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-                            await httpContext.Response.WriteAsync("Function host is not running.");
-
-                            return;
-                        }
-
-                        Logger.HostAvailabilityCheckSucceeded(_logger);
-                    }
+                    // If we're not ready, take the slower/more expensive route and await being ready
+                    return InvokeAwaitingHost(httpContext, _next, _logger, _scriptHostManager);
                 }
 
-                await _next.Invoke(httpContext);
+                // But if we are ready, bypass the awaiting cost and go right to the next middleware
+                return _next.Invoke(httpContext);
             }
             else
             {
-                await httpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
+                return httpContext.SetOfflineResponseAsync(_applicationHostOptions.CurrentValue.ScriptPath);
             }
+        }
+
+        /// <summary>
+        /// Slow path, for when the host isn't initialized and we need to wait.
+        /// In this more rare case, we'll allocate the async/await state machine because it's necessary overhead.
+        /// </summary>
+        private static async Task InvokeAwaitingHost(HttpContext context, RequestDelegate next, ILogger<HostAvailabilityCheckMiddleware> logger, IScriptHostManager scriptHostManager)
+        {
+            using (Logger.VerifyingHostAvailabilityScope(logger, context.TraceIdentifier))
+            {
+                Logger.InitiatingHostAvailabilityCheck(logger);
+
+                bool hostReady = await scriptHostManager.DelayUntilHostReady();
+                if (!hostReady)
+                {
+                    Logger.HostUnavailableAfterCheck(logger);
+
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    await context.Response.WriteAsync("Function host is not running.");
+
+                    return;
+                }
+
+                Logger.HostAvailabilityCheckSucceeded(logger);
+            }
+
+            await next.Invoke(context);
         }
     }
 }

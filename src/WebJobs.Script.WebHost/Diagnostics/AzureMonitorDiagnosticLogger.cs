@@ -26,13 +26,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         private readonly string _hostInstanceId;
         private readonly string _roleInstance;
         private readonly HostNameProvider _hostNameProvider;
-        private readonly IOptionsMonitor<AppServiceOptions> _appServiceOptions;
         private readonly IEventGenerator _eventGenerator;
         private readonly IEnvironment _environment;
         private readonly IExternalScopeProvider _scopeProvider;
+        private AppServiceOptions _appServiceOptions;
 
         public AzureMonitorDiagnosticLogger(string category, string hostInstanceId, IEventGenerator eventGenerator, IEnvironment environment, IExternalScopeProvider scopeProvider,
-            HostNameProvider hostNameProvider, IOptionsMonitor<AppServiceOptions> appServiceOptions)
+            HostNameProvider hostNameProvider, IOptionsMonitor<AppServiceOptions> appServiceOptionsMonitor)
         {
             _category = category ?? throw new ArgumentNullException(nameof(category));
             _hostInstanceId = hostInstanceId ?? throw new ArgumentNullException(nameof(hostInstanceId));
@@ -40,7 +40,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _scopeProvider = scopeProvider ?? throw new ArgumentNullException(nameof(scopeProvider));
             _hostNameProvider = hostNameProvider ?? throw new ArgumentNullException(nameof(hostNameProvider));
-            _appServiceOptions = appServiceOptions ?? throw new ArgumentNullException(nameof(appServiceOptions));
+            _ = appServiceOptionsMonitor ?? throw new ArgumentNullException(nameof(appServiceOptionsMonitor));
+
+            appServiceOptionsMonitor.OnChange(newOptions => _appServiceOptions = newOptions);
+            _appServiceOptions = appServiceOptionsMonitor.CurrentValue;
 
             _roleInstance = _environment.GetInstanceId();
 
@@ -104,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (JsonTextWriter writer = new JsonTextWriter(sw) { Formatting = Formatting.None })
             {
                 writer.WriteStartObject();
-                WritePropertyIfNotNull(writer, "appName", _appServiceOptions.CurrentValue.AppName);
+                WritePropertyIfNotNull(writer, "appName", _appServiceOptions.AppName);
                 WritePropertyIfNotNull(writer, "roleInstance", _roleInstance);
                 WritePropertyIfNotNull(writer, "message", formattedMessage);
                 WritePropertyIfNotNull(writer, "category", _category);

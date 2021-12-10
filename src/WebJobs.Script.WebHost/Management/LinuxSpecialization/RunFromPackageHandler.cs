@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 string bundlePath = Path.Combine(targetPath, "worker-bundle");
                 if (Directory.Exists(bundlePath))
                 {
-                    _logger.LogInformation($"Python worker bundle detected");
+                    _logger.LogInformation("Python worker bundle detected");
                 }
 
                 return true;

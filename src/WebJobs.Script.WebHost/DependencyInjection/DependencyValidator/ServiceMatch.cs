@@ -77,10 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public void Add<TPeerType>(string typeName, ServiceLifetime lifetime)
         {
-            if (typeName == null)
-            {
-                throw new ArgumentNullException(nameof(typeName));
-            }
+            ArgumentNullException.ThrowIfNull(typeName);
 
             Type peerType = typeof(TPeerType);
             Add(peerType, typeName, lifetime);
@@ -88,10 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public void Add(string typeName, ServiceLifetime lifetime)
         {
-            if (typeName == null)
-            {
-                throw new ArgumentNullException(nameof(typeName));
-            }
+            ArgumentNullException.ThrowIfNull(typeName);
 
             Add(ServiceType, typeName, lifetime);
         }
@@ -153,10 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public IEnumerable<InvalidServiceDescriptor> FindInvalidServices(IServiceCollection services)
         {
-            if (services == null)
-            {
-                throw new ArgumentNullException(nameof(services));
-            }
+            ArgumentNullException.ThrowIfNull(services);
 
             IEnumerable<ServiceDescriptor> registered = services.Where(p => p.ServiceType == ServiceType);
 
