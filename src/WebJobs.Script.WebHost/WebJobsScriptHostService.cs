@@ -5,6 +5,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights.AspNetCore;
@@ -16,6 +17,7 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -44,6 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly SemaphoreSlim _hostStartSemaphore = new SemaphoreSlim(1, 1);
         private readonly TaskCompletionSource<bool> _hostStartedSource = new TaskCompletionSource<bool>();
         private readonly Task _hostStarted;
+        private IScriptEventManager _eventManager;
 
         private IHost _host;
         private ScriptHostState _state;
@@ -60,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public WebJobsScriptHostService(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IScriptHostBuilder scriptHostBuilder, ILoggerFactory loggerFactory,
             IScriptWebHostEnvironment scriptWebHostEnvironment, IEnvironment environment,
             HostPerformanceManager hostPerformanceManager, IOptions<HostHealthMonitorOptions> healthMonitorOptions,
-            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config)
+            IMetricsLogger metricsLogger, IApplicationLifetime applicationLifetime, IConfiguration config, IScriptEventManager eventManager)
         {
             ArgumentNullException.ThrowIfNull(loggerFactory);
 
@@ -79,6 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _healthMonitorOptions = healthMonitorOptions ?? throw new ArgumentNullException(nameof(healthMonitorOptions));
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _eventManager = eventManager;
 
             _hostStarted = _hostStartedSource.Task;
 
@@ -315,6 +319,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         State = ScriptHostState.Running;
                     }
                 }
+
+                _eventManager.Publish(new HostStartEvent());
             }
             catch (OperationCanceledException)
             {
