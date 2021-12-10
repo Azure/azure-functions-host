@@ -28,7 +28,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             FunctionMetadata metadata = new FunctionMetadata();
             TestInvoker invoker = new TestInvoker();
-            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null);
+            LoggerFactory loggerFactory = new LoggerFactory();
+            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null, loggerFactory);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 
@@ -80,8 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             FunctionMetadata metadata = new FunctionMetadata();
+            LoggerFactory loggerFactory = new LoggerFactory();
             var invoker = new RealInvoker(userFunc);
-            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null);
+            FunctionDescriptor function = new FunctionDescriptor(functionName, invoker, metadata, parameters, null, null, null, loggerFactory);
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             functions.Add(function);
 

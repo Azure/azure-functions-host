@@ -39,7 +39,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public HttpThrottleMiddlewareTests()
         {
-            _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>(), null, null, null);
+            _loggerFactory = new LoggerFactory();
+            _functionDescriptor = new FunctionDescriptor("Test", null, null, new Collection<ParameterDescriptor>(), null, null, null, _loggerFactory);
             _scriptHost = new Mock<IScriptJobHost>(MockBehavior.Strict);
             _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
             _metricsLogger.Setup(p => p.LogEvent(MetricEventNames.FunctionInvokeThrottled, null, null)).Callback(() =>
@@ -51,7 +52,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var healthMonitorOptions = new HostHealthMonitorOptions();
             _performanceManager = new Mock<HostPerformanceManager>(MockBehavior.Strict, environment, new OptionsWrapper<HostHealthMonitorOptions>(healthMonitorOptions), mockServiceProvider.Object);
             _httpOptions = new HttpOptions();
-            _loggerFactory = new LoggerFactory();
             _loggerProvider = new TestLoggerProvider();
             _loggerFactory.AddProvider(_loggerProvider);
             RequestDelegate next = (ctxt) =>

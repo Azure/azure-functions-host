@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Binding;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -25,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             Collection<ParameterDescriptor> parameters,
             Collection<CustomAttributeBuilder> attributes,
             Collection<FunctionBinding> inputBindings,
-            Collection<FunctionBinding> outputBindings)
+            Collection<FunctionBinding> outputBindings,
+            ILoggerFactory loggerFactory)
         {
             Name = name;
             Invoker = invoker;
@@ -39,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             TriggerBinding = InputBindings?.SingleOrDefault(p => p.Metadata.IsTrigger);
             HttpTriggerAttribute = GetTriggerAttributeOrNull<HttpTriggerAttribute>();
             LogCategory = LogCategories.CreateFunctionCategory(Name);
+            Logger = loggerFactory.CreateLogger(LogCategory);
         }
 
         public string Name { get; internal set; }
@@ -62,6 +65,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public virtual HttpTriggerAttribute HttpTriggerAttribute { get; }
 
         public string LogCategory { get; }
+
+        public ILogger Logger { get; }
 
         private TAttribute GetTriggerAttributeOrNull<TAttribute>()
         {
