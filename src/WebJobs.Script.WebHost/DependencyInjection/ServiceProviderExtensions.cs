@@ -1,5 +1,8 @@
-﻿// TODO: Licensing header, and split these? - these extensions are based on Orchard (https://github.com/OrchardCMS/OrchardCore)
-// With permission from the main author (https://github.com/sebastienros)
+﻿// These extensions are based on Orchard (https://github.com/OrchardCMS/OrchardCore)
+// BSD 3 - Clause License
+//  https://opensource.org/licenses/BSD-3-Clause
+//
+// Copyright(c).NET Foundation. All rights reserved.
 
 using System;
 using System.Collections.Generic;
