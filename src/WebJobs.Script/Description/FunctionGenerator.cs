@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functions == null)
             {
-                throw new ArgumentNullException("functions");
+                throw new ArgumentNullException(nameof(functions));
             }
 
             AssemblyName assemblyName = new AssemblyName(functionAssemblyName);

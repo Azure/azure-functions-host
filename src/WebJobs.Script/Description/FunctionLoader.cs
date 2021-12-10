@@ -11,7 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     internal sealed class FunctionLoader<T> : IDisposable
     {
-        private readonly ReaderWriterLockSlim _functionValueLoaderLock = new ReaderWriterLockSlim();
         private readonly Func<CancellationToken, Task<T>> _valueFactory;
         private FunctionValueLoader<T> _functionValueLoader;
         private bool _disposed = false;
@@ -24,31 +23,13 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public void Reset()
         {
-            _functionValueLoaderLock.EnterWriteLock();
-            try
-            {
-                _functionValueLoader?.Dispose();
-
-                _functionValueLoader = new FunctionValueLoader<T>(_valueFactory, new CancellationTokenSource());
-            }
-            finally
-            {
-                _functionValueLoaderLock.ExitWriteLock();
-            }
+            var old = Interlocked.Exchange(ref _functionValueLoader, new FunctionValueLoader<T>(_valueFactory, new CancellationTokenSource()));
+            old?.Dispose();
         }
 
         public async Task<T> GetFunctionTargetAsync(int attemptCount = 0)
         {
-            FunctionValueLoader<T> currentValueLoader;
-            _functionValueLoaderLock.EnterReadLock();
-            try
-            {
-                currentValueLoader = _functionValueLoader;
-            }
-            finally
-            {
-                _functionValueLoaderLock.ExitReadLock();
-            }
+            FunctionValueLoader<T> currentValueLoader = _functionValueLoader;
 
             try
             {

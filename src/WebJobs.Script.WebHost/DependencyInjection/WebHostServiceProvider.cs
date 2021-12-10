@@ -12,7 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
     {
         private static readonly Rules _defaultContainerRules;
         private readonly Container _container;
-        private ScopedResolver _currentResolver;
 
         static WebHostServiceProvider()
         {
@@ -24,10 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public WebHostServiceProvider(IServiceCollection descriptors)
         {
-            if (descriptors == null)
-            {
-                throw new ArgumentNullException(nameof(descriptors));
-            }
+            ArgumentNullException.ThrowIfNull(descriptors);
 
             // preferInterpretation will be set to true to significanly improve cold start in consumption mode
             // it will be set to false for premium and appservice plans to make sure throughput is not impacted
@@ -37,8 +33,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             _container.Populate(descriptors);
             _container.UseInstance<IServiceProvider>(this);
             _container.UseInstance<IServiceScopeFactory>(this);
-
-            _currentResolver = new ScopedResolver(_container);
         }
 
         public object GetService(Type serviceType)

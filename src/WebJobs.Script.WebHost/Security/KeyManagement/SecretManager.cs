@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     HostSecrets hostSecrets;
                     try
                     {
-                        _logger.LogDebug($"Loading host secrets");
+                        _logger.LogDebug("Loading host secrets");
 
                         hostSecrets = await LoadSecretsAsync<HostSecrets>();
                         if (hostSecrets == null)
@@ -649,6 +649,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _functionSecrets.Clear();
                 }
             }
+        }
+
+        public void ClearCache()
+        {
+            _authorizationCache.Clear();
+            _hostSecrets = null;
+            _functionSecrets.Clear();
         }
 
         private async Task<string> AnalyzeSnapshots(string[] secretBackups)
