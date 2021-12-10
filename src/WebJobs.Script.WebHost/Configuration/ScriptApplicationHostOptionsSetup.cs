@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.IsFileSystemReadOnly = IsZipDeployment(out bool isScmRunFromPackage);
+            options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
         }
 
