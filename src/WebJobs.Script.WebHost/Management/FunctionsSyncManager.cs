@@ -372,12 +372,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 result.Add("concurrency", concurrencyPayload);
             }
 
-            JObject kedaPayload = GetHostJsonSection(jsonPayload, "kedaScalingAlgorithm", _logger);
-            if (kedaPayload != null)
-            {
-                result.Add("kedaScalingAlgorithm", kedaPayload);
-            }
-
             if (_secretManagerProvider.SecretsEnabled)
             {
                 // Add functions secrets to the payload
