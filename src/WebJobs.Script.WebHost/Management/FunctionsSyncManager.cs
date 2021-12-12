@@ -126,11 +126,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // short circuit before doing any work in background sync
                     // cases where we need to check/update hash but don't have
                     // storage access in non-Kubernetes environments.
-
-                    // Glenna's change
-                    //  result.Success = false;
-                    //  result.Error = "[GLENNA] Cannot get hash blob. Returning early.";
-                    //  _logger.LogWarning(result.Error);   // TODO check if it is really need
                     return result;
                 }
 
@@ -141,14 +136,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     // We've seen error cases where a site temporarily gets into a situation
                     // where it's site content is empty. Doing the empty sync can cause the app
                     // to go idle when it shouldn't.
-                     // Glenna's change
-                    //    result.Success = false;
-                    _logger.LogDebug("No functions found. Skipping Sync operation."); // TODO check if it is really need
-                    // _logger.LogWarning("[GLENNA] No functions found. Skipping Sync operation."); // TODO check if it is really need
+                    _logger.LogDebug("No functions found. Skipping Sync operation.");
                     return result;
                 }
-
-                // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
 
                 bool shouldSyncTriggers = true;
                 string newHash = null;
@@ -160,7 +150,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    // _logger.LogTrace($"[GLENNA] Was able to get some payload back. Count={payload.Count}"); // TODO check if it is really need
                     var (success, error) = await SetTriggersAsync(payload.Content);
                     if (success && newHash != null)
                     {
@@ -168,11 +157,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     }
                     result.Success = success;
                     result.Error = error;
-                }
-                else
-                {
-                    // _logger.LogTrace($"[GLENNA] ShouldSyncTriggers=false. isBackgroundSync={isBackgroundSync}, " +
-                    //     $"newHash != null = {newHash != null}");  // TODO check if it is really need
                 }
             }
             catch (Exception ex)
@@ -341,7 +325,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             if (!ArmCacheEnabled)
             {
-                // _logger.LogWarning($"[GLENNA] Arm cache is not enabled... umm gonna keep going anyway for testing"); // TODO check if it is really need
+                // TODO: Discuss if we need other sections for Arm cache is not enabled.
+                // extended format is disabled - just return triggers
+                return new SyncTriggersPayload
+                {
+                    Content = JsonConvert.SerializeObject(triggersArray),
+                    Count = count
+                };
             }
 
             // Add triggers to the payload
@@ -358,7 +348,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // TEMP: refactor this code to properly add extensions in all scenario(#7394)
             // Add the host.json extensions to the payload
 
-            // Glenna testing: Include the extensions payload for all apps
             JToken hostJsonPayload = _configuration.Convert("AzureFunctionsJobHost");
             JToken extensionsPayload = hostJsonPayload["extensions"];
             if (extensionsPayload != null)

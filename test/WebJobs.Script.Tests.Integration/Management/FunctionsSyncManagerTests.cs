@@ -328,15 +328,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private void VerifyResultWithCacheOff()
         {
             string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload();
-            var result = JObject.Parse(_contentBuilder.ToString()); // TODO: Originally It was array by ArmCachedEnabled feature.
-            var triggers = result["triggers"];
+            var triggers = JArray.Parse(_contentBuilder.ToString());
             Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(x => x.FormattedMessage.Contains("Content=")).ToList();
-            var log = logs.FirstOrDefault();
-           
-            int startIdx = log.FormattedMessage.IndexOf("\"triggers\":") + 11;
-            int endIdx = log.FormattedMessage.LastIndexOf("],\"functions\":")+1;
+            var log = logs[0];
+            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
+            int endIdx = log.FormattedMessage.LastIndexOf(')');
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             Assert.Equal(expectedSyncTriggersPayload, triggersLog);
         }
