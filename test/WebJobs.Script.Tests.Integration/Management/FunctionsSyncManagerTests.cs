@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly StringBuilder _contentBuilder;
         private readonly MockHttpHandler _mockHttpHandler;
         private readonly TestLoggerProvider _loggerProvider;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
@@ -86,8 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             ResetMockFileSystem();
 
             _loggerProvider = new TestLoggerProvider();
-            var loggerFactory = new LoggerFactory();
-            loggerFactory.AddProvider(_loggerProvider);
+            _loggerFactory = new LoggerFactory();
+            _loggerFactory.AddProvider(_loggerProvider);
             _contentBuilder = new StringBuilder();
             _mockHttpHandler = new MockHttpHandler(_contentBuilder);
             var httpClientFactory = TestHelpers.CreateHttpClientFactory(_mockHttpHandler);
@@ -138,21 +140,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
-      //      var disposableMock = new Mock<IDisposable>();
-      //      disposableMock.Setup(p => p.Dispose());
-            var _metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
-            //        _metricsLogger.Setup(p => p.LatencyEvent(It.IsAny<string>(), It.IsAny<string>())).Returns(disposableMock.Object);
-            _metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
-            _metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
-            var configuration = ScriptSettingsManager.BuildDefaultConfigration(_hostOptions, _mockEnvironment.Object, loggerFactory, _metricsLogger.Object);
+            var configuration = GetConfiguration();
 
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
-            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
+            var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
 
             _scriptHostManager = new TestScriptHostService(configuration);
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
 
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, _loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
+        }
+
+        private IConfiguration GetConfiguration()
+        {
+            var metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
+            metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
+            metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
+            return ScriptSettingsManager.BuildDefaultConfigration(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
@@ -163,9 +167,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
         }
 
-        private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
+        private void ResetConfiguraiton()
         {
-            var fileSystem = CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent);
+            _functionsSyncManager.Configuration = GetConfiguration();
+        }
+
+        private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null, bool isDurable = true)
+        {
+            IFileSystem fileSystem = isDurable ? CreateFileSystem(_hostOptions, hostJsonContent, extensionsJsonContent) : CreateFileSystemWithHttpTrigger(_hostOptions, hostJsonContent, extensionsJsonContent);
             FileUtility.Instance = fileSystem;
         }
 
@@ -286,16 +295,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("aaa", (string)function1Secrets["secrets"]["TestFunctionKey1"]);
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
-            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
-
-            var log = logs[0];
-            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
-            int endIdx = log.FormattedMessage.LastIndexOf(')');
-            var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
-            var logObject = JObject.Parse(triggersLog);
-
+            var (logObject, triggersLog) = GetSyncTriggerPayloadLogWithTuple();
             Assert.Equal(expectedSyncTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
+        }
+
+        private void VerifyResultWithSections(string concurrencyPayload = null, string extensionsPayload = null)
+        {
+            var result = JObject.Parse(_contentBuilder.ToString());
+            var concurrency = result["concurrency"];
+            var extensions = result["extensions"];
+
+            if (concurrencyPayload != null)
+            {
+                var concurrencyString = concurrency.ToString(Formatting.None);
+                Assert.Equal(concurrencyPayload, concurrencyString);
+            } else
+            {
+                Assert.Null(concurrency);
+            }
+
+            if (extensionsPayload != null)
+            {
+                var extensionsString = extensions.ToString(Formatting.None);
+                Assert.Equal(extensionsPayload, extensionsString);
+            } else
+            {
+                Assert.Null(extensions);
+            }
         }
 
         private void VerifyResultWithCacheOff()
@@ -312,6 +339,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             int endIdx = log.FormattedMessage.LastIndexOf("],\"functions\":")+1;
             var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
             Assert.Equal(expectedSyncTriggersPayload, triggersLog);
+        }
+
+        private Tuple<JObject, string> GetSyncTriggerPayloadLogWithTuple()
+        {
+            var payloadLog = GetSyncTriggerPayloadLog();
+            return new (JObject.Parse(payloadLog), payloadLog);
+        }
+
+        private JObject GetSyncTriggerPayloadLogWithJObject()
+        {
+            return JObject.Parse(GetSyncTriggerPayloadLog());
+        }
+
+        private string GetSyncTriggerPayloadLog()
+        {
+            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).ToList();
+
+            var log = logs[0];
+            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
+            int endIdx = log.FormattedMessage.LastIndexOf(')');
+            return log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
         }
 
         [Fact]
@@ -592,13 +640,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
-                var durableConfig = new JObject();
-
-                durableConfig["hubName"] = "DurableTask";
-
-                var azureStorageConfig = new JObject();
-                azureStorageConfig["connectionStringName"] = "DurableConnection";
-                durableConfig["storageProvider"] = azureStorageConfig;
+                var durableConfig = GetDurableExtensionsSection();
 
                 var hostConfig = GetHostConfig(durableConfig, useBundles: false);
 
@@ -614,6 +656,106 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection");
             }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_Concurrency_And_Extension_Posted()
+        {
+            using(var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var concurrencyConifg = GetConcurrencySection();
+
+                // extension section is required mainly for Durable usage. 
+                var durableConfig = GetDurableExtensionsSection();
+
+                // HostJsonFileConfigrationProvider validate the host.json format. It requires version section.
+                var hostConfig = GetHostConfig(durableConfig: durableConfig, useBundles: false, concurrencyConfig: concurrencyConifg, version: "2.0");
+
+                // SyncTriggerPayload extension/concurrency section requires resetConfiguration as true
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0", resetConfiguration: true);
+
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                VerifyResultWithSections(concurrencyPayload: GetExpectedConcurrencyPayload(), extensionsPayload: GetExpectedExtensionPayload());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_Concurrency_Missing_Posted()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                // extension section is required mainly for Durable usage. 
+                var durableConfig = GetDurableExtensionsSection();
+
+                // HostJsonFileConfigrationProvider validate the host.json format. It requires version section.
+                var hostConfig = GetHostConfig(durableConfig: durableConfig, useBundles: false, version: "2.0");
+
+                // SyncTriggerPayload extension/concurrency section requires resetConfiguration as true
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0", resetConfiguration: true);
+
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                VerifyResultWithSections(concurrencyPayload: null, extensionsPayload: GetExpectedExtensionPayload());
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_Extensions_Missing_Posted()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var concurrency = GetConcurrencySection();
+
+                // HostJsonFileConfigrationProvider validate the host.json format. It requires version section.
+                var hostConfig = GetHostConfig(durableConfig: null, useBundles: false, version: "2.0", concurrencyConfig: concurrency);
+
+                SetupHttpTrigger(hostConfig.ToString());
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                VerifyResultWithSections(concurrencyPayload: GetExpectedConcurrencyPayload(), extensionsPayload: null);
+            }
+        }
+
+        private JObject GetDurableExtensionsSection()
+        {
+            var durableConfig = new JObject();
+
+            durableConfig["hubName"] = "DurableTask";
+
+            var azureStorageConfig = new JObject();
+            azureStorageConfig["connectionStringName"] = "DurableConnection";
+            durableConfig["storageProvider"] = azureStorageConfig;
+            return durableConfig;
+        }
+
+        private JObject GetConcurrencySection()
+        {
+            var concurrencyConifg = new JObject();
+            concurrencyConifg["dynamicConcurrencyEnabled"] = true;
+            concurrencyConifg["snapshotPersistenceEnabled"] = true;
+            return concurrencyConifg;
+        }
+
+
+
+        private string GetExpectedConcurrencyPayload()
+        {
+            return "{\"dynamicConcurrencyEnabled\":\"True\",\"snapshotPersistenceEnabled\":\"True\"}";
+        }
+
+        private string GetExpectedExtensionPayload()
+        {
+            return "{\"durableTask\":{\"hubName\":\"DurableTask\",\"storageProvider\":{\"connectionStringName\":\"DurableConnection\"}}}";
         }
 
         [Fact]
@@ -653,15 +795,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal(errorMessage, messages[0].Message);
         }
 
-        private void SetupDurableExtension(string hostJson, string durableExtensionJsonVersion)
+        private void SetupDurableExtension(string hostJson, string durableExtensionJsonVersion, bool resetConfiguration = false)
         {
             string extensionJson = durableExtensionJsonVersion != null ? GetExtensionsJson(durableExtensionJsonVersion) : null;
             ResetMockFileSystem(hostJsonContent: hostJson, extensionsJsonContent: extensionJson);
+            if (resetConfiguration)
+            {
+                // This operation update the IConfiguration Setup of FunctionSyncManager.
+                // If you change the host.json payload and want to test extensions/concurrency section on the SyncTrigger payload
+                // You need to update the Mock behavior by the latest FileUtils settings.
+                ResetConfiguraiton();
+            }
         }
 
-        private JObject GetHostConfig(JObject durableConfig, bool useBundles = false)
+        private void SetupHttpTrigger(string hostJson)
+        {
+            ResetMockFileSystem(hostJsonContent: hostJson);
+            ResetConfiguraiton();
+        }
+
+        private JObject GetHostConfig(JObject durableConfig, bool useBundles = false, JObject concurrencyConfig = null, string version = null)
         {
             var extensionsConfig = new JObject();
+
             if (durableConfig != null)
             {
                 extensionsConfig.Add("durableTask", durableConfig);
@@ -672,12 +828,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "extensions", extensionsConfig }
             };
 
+            if (version != null)
+            {
+                hostConfig["version"] = version;
+            }
+
             if (useBundles)
             {
                 var extensionBundleConfig = new JObject();
                 extensionBundleConfig["id"] = "Microsoft.Azure.Functions.ExtensionBundle";
                 extensionBundleConfig["version"] = "[2.*, 3.0.0)";
                 hostConfig["extensionBundle"] = extensionBundleConfig;
+            }
+
+            if (concurrencyConfig != null)
+            {
+                hostConfig["concurrency"] = concurrencyConfig;
             }
 
             return hostConfig;
@@ -925,6 +1091,107 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 return new MemoryStream(Encoding.UTF8.GetBytes(function3));
             });
             fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function3.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            {
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
+            });
+
+            return fileSystem.Object;
+        }
+
+        private IFileSystem CreateFileSystemWithHttpTrigger(ScriptApplicationHostOptions hostOptions, string hostJsonContent = null, string extensionsJsonContent = null)
+        {
+            var rootPath = hostOptions.ScriptPath;
+            string testDataPath = hostOptions.TestDataPath;
+
+            var fullFileSystem = new FileSystem();
+            var fileSystem = new Mock<IFileSystem>();
+            var fileBase = new Mock<FileBase>();
+            var dirBase = new Mock<DirectoryBase>();
+
+            fileSystem.SetupGet(f => f.Path).Returns(fullFileSystem.Path);
+            fileSystem.SetupGet(f => f.File).Returns(fileBase.Object);
+
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, "host.json"))).Returns(true);
+
+            var defaultHostConfig = new JObject
+            {
+                { "version", "2.0" },
+            };
+            hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            {
+                hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
+                var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
+                testHostJsonStream.Position = 0;
+                return testHostJsonStream;
+            });
+
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"host.json"))).Returns(() =>
+            {
+                return hostJsonContent ?? defaultHostConfig.ToString();
+            });
+
+            fileBase.Setup(f => f.WriteAllText(Path.Combine(rootPath, @"host.json"), It.IsAny<string>())).Callback((string path, string contents) =>
+            {
+                // If you need to validate WriteAll, write logic in here.
+            });
+
+            if (extensionsJsonContent != null)
+            {
+                string extensionJsonPath = Path.Combine(Path.Combine(rootPath, "bin"), "extensions.json");
+                fileBase.Setup(f => f.Exists(extensionJsonPath)).Returns(true);
+                var testExtensionsJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(extensionsJsonContent));
+                testExtensionsJsonStream.Position = 0;
+                fileBase.Setup(f => f.Open(extensionJsonPath, It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testExtensionsJsonStream);
+            }
+
+            fileSystem.SetupGet(f => f.Directory).Returns(dirBase.Object);
+            dirBase.Setup(d => d.Exists(rootPath)).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, "bin"))).Returns(true);
+            dirBase.Setup(d => d.Exists(Path.Combine(rootPath, @"function1"))).Returns(true);
+            dirBase.Setup(d => d.EnumerateDirectories(rootPath))
+                .Returns(() =>
+                {
+                    if (_emptyContent)
+                    {
+                        return new string[0];
+                    }
+                    else
+                    {
+                        return new[]
+                        {
+                            Path.Combine(rootPath, "bin"),
+                            Path.Combine(rootPath, "function1"),
+                        };
+                    }
+                });
+
+            _function1 = @"{
+  ""scriptFile"": ""main.py"",
+  ""disabled"": false,
+  ""bindings"": [
+    {
+      ""authLevel"": ""anonymous"",
+      ""type"": ""httpTrigger"",
+      ""direction"": ""in"",
+      ""name"": ""req""
+    },
+    {
+      ""type"": ""http"",
+      ""direction"": ""out"",
+      ""name"": ""$return""
+    }
+  ]
+}";
+ 
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\function.json"))).Returns(true);
+            fileBase.Setup(f => f.Exists(Path.Combine(rootPath, @"function1\main.py"))).Returns(true);
+            fileBase.Setup(f => f.ReadAllText(Path.Combine(rootPath, @"function1\function.json"))).Returns(_function1);
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"function1\function.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            {
+                return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
+            });
+            fileBase.Setup(f => f.Open(Path.Combine(testDataPath, "function1.dat"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
             {
                 return new MemoryStream(Encoding.UTF8.GetBytes(_function1));
             });

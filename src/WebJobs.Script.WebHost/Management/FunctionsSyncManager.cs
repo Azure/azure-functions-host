@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
         private readonly ISecretManagerProvider _secretManagerProvider;
-        private readonly IConfiguration _configuration;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
         private readonly IEnvironment _environment;
@@ -62,6 +61,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
+
+        //Remove readonly for Integration Testing
+        private IConfiguration _configuration;
 
         private BlobClient _hashBlobClient;
 
@@ -78,6 +80,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
+        }
+
+        // Do not use in production. A method for testability.
+        internal IConfiguration Configuration
+        {
+            set
+            {
+                _configuration = value;
+            }
         }
 
         internal bool ArmCacheEnabled
