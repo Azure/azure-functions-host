@@ -68,6 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     }
                     else
                     {
+                        // If worker denies indexing then falling back to the host for Indexing
                         _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
                     }
                 }
