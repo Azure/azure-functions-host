@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class CacheMetadataResolver : MetadataReferenceResolver
     {
         private readonly MetadataReferenceResolver _innerResolver;
-        private static Dictionary<string, ImmutableArray<PortableExecutableReference>> _referenceCache = new Dictionary<string, ImmutableArray<PortableExecutableReference>>();
+        private static readonly Dictionary<string, ImmutableArray<PortableExecutableReference>> _referenceCache = new Dictionary<string, ImmutableArray<PortableExecutableReference>>();
 
         public CacheMetadataResolver(MetadataReferenceResolver innerResolver)
         {
