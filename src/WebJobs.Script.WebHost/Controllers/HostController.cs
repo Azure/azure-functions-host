@@ -105,7 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             return Ok(status);
         }
 
-        [HttpGet]
         [HttpPost]
         [Route("admin/host/drain")]
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
@@ -132,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
                                         _drainModeSemaphore.Release();
                                     });
-            return Ok();
+            return Accepted();
         }
 
         [HttpGet]
