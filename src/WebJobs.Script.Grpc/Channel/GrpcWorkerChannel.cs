@@ -491,44 +491,42 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var functions = new List<RawFunctionMetadata>();
 
-            if (functionMetadataResponse.UseDefaultMetadataIndexing == true)
+            if (functionMetadataResponse.UseDefaultMetadataIndexing == false)
             {
-                return;
-            }
-
-            foreach (var metadata in functionMetadataResponse.FunctionMetadataResults)
-            {
-                if (metadata != null)
+                foreach (var metadata in functionMetadataResponse.FunctionMetadataResults)
                 {
-                    if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
+                    if (metadata != null)
                     {
-                        _workerChannelLogger.LogError($"Worker failed to index function {metadata.Name}");
-                        _metadataRequestErrors[metadata.Name] = metadataRequestEx;
+                        if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
+                        {
+                            _workerChannelLogger.LogError($"Worker failed to index function {metadata.Name}");
+                            _metadataRequestErrors[metadata.Name] = metadataRequestEx;
+                        }
+
+                        var functionMetadata = new FunctionMetadata()
+                        {
+                            FunctionDirectory = metadata.Directory,
+                            ScriptFile = metadata.ScriptFile,
+                            EntryPoint = metadata.EntryPoint,
+                            Name = metadata.Name
+                        };
+
+                        functionMetadata.SetFunctionId(metadata.Name);
+
+                        var bindings = new List<string>();
+                        foreach (string binding in metadata.RawBindings)
+                        {
+                            bindings.Add(binding);
+                        }
+
+                        functions.Add(new RawFunctionMetadata()
+                        {
+                            Metadata = functionMetadata,
+                            Bindings = bindings,
+                            RetryOptions = metadata.RetryOptions,
+                            ConfigurationSource = metadata.ConfigSource
+                        });
                     }
-
-                    var functionMetadata = new FunctionMetadata()
-                    {
-                        FunctionDirectory = metadata.Directory,
-                        ScriptFile = metadata.ScriptFile,
-                        EntryPoint = metadata.EntryPoint,
-                        Name = metadata.Name
-                    };
-
-                    functionMetadata.SetFunctionId(metadata.Name);
-
-                    var bindings = new List<string>();
-                    foreach (string binding in metadata.RawBindings)
-                    {
-                        bindings.Add(binding);
-                    }
-
-                    functions.Add(new RawFunctionMetadata()
-                    {
-                        Metadata = functionMetadata,
-                        Bindings = bindings,
-                        RetryOptions = metadata.RetryOptions,
-                        ConfigurationSource = metadata.ConfigSource
-                    });
                 }
             }
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
