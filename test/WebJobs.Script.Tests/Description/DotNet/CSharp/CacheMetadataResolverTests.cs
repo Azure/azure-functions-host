@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Description.DotNet.CSharp
     public class CacheMetadataResolverTests
     {
         [Fact]
-        public async Task Resolver_IsThreadSafe()
+        public async Task ResolveReference_IsThreadSafe()
         {
             var innerMock = new Mock<MetadataReferenceResolver>();
             innerMock
