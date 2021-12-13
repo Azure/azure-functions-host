@@ -48,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly IScriptEventManager _eventManager;
 
         private IHost _host;
+        private ScriptHostState _state;
         private CancellationTokenSource _startupLoopTokenSource;
         private int _hostStartCount;
         private bool _disposed = false;
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             set
             {
-                _logger?.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
+                _logger.ActiveHostChanging(GetHostInstanceId(_host), GetHostInstanceId(value));
 
                 var previousHost = _host;
                 _host = value;
@@ -133,7 +134,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public IServiceProvider Services => ActiveHost?.Services;
 
-        public ScriptHostState State { get; private set; }
+        public ScriptHostState State
+        {
+            get
+            {
+                return _state;
+            }
+
+            private set
+            {
+                if (_state != value)
+                {
+                    _logger.HostStateChanged(_state, value);
+                }
+
+                _state = value;
+            }
+        }
 
         public Exception LastError { get; private set; }
 
