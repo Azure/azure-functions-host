@@ -30,8 +30,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             ILoggerFactory loggerFactory)
             : this(metadataManager, metrics)
         {
-            ArgumentNullException.ThrowIfNull(configuration, nameof(configuration));
-            ArgumentNullException.ThrowIfNull(loggerFactory, nameof(loggerFactory));
+            ArgumentNullException.ThrowIfNull(configuration);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
 
             string accountConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Dashboard);
             if (accountConnectionString != null)

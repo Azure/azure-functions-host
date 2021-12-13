@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))
             {
-                throw new ArgumentNullException($"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
+                throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
             }
 
             functionName = functionName?.ToLowerInvariant();
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))
             {
-                throw new ArgumentNullException($"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
+                throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
             }
 
             functionName = functionName?.ToLowerInvariant();
