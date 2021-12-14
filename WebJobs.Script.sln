@@ -50,6 +50,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Samples", "sample\Samples.csproj", "{F381CDD6-50BD-48BC-B292-230C52589A30}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{D5F77934-E468-4EE7-82F8-3B8149591174}"
+	ProjectSection(SolutionItems) = preProject
+		benchmarks\README.md = benchmarks\README.md
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Script.Benchmarks", "benchmarks\WebJobs.Script.Benchmarks\Microsoft.Azure.WebJobs.Script.Benchmarks.csproj", "{766DE3D5-4FB1-4602-9BB5-3779EECC232D}"
 EndProject
