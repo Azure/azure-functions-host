@@ -24,6 +24,7 @@ using Moq;
 using Moq.Protected;
 using Xunit;
 using Xunit.Sdk;
+using static Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.MetricsEventManager;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
@@ -129,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger.LogEvent(eventName);
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
-            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
+            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single().Value;
             Assert.Equal(expectedEventName, evt.EventName);  // case is normalized to lower
             Assert.Equal(1, evt.Count);
             Assert.Equal(0, evt.Average);
@@ -151,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Count = 1
             };
 
-            _metricsEventManager.QueuedEvents[initialEvent.EventName] = initialEvent;
+            _metricsEventManager.QueuedEvents[new EventKey(initialEvent.EventName, null)] = new Lazy<SystemMetricEvent>(() => initialEvent);
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
 
             for (int i = 0; i < 10; i++)
@@ -189,20 +190,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
 
-            string key = MetricsEventManager.GetAggregateKey("Event1", "Function1");
-            var metricEvent = _metricsEventManager.QueuedEvents[key];
+            var key = new EventKey("Event1", "Function1");
+            var metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(10, metricEvent.Count);
             Assert.Equal("event1", metricEvent.EventName);
             Assert.Equal("Function1", metricEvent.FunctionName);
 
-            key = MetricsEventManager.GetAggregateKey("Event1", "Function2");
-            metricEvent = _metricsEventManager.QueuedEvents[key];
+            key = new EventKey("Event1", "Function2");
+            metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(5, metricEvent.Count);
             Assert.Equal("event1", metricEvent.EventName);
             Assert.Equal("Function2", metricEvent.FunctionName);
 
-            key = MetricsEventManager.GetAggregateKey("Event3");
-            metricEvent = _metricsEventManager.QueuedEvents[key];
+            key = new EventKey("Event3", null);
+            metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(15, metricEvent.Count);
             Assert.Equal("event3", metricEvent.EventName);
             Assert.Null(metricEvent.FunctionName);
@@ -273,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _metricsLogger.EndEvent(eventHandle);
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
 
-            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single();
+            SystemMetricEvent evt = _metricsEventManager.QueuedEvents.Values.Single().Value;
             Assert.Equal("event1", evt.EventName);
             Assert.Equal(1, evt.Count);
             Assert.True(evt.Maximum > 0);
@@ -290,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
-            var evt = _metricsEventManager.QueuedEvents.Single().Value;
+            var evt = _metricsEventManager.QueuedEvents.Single().Value.Value;
             Assert.Equal("event1", evt.EventName);
             Assert.Equal(1, evt.Count);
         }
@@ -310,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Count = 1
             };
 
-            _metricsEventManager.QueuedEvents[initialEvent.EventName] = initialEvent;
+            _metricsEventManager.QueuedEvents[new EventKey(initialEvent.EventName, null)] = new Lazy<SystemMetricEvent>(() => initialEvent);
             Assert.Equal(1, _metricsEventManager.QueuedEvents.Count);
 
             for (int i = 0; i < 10; i++)
@@ -362,20 +363,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(3, _metricsEventManager.QueuedEvents.Count);
 
-            string key = MetricsEventManager.GetAggregateKey("Event1", "Function1");
-            metricEvent = _metricsEventManager.QueuedEvents[key];
+            var key = new EventKey("Event1", "Function1");
+            metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(10, metricEvent.Count);
             Assert.Equal("event1", metricEvent.EventName);
             Assert.Equal("Function1", metricEvent.FunctionName);
 
-            key = MetricsEventManager.GetAggregateKey("Event1", "Function2");
-            metricEvent = _metricsEventManager.QueuedEvents[key];
+            key = new EventKey("Event1", "Function2");
+            metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(5, metricEvent.Count);
             Assert.Equal("event1", metricEvent.EventName);
             Assert.Equal("Function2", metricEvent.FunctionName);
 
-            key = MetricsEventManager.GetAggregateKey("Event2");
-            metricEvent = _metricsEventManager.QueuedEvents[key];
+            key = new EventKey("Event2", null);
+            metricEvent = _metricsEventManager.QueuedEvents[key].Value;
             Assert.Equal(15, metricEvent.Count);
             Assert.Equal("event2", metricEvent.EventName);
             Assert.Null(metricEvent.FunctionName);
