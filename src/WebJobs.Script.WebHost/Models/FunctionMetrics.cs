@@ -14,39 +14,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
     public readonly struct FunctionMetrics
     {
-        private readonly string _functionName;
-        private readonly ExecutionStage _executionStage;
-        private readonly long _executionTimeInMS;
-
         public FunctionMetrics(string functionName, ExecutionStage executionStage, long executionTimeInMS)
         {
-            _functionName = functionName;
-            _executionStage = executionStage;
-            _executionTimeInMS = executionTimeInMS;
+            FunctionName = functionName;
+            ExecutionStage = executionStage;
+            ExecutionTimeInMS = executionTimeInMS;
         }
 
-        public string FunctionName
-        {
-            get
-            {
-                return _functionName;
-            }
-        }
+        public string FunctionName { get; }
 
-        public ExecutionStage ExecutionStage
-        {
-            get
-            {
-                return _executionStage;
-            }
-        }
+        public ExecutionStage ExecutionStage { get; }
 
-        public long ExecutionTimeInMS
-        {
-            get
-            {
-                return _executionTimeInMS;
-            }
-        }
+        public long ExecutionTimeInMS { get; }
     }
 }
