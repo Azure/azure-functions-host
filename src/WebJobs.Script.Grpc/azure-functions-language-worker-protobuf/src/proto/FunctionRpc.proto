@@ -362,10 +362,10 @@ message RetryOptions {
 // Host retry strategy
 enum RetryStrategy {
   // 
-  ExponentialBackoff = 1;
+  ExponentialBackoff = 0;
 
   // 
-  FixedDelay = 2;
+  FixedDelay = 1;
 }
 
 // Host requests worker to cancel invocation
