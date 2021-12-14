@@ -15,25 +15,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
     {
         private readonly IFunctionMetadataManager _metadataManager;
         private readonly IMetricsLogger _metrics;
-        private readonly IHostIdProvider _hostIdProvider;
         private readonly IConfiguration _configuration;
         private readonly ILoggerFactory _loggerFactory;
-        private readonly IDelegatingHandlerProvider _delegatingHandlerProvider;
 
-        public FunctionInstanceLogCollectorProvider(IFunctionMetadataManager metadataManager, IMetricsLogger metrics,
-            IHostIdProvider hostIdProvider, IConfiguration configuration, ILoggerFactory loggerFactory, IDelegatingHandlerProvider delegatingHandlerProvider)
+        public FunctionInstanceLogCollectorProvider(IFunctionMetadataManager metadataManager, IMetricsLogger metrics, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
             _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-            _hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _delegatingHandlerProvider = delegatingHandlerProvider ?? throw new ArgumentNullException(nameof(delegatingHandlerProvider));
         }
 
         public IAsyncCollector<FunctionInstanceLogEntry> Create()
         {
-            return new FunctionInstanceLogger(_metadataManager, _metrics, _hostIdProvider, _configuration, _loggerFactory, _delegatingHandlerProvider);
+            return new FunctionInstanceLogger(_metadataManager, _metrics, _configuration, _loggerFactory);
         }
     }
 }

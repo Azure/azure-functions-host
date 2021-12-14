@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
 
@@ -56,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             var dirPath = Path.GetDirectoryName(typeof(HostProcessLauncher).Assembly.Location);
             var dirName = new DirectoryInfo(dirPath).Name;
 
-            string workingDir = Path.GetFullPath($@"..\..\..\..\..\src\WebJobs.Script.WebHost\bin\Debug\{dirName}\");
+            string workingDir = Path.Combine("..", "..", "..", "..", "..", "src", "WebJobs.Script.WebHost", "bin", "Debug", $"{dirName}");
+            workingDir = Path.GetFullPath(workingDir);
             string filePath = Path.Combine(workingDir, "Microsoft.Azure.WebJobs.Script.WebHost.exe");
 
             outputHelper?.WriteLine($"Test: {_testPath}");

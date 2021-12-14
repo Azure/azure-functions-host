@@ -1,0 +1,10 @@
+{
+    "configProperties": {
+    // Protect users from https://github.com/dotnet/runtime/pull/59716.
+    // Can be removed after running on .NET 6.0 GA
+    "Microsoft.Extensions.Configuration.BindSingleElementsToArray": false,
+
+    // Fix for https://github.com/dotnet/runtime/issues/56052
+      "System.Diagnostics.Tracing.EventSource.AllowDuplicateSourceNames": true
+    }
+}

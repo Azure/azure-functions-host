@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
                 }
                 catch (JsonReaderException ex)
                 {
-                    logger.LogError($"Failed to deserialize application performance counters. JSON Content: \"{json}\"", ex);
+                    logger.LogError(ex, "Failed to deserialize application performance counters. JSON Content: \"{json}\"", json);
                 }
             }
 

@@ -7,9 +7,9 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private static readonly JsonSerializer Serializer = JsonSerializer.Create(new JsonSerializerSettings());
 
-        public MeshServiceClient(HttpClient client, IEnvironment environment, ILogger<MeshServiceClient> logger)
+        public MeshServiceClient(IHttpClientFactory httpClientFactory, IEnvironment environment, ILogger<MeshServiceClient> logger)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"{nameof(PublishContainerActivity)}");
+                _logger.LogError(e, nameof(PublishContainerActivity));
             }
         }
 

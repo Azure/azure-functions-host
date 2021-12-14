@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
              };
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task ZipPackageFailure_DetectedOnSpecialization()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());
@@ -117,19 +117,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(1, logLines.Count(p => p.Contains("Starting language worker channel specialization")));
             Assert.Equal(3, logLines.Count(p => p.Contains($"Starting Host (HostId={_expectedHostId}")));
             Assert.Equal(6, logLines.Count(p => p.Contains($"Loading functions metadata")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"1 functions loaded")));
+            Assert.Equal(4, logLines.Count(p => p.Contains($"1 functions loaded")));
             Assert.Equal(2, logLines.Count(p => p.Contains($"0 functions loaded")));
-            Assert.Equal(3, logLines.Count(p => p.Contains($"Loading proxies metadata")));
-            Assert.Equal(3, logLines.Count(p => p.Contains("Initializing Azure Function proxies")));
-            Assert.Equal(2, logLines.Count(p => p.Contains($"1 proxies loaded")));
-            Assert.Equal(1, logLines.Count(p => p.Contains($"0 proxies loaded")));
             Assert.Contains("Generating 0 job function(s)", logLines);
 
             // Verify that the internal cache has reset
             Assert.NotSame(GetCachedTimeZoneInfo(), _originalTimeZoneInfoCache);
         }
 
-        [Fact]
+        [Fact(Skip = "https://github.com/Azure/azure-functions-host/issues/7805")]
         public async Task InitializeAsync_WithSpecializedSite_SkipsWarmupFunctionsAndLogs()
         {
             _settings.Add(EnvironmentSettingNames.AzureWebsiteInstanceId, Guid.NewGuid().ToString());

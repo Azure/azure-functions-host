@@ -15,12 +15,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
     public class JitPreparesTest
     {
-        [Theory]
+        [Theory(Skip = "Currently disabled in v4")]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]
         public void ColdStart_JitFailuresTest(string fileName, double threshold)
         {
-            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
+            var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
             var file = new FileInfo(path);
 

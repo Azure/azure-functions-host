@@ -3,25 +3,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Net.Security;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.KeyVault;
-using Microsoft.Azure.KeyVault.Models;
-using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.Azure.WebJobs.Script.IO;
 using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Rest.Azure;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -63,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))
             {
-                throw new ArgumentNullException($"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
+                throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
             }
 
             functionName = functionName?.ToLowerInvariant();
@@ -79,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             if (type == ScriptSecretsType.Function && string.IsNullOrEmpty(functionName))
             {
-                throw new ArgumentNullException($"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
+                throw new ArgumentNullException(nameof(functionName), $"{nameof(functionName)} cannot be null or empty with {nameof(type)} = {nameof(ScriptSecretsType.Function)}");
             }
 
             functionName = functionName?.ToLowerInvariant();

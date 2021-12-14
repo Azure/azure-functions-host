@@ -13,20 +13,20 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Microsoft.Azure.Storage.Blob;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Management.Models;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.WebJobs.Script.Tests;
-using Microsoft.Azure.Storage.Blob;
 using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Script.Models;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 {
@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // configure a mock webhook handler for the "test" extension
             Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>> mockHandler = new Mock<IAsyncConverter<HttpRequestMessage, HttpResponseMessage>>(MockBehavior.Strict);
             mockHandler.Setup(p => p.ConvertAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+                .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.OK));
             var handler = mockHandler.Object;
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("test", out handler)).Returns(true);
             _fixture.MockWebHookProvider.Setup(p => p.TryGetHandler("invalid", out handler)).Returns(false);
@@ -364,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string content = await response.Content.ReadAsStringAsync();
             JObject jsonContent = JObject.Parse(content);
 
-            Assert.Equal(8, jsonContent.Properties().Count());
+            Assert.Equal(9, jsonContent.Properties().Count());
             AssemblyFileVersionAttribute fileVersionAttr = typeof(HostStatus).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>();
             Assert.True(((string)jsonContent["id"]).Length > 0);
             string expectedVersion = fileVersionAttr.Version;
@@ -428,7 +428,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Null(functionStatus.Errors);
 
             // take host offline
-            await SetHostStateAsync("offline");
+            await SamplesTestHelpers.SetHostStateAsync(_fixture, "offline");
 
             // when testing taking the host offline doesn't seem to stop all
             // application services, so we issue a restart
@@ -459,7 +459,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await VerifyOfflineResponse(response);
 
             // bring host back online
-            await SetHostStateAsync("running");
+            await SamplesTestHelpers.SetHostStateAsync(_fixture, "running");
 
             await AwaitHostStateAsync(ScriptHostState.Running);
 
@@ -512,7 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(16, metadata.Length);
+            Assert.Equal(17, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
             Assert.Equal("https://somewebsite.azurewebsites.net/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
@@ -888,17 +888,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             return await _fixture.Host.HttpClient.SendAsync(request);
         }
 
-        private async Task SetHostStateAsync(string state)
-        {
-            var masterKey = await _fixture.Host.GetMasterKeyAsync();
-            var request = new HttpRequestMessage(HttpMethod.Put, "admin/host/state");
-            request.Content = new StringContent($"'{state}'");
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
-            var response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(response.StatusCode, HttpStatusCode.Accepted);
-        }
-
         private async Task<HttpResponseMessage> GetFunctionStatusAsync(string functionName)
         {
             var masterKey = await _fixture.Host.GetMasterKeyAsync();
@@ -963,7 +952,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public class TestFixture : EndToEndTestFixture
         {
             public TestFixture()
-                : base(Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
+                : base(Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "csharp"), "samples", RpcWorkerConstants.DotNetLanguageWorkerName)
             {
                 MockWebHookProvider = new Mock<IScriptWebHookProvider>(MockBehavior.Strict);
             }

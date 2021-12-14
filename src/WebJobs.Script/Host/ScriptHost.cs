@@ -32,6 +32,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -283,10 +284,15 @@ namespace Microsoft.Azure.WebJobs.Script
                 PreInitialize();
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
-                // Generate Functions
-                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata();
+                _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
 
-                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadataList);
+                // get worker config information and check to see if worker should index or not
+                var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
+
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, _environment);
+
+                // Generate Functions
+                IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
@@ -304,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         }
                     }
 
-                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, runtimeStack));
+                    _metricsLogger.LogEvent(string.Format(MetricEventNames.HostStartupRuntimeLanguage, Sanitizer.Sanitize(runtimeStack)));
 
                     Utility.LogAutorestGeneratedJsonIfExists(ScriptOptions.RootScriptPath, _logger);
                 }
@@ -313,15 +319,15 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
-
-                // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
-                // Dispatcher not needed for non-proxy codeless function.
-                // Disptacher needed for non-dotnet codeless functions
-                var filteredFunctionMetadata = functionMetadataList.Where(m => m.IsProxy() || !Utility.IsCodelessDotNetLanguageFunction(m));
-                await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
-
+                if (!workerIndexing)
+                {
+                    // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
+                    // Dispatcher not needed for codeless function.
+                    // Disptacher needed for non-dotnet codeless functions
+                    var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
+                    await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
+                }
                 GenerateFunctions(directTypes);
-
                 ScheduleFileSystemCleanup();
             }
         }
@@ -367,12 +373,22 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets metadata collection of functions and proxies configured.
+        /// Gets metadata collection of functions configured.
         /// </summary>
         /// <returns>A metadata collection of functions and proxies configured.</returns>
-        private IEnumerable<FunctionMetadata> GetFunctionsMetadata()
+        private IEnumerable<FunctionMetadata> GetFunctionsMetadata(bool workerIndexing)
         {
-            IEnumerable<FunctionMetadata> functionMetadata = _functionMetadataManager.GetFunctionMetadata();
+            IEnumerable<FunctionMetadata> functionMetadata;
+            if (workerIndexing)
+            {
+                _logger.LogInformation("Worker indexing is enabled");
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(forceRefresh: false, dispatcher: _functionDispatcher);
+            }
+            else
+            {
+                functionMetadata = _functionMetadataManager.GetFunctionMetadata(false);
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functionMetadata);
+            }
             foreach (var error in _functionMetadataManager.Errors)
             {
                 FunctionErrors.Add(error.Key, error.Value.ToArray());
@@ -567,15 +583,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         private void AddCodelessDescriptors(IEnumerable<FunctionMetadata> functionMetadata)
         {
-            if (functionMetadata.Any(m => m.IsProxy()))
-            {
-                _descriptorProviders.Add(new ProxyFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _loggerFactory));
-            }
-
-            // If we have a non-proxy codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
+            // If we have a codeless function, we need to add a .NET descriptor provider. But only if it wasn't already added.
             // At the moment, we are assuming that all codeless functions will have language as DotNetAssembly
             if (!_descriptorProviders.Any(d => d is DotNetFunctionDescriptorProvider)
-                && functionMetadata.Any(m => m.IsCodeless() && !m.IsProxy()))
+                && functionMetadata.Any(m => m.IsCodeless()))
             {
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
@@ -773,35 +784,29 @@ namespace Microsoft.Azure.WebJobs.Script
             var httpTrigger = function.HttpTriggerAttribute;
             if (httpTrigger != null)
             {
-                bool isProxy = function.Metadata != null && function.Metadata.IsProxy();
+                ValidateHttpFunction(function.Name, httpTrigger);
 
-                ValidateHttpFunction(function.Name, httpTrigger, isProxy);
-
-                if (!isProxy)
+                // prevent duplicate/conflicting routes for functions
+                foreach (var pair in httpFunctions)
                 {
-                    // prevent duplicate/conflicting routes for functions
-                    // proxy routes check is done in the proxy dll itself and proxies do not use routePrefix so should not check conflict with functions
-                    foreach (var pair in httpFunctions)
+                    if (HttpRoutesConflict(httpTrigger, pair.Value))
                     {
-                        if (HttpRoutesConflict(httpTrigger, pair.Value))
-                        {
-                            throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
-                        }
+                        throw new InvalidOperationException($"The route specified conflicts with the route defined by function '{pair.Key}'.");
                     }
                 }
 
                 if (httpFunctions.ContainsKey(function.Name))
                 {
-                    throw new InvalidOperationException($"The function or proxy name '{function.Name}' must be unique within the function app.");
+                    throw new InvalidOperationException($"The function name '{function.Name}' must be unique within the function app.");
                 }
 
                 httpFunctions.Add(function.Name, httpTrigger);
             }
         }
 
-        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger, bool isProxy = false)
+        internal static void ValidateHttpFunction(string functionName, HttpTriggerAttribute httpTrigger)
         {
-            if (string.IsNullOrWhiteSpace(httpTrigger.Route) && !isProxy)
+            if (string.IsNullOrWhiteSpace(httpTrigger.Route))
             {
                 // if no explicit route is provided, default to the function name
                 httpTrigger.Route = functionName;
@@ -841,7 +846,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (exception == null)
             {
-                throw new ArgumentNullException("exception");
+                throw new ArgumentNullException(nameof(exception));
             }
 
             // Note: We do not log to ILogger here as any error has already been logged.

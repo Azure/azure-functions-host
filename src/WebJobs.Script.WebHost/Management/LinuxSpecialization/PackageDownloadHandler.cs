@@ -26,11 +26,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly IMetricsLogger _metricsLogger;
 
-        public PackageDownloadHandler(HttpClient httpClient, IManagedIdentityTokenProvider managedIdentityTokenProvider,
+        public PackageDownloadHandler(IHttpClientFactory httpClientFactory, IManagedIdentityTokenProvider managedIdentityTokenProvider,
             IBashCommandHandler bashCommandHandler, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _httpClient = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

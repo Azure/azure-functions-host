@@ -2,11 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Options;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -86,6 +89,12 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
+        public static bool AzureFilesAppSettingsExist(this IEnvironment environment)
+        {
+            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesConnectionString)) &&
+                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
@@ -157,6 +166,17 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
+        /// Gets a value indicating whether the application is running in a Windows or Linux Consumption (dynamic)
+        /// App Service environment.
+        /// </summary>
+        /// <param name="environment">The environment to verify</param>
+        /// <returns><see cref="true"/> if running in a Windows or Linux Consumption App Service app; otherwise, false.</returns>
+        public static bool IsConsumptionSku(this IEnvironment environment)
+        {
+            return IsWindowsConsumption(environment) || IsLinuxConsumption(environment);
+        }
+
+        /// <summary>
         /// Returns true if the app is running on Virtual Machine Scale Sets (VMSS)
         /// </summary>
         public static bool IsVMSS(this IEnvironment environment)
@@ -191,11 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsDynamicSku(this IEnvironment environment)
         {
             return environment.IsConsumptionSku() || environment.IsWindowsElasticPremium();
-        }
-
-        public static bool IsConsumptionSku(this IEnvironment environment)
-        {
-            return environment.IsWindowsConsumption() || environment.IsLinuxConsumption();
         }
 
         /// <summary>
@@ -480,6 +495,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 return concurrencyEnabled && string.IsNullOrEmpty(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName));
             }
             return false;
+        }
+
+        public static HashSet<string> GetLanguageWorkerListToStartInPlaceholder(this IEnvironment environment)
+        {
+            string placeholderList = environment.GetEnvironmentVariableOrDefault(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, string.Empty);
+            var placeholderRuntimeSet = new HashSet<string>(placeholderList.Trim().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                placeholderRuntimeSet.Add(workerRuntime);
+            }
+            return placeholderRuntimeSet;
         }
     }
 }

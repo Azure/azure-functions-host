@@ -35,10 +35,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal(1, options.WatchDirectories.Count);
             Assert.Equal("node_modules", options.WatchDirectories.ElementAt(0));
 
-            Assert.Equal(3, options.WatchFiles.Count);
+            Assert.Equal(2, options.WatchFiles.Count);
             Assert.Contains("host.json", options.WatchFiles);
             Assert.Contains("function.json", options.WatchFiles);
-            Assert.Contains("proxies.json", options.WatchFiles);
 
             // File watching disabled
             settings[ConfigurationPath.Combine(ConfigurationSectionNames.JobHost, "fileWatchingEnabled")] = bool.FalseString;
@@ -68,10 +67,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             Assert.Equal("Shared", options.WatchDirectories.ElementAt(1));
             Assert.Equal("Tools", options.WatchDirectories.ElementAt(2));
 
-            Assert.Equal(5, options.WatchFiles.Count);
+            Assert.Equal(4, options.WatchFiles.Count);
             Assert.Contains("host.json", options.WatchFiles);
             Assert.Contains("function.json", options.WatchFiles);
-            Assert.Contains("proxies.json", options.WatchFiles);
             Assert.Contains("myFirstFile.ext", options.WatchFiles);
             Assert.Contains("mySecondFile.ext", options.WatchFiles);
         }
@@ -104,13 +102,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             //Assert.False(scriptConfig.HostConfig.AllowPartialHostStartup);
         }
 
-        [Fact]
-        public void Configure_AppliesDefaults_IfDynamic()
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public void Configure_AppliesDefaults_IfDynamic(bool isLinuxConsumption, bool isWindowsConsumption)
         {
             var settings = new Dictionary<string, string>();
 
             var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, "Dynamic");
+            if (isLinuxConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isWindowsConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            }
 
             var options = GetConfiguredOptions(settings, environment);
 

@@ -6,7 +6,6 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -79,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     // if we fail during specialization for whatever reason
                     // this is fatal, so we shutdown
-                    _logger.LogError(t.Exception, $"Specialization failed. Shutting down.");
+                    _logger.LogError(t.Exception, "Specialization failed. Shutting down.");
                     _applicationLifetime.StopApplication();
                 }
                 latencyEvent.Dispose();
@@ -202,9 +201,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             string content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.host.json");
             File.WriteAllText(Path.Combine(scriptPath, "host.json"), content);
 
-            content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.proxies.json");
-            File.WriteAllText(Path.Combine(scriptPath, "proxies.json"), content);
-
             string functionPath = Path.Combine(scriptPath, WarmUpConstants.FunctionName);
             Directory.CreateDirectory(functionPath);
             content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.function.json");
@@ -212,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             content = FileUtility.ReadResourceString($"{ScriptConstants.ResourcePath}.Functions.{WarmUpConstants.FunctionName}.run.csx");
             File.WriteAllText(Path.Combine(functionPath, "run.csx"), content);
 
-            _logger.LogInformation($"StandbyMode placeholder function directory created");
+            _logger.LogInformation("StandbyMode placeholder function directory created");
         }
 
         private async void OnSpecializationTimerTick(object state)

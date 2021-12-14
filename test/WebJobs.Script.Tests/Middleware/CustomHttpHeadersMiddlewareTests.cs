@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Middleware
                 .Configure(app =>
                 {
                     app.UseMiddleware<JobHostPipelineMiddleware>();
-                    app.Use((context, next) =>
+                    app.Run((context) =>
                     {
                         _nextInvoked = true;
                         context.Response.StatusCode = (int)HttpStatusCode.Accepted;

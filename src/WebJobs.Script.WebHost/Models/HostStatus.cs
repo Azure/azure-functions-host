@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.ObjectModel;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 {
@@ -62,6 +64,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// </summary>
         [JsonProperty(PropertyName = "processUptime", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public long ProcessUptime { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating function app content editing state.
+        /// For example, if an app is running from loose files, not from zip, then it can be edited.
+        /// </summary>
+        [JsonProperty(PropertyName = "functionAppContentEditingState", DefaultValueHandling = DefaultValueHandling.Include)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public FunctionAppContentEditingState FunctionAppContentEditingState { get; set; }
 
         /// <summary>
         /// Gets or sets the information related to Extension bundles

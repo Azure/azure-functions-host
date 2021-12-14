@@ -19,11 +19,14 @@ using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
@@ -41,6 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string SasVersionQueryParam = "sv";
 
         private static readonly Regex FunctionNameValidationRegex = new Regex(@"^[a-z][a-z0-9_\-]{0,127}$(?<!^host$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
 
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
@@ -502,9 +506,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
             object scopeValue = null;
             if (scopeProps != null && scopeProps.Count > 0 &&
-                (scopeProps.TryGetValue("functionName", out scopeValue) ||
-                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue) ||
-                 scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue)) && scopeValue != null)
+                (scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue) ||
+                 scopeProps.TryGetValue("functionName", out scopeValue) ||
+                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue)) && scopeValue != null)
             {
                 functionName = scopeValue.ToString();
             }
@@ -514,9 +518,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsFunctionName(KeyValuePair<string, object> p)
         {
-            return string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(p.Key, ScopeKeys.FunctionName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, "functionName", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p.Key, LogConstants.NameKey, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetValueFromScope(IDictionary<string, object> scopeProperties, string key)
@@ -543,6 +547,27 @@ namespace Microsoft.Azure.WebJobs.Script
                 functionErrors[functionName] = functionErrorCollection = new Collection<string>();
             }
             functionErrorCollection.Add(error);
+        }
+
+        public static void ValidateBinding(BindingMetadata bindingMetadata)
+        {
+            if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
+            {
+                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
+            }
+
+            if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
+            {
+                throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
+            }
+        }
+
+        public static void ValidateName(string name)
+        {
+            if (!IsValidFunctionName(name))
+            {
+                throw new InvalidOperationException(string.Format("'{0}' is not a valid {1} name.", name, "function"));
+            }
         }
 
         internal static bool TryReadFunctionConfig(string scriptDir, out string json, IFileSystem fileSystem = null)
@@ -867,6 +892,26 @@ namespace Microsoft.Azure.WebJobs.Script
             }
         }
 
+        public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
+        {
+            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            if (workerConfigs != null)
+            {
+                var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
+                // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
+                    && (workerConfig != null
+                        && workerConfig.Description != null
+                        && workerConfig.Description.WorkerIndexing != null
+                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static void LogAutorestGeneratedJsonIfExists(string rootScriptPath, ILogger logger)
         {
             string autorestGeneratedJsonPath = Path.Combine(rootScriptPath, ScriptConstants.AutorestGeenratedMetadataFileName);
@@ -910,6 +955,23 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool IsValidZipUrl(string appSetting)
         {
             return Uri.TryCreate(appSetting, UriKind.Absolute, out Uri result);
+        }
+
+        public static FunctionAppContentEditingState GetFunctionAppContentEditingState(IEnvironment environment, IOptions<ScriptApplicationHostOptions> applicationHostOptions)
+        {
+            // For now, host can determine with certainty if contents are editable only for Linux Consumption apps. Return unknown for other SKUs.
+            if (!environment.IsLinuxConsumption())
+            {
+                return FunctionAppContentEditingState.Unknown;
+            }
+            if (!applicationHostOptions.Value.IsFileSystemReadOnly && environment.AzureFilesAppSettingsExist())
+            {
+                return FunctionAppContentEditingState.Allowed;
+            }
+            else
+            {
+                return FunctionAppContentEditingState.NotAllowed;
+            }
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter

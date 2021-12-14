@@ -20,24 +20,32 @@ function WriteLog
     Write-Host $Message
 }
 
-function ValidateNugetListOutput
+Class PackageInfo {
+    [string]$Name
+    [string]$Version
+}
+
+function NewPackageInfo
 {
     param (
         [Parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
         [System.String]
-        $Output,
-
-        [Parameter(Mandatory=$true)]
-        [ValidateNotNullOrEmpty()]
-        [System.String]
-        $Command
+        $PackageInformation
     )
 
-    if ($Output -like "*No packages found*")
+    $parts = $PackageInformation.Split(" ")
+
+    if ($parts.Count -gt 2)
     {
-        WriteLog "Failed to get the latest package information via: $Command" -Throw
+        WriteLog "Invalid package format. The string should only contain 'name<space>version'. Current value: '$PackageInformation'"
     }
+
+    $packageInfo = [PackageInfo]::New()
+    $packageInfo.Name = $parts[0]
+    $packageInfo.Version = $parts[1]
+
+    return $packageInfo
 }
 
 function GetPackageInfo
@@ -54,37 +62,31 @@ function GetPackageInfo
     )
 
     $result = $null
+    $includeAllVersion = if (-not [string]::IsNullOrWhiteSpace($MajorVersion)) { "-AllVersions" } else { "" }
 
-    if (-not [string]::IsNullOrWhiteSpace($MajorVersion))
+    $packageInfo = & { NuGet list $Name -Source $SOURCE -PreRelease $includeAllVersion }
+
+    if ($packageInfo -like "*No packages found*")
     {
-        $packageInfo = & { NuGet list $Name -Source $SOURCE -PreRelease -AllVersions }
+        WriteLog "Package name $Name not found in $SOURCE." -Throw
+    }
 
-        $command = "NuGet list $Name -Source $SOURCE -PreRelease -AllVersions"
-        ValidateNugetListOutput -Output ($packageInfo | Out-String) -Command $command
-
-        foreach ($package in $packageInfo)
+    if (-not $MajorVersion)
+    {
+        $result = NewPackageInfo -PackageInformation $packageInfo
+    }
+    else
+    {
+        foreach ($thisPackage in $packageInfo.Split([System.Environment]::NewLine))
         {
-            $packageVersion = $package.Split()[1]
-            if ($packageVersion.StartsWith($MajorVersion))
+            $package = NewPackageInfo -PackageInformation $thisPackage
+
+            if ($package.Version.StartsWith($MajorVersion))
             {
                 $result = $package
                 break
             }
         }
-    }
-    else
-    {
-        $packageInfo = & { NuGet list $Name -Source $SOURCE -PreRelease }
-
-        $command = "NuGet list $Name -Source $SOURCE -PreRelease"
-        ValidateNugetListOutput -Output ($packageInfo | Out-String) -Command $command
-
-        $result = $packageInfo
-    }
-
-    if (-not $result)
-    {
-        WriteLog "Failed to get the latest package information for '$Name'" -Throw
     }
 
     return $result
@@ -99,7 +101,7 @@ if (-not (Test-Path $path))
     WriteLog "Failed to find '$path' to update package references" -Throw
 }
 
-$URL = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/dev/integrationTestsBuild/V3/HostBuild2.json"
+$URL = "https://raw.githubusercontent.com/Azure/azure-functions-integration-tests/main/integrationTestsBuild/V4/HostBuild.json"
 $SOURCE = "https://azfunc.pkgs.visualstudio.com/e6a70c92-4128-439f-8012-382fe78d6396/_packaging/AzureFunctionsPreRelease/nuget/v3/index.json"
 
 WriteLog "Get the list of packages to update"
@@ -120,15 +122,9 @@ try
 
     foreach ($package in $packagesToUpdate)
     {
-        WriteLog "Package name: $($package.Name)"
-
         $packageInfo = GetPackageInfo -Name $package.Name -MajorVersion $package.MajorVersion
 
-        WriteLog "AzureFunctionsPreRelease latest package info --> $packageInfo"
-        $packageName = $packageInfo.Split()[0]
-        $packageVersion = $packageInfo.Split()[1]
-
-        if ($package -eq "Microsoft.Azure.Functions.PythonWorker")
+        if ($package.Name -eq "Microsoft.Azure.Functions.PythonWorker")
         {
             # The PythonWorker is not defined in the src/WebJobs.Script/WebJobs.Script.csproj. It is defined in build/python.props.
             # To update the package version, the xml file build/python.props needs to be updated directly.
@@ -139,13 +135,13 @@ try
                 WriteLog "Python Props file '$pythonPropsFilePath' does not exist." -Throw
             }
 
-            WriteLog "Set Python package version in '$pythonPropsFilePath' to '$packageVersion'"
+            WriteLog "Set Python package version in '$pythonPropsFilePath' to '$($packageInfo.Version)'"
 
             # Read the xml file
             [xml]$xml = Get-Content $pythonPropsFilePath -Raw -ErrorAction Stop
 
             # Replace the package version
-            $xml.Project.ItemGroup.PackageReference.Version = $packageVersion
+            $xml.Project.ItemGroup.PackageReference.Version = $packageInfo.Version
 
             # Save the file
             $xml.Save($pythonPropsFilePath)
@@ -157,12 +153,12 @@ try
         }
         else
         {
-            WriteLog "Adding '$packageName' '$packageVersion' to project"
-            & { dotnet add package $packageName -v $packageVersion -s $source --no-restore }
+            WriteLog "Adding '$($packageInfo.Name)' '$($packageInfo.Version)' to project"
+            & { dotnet add package $packageInfo.Name -v $packageInfo.Version -s $SOURCE --no-restore }
 
             if ($LASTEXITCODE -ne 0)
             {
-                WriteLog "dotnet add package $packageName -v $packageVersion -s $source --no-restore failed" -Throw
+                WriteLog "dotnet add package '$($packageInfo.Name)' -v '$($packageInfo.Version)' -s $SOURCE --no-restore failed" -Throw
             }
         }
     }

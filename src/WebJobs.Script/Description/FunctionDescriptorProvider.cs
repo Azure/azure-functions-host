@@ -19,8 +19,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 {
     public abstract class FunctionDescriptorProvider
     {
-        private static readonly Regex BindingNameValidationRegex = new Regex(string.Format("^([a-zA-Z][a-zA-Z0-9]{{0,127}}|{0})$", Regex.Escape(ScriptConstants.SystemReturnParameterBindingName)));
-
         protected FunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders)
         {
             Host = host;
@@ -95,19 +93,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionInvoker == null)
             {
-                throw new ArgumentNullException("functionInvoker");
+                throw new ArgumentNullException(nameof(functionInvoker));
             }
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException("functionMetadata");
+                throw new ArgumentNullException(nameof(functionMetadata));
             }
             if (triggerMetadata == null)
             {
-                throw new ArgumentNullException("triggerMetadata");
+                throw new ArgumentNullException(nameof(triggerMetadata));
             }
             if (methodAttributes == null)
             {
-                throw new ArgumentNullException("methodAttributes");
+                throw new ArgumentNullException(nameof(methodAttributes));
             }
 
             ApplyMethodLevelAttributes(functionMetadata, triggerMetadata, methodAttributes);
@@ -211,15 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         protected internal virtual void ValidateBinding(BindingMetadata bindingMetadata)
         {
-            if (bindingMetadata.Name == null || !BindingNameValidationRegex.IsMatch(bindingMetadata.Name))
-            {
-                throw new ArgumentException($"The binding name {bindingMetadata.Name} is invalid. Please assign a valid name to the binding.");
-            }
-
-            if (bindingMetadata.IsReturn && bindingMetadata.Direction != BindingDirection.Out)
-            {
-                throw new ArgumentException($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.");
-            }
+            Utility.ValidateBinding(bindingMetadata);
 
             if (bindingMetadata.Type == null)
             {
@@ -255,7 +245,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (trigger == null)
             {
-                throw new ArgumentNullException("trigger");
+                throw new ArgumentNullException(nameof(trigger));
             }
 
             if (triggerParameterType == null)

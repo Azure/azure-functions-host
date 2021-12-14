@@ -30,12 +30,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private const string AccessToken = "access-token";
 
         private readonly TestEnvironment _environment;
-        private HttpClient _httpClient;
+        private IHttpClientFactory _httpClientFactory;
 
         public ManagedIdentityTokenProviderTests()
         {
             _environment = new TestEnvironment();
-            _httpClient = new HttpClient();
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory();
         }
 
         private static TokenServiceMsiResponse GetTokenServiceMsiResponse()
@@ -66,9 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
             Assert.Equal(AccessToken, token);
         }
@@ -90,9 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             var token = await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken);
             Assert.Equal(AccessToken, token);
         }
@@ -113,9 +113,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 Content = new StringContent(JsonConvert.SerializeObject(GetTokenServiceMsiResponse()))
             });
 
-            _httpClient = new HttpClient(handlerMock.Object);
+            _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(),
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(),
                 NullLogger<ManagedIdentityTokenProvider>.Instance);
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await tokenProvider.GetManagedIdentityToken(UriWithNoSasToken));
@@ -127,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         [InlineData("storageaccount")]
         public async Task ThrowsOnInvalidUrls(string url)
         {
-            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClient, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
+            var tokenProvider = new ManagedIdentityTokenProvider(_environment, _httpClientFactory, new TestMetricsLogger(), NullLogger<ManagedIdentityTokenProvider>.Instance);
             await Assert.ThrowsAsync<ArgumentException>(async () => await tokenProvider.GetManagedIdentityToken(url));
         }
 

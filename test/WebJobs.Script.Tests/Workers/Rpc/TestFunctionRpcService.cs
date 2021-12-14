@@ -5,12 +5,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
+using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -168,28 +178,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, IEnumerable<FunctionMetadata> functionMetadata)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful)
         {
-            StatusResult statusResult = new StatusResult()
+            StatusResult statusResult = new StatusResult();
+            if (successful)
             {
-                Status = StatusResult.Types.Status.Success
-            };
+                statusResult.Status = StatusResult.Types.Status.Success;
+            }
+            else
+            {
+                statusResult.Status = StatusResult.Types.Status.Failure;
+            }
 
-            WorkerFunctionMetadataResponse overallResponse = new WorkerFunctionMetadataResponse();
+            FunctionMetadataResponses overallResponse = new FunctionMetadataResponses();
             foreach (FunctionMetadata response in functionMetadata)
             {
-                WorkerFunctionMetadata indexingResponse = new WorkerFunctionMetadata()
+                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
                 {
                     Name = response.Name,
-                    Language = response.Language
+                    Language = response.Language,
+                    Status = statusResult
                 };
 
-                overallResponse.Results.Add(indexingResponse);
+                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
+                {
+                    FunctionId = functionId,
+                    Metadata = indexingResponse,
+                };
+
+                overallResponse.FunctionLoadRequestsResults.Add(loadRequest);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                WorkerFunctionMetadataResponse = overallResponse
+                FunctionMetadataResponses = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }

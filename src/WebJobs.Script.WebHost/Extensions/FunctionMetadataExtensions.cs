@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
                 // Properties below this comment are not present in the kudu version.
                 IsDirect = functionMetadata.IsDirect(),
                 IsDisabled = functionMetadata.IsDisabled(),
-                IsProxy = functionMetadata.IsProxy(),
+                IsProxy = false,
                 Language = functionMetadata.Language,
                 InvokeUrlTemplate = GetFunctionInvokeUrlTemplate(baseUrl, functionMetadata, routePrefix)
             };
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Extensions
 
         internal static Uri GetFunctionInvokeUrlTemplate(string baseUrl, FunctionMetadata functionMetadata, string routePrefix)
         {
-            var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Compare(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase) == 0);
+            var httpBinding = functionMetadata.InputBindings.FirstOrDefault(p => string.Equals(p.Type, "httpTrigger", StringComparison.OrdinalIgnoreCase));
 
             if (httpBinding != null)
             {

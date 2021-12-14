@@ -6,73 +6,37 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Loggers;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
-    // Adapter for capturing SDK events and logging them to tables.
     internal class FunctionInstanceLogger : IAsyncCollector<FunctionInstanceLogEntry>
     {
         private const string Key = "metadata";
 
-        private readonly ILogWriter _writer;
         private readonly IMetricsLogger _metrics;
         private readonly IFunctionMetadataManager _metadataManager;
+        private ConcurrentDictionary<(string, string, bool, bool), string> _eventDataCache = new ConcurrentDictionary<(string, string, bool, bool), string>();
         private ConcurrentDictionary<BindingMetadata, string> _bindingMetricEventNames = new ConcurrentDictionary<BindingMetadata, string>();
 
         public FunctionInstanceLogger(
             IFunctionMetadataManager metadataManager,
             IMetricsLogger metrics,
-            IHostIdProvider hostIdProvider,
             IConfiguration configuration,
-            ILoggerFactory loggerFactory,
-            IDelegatingHandlerProvider delegatingHandlerProvider)
+            ILoggerFactory loggerFactory)
             : this(metadataManager, metrics)
         {
-            if (hostIdProvider == null)
-            {
-                throw new ArgumentNullException(nameof(hostIdProvider));
-            }
-
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
-
-            if (loggerFactory == null)
-            {
-                throw new ArgumentNullException(nameof(loggerFactory));
-            }
-
-            if (delegatingHandlerProvider == null)
-            {
-                throw new ArgumentNullException(nameof(delegatingHandlerProvider));
-            }
+            ArgumentNullException.ThrowIfNull(configuration);
+            ArgumentNullException.ThrowIfNull(loggerFactory);
 
             string accountConnectionString = configuration.GetWebJobsConnectionString(ConnectionStringNames.Dashboard);
             if (accountConnectionString != null)
             {
-                CloudStorageAccount account = CloudStorageAccount.Parse(accountConnectionString);
-                var restConfig = new RestExecutorConfiguration { DelegatingHandler = delegatingHandlerProvider.Create() };
-                var tableClientConfig = new TableClientConfiguration { RestExecutorConfiguration = restConfig };
-
-                var client = new CloudTableClient(account.TableStorageUri, account.Credentials, tableClientConfig);
-                var tableProvider = LogFactory.NewLogTableProvider(client);
-
-                ILogger logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostGeneral);
-                logger.LogDebug("Azure WebJobs Dashboard is enabled");
-
-                string hostId = hostIdProvider.GetHostIdAsync(CancellationToken.None).GetAwaiter().GetResult() ?? "default";
-                string containerName = Environment.MachineName;
-                _writer = LogFactory.NewWriter(hostId, containerName, tableProvider, (e) => OnException(e, logger));
+                loggerFactory.CreateLogger<FunctionInstanceLogger>().LogWarning($"The {ConnectionStringNames.Dashboard} setting is no longer supported. See https://aka.ms/functions-dashboard for details.");
             }
         }
 
@@ -82,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metadataManager = metadataManager ?? throw new ArgumentNullException(nameof(metadataManager));
         }
 
-        public async Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
+        public Task AddAsync(FunctionInstanceLogEntry item, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (item.IsStart)
             {
@@ -93,21 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 EndFunction(item);
             }
 
-            if (_writer != null)
-            {
-                await _writer.AddAsync(new FunctionInstanceLogItem
-                {
-                    FunctionInstanceId = item.FunctionInstanceId,
-                    FunctionName = item.LogName,
-                    StartTime = item.StartTime,
-                    EndTime = item.EndTime,
-                    TriggerReason = item.TriggerReason,
-                    Arguments = item.Arguments,
-                    ErrorDetails = item.ErrorDetails,
-                    LogOutput = item.LogOutput,
-                    ParentId = item.ParentId
-                });
-            }
+            return Task.CompletedTask;
         }
 
         private void StartFunction(FunctionInstanceLogEntry item)
@@ -154,7 +104,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             var function = startedEvent.FunctionMetadata;
             string eventName = success ? MetricEventNames.FunctionInvokeSucceeded : MetricEventNames.FunctionInvokeFailed;
             string functionName = function != null ? function.Name : string.Empty;
-            string data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+
+            // This has low cardinality but we allocate the string every call (even though ironically it's often not used due to rollups)
+            // It's cheaper to cache and lookup rather than generate and pay for GC here.
+            // Note: this would be faster with a readonly record struct key, but StyleCop is angry with it until an upcoming 1.2.x beta release
+            var key = (startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+            if (!_eventDataCache.TryGetValue(key, out var data))
+            {
+                data = string.Format(Microsoft.Azure.WebJobs.Script.Properties.Resources.FunctionInvocationMetricsData, startedEvent.FunctionMetadata.Language, functionName, success, Stopwatch.IsHighResolution);
+                _eventDataCache[key] = data;
+            }
             _metrics.LogEvent(eventName, startedEvent.FunctionName, data);
 
             startedEvent.Data = data;
@@ -169,19 +128,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _metrics.EndEvent(invokeLatencyEvent);
         }
 
-        public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken))
-        {
-            if (_writer == null)
-            {
-                return Task.CompletedTask;
-            }
-
-            return _writer.FlushAsync();
-        }
-
-        public static void OnException(Exception exception, ILogger logger)
-        {
-            logger.LogError($"Error writing logs to table storage: {exception.ToString()}", exception);
-        }
+        public Task FlushAsync(CancellationToken cancellationToken = default(CancellationToken)) => Task.CompletedTask;
     }
 }

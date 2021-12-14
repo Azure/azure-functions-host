@@ -269,7 +269,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // - the file change was under one of the configured watched directories (e.g. node_modules, shared code directories, etc.)
             // - the host.json file was changed
             // - a function.json file was changed
-            // - a proxies.json file was changed
             // - a function directory was added/removed/renamed
             // A full host shutdown is performed when an assembly (.dll, .exe) in a watched directory is modified
 
@@ -282,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "Watched directory";
             }
-            else if (string.Compare(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Equals(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase))
             {
                 // app_offline.htm has changed
                 // when app_offline.htm is created, we trigger
@@ -317,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError($"Error restarting host (full shutdown: {shutdown})", t.Exception),
+                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }

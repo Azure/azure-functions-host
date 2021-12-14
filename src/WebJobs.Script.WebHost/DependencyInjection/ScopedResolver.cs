@@ -57,10 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
             var scope = new ServiceScope(resolver, scopedRoot);
 
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableEnhancedScopes))
-            {
-                scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
-            }
+            scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
 
             ChildScopes.TryAdd(scope, null);
 
