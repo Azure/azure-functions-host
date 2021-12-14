@@ -53,8 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// </summary>
         public ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>> QueuedEvents { get; }
 
-        public readonly record struct EventKey(string eventName, string functionName);
-
         public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
             if (string.IsNullOrEmpty(eventName))
@@ -312,6 +310,29 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        // TODO: When StyleCop is updated to a release after Dec 2021, this can be a much simpler readonly record struct
+        //public readonly record struct EventKey(string eventName, string functionName);
+        public readonly struct EventKey : IEquatable<EventKey>
+        {
+            public EventKey(string eventName, string functionName) => (EventName, FunctionName) = (eventName, functionName);
+
+            public string EventName { get; }
+
+            public string FunctionName { get; }
+
+            public static bool operator ==(EventKey left, EventKey right) => left.Equals(right);
+
+            public static bool operator !=(EventKey left, EventKey right) => !(left == right);
+
+            public override bool Equals(object obj) => obj is EventKey other && Equals(other);
+
+            public bool Equals(EventKey other) => EventName.Equals(other.EventName) && FunctionName.Equals(other.FunctionName);
+
+            public override int GetHashCode() => HashCode.Combine(EventName, FunctionName);
+
+            public override string ToString() => $"{EventName}:{FunctionName}";
         }
 
         private class FunctionActivityTracker : IDisposable
