@@ -25,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
             new Claim(SecurityConstants.AuthLevelClaimType, nameof(AuthorizationLevel.User)),
             new Claim(SecurityConstants.AuthLevelClaimType, nameof(AuthorizationLevel.Admin)),
             new Claim(SecurityConstants.AuthLevelClaimType, nameof(AuthorizationLevel.System)),
-
         };
 
         [Params(null, "code")]
@@ -88,7 +87,6 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
 
             return false;
         }
-
 
         public static bool PrincipalHasAuthLevelClaimHasClaim(ClaimsPrincipal principal, AuthorizationLevel requiredLevel, string keyName = null)
         {

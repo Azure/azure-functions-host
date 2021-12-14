@@ -20,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
     {
         // Set of samples to benchmark
         // TODOO: BlobTrigger, needs assembly refs working
-        [Params("DocumentDB", "HttpTrigger", "HttpTrigger-CustomRoute", "HttpTrigger-Weather", "NotificationHub")]
+        [Params("DocumentDB", "HttpTrigger", "HttpTrigger-Cancellation", "HttpTrigger-CustomRoute", "NotificationHub")]
         public string BenchmarkTrigger;
 
         // Script source
         private string ScriptPath;
-        private string GetCSharpSamplePath([CallerFilePath] string thisFilePath = null) =>
-            Path.Combine(thisFilePath, "../../../sample/CSharp");
+        private static string GetCSharpSamplePath([CallerFilePath] string thisFilePath = null) =>
+            Path.Combine(thisFilePath, "..", "..", "..", "sample", "CSharp");
         private string ScriptSource;
         private FunctionMetadata FunctionMetadata;
 
