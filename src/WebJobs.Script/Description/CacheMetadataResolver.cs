@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 
@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     public sealed class CacheMetadataResolver : MetadataReferenceResolver
     {
         private readonly MetadataReferenceResolver _innerResolver;
-        private static Dictionary<string, ImmutableArray<PortableExecutableReference>> _referenceCache = new Dictionary<string, ImmutableArray<PortableExecutableReference>>();
+        private static readonly ConcurrentDictionary<string, ImmutableArray<PortableExecutableReference>> _referenceCache = new ConcurrentDictionary<string, ImmutableArray<PortableExecutableReference>>();
 
         public CacheMetadataResolver(MetadataReferenceResolver innerResolver)
         {
