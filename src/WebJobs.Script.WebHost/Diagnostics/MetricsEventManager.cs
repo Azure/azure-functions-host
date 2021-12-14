@@ -536,7 +536,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             private void RaiseMetricsPerFunctionEvent()
             {
-                List<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
+                ConcurrentQueue<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
 
                 var aggregatedEventsPerFunction = from item in metricsEventsList
                                                   group item by item.FunctionName into functionGroups
@@ -555,21 +555,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
             }
 
-            private List<FunctionMetrics> GetMetricsQueueSnapshot()
-            {
-                var queueSnapshot = new List<FunctionMetrics>();
-                var currentQueueLength = _functionMetricsQueue.Count;
-
-                for (int i = 0; i < currentQueueLength; i++)
-                {
-                    if (_functionMetricsQueue.TryDequeue(out FunctionMetrics queueItem))
-                    {
-                        queueSnapshot.Add(queueItem);
-                    }
-                }
-
-                return queueSnapshot;
-            }
+            /// <summary>
+            /// Exchanges the current queue for another new empty one.
+            /// This allows us to operate on the old queue with no races as a "flush" withj no copy.
+            /// </summary>
+            private ConcurrentQueue<FunctionMetrics> GetMetricsQueueSnapshot() =>
+                Interlocked.Exchange(ref _functionMetricsQueue, new ConcurrentQueue<FunctionMetrics>());
         }
     }
 }
