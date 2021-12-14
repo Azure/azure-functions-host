@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -61,25 +62,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
 
-                    if (rawFunctions != null && rawFunctions.Any())
+                    if (!IsNullOrEmpty(rawFunctions))
                     {
                         functions = ValidateMetadata(rawFunctions);
                         // set up invocation buffers and send load requests
                         await _dispatcher.FinishInitialization(functions);
                     }
-                    else
-                    {
-                        // If worker denies indexing then falling back to the host for Indexing
-                        _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
-                    }
                 }
-                else
+                if (IsNullOrEmpty(rawFunctions) || !workerIndexing)
                 {
+                    // If worker denies indexing then falling back to the host for Indexing
                     _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
                 }
-
-                _functions = _functions.ToImmutableArray();
             }
+            _functions = _functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());
             return _functions;
         }
@@ -180,6 +176,15 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return function;
+        }
+
+        private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)
+        {
+            if (functions == null || (functions != null && !functions.Any()))
+            {
+                return true;
+            }
+            return false;
         }
     }
 }
