@@ -48,12 +48,13 @@ namespace Microsoft.Azure.WebJobs.Script
 
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
-                if (_dispatcher == null && workerIndexing == true)
+                if (workerIndexing)
                 {
-                    throw new ArgumentNullException(nameof(_dispatcher));
-                }
-                else if (_dispatcher != null && workerIndexing == true)
-                {
+                    if (_dispatcher == null)
+                    {
+                        throw new ArgumentNullException(nameof(_dispatcher));
+                    }
+
                     // start up GRPC channels
                     await _dispatcher.InitializeAsync(new List<FunctionMetadata>());
 
@@ -72,12 +73,12 @@ namespace Microsoft.Azure.WebJobs.Script
                         _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
                     }
                 }
-                else if (workerIndexing == false)
+                else
                 {
                     _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
                 }
 
-                _functions = functions.ToImmutableArray();
+                _functions = _functions.ToImmutableArray();
             }
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());
             return _functions;

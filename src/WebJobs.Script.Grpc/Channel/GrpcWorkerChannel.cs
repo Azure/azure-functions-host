@@ -500,8 +500,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                         {
-                            _workerChannelLogger.LogError($"Worker failed to index function {metadata.Name}");
-                            _metadataRequestErrors[metadata.Name] = metadataRequestEx;
+                            _workerChannelLogger.LogError($"Worker failed to index function {metadata.FunctionId}");
+                            _metadataRequestErrors[metadata.FunctionId] = metadataRequestEx;
                         }
 
                         var functionMetadata = new FunctionMetadata()
@@ -512,7 +512,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             Name = metadata.Name
                         };
 
-                        functionMetadata.SetFunctionId(metadata.Name);
+                        functionMetadata.SetFunctionId(metadata.FunctionId);
 
                         var bindings = new List<string>();
                         foreach (string binding in metadata.RawBindings)

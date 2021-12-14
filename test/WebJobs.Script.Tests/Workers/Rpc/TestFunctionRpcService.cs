@@ -197,7 +197,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 {
                     Name = response.Name,
                     Language = response.Language,
-                    Status = statusResult
+                    Status = statusResult,
+                    FunctionId = functionId
                 };
 
                 overallResponse.FunctionMetadataResults.Add(indexingResponse);

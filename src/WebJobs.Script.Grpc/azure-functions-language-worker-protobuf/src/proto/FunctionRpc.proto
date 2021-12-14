@@ -279,6 +279,12 @@ message RpcFunctionMetadata {
 
   // Configuration Source: string representation of JToken configuration source property in function metadata
   string config_source = 12;
+
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 13;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 14;
 }
 
 // Host tells worker it is ready to receive metadata
