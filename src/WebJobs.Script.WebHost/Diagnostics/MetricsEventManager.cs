@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
@@ -536,31 +537,44 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             private void RaiseMetricsPerFunctionEvent()
             {
-                ConcurrentQueue<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
+                // Snapshot existing metrics by swapping out the collection we're building.
+                // New metrics rolling in will go to the new collection while we aggregate the snapshot here.
+                ConcurrentQueue<FunctionMetrics> metricsEventsList = Interlocked.Exchange(ref _functionMetricsQueue, new ConcurrentQueue<FunctionMetrics>());
 
-                var aggregatedEventsPerFunction = from item in metricsEventsList
-                                                  group item by item.FunctionName into functionGroups
-                                                  select new
-                                                  {
-                                                      FunctionName = functionGroups.Key,
-                                                      StartedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
-                                                      FailedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
-                                                      SucceededCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
-                                                      TotalExectionTimeInMs = Convert.ToUInt64(functionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
-                                                  };
+                var aggregatedEventsPerFunction = new Dictionary<string, MetricSummary>();
+
+                while (metricsEventsList.TryDequeue(out var metric))
+                {
+                    ref var summary = ref CollectionsMarshal.GetValueRefOrAddDefault(aggregatedEventsPerFunction, metric.FunctionName, out _);
+                    switch (metric.ExecutionStage)
+                    {
+                        case ExecutionStage.Started:
+                            summary.StartedCount++;
+                            break;
+                        case ExecutionStage.Failed:
+                            summary.FailedCount++;
+                            break;
+                        case ExecutionStage.Succeeded:
+                            summary.SucceededCount++;
+                            break;
+                    }
+                    summary.TotalExectionTimeInMs += metric.ExecutionTimeInMS;
+                }
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {
-                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, functionEvent.FunctionName, (long)functionEvent.TotalExectionTimeInMs, (long)functionEvent.StartedCount, (long)functionEvent.SucceededCount, (long)functionEvent.FailedCount);
+                    var summary = functionEvent.Value;
+                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, functionEvent.Key, summary.TotalExectionTimeInMs, summary.StartedCount, summary.SucceededCount, summary.FailedCount);
                 }
             }
 
-            /// <summary>
-            /// Exchanges the current queue for another new empty one.
-            /// This allows us to operate on the old queue with no races as a "flush" withj no copy.
-            /// </summary>
-            private ConcurrentQueue<FunctionMetrics> GetMetricsQueueSnapshot() =>
-                Interlocked.Exchange(ref _functionMetricsQueue, new ConcurrentQueue<FunctionMetrics>());
+            private struct MetricSummary
+            {
+                public long StartedCount;
+                public long FailedCount;
+                public long SucceededCount;
+                public long TotalExectionTimeInMs;
+            }
         }
     }
 }
