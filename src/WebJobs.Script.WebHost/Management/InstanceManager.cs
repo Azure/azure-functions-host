@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
-                _logger.LogError($"Missing ZipUrl and AzureFiles config. Continue with empty root.");
+                _logger.LogError("Missing ZipUrl and AzureFiles config. Continue with empty root.");
                 return null;
             }
         }
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"{nameof(ValidateAzureFilesContext)}");
+                _logger.LogError(e, nameof(ValidateAzureFilesContext));
                 return e.Message;
             }
         }

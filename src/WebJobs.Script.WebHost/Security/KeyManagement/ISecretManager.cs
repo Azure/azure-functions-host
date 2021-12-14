@@ -68,5 +68,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="rootScriptPath">The root function directory.</param>
         /// <param name="logger">The ILogger to log to.</param>
         Task PurgeOldSecretsAsync(string rootScriptPath, ILogger logger);
+
+        /// <summary>
+        /// If secrets have been loaded and cached, clear all cached secrets so they'll
+        /// be reloaded next time they're requested.
+        /// </summary>
+        void ClearCache();
     }
 }

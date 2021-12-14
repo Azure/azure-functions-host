@@ -29,18 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
-            if (secretSentinelDirectoryPath == null)
-            {
-                throw new ArgumentNullException(nameof(secretSentinelDirectoryPath));
-            }
-            if (accountConnection == null)
-            {
-                throw new ArgumentNullException(nameof(accountConnection));
-            }
-            if (siteSlotName == null)
-            {
-                throw new ArgumentNullException(nameof(siteSlotName));
-            }
+            ArgumentNullException.ThrowIfNull(secretSentinelDirectoryPath);
+            ArgumentNullException.ThrowIfNull(accountConnection);
+            ArgumentNullException.ThrowIfNull(siteSlotName);
 
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
@@ -110,10 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            if (secrets == null)
-            {
-                throw new ArgumentNullException(nameof(secrets));
-            }
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             try
@@ -132,10 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            if (secrets == null)
-            {
-                throw new ArgumentNullException(nameof(secrets));
-            }
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             blobPath = SecretsUtility.GetNonDecryptableName(blobPath);

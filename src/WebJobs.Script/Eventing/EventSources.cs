@@ -16,5 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Eventing
         public const string Worker = "Worker";
         public const string WorkerProcess = "WorkerProcess";
         public const string HttpWorker = "HttpWorker";
+        public const string Host = "Host";
     }
 }

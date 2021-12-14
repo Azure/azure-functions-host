@@ -26,7 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 
         public FunctionExecutionFeature(IScriptJobHost host, FunctionDescriptor descriptor, IEnvironment environment, ILoggerFactory loggerFactory)
         {
-            _host = host ?? throw new ArgumentNullException(nameof(host));
+            ArgumentNullException.ThrowIfNull(host);
+            _host = host;
             _descriptor = descriptor;
             _environment = environment;
             _logger = loggerFactory.CreateLogger(ScriptConstants.LogCategoryHostMetrics);

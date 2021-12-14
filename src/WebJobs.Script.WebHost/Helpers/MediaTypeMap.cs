@@ -22,10 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
 
         public MediaTypeHeaderValue GetMediaType(string fileExtension)
         {
-            if (fileExtension == null)
-            {
-                throw new ArgumentNullException(nameof(fileExtension));
-            }
+            ArgumentNullException.ThrowIfNull(fileExtension);
 
             return _mediatypeMap.GetOrAdd(fileExtension,
                 (extension) =>

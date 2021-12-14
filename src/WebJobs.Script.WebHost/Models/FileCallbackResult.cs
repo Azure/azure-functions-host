@@ -39,10 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         public FileCallbackResult(MediaTypeHeaderValue contentType, Func<Stream, ActionContext, Task> callback)
             : base(contentType?.ToString())
         {
-            if (callback == null)
-            {
-                throw new ArgumentNullException(nameof(callback));
-            }
+            ArgumentNullException.ThrowIfNull(callback);
 
             Callback = callback;
         }
@@ -59,11 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
             set
             {
-                if (value == null)
-                {
-                    throw new ArgumentNullException(nameof(value));
-                }
-
+                ArgumentNullException.ThrowIfNull(value);
                 _callback = value;
             }
         }
@@ -71,10 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         /// <inheritdoc />
         public override Task ExecuteResultAsync(ActionContext context)
         {
-            if (context == null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
 
             var executor = new FileCallbackResultExecutor(context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>());
             return executor.ExecuteAsync(context, this);

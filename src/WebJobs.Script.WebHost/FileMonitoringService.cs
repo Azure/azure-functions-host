@@ -281,7 +281,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 changeDescription = "Watched directory";
             }
-            else if (string.Compare(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase) == 0)
+            else if (string.Equals(fileName, ScriptConstants.AppOfflineFileName, StringComparison.OrdinalIgnoreCase))
             {
                 // app_offline.htm has changed
                 // when app_offline.htm is created, we trigger
@@ -316,7 +316,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 TraceFileChangeRestart(changeDescription, e.ChangeType.ToString(), e.FullPath, shutdown);
-                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError($"Error restarting host (full shutdown: {shutdown})", t.Exception),
+                ScheduleRestartAsync(shutdown).ContinueWith(t => _logger.LogError(t.Exception, $"Error restarting host (full shutdown: {shutdown})"),
                     TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
             }
         }

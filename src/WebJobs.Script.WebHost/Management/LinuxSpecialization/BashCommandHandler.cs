@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
-                _logger.LogError("Error running bash", e);
+                _logger.LogError(e, "Error running bash");
             }
 
             return (string.Empty, string.Empty, -1);
