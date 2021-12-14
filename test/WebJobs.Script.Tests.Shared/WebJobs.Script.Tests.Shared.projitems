@@ -29,6 +29,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsFactory.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestOptionsMonitor.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestScaleMonitor.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)TestScriptEventManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestServiceCollectionExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestServiceProviderExtensions.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)TestTraits.cs" />

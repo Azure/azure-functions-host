@@ -65,11 +65,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.Bindings
         {
             if (parameter == null)
             {
-                throw new ArgumentNullException("parameter");
+                throw new ArgumentNullException(nameof(parameter));
             }
             if (types == null)
             {
-                throw new ArgumentNullException("types");
+                throw new ArgumentNullException(nameof(types));
             }
 
             if (parameter.IsOut)

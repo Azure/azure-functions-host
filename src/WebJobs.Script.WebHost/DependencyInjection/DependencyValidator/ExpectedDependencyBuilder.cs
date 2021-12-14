@@ -28,10 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public void Expect<TService>(string typeName, ServiceLifetime lifetime = ServiceLifetime.Singleton)
         {
-            if (typeName == null)
-            {
-                throw new ArgumentNullException(nameof(typeName));
-            }
+            ArgumentNullException.ThrowIfNull(typeName);
 
             ServiceMatch match = ServiceMatch.CreateMatch<TService>();
             AddNewMatch<TService>(match);
@@ -52,10 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public void Expect<TService, TPeerType>(string typeName, ServiceLifetime lifetime = ServiceLifetime.Singleton)
         {
-            if (typeName == null)
-            {
-                throw new ArgumentNullException(nameof(typeName));
-            }
+            ArgumentNullException.ThrowIfNull(typeName);
 
             ServiceMatch match = ServiceMatch.CreateMatch<TService>();
             AddNewMatch<TService>(match);

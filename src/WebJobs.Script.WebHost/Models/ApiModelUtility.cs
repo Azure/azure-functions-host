@@ -38,15 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public static Link CreateLink(HttpRequest request, Uri resourceUri, string relation)
         {
-            if (resourceUri == null)
-            {
-                throw new ArgumentNullException(nameof(resourceUri));
-            }
-
-            if (relation == null)
-            {
-                throw new ArgumentNullException(nameof(relation));
-            }
+            ArgumentNullException.ThrowIfNull(resourceUri);
+            ArgumentNullException.ThrowIfNull(relation);
 
             return new Link
             {
