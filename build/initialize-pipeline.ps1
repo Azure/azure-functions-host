@@ -1,4 +1,5 @@
 $buildReason = $env:BUILD_REASON
+$sourceBranch = $env:BUILD_SOURCEBRANCH
 
 if ($buildReason -eq "PullRequest") {
   # parse PR title to see if we should pack this
@@ -11,8 +12,13 @@ if ($buildReason -eq "PullRequest") {
   }
 }
 
-$buildNumber = $env:buildNumber
-Write-Host "BuildNumber: '$buildNumber'"
+$buildNumber = ""
+
+if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
+{
+  $buildNumber = $env:buildNumber
+  Write-Host "BuildNumber: '$buildNumber'"
+}
 
 Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
 $version = Get-AzureFunctionsVersion $buildNumber $buildNumber
