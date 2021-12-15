@@ -1,6 +1,9 @@
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
 
+Write-Host "BUILD_REASON: '$buildReason'"
+Write-Host "BUILD_SOURCEBRANCH: '$sourceBranch'"
+
 if ($buildReason -eq "PullRequest") {
   # parse PR title to see if we should pack this
   $response = Invoke-RestMethod api.github.com/repos/$env:BUILD_REPOSITORY_ID/pulls/$env:SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
@@ -14,7 +17,7 @@ if ($buildReason -eq "PullRequest") {
 
 $buildNumber = ""
 
-if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
+if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release/4.")))
 {
   $buildNumber = $env:buildNumber
   Write-Host "BuildNumber: '$buildNumber'"
