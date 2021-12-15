@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         // TODO: When StyleCop is updated to a release after Dec 2021, this can be a much simpler readonly record struct
         //public readonly record struct EventKey(string eventName, string functionName);
-        public readonly struct EventKey : IEquatable<EventKey>
+        internal readonly struct EventKey : IEquatable<EventKey>
         {
             public EventKey(string eventName, string functionName) => (EventName, FunctionName) = (eventName, functionName);
 
@@ -319,9 +319,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             public override bool Equals(object obj) => obj is EventKey other && Equals(other);
 
-            public bool Equals(EventKey other) => string.Equals(EventName, other.EventName) && string.Equals(FunctionName, other.FunctionName);
+            public bool Equals(EventKey other) => string.Equals(EventName, other.EventName, StringComparison.OrdinalIgnoreCase) && string.Equals(FunctionName, other.FunctionName, StringComparison.OrdinalIgnoreCase);
 
-            public override int GetHashCode() => HashCode.Combine(EventName, FunctionName);
+            public override int GetHashCode()
+            {
+                var hash = default(HashCode);
+                hash.Add(EventName, StringComparer.OrdinalIgnoreCase);
+                hash.Add(FunctionName, StringComparer.OrdinalIgnoreCase);
+                return hash.ToHashCode();
+            }
 
             public override string ToString() => $"{EventName}:{FunctionName}";
         }
