@@ -547,10 +547,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // New metrics rolling in will go to the new collection while we aggregate the snapshot here.
                 var summarySnapshot = Interlocked.Exchange(ref _functionMetricsSummary, new Dictionary<string, FunctionMetricSummary>());
 
-                foreach (var functionEvent in summarySnapshot)
+                foreach (var function in summarySnapshot)
                 {
-                    var summary = functionEvent.Value;
-                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, functionEvent.Key, summary.TotalExectionTimeInMs, summary.StartedCount, summary.SucceededCount, summary.FailedCount);
+                    var summary = function.Value;
+                    MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, function.Key, summary.TotalExectionTimeInMs, summary.StartedCount, summary.SucceededCount, summary.FailedCount);
                 }
             }
 
