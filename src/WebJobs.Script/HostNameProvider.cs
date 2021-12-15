@@ -22,6 +22,9 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private readonly IEnvironment _environment;
         private string _hostName;
+        // If we have no environmental signals, we'll end up calling .Value's chain *every get*
+        // This is to track that we're in a "we don't know" state and not keep going through the paths to the same null result.
+        private bool _isSet = false;
 
         public HostNameProvider(IEnvironment environment)
         {
@@ -32,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             get
             {
-                if (string.IsNullOrEmpty(_hostName))
+                if (!_isSet && string.IsNullOrEmpty(_hostName))
                 {
                     // default to the the value specified in environment
                     _hostName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
@@ -45,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script
                             _hostName = $"{websiteName}.azurewebsites.net";
                         }
                     }
+                    _isSet = true;
                 }
                 return _hostName;
             }
@@ -58,11 +62,13 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 logger.LogInformation("HostName updated from '{0}' to '{1}'", Value, hostNameHeaderValue);
                 _hostName = hostNameHeaderValue;
+                _isSet = true;
             }
         }
 
         internal void Reset()
         {
+            _isSet = false;
             _hostName = null;
         }
     }
