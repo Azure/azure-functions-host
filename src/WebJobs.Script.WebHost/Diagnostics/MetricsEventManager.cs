@@ -330,7 +330,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ulong _totalExecutionCount = 0;
             private int _activeFunctionCount = 0;
             private int _functionActivityFlushInterval;
-            private Dictionary<string, FunctionMetricSummary> _functionMetricsSummary = new Dictionary<string, FunctionMetricSummary>();
+            private ConcurrentDictionary<string, Lazy<FunctionMetricSummary>> _functionMetricsSummary = new ConcurrentDictionary<string, Lazy<FunctionMetricSummary>>();
             private ConcurrentDictionary<Guid, FunctionStartedEvent> _runningFunctions = new ConcurrentDictionary<Guid, FunctionStartedEvent>();
             private bool _disposed = false;
             private AppServiceOptions _appServiceOptions;
@@ -431,10 +431,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             internal void IncrementMetrics(string functionName, ExecutionStage stage, long executionTime)
             {
-                //lock (_functionMetricsSummary)
-                {
-                    CollectionsMarshal.GetValueRefOrAddDefault(_functionMetricsSummary, functionName, out _).Increment(stage, executionTime);
-                }
+                var summary = _functionMetricsSummary.GetOrAdd(functionName,
+                    static _ => new Lazy<FunctionMetricSummary>(() => new FunctionMetricSummary(), LazyThreadSafetyMode.ExecutionAndPublication));
+
+                summary.Value.Increment(stage, executionTime);
             }
 
             internal void StopTimerAndRaiseFinishedEvent()
@@ -548,11 +548,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 // Snapshot existing metrics by swapping out the collection we're building.
                 // New metrics rolling in will go to the new collection while we aggregate the snapshot here.
-                var summarySnapshot = Interlocked.Exchange(ref _functionMetricsSummary, new Dictionary<string, FunctionMetricSummary>());
+                var summarySnapshot = Interlocked.Exchange(ref _functionMetricsSummary, new ConcurrentDictionary<string, Lazy<FunctionMetricSummary>>());
 
                 foreach (var function in summarySnapshot)
                 {
-                    var summary = function.Value;
+                    var summary = function.Value.Value;
                     MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, function.Key, summary.TotalExectionTimeInMs, summary.StartedCount, summary.SucceededCount, summary.FailedCount);
                 }
             }
@@ -561,28 +561,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             /// This evil mutable struct is for keeping metrics *as we go*, rather than collecting events and summarizing on the timer interval.
             /// In the aggregate: it's a much faster and lower allocation way of tracking the same numbers.
             /// </summary>
-            private struct FunctionMetricSummary
+            private class FunctionMetricSummary
             {
-                public long StartedCount;
-                public long FailedCount;
-                public long SucceededCount;
-                public long TotalExectionTimeInMs;
+                private long _startedCount;
+                private long _failedCount;
+                private long _succeededCount;
+                private long _totalExectionTimeInMs;
+
+                public long StartedCount => _startedCount;
+
+                public long FailedCount => _failedCount;
+
+                public long SucceededCount => _succeededCount;
+
+                public long TotalExectionTimeInMs => _totalExectionTimeInMs;
 
                 public void Increment(ExecutionStage stage, long totalTime)
                 {
-                    switch (stage)
+                    _ = stage switch
                     {
-                        case ExecutionStage.Started:
-                            StartedCount++;
-                            break;
-                        case ExecutionStage.Failed:
-                            FailedCount++;
-                            break;
-                        case ExecutionStage.Succeeded:
-                            SucceededCount++;
-                            break;
-                    }
-                    TotalExectionTimeInMs += totalTime;
+                        ExecutionStage.Started => Interlocked.Increment(ref _startedCount),
+                        ExecutionStage.Failed => Interlocked.Increment(ref _failedCount),
+                        ExecutionStage.Succeeded => Interlocked.Increment(ref _succeededCount),
+                        _ => 0,
+                    };
+                    Interlocked.Add(ref _totalExectionTimeInMs, totalTime);
                 }
             }
         }
