@@ -431,7 +431,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             internal void IncrementMetrics(string functionName, ExecutionStage stage, long executionTime)
             {
-                lock (_functionMetricsSummary)
+                //lock (_functionMetricsSummary)
                 {
                     CollectionsMarshal.GetValueRefOrAddDefault(_functionMetricsSummary, functionName, out _).Increment(stage, executionTime);
                 }
