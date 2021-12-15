@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private ulong _totalExecutionCount = 0;
             private int _activeFunctionCount = 0;
             private int _functionActivityFlushInterval;
-            private ConcurrentQueue<FunctionMetrics> _functionMetricsQueue = new ConcurrentQueue<FunctionMetrics>();
+            private Dictionary<string, FunctionMetricSummary> _functionMetricsSummary = new Dictionary<string, FunctionMetricSummary>();
             private List<FunctionStartedEvent> _runningFunctions = new List<FunctionStartedEvent>();
             private bool _disposed = false;
             private AppServiceOptions _appServiceOptions;
@@ -414,8 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 _totalExecutionCount++;
                 Interlocked.Increment(ref _activeFunctionCount);
 
-                var monitoringEvent = new FunctionMetrics(startedEvent.FunctionMetadata.Name, ExecutionStage.Started, 0);
-                _functionMetricsQueue.Enqueue(monitoringEvent);
+                IncrementMetrics(startedEvent.FunctionMetadata.Name, ExecutionStage.Started, 0);
 
                 lock (_runningFunctionsSyncLock)
                 {
@@ -429,10 +428,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
                 var functionStage = !startedEvent.Success ? ExecutionStage.Failed : ExecutionStage.Succeeded;
                 long executionTimeInMS = (long)startedEvent.Duration.TotalMilliseconds;
-                var monitoringEvent = new FunctionMetrics(startedEvent.FunctionMetadata.Name, functionStage, executionTimeInMS);
-                _functionMetricsQueue.Enqueue(monitoringEvent);
+                IncrementMetrics(startedEvent.FunctionMetadata.Name, functionStage, executionTimeInMS);
 
                 RaiseFunctionMetricEvent(startedEvent, _activeFunctionCount, DateTime.UtcNow);
+            }
+
+            internal void IncrementMetrics(string functionName, ExecutionStage stage, long executionTime)
+            {
+                lock (_functionMetricsSummary)
+                {
+                    CollectionsMarshal.GetValueRefOrAddDefault(_functionMetricsSummary, functionName, out _).Increment(stage, executionTime);
+                }
             }
 
             internal void StopTimerAndRaiseFinishedEvent()
@@ -539,41 +545,42 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 // Snapshot existing metrics by swapping out the collection we're building.
                 // New metrics rolling in will go to the new collection while we aggregate the snapshot here.
-                ConcurrentQueue<FunctionMetrics> metricsEventsList = Interlocked.Exchange(ref _functionMetricsQueue, new ConcurrentQueue<FunctionMetrics>());
+                var summarySnapshot = Interlocked.Exchange(ref _functionMetricsSummary, new Dictionary<string, FunctionMetricSummary>());
 
-                var aggregatedEventsPerFunction = new Dictionary<string, MetricSummary>();
-
-                while (metricsEventsList.TryDequeue(out var metric))
-                {
-                    ref var summary = ref CollectionsMarshal.GetValueRefOrAddDefault(aggregatedEventsPerFunction, metric.FunctionName, out _);
-                    switch (metric.ExecutionStage)
-                    {
-                        case ExecutionStage.Started:
-                            summary.StartedCount++;
-                            break;
-                        case ExecutionStage.Failed:
-                            summary.FailedCount++;
-                            break;
-                        case ExecutionStage.Succeeded:
-                            summary.SucceededCount++;
-                            break;
-                    }
-                    summary.TotalExectionTimeInMs += metric.ExecutionTimeInMS;
-                }
-
-                foreach (var functionEvent in aggregatedEventsPerFunction)
+                foreach (var functionEvent in summarySnapshot)
                 {
                     var summary = functionEvent.Value;
                     MetricsEventGenerator.LogFunctionExecutionAggregateEvent(_appServiceOptions.AppName, functionEvent.Key, summary.TotalExectionTimeInMs, summary.StartedCount, summary.SucceededCount, summary.FailedCount);
                 }
             }
 
-            private struct MetricSummary
+            /// <summary>
+            /// This evil mutable struct is for keeping metrics *as we go*, rather than collecting events and summarizing on the timer interval.
+            /// In the aggregate: it's a much faster and lower allocation way of tracking the same numbers.
+            /// </summary>
+            private struct FunctionMetricSummary
             {
                 public long StartedCount;
                 public long FailedCount;
                 public long SucceededCount;
                 public long TotalExectionTimeInMs;
+
+                public void Increment(ExecutionStage stage, long totalTime)
+                {
+                    switch (stage)
+                    {
+                        case ExecutionStage.Started:
+                            StartedCount++;
+                            break;
+                        case ExecutionStage.Failed:
+                            FailedCount++;
+                            break;
+                        case ExecutionStage.Succeeded:
+                            SucceededCount++;
+                            break;
+                    }
+                    TotalExectionTimeInMs += totalTime;
+                }
             }
         }
     }
