@@ -324,7 +324,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             private readonly IMetricsPublisher _metricsPublisher;
             private readonly ILinuxContainerActivityPublisher _linuxContainerActivityPublisher;
-            private readonly object _runningFunctionsSyncLock = new object();
             private readonly Timer _activityTimer;
             private readonly ILogger<MetricsEventManager> _logger;
 
@@ -332,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             private int _activeFunctionCount = 0;
             private int _functionActivityFlushInterval;
             private Dictionary<string, FunctionMetricSummary> _functionMetricsSummary = new Dictionary<string, FunctionMetricSummary>();
-            private List<FunctionStartedEvent> _runningFunctions = new List<FunctionStartedEvent>();
+            private ConcurrentDictionary<Guid, FunctionStartedEvent> _runningFunctions = new ConcurrentDictionary<Guid, FunctionStartedEvent>();
             private bool _disposed = false;
             private AppServiceOptions _appServiceOptions;
             private int _activityFlushCounter;
@@ -415,11 +414,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 Interlocked.Increment(ref _activeFunctionCount);
 
                 IncrementMetrics(startedEvent.FunctionMetadata.Name, ExecutionStage.Started, 0);
-
-                lock (_runningFunctionsSyncLock)
-                {
-                    _runningFunctions.Add(startedEvent);
-                }
+                _runningFunctions.TryAdd(startedEvent.InvocationId, startedEvent);
             }
 
             internal void FunctionCompleted(FunctionStartedEvent startedEvent)
@@ -431,6 +426,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 IncrementMetrics(startedEvent.FunctionMetadata.Name, functionStage, executionTimeInMS);
 
                 RaiseFunctionMetricEvent(startedEvent, _activeFunctionCount, DateTime.UtcNow);
+                _runningFunctions.TryRemove(startedEvent.InvocationId, out _);
             }
 
             internal void IncrementMetrics(string functionName, ExecutionStage stage, long executionTime)
@@ -460,30 +456,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             /// </summary>
             private void RaiseFunctionMetricEvents()
             {
-                if (_runningFunctions.Count == 0)
+                if (_runningFunctions.IsEmpty)
                 {
                     return;
                 }
 
                 // We only need to raise events here for functions that aren't completed.
                 // Events are raised immediately for completed functions elsewhere.
-                FunctionStartedEvent[] runningFunctionsSnapshot = null;
-                lock (_runningFunctionsSyncLock)
+                // Loop through and prune any completed runs
+                // Also collects the currently running functions in the same enumeration to minimize cost.
+                var running = new List<FunctionStartedEvent>();
+                foreach (var possiblyRunning in _runningFunctions)
                 {
-                    // effectively we're pruning all the completed invocations here
-                    _runningFunctions = _runningFunctions.Where(p => !p.Completed).ToList();
-
-                    // create a snapshot within the lock so we can enumerate below
-                    runningFunctionsSnapshot = _runningFunctions.ToArray();
+                    if (possiblyRunning.Value.Completed)
+                    {
+                        _runningFunctions.TryRemove(possiblyRunning.Key, out _);
+                    }
+                    else
+                    {
+                        running.Add(possiblyRunning.Value);
+                    }
                 }
 
-                // we calculate concurrency here based on count, since these events are raised
+                var concurrency = running.Count;
+
+                // We calculate concurrency here based on count, since these events are raised
                 // on a background thread, so we want the actual count for this interval, not
                 // the current count.
                 var currentTime = DateTime.UtcNow;
-                foreach (var runningFunction in runningFunctionsSnapshot)
+                foreach (var runningFunction in running)
                 {
-                    RaiseFunctionMetricEvent(runningFunction, runningFunctionsSnapshot.Length, currentTime);
+                    RaiseFunctionMetricEvent(runningFunction, concurrency, currentTime);
                 }
             }
 
