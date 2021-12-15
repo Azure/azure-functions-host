@@ -43,7 +43,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             _eventGenerator = generator;
             _functionActivityFlushIntervalSeconds = functionActivityFlushIntervalSeconds;
-            QueuedEvents = new ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>>();
 
             // Initialize the periodic log flush timer
             _metricsFlushTimer = new Timer(TimerFlush, null, metricsFlushIntervalMS, metricsFlushIntervalMS);
@@ -54,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         /// <summary>
         /// Gets the collection of events that will be flushed on the next flush interval.
         /// </summary>
-        public ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>> QueuedEvents { get; }
+        internal ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>> QueuedEvents { get; } = new ConcurrentDictionary<EventKey, Lazy<SystemMetricEvent>>();
 
         public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
@@ -84,22 +83,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 // for each unique key, there will be only 1
                 // queued event that we aggregate into
                 var queuedEvent = QueuedEvents.GetOrAdd(new EventKey(evt.EventName, evt.FunctionName),
-                    name => new Lazy<SystemMetricEvent>(() =>
+                    static (_, sme) => new Lazy<SystemMetricEvent>(() =>
                     {
+                        long smeLatencyMS = (long)sme.Duration.TotalMilliseconds;
                         // create the default event that will be added
                         // if an event isn't already queued for this key
                         return new SystemMetricEvent
                         {
-                            FunctionName = evt.FunctionName,
-                            EventName = evt.EventName,
-                            Minimum = latencyMS,
-                            Maximum = latencyMS,
+                            FunctionName = sme.FunctionName,
+                            EventName = sme.EventName,
+                            Minimum = smeLatencyMS,
+                            Maximum = smeLatencyMS,
                             // Intentionally 0, as they'll immediately be incremented blindly belo2
                             Average = 0,
                             Count = 0,
-                            Data = evt.Data
+                            Data = sme.Data
                         };
-                    })).Value;
+                    }), evt).Value;
 
                 queuedEvent.Maximum = Math.Max(queuedEvent.Maximum, latencyMS);
                 queuedEvent.Minimum = Math.Min(queuedEvent.Minimum, latencyMS);
@@ -114,20 +114,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             eventName = Sanitizer.Sanitize(eventName);
 
-            var queuedEvent = QueuedEvents.GetOrAdd(new EventKey(eventName, functionName), (name) =>
-            new Lazy<SystemMetricEvent>(() =>
+            var queuedEvent = QueuedEvents.GetOrAdd(new EventKey(eventName, functionName),
+                static (key, data) => new Lazy<SystemMetricEvent>(() =>
                 {
                     // create the default event that will be added
                     // if an event isn't already queued for this key
                     // note the count is 0, so that we can always blindly increment below outside the concurrency monitor waits
                     return new SystemMetricEvent
                     {
-                        FunctionName = functionName,
-                        EventName = eventName.ToLowerInvariant(),
+                        FunctionName = key.FunctionName,
+                        EventName = key.EventName.ToLowerInvariant(),
                         Count = 0,
                         Data = data
                     };
-                }));
+                }), data);
 
             queuedEvent.Value.Count++;
         }
@@ -319,7 +319,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             public override bool Equals(object obj) => obj is EventKey other && Equals(other);
 
-            public bool Equals(EventKey other) => EventName.Equals(other.EventName) && FunctionName.Equals(other.FunctionName);
+            public bool Equals(EventKey other) => string.Equals(EventName, other.EventName) && string.Equals(FunctionName, other.FunctionName);
 
             public override int GetHashCode() => HashCode.Combine(EventName, FunctionName);
 
