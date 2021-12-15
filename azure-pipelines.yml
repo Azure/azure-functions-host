@@ -281,7 +281,7 @@ jobs:
       if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
       {
         Write-Host "Patched site extension detected."
-        Write-Host "##vso[task.setvariable variable=isPatchVersion;isOutput=true]true"
+        Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
       }
     displayName: 'Set isPatchVersion'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
