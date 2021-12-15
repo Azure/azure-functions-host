@@ -17,6 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
     public class VirtualFileSystemMiddleware : IMiddleware
     {
         private readonly VirtualFileSystem _vfs;
+        private static readonly PathString _pathRoot = new PathString("/admin/vfs");
 
         public VirtualFileSystemMiddleware(VirtualFileSystem vfs)
         {
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         /// <returns>IsVirtualFileSystemRequest</returns>
         public static bool IsVirtualFileSystemRequest(HttpContext context)
         {
-            return context.Request.Path.StartsWithSegments("/admin/vfs");
+            return context.Request.Path.StartsWithSegments(_pathRoot);
         }
 
         public async Task InvokeAsync(HttpContext context, RequestDelegate requestDelegate)
