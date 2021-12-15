@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 Collection<CustomAttributeBuilder> methodAttributes = new Collection<CustomAttributeBuilder>();
                 Collection<ParameterDescriptor> parameters = await GetFunctionParametersAsync(invoker, functionMetadata, triggerMetadata, methodAttributes, inputBindings, outputBindings);
 
-                var functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes, inputBindings, outputBindings);
+                var functionDescriptor = new FunctionDescriptor(functionMetadata.Name, invoker, functionMetadata, parameters, methodAttributes, inputBindings, outputBindings, Host.LoggerFactory);
 
                 return (true, functionDescriptor);
             }

@@ -172,6 +172,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal IExtensionBundleManager ExtensionBundleManager { get; }
 
+        public ILoggerFactory LoggerFactory => _loggerFactory;
+
         public ILogger Logger { get; internal set; }
 
         public ScriptJobHostOptions ScriptOptions { get; private set; }
@@ -846,7 +848,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (exception == null)
             {
-                throw new ArgumentNullException(nameof(exception));
+                throw new ArgumentNullException("exception");
             }
 
             // Note: We do not log to ILogger here as any error has already been logged.

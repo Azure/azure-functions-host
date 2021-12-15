@@ -8,6 +8,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -34,7 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
 
             // Function level auth requires authz
             FunctionMetadata metadata = new FunctionMetadata();
-            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
+            var loggerFactory = NullLoggerFactory.Instance;
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null, loggerFactory);
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "test"
@@ -45,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
 
             // Anonymous functions don't require authz
             metadata = new FunctionMetadata();
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Anonymous, "get")
             {
                 Route = "test"

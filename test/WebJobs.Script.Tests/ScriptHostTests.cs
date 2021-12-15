@@ -22,6 +22,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -798,7 +799,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "SomeFunction",
                 ScriptFile = "D:\\home\\site\\wwwroot\\SomeFunction\\index.js"
             };
-            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
+            LoggerFactory loggerFactory = new LoggerFactory();
+            FunctionDescriptor function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null, loggerFactory);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.False(result);
@@ -810,7 +812,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Name = "HttpTriggerNode",
                 ScriptFile = "D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js"
             };
-            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null);
+            function = new FunctionDescriptor("TimerFunction", new TestInvoker(), metadata, new Collection<ParameterDescriptor>(), null, null, null, loggerFactory);
             functions.Add(function);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.True(result);
@@ -1155,10 +1157,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void ValidateFunction_ValidatesHttpRoutes()
         {
             var httpFunctions = new Dictionary<string, HttpTriggerAttribute>();
+            var loggerFactory = NullLoggerFactory.Instance;
 
             // first add an http function
             var metadata = new FunctionMetadata();
-            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null);
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test", null, metadata, null, null, null, null, loggerFactory);
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "products/{category}/{id?}"
@@ -1170,7 +1173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(httpFunctions.ContainsKey("test"));
 
             // add another for a completely different route
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test2", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test2", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "/foo/bar/baz/"
@@ -1181,7 +1184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(httpFunctions.ContainsKey("test2"));
 
             // add another that varies from another only by http methods
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test3", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test3", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "put", "post")
             {
                 Route = "/foo/bar/baz/"
@@ -1193,7 +1196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // now try to add a function for the same route
             // where the http methods overlap
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test4", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test4", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute
             {
                 Route = "/foo/bar/baz/"
@@ -1207,7 +1210,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal(3, httpFunctions.Count);
 
             // try to add a route under reserved admin route
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test5", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test5", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute
             {
                 Route = "admin/foo/bar"
@@ -1220,7 +1223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
             // try to add a route under reserved runtime route
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test6", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute
             {
                 Route = "runtime/foo/bar"
@@ -1233,7 +1236,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Equal("The specified route conflicts with one or more built in routes.", ex.Message);
 
             // verify that empty route is defaulted to function name
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test7", null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, "test7", null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute();
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
             ScriptHost.ValidateFunction(function.Object, httpFunctions);
@@ -1310,7 +1313,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // first add an http function
             var metadata = new FunctionMetadata();
-            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            var loggerFactory = NullLoggerFactory.Instance;
+            var function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null, loggerFactory);
             var attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get");
             function.SetupGet(p => p.HttpTriggerAttribute).Returns(() => attribute);
 
@@ -1318,7 +1322,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // add another function with same name
             metadata = new FunctionMetadata();
-            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null);
+            function = new Mock<FunctionDescriptor>(MockBehavior.Strict, name, null, metadata, null, null, null, null, loggerFactory);
             attribute = new HttpTriggerAttribute(AuthorizationLevel.Function, "get")
             {
                 Route = "someRoute"
@@ -1348,7 +1352,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             parameters.Add(new ParameterDescriptor("param1", typeof(string)));
             var metadata = new FunctionMetadata();
             var invoker = new TestInvoker();
-            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null);
+            var loggerFactory = new LoggerFactory();
+            var function = new FunctionDescriptor("TestFunction", invoker, metadata, parameters, null, null, null, loggerFactory);
             scriptHost.Functions.Add(function);
 
             var errors = new Collection<string>();
