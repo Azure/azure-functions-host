@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,8 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
-        private Stopwatch _addWorkerStopwatch = Stopwatch.StartNew();
-        private Stopwatch _logStateStopWatch = Stopwatch.StartNew();
+        private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
+        private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
@@ -87,10 +87,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 var workerStatuses = await _functionInvocationDispatcher.GetWorkerStatusesAsync();
 
-                if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.Elapsed))
+                if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.GetElapsedTime()))
                 {
                     await _functionInvocationDispatcher.StartWorkerChannel();
-                    _addWorkerStopwatch.Restart();
+                    _addWorkerStopwatch = ValueStopwatch.StartNew();
                 }
             }
             catch (Exception ex)
@@ -135,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     }
                 }
 
-                if (result == true || _logStateStopWatch.Elapsed > _logStateInterval)
+                if (result == true || _logStateStopWatch.GetElapsedTime() > _logStateInterval)
                 {
                     StringBuilder sb = new StringBuilder();
                     foreach (WorkerStatusDetails description in descriptions)
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         sb.Append(FormatWorkerDescription(description));
                         sb.Append(Environment.NewLine);
                     }
-                    _logStateStopWatch.Restart();
+                    _logStateStopWatch = ValueStopwatch.StartNew();
                     _logger.LogDebug(sb.ToString());
                 }
             }

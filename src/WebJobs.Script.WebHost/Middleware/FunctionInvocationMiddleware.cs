@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,8 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Features;
@@ -62,9 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                 // pipeline dispatch time
                 // important that this stopwatch is started as early as possible
                 // in the pipeline (in this case, in our first middleware)
-                var sw = new Stopwatch();
-                sw.Start();
-                context.Items[ScriptConstants.AzureFunctionsColdStartKey] = sw;
+                context.Items[ScriptConstants.AzureFunctionsColdStartKey] = ValueStopwatch.StartNew();
             }
 
             PopulateRouteData(context);

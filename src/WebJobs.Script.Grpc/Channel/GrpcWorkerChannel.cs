@@ -5,7 +5,6 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -171,15 +170,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     WorkerStatusRequest = new WorkerStatusRequest()
                 };
 
-                var sw = Stopwatch.StartNew();
+                var sw = ValueStopwatch.StartNew();
                 var tcs = new TaskCompletionSource<bool>();
                 if (_workerStatusRequests.TryAdd(message.RequestId, tcs))
                 {
                     SendStreamingMessage(message);
                     await tcs.Task;
-                    sw.Stop();
-                    workerStatus.Latency = sw.Elapsed;
-                    _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {sw.ElapsedMilliseconds}ms");
+                    var elapsed = sw.GetElapsedTime();
+                    workerStatus.Latency = elapsed;
+                    _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {elapsed.TotalMilliseconds}ms");
                 }
             }
 
@@ -674,6 +673,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         if (rpcLog.Exception != null)
                         {
+                            // TODO fix RpcException catch all https://github.com/Azure/azure-functions-dotnet-worker/issues/370
                             var exception = new Workers.Rpc.RpcException(rpcLog.Message, rpcLog.Exception.Message, rpcLog.Exception.StackTrace);
                             context.Logger.Log(logLevel, new EventId(0, rpcLog.EventId), rpcLog.Message, exception, (state, exc) => state);
                         }
