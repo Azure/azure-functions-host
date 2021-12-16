@@ -23,9 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public static IApplicationBuilder UseWebJobsScriptHost(this IApplicationBuilder builder, IApplicationLifetime applicationLifetime, Action<WebJobsRouteBuilder> routes)
         {
             IEnvironment environment = builder.ApplicationServices.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
-            IOptionsMonitor<StandbyOptions> standbyOptions = builder.ApplicationServices.GetService<IOptionsMonitor<StandbyOptions>>();
-            IOptionsMonitor<HttpBodyControlOptions> httpBodyControlOptions = builder.ApplicationServices.GetService<IOptionsMonitor<HttpBodyControlOptions>>();
+            IOptionsMonitor<StandbyOptions> standbyOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<StandbyOptions>>();
+            IOptionsMonitor<HttpBodyControlOptions> httpBodyControlOptionsMonitor = builder.ApplicationServices.GetService<IOptionsMonitor<HttpBodyControlOptions>>();
             IServiceProvider serviceProvider = builder.ApplicationServices;
+
+            StandbyOptions standbyOptions = standbyOptionsMonitor.CurrentValue;
+            standbyOptionsMonitor.OnChange(newOptions => standbyOptions = newOptions);
+
+            HttpBodyControlOptions httpBodyControlOptions = httpBodyControlOptionsMonitor.CurrentValue;
+            httpBodyControlOptionsMonitor.OnChange(newOptions => httpBodyControlOptions = newOptions);
 
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
@@ -35,14 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             }
 
-            if (standbyOptions.CurrentValue.InStandbyMode)
+            if (standbyOptions.InStandbyMode)
             {
                 builder.UseMiddleware<PlaceholderSpecializationMiddleware>();
             }
 
             // Specialization can change the CompatMode setting, so this must run later than
             // the PlaceholderSpecializationMiddleware
-            builder.UseWhen(context => httpBodyControlOptions.CurrentValue.AllowSynchronousIO || context.Request.IsAdminDownloadRequest(), config =>
+            builder.UseWhen(context => httpBodyControlOptions.AllowSynchronousIO || context.Request.IsAdminDownloadRequest(), config =>
             {
                 config.UseMiddleware<AllowSynchronousIOMiddleware>();
             });
@@ -53,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 config.UseMiddleware<HostAvailabilityCheckMiddleware>();
             });
 
-            builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.CurrentValue.InStandbyMode, environment), config =>
+            builder.UseWhen(context => HostWarmupMiddleware.IsWarmUpRequest(context.Request, standbyOptions.InStandbyMode, environment), config =>
             {
                 config.UseMiddleware<HostWarmupMiddleware>();
             });

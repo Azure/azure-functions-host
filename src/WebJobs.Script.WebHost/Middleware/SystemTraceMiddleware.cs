@@ -65,14 +65,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     var claim = identity.Claims.FirstOrDefault(p => p.Type == SecurityConstants.AuthLevelClaimType);
                     if (claim != null)
                     {
-                        sbIdentity.AppendFormat(":{0}", claim.Value);
+                        sbIdentity.Append(':');
+                        sbIdentity.Append(claim.Value);
                     }
 
                     sbIdentities.Append(sbIdentity);
                 }
 
-                sbIdentities.Insert(0, "(");
-                sbIdentities.Append(")");
+                sbIdentities.Insert(0, '(');
+                sbIdentities.Append(')');
 
                 return sbIdentities.ToString();
             }

@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             {
                 _logger.LogDebug($"Extracting files to '{scriptPath}'");
                 ZipFile.ExtractToDirectory(filePath, scriptPath, overwriteFiles: true);
-                _logger.LogDebug($"Zip extraction complete");
+                _logger.LogDebug("Zip extraction complete");
             }
         }
     }

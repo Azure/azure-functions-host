@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException("functionMetadata");
+                throw new ArgumentNullException(nameof(functionMetadata));
             }
 
             // We can only handle script types supported by the current compilation service factory
@@ -85,19 +85,19 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             if (functionInvoker == null)
             {
-                throw new ArgumentNullException("functionInvoker");
+                throw new ArgumentNullException(nameof(functionInvoker));
             }
             if (functionMetadata == null)
             {
-                throw new ArgumentNullException("functionMetadata");
+                throw new ArgumentNullException(nameof(functionMetadata));
             }
             if (triggerMetadata == null)
             {
-                throw new ArgumentNullException("triggerMetadata");
+                throw new ArgumentNullException(nameof(triggerMetadata));
             }
             if (methodAttributes == null)
             {
-                throw new ArgumentNullException("methodAttributes");
+                throw new ArgumentNullException(nameof(methodAttributes));
             }
 
             var dotNetInvoker = functionInvoker as DotNetFunctionInvoker;
