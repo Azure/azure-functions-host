@@ -251,7 +251,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await Task.Delay(250);
             evt.Complete();
             Assert.True(evt.Completed);
-            Assert.False(evt.StopWatch.IsActive); // The stopwatch has no state, but has been activated
+            Assert.True(evt.StopWatch.IsActive); // The stopwatch has no state, but has been activated
         }
 
         [Fact]
