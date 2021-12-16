@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
 
             if (coldStartData != null)
             {
-                coldStartData.Add("functionDuration", sw.GetElapsedTime());
+                coldStartData.Add("functionDuration", sw.GetElapsedTime().TotalMilliseconds);
 
                 var logData = new Dictionary<string, object>
                 {
