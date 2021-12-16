@@ -50,8 +50,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private static readonly string UTF8ByteOrderMark = Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble());
         private static readonly FilteredExpandoObjectConverter _filteredExpandoObjectConverter = new FilteredExpandoObjectConverter();
 
-        private static readonly double TicksRatio = TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency;
-
         private static List<string> dotNetLanguages = new List<string>() { DotNetScriptTypes.CSharp, DotNetScriptTypes.DotNetAssembly };
 
         public static int ColdStartDelayMS { get; set; } = 5000;
@@ -975,15 +973,6 @@ namespace Microsoft.Azure.WebJobs.Script
             {
                 return FunctionAppContentEditingState.NotAllowed;
             }
-        }
-
-        /// <summary>
-        /// Gets a timestamp given start ticks (from <see cref="Stopwatch.GetTimestamp"/>) without allocating a Stopwatch.
-        /// </summary>
-        public static TimeSpan GetDuration(long startTicks)
-        {
-            var tickDiff = Stopwatch.GetTimestamp() - startTicks;
-            return new TimeSpan((long)(TicksRatio * tickDiff));
         }
 
         private class FilteredExpandoObjectConverter : ExpandoObjectConverter
