@@ -52,6 +52,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         public void Dispose()
         {
             _factory.Dispose();
+            // We also clear the cache here so that any future callers will hit a HostDisposedException as expected
+            _loggerCache.Clear();
         }
     }
 }
