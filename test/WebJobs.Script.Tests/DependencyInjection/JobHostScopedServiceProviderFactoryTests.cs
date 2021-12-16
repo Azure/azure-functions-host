@@ -5,27 +5,30 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
 {
-    public class JobHostServiceProviderTests
+    public class JobHostScopedServiceProviderFactoryTests
     {
         private delegate object ServiceFactory(Type type);
 
         [Fact]
         public void Dispose_OnJobHostScope_DoesNotDisposeRootSingletonService()
         {
+            // Setup the root
             var rootServices = new ServiceCollection();
             rootServices.AddSingleton<TestService>();
-            var rootContainer = rootServices.BuildServiceProvider();
-
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
+            var rootProvider = rootServices.BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
 
             var jobHostServices = new ServiceCollection();
             jobHostServices.AddScoped<IService, TestService>();
-            IServiceProvider serviceProvider = new JobHostServiceProvider(jobHostServices, rootContainer, rootScopeFactory);
+
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider serviceProvider = jobHostServiceProviderFactory.CreateServiceProvider(jobHostServices);
 
             // Create a scope on JobHost container
             IServiceScope scope = serviceProvider.CreateScope();
@@ -47,14 +50,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void Dispose_OnJobHostScope_DisposesRootScopedService()
         {
+            // Setup the root
             var rootServices = new ServiceCollection();
             rootServices.AddScoped<TestService>();
-            var rootContainer = rootServices.BuildServiceProvider();
+            var rootProvider = rootServices.BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
 
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-
-            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer, rootScopeFactory);
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider serviceProvider = jobHostServiceProviderFactory.CreateServiceProvider(new ServiceCollection());
 
             // Create a scope on JobHost container
             IServiceScope scope = serviceProvider.CreateScope();
@@ -71,14 +75,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void Dispose_OnJobHost_DoesNotDisposRootScopedService()
         {
+            // Setup the root
             var rootServices = new ServiceCollection();
             rootServices.AddSingleton<TestService>();
-            var rootContainer = rootServices.BuildServiceProvider();
+            var rootProvider = rootServices.BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
 
-            // Get the root scope factory
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-
-            IServiceProvider serviceProvider = new JobHostServiceProvider(new ServiceCollection(), rootContainer, rootScopeFactory);
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider serviceProvider = jobHostServiceProviderFactory.CreateServiceProvider(new ServiceCollection());
 
             // The service resolution should fallback to the parent scope
             TestService rootService = serviceProvider.GetService<TestService>();
@@ -92,15 +97,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void Scopes_ChildScopeIsIsolated()
         {
-            var services = new ServiceCollection();
-            services.AddScoped<A>();
+            // Setup the root
+            var rootServices = new ServiceCollection();
+            rootServices.AddScoped<A>();
+            var rootProvider = new ServiceCollection().BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider jobServiceProvider = jobHostServiceProviderFactory.CreateServiceProvider(new ServiceCollection());
 
-            var a1 = jobHostProvider.GetService<A>();
-            jobHostProvider.CreateScope();
-            var a2 = jobHostProvider.GetService<A>();
+            var a1 = jobServiceProvider.GetService<A>();
+            jobServiceProvider.CreateScope();
+            var a2 = jobServiceProvider.GetService<A>();
             Assert.NotNull(a1);
             Assert.NotNull(a2);
             Assert.Same(a1, a2);
@@ -109,24 +118,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void Scopes_Factories()
         {
+            // Setup the root
             IList<IServiceProvider> serviceProviders = new List<IServiceProvider>();
 
-            var services = new ServiceCollection();
-            services.AddTransient<A>(p =>
+            var rootServices = new ServiceCollection();
+            rootServices.AddTransient<A>(p =>
             {
                 serviceProviders.Add(p);
                 return new A();
             });
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootProvider = new ServiceCollection().BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
+
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider jobServiceProvider = jobHostServiceProviderFactory.CreateServiceProvider(new ServiceCollection());
 
             // Get this service twice.
             // The IServiceProvider passed to the factory should be different because they are separate scopes.
-            var scope1 = jobHostProvider.CreateScope();
+            var scope1 = jobServiceProvider.CreateScope();
             scope1.ServiceProvider.GetService<A>();
 
-            var scope2 = jobHostProvider.CreateScope();
+            var scope2 = jobServiceProvider.CreateScope();
             scope2.ServiceProvider.GetService<A>();
 
             Assert.Equal(2, serviceProviders.Count);
@@ -141,13 +155,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
             services.AddScoped<A>();
             services.AddScoped<ServiceFactory>(provider => (type) => provider.GetRequiredService(type));
 
-            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootServices = new ServiceCollection();
+            var rootProvider = rootServices.BuildServiceProvider();
+            var mockDepValidator = new Mock<IDependencyValidator>();
 
-            var scope1 = jobHostProvider.CreateScope();
+            // Then spin up the per-JobHost provider
+            var jobHostServiceProviderFactory = new JobHostScopedServiceProviderFactory(rootProvider, rootServices, mockDepValidator.Object);
+            IServiceProvider jobServiceProvider = jobHostServiceProviderFactory.CreateServiceProvider(services);
+
+            var scope1 = jobServiceProvider.CreateScope();
             var a1 = scope1.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
 
-            var scope2 = jobHostProvider.CreateScope();
+            var scope2 = jobServiceProvider.CreateScope();
             var a2 = scope2.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
 
             Assert.NotNull(a1);

@@ -60,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
             var webHostBuilder = new WebHostBuilder()
                 .ConfigureServices(services =>
                 {
-                    services.Replace(ServiceDescriptor.Singleton<IServiceProviderFactory<IServiceCollection>>(new WebHostServiceProviderFactory()));
                     services.AddSingleton<IOptions<ScriptApplicationHostOptions>>(new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions));
                     services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                 })

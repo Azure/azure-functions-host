@@ -601,11 +601,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     _count++;
                     var services = new ServiceCollection();
-                    var rootServiceProvider = new WebHostServiceProvider(services);
+                    var rootServiceProvider = services.BuildServiceProvider();
                     var mockDepValidator = new Mock<IDependencyValidator>();
 
                     var host = new HostBuilder()
-                        .UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, rootServiceProvider, mockDepValidator.Object))
+                        .UseServiceProviderFactory(new JobHostScopedServiceProviderFactory(rootServiceProvider, services, mockDepValidator.Object))
                         .Build();
 
                     throw new InvalidOperationException("boom!");

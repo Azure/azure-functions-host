@@ -70,8 +70,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration
             Assert.False(result.Succeeded);
 
             var ex = result.Exception;
-            Assert.Equal($"The host is disposed and cannot be used. Disposed object: '{typeof(ScopedResolver).FullName}'; Found IListener in stack trace: '{typeof(CustomListener).AssemblyQualifiedName}'", ex.Message);
-            Assert.Contains("CustomListener.RunAsync", ex.StackTrace);
+
+            // Previous:
+            //Assert.Equal($"The host is disposed and cannot be used. Disposed object: '{typeof(NotImplementedException).FullName}'; Found IListener in stack trace: '{typeof(CustomListener).AssemblyQualifiedName}'", ex.Message);
+
+            // TODO: This doesn't have the HostDisposedException we caught *specifically for CreateScope()*
+            //    Do we want to repalce the scope provider at the host level specifically for capturing this? We'd need to intercept .CreateScope() for equivalent behavior here
+            //    ...but there's also the question if _that's_ where we'd throw when disposing a whole host while continuing to run things. If we're just making sure "we're disposed"
+            //    ...then this works, but if we want a more friendly error wrapper to indicate it's the host disposal we happened to capture on *this path* (only ensured in a controlled test)
+            //    ...then we would need to go back to wrapping the IServiceScopeFactory (globaly) and best-guess catching exceptions, e.g. an exception filter for the below.
+            Assert.Equal("Cannot access a disposed object.\r\nObject name: 'IServiceProvider'.", ex.Message);
+
+            // TODO: This also changes, because we're going to go boom before executing the function, and our stack trace is after a yield so we're coming off the task pool
+            //Assert.Contains("CustomListener.RunAsync", ex.StackTrace);
         }
 
         [Fact]
