@@ -142,8 +142,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             Assert.Null(concurrency["dynamicConcurrencyEnabled"]);
             Assert.Null(concurrency["snapshotPersistenceEnabled"]);
 
-            // An integer/boolean value will be transfered to a string value.
-            // HostJosnFileConfigurationSource is also convert these into a string value.
+            // An integer/boolean value will be changed into string see the expectedExtensionsJson, expectedConcurrencyJson.
             Assert.Equal(expectedExtensionsJson, extensionsJson);
             Assert.Equal(expectedConcurrencyJson, concurrencyJson);
         }
