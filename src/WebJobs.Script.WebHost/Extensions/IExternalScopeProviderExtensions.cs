@@ -10,22 +10,27 @@ namespace Microsoft.Extensions.Logging
     {
         public static IDictionary<string, object> GetScopeDictionaryOrNull(this IExternalScopeProvider scopeProvider)
         {
-            IDictionary<string, object> result = null;
+            var result = new DictionaryRef();
 
-            scopeProvider.ForEachScope((scope, _) =>
+            scopeProvider.ForEachScope(static (scope, state) =>
             {
                 if (scope is IEnumerable<KeyValuePair<string, object>> kvps)
                 {
-                    result = result ?? new Dictionary<string, object>(16, StringComparer.OrdinalIgnoreCase);
+                    state.Dictionary ??= new Dictionary<string, object>(16, StringComparer.OrdinalIgnoreCase);
 
                     foreach (var kvp in kvps)
                     {
-                        result[kvp.Key] = kvp.Value;
+                        state.Dictionary[kvp.Key] = kvp.Value;
                     }
                 }
-            }, (object)null);
+            }, result);
 
-            return result;
+            return result.Dictionary;
+        }
+
+        private class DictionaryRef
+        {
+            public Dictionary<string, object> Dictionary { get; set; }
         }
     }
 }
