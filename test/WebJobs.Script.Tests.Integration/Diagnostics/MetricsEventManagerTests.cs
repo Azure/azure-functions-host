@@ -727,16 +727,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.True(_functionExecutionEventArguments[0].ExecutionId == _functionExecutionEventArguments[_functionExecutionEventArguments.Count - 1].ExecutionId, "Execution ids are not the same");
         }
 
-        [Theory]
-        [InlineData("Event1", null, "event1")]
-        [InlineData("Event1", "", "event1")]
-        [InlineData("Event1", "Function1", "event1_function1")]
-        public void GetAggregateKey_ReturnsExpectedValue(string eventName, string functionName, string expected)
-        {
-            string result = MetricsEventManager.GetAggregateKey(eventName, functionName);
-            Assert.Equal(expected, result);
-        }
-
         [Fact]
         public void SystemEvent_DebugValue_ReturnsExpectedValue()
         {
