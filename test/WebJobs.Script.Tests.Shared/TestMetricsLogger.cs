@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public object BeginEvent(string eventName, string functionName = null, string data = null)
         {
-            string key = MetricsEventManager.GetAggregateKey(eventName, functionName);
+            string key = GetAggregateKey(eventName, functionName);
             EventsBegan.Add(key);
             return key;
         }
@@ -64,12 +64,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public void LogEvent(string eventName, string functionName = null, string data = null)
         {
-            LoggedEvents.Add(MetricsEventManager.GetAggregateKey(eventName, functionName));
+            LoggedEvents.Add(GetAggregateKey(eventName, functionName));
         }
 
         public void LogEvent(MetricEvent metricEvent)
         {
             LoggedMetricEvents.Add(metricEvent);
+        }
+
+        /// <summary>
+        /// Constructs the aggregate key used to group events. When metric events are
+        /// added for later aggregation on flush, they'll be grouped by this key.
+        /// </summary>
+        private static string GetAggregateKey(string eventName, string functionName = null)
+        {
+            string key = string.IsNullOrEmpty(functionName) ?
+                eventName : $"{eventName}_{functionName}";
+
+            return key.ToLowerInvariant();
         }
     }
 }
