@@ -167,18 +167,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
         }
 
-        /// <summary>
-        /// Constructs the aggregate key used to group events. When metric events are
-        /// added for later aggregation on flush, they'll be grouped by this key.
-        /// </summary>
-        internal static string GetAggregateKey(string eventName, string functionName = null)
-        {
-            string key = string.IsNullOrEmpty(functionName) ?
-                eventName : $"{eventName}_{functionName}";
-
-            return key.ToLowerInvariant();
-        }
-
         private static string SerializeBindings(IEnumerable<BindingMetadata> bindings)
         {
             if (bindings != null)
