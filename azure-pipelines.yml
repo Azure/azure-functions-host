@@ -265,9 +265,9 @@ jobs:
     inputs:
       contents: '**\CodeSignSummary-*.md'
   - task: ManifestGeneratorTask@0
-    displayName: 'SBOM Generation Task'
+    displayName: 'SBOM Generation Task - SiteExtension'
     inputs:
-      BuildDropPath: '$(Build.ArtifactStagingDirectory)'
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtension'
       Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
@@ -278,15 +278,40 @@ jobs:
         Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
       }
     displayName: 'Set isPatchVersion'
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - ZippedPatchSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
     condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - PrivateSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\PrivateSiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Symbols'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
     artifact: Symbols
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - NugetPackages'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Performance'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
 
