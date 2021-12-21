@@ -283,6 +283,7 @@ jobs:
     inputs:
       BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
       Verbosity: 'Information'
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
     condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
