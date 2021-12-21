@@ -2,7 +2,6 @@ param (
   [string]$buildNumber,
   [string]$majorMinorVersion,
   [string]$patchVersion,
-  [string]$v2CompatibleExtensionVersion = "2.1.0",  
   [string]$suffix = "",
   [string]$commitHash = "N/A",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
@@ -16,16 +15,10 @@ $rootDir = Split-Path -Parent $PSScriptRoot
 $buildOutput = Join-Path $rootDir "buildoutput"
 $hasSuffix = ![string]::IsNullOrEmpty($suffix)
 
-if(![string]::IsNullOrEmpty($buildNumber)) {
-  $v2CompatibleExtensionVersion = "2.1.$buildNumber"
-}
-
 $extensionVersionNoSuffix = $extensionVersion
-$v2CompatibleExtensionVersionNoSuffix = $v2CompatibleExtensionVersion
 
 if ($hasSuffix) {
-  $extensionVersion = "$extensionVersion-$suffix"  
-  $v2CompatibleExtensionVersion = "$v2CompatibleExtensionVersion-$suffix"
+  $extensionVersion = "$extensionVersion-$suffix"
 }
 
 function ZipContent([string] $sourceDirectory, [string] $target)
@@ -229,12 +222,10 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 function CreateSiteExtensions() {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $siteExtensionPath = "$buildOutput\temp_extension"
-    $v2CompatibleSiteExtensionPath = "$buildOutput\temp_extension_v2"
 
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersionNoSuffix"
-    $officialV2CompatibleSiteExtensionPath = "$v2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix"
     
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
@@ -260,19 +251,6 @@ function CreateSiteExtensions() {
     Write-Host "======================================"
     Write-Host
     
-    Write-Host "======================================"
-    $stopwatch.Reset()
-    Write-Host "Copying $extensionVersion site extension to generate $v2CompatibleExtensionVersion."
-    Copy-Item -Path $officialSiteExtensionPath -Destination $officialV2CompatibleSiteExtensionPath\$v2CompatibleExtensionVersionNoSuffix -Force -Recurse > $null
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $officialV2CompatibleSiteExtensionPath > $null
-    Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
-    Write-Host "======================================"
-    Write-Host
-
-    $zipOutput = "$buildOutput\V2SiteExtension"
-    New-Item -Itemtype directory -path $zipOutput -Force > $null
-    ZipContent $officialV2CompatibleSiteExtensionPath "$zipOutput\Functions.$v2CompatibleExtensionVersion$runtimeSuffix.zip"
-
     # This needs to be determined if it's patch or not.
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
@@ -290,7 +268,6 @@ function CreateSiteExtensions() {
     }
     
     Remove-Item $siteExtensionPath -Recurse -Force > $null    
-    Remove-Item $v2CompatibleSiteExtensionPath -Recurse -Force > $null
     
     Write-Host "======================================"
     $stopwatch.Reset()
@@ -326,7 +303,6 @@ if (Test-Path $buildOutput) {
     Remove-Item $buildOutput -Recurse -Force
 }
 Write-Host "Extensions version: $extensionVersion"
-Write-Host "V2 compatible Extensions version: $v2CompatibleExtensionVersion"
 Write-Host ""
 
 BuildRuntime "win-x86"

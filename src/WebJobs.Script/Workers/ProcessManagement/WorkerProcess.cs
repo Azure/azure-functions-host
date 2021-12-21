@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
@@ -24,10 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IMetricsLogger _metricsLogger;
         private readonly int processExitTimeoutInMilliseconds = 1000;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IDisposable _eventSubscription;
 
-        private Process _process;
         private bool _useStdErrorStreamForErrorsOnly;
         private Queue<string> _processStdErrDataQueue = new Queue<string>(3);
+        private IHostProcessMonitor _processMonitor;
+        private object _syncLock = new object();
 
         internal WorkerProcess(IScriptEventManager eventManager, IProcessRegistry processRegistry, ILogger workerProcessLogger, IWorkerConsoleLogSource consoleLogSource, IMetricsLogger metricsLogger, IServiceProvider serviceProvider, bool useStdErrStreamForErrorsOnly = false)
         {
@@ -38,13 +41,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _metricsLogger = metricsLogger;
             _useStdErrorStreamForErrorsOnly = useStdErrStreamForErrorsOnly;
             _serviceProvider = serviceProvider;
+
+            // We subscribe to host start events so we can handle the restart that occurs
+            // on host specialization.
+            _eventSubscription = _eventManager.OfType<HostStartEvent>().Subscribe(OnHostStart);
         }
 
         protected bool Disposing { get; private set; }
 
-        public int Id => _process.Id;
+        public int Id => Process.Id;
 
         internal Queue<string> ProcessStdErrDataQueue => _processStdErrDataQueue;
+
+        // for testing
+        internal Process Process { get; set; }
 
         internal abstract Process CreateWorkerProcess();
 
@@ -52,35 +62,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             using (_metricsLogger.LatencyEvent(MetricEventNames.ProcessStart))
             {
-                _process = CreateWorkerProcess();
+                Process = CreateWorkerProcess();
                 try
                 {
-                    _process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
-                    _process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
-                    _process.Exited += (sender, e) => OnProcessExited(sender, e);
-                    _process.EnableRaisingEvents = true;
+                    Process.ErrorDataReceived += (sender, e) => OnErrorDataReceived(sender, e);
+                    Process.OutputDataReceived += (sender, e) => OnOutputDataReceived(sender, e);
+                    Process.Exited += (sender, e) => OnProcessExited(sender, e);
+                    Process.EnableRaisingEvents = true;
 
-                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{_process.StartInfo.FileName} WorkingDirectory:{_process.StartInfo.WorkingDirectory} Arguments:{_process.StartInfo.Arguments}");
-                    _process.Start();
-                    _workerProcessLogger?.LogDebug($"{_process.StartInfo.FileName} process with Id={_process.Id} started");
+                    _workerProcessLogger?.LogDebug($"Starting worker process with FileName:{Process.StartInfo.FileName} WorkingDirectory:{Process.StartInfo.WorkingDirectory} Arguments:{Process.StartInfo.Arguments}");
+                    Process.Start();
+                    _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} started");
 
-                    _process.BeginErrorReadLine();
-                    _process.BeginOutputReadLine();
+                    Process.BeginErrorReadLine();
+                    Process.BeginOutputReadLine();
 
                     // Register process only after it starts
-                    _processRegistry?.Register(_process);
+                    _processRegistry?.Register(Process);
 
-                    var processMonitor = _serviceProvider.GetScriptHostServiceOrNull<IHostProcessMonitor>();
-                    if (processMonitor != null)
-                    {
-                        processMonitor.RegisterChildProcess(_process);
-                    }
+                    RegisterWithProcessMonitor();
 
                     return Task.CompletedTask;
                 }
                 catch (Exception ex)
                 {
-                    _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {_process.StartInfo.FileName}");
+                    _workerProcessLogger.LogError(ex, $"Failed to start Worker Channel. Process fileName: {Process.StartInfo.FileName}");
                     return Task.FromException(ex);
                 }
             }
@@ -109,8 +115,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 else
                 {
                     if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                              (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
+                        (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
+                        (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
                     {
                         LogError(msg);
                     }
@@ -139,20 +145,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             try
             {
-                if (_process.ExitCode == WorkerConstants.SuccessExitCode)
+                if (Process.ExitCode == WorkerConstants.SuccessExitCode)
                 {
-                    _process.WaitForExit();
-                    _process.Close();
+                    Process.WaitForExit();
+                    Process.Close();
                 }
-                else if (_process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
+                else if (Process.ExitCode == WorkerConstants.IntentionalRestartExitCode)
                 {
                     HandleWorkerProcessRestart();
                 }
                 else
                 {
-                    var processExitEx = new WorkerProcessExitException($"{_process.StartInfo.FileName} exited with code {_process.ExitCode}\n {exceptionMessage}");
-                    processExitEx.ExitCode = _process.ExitCode;
-                    processExitEx.Pid = _process.Id;
+                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode}\n {exceptionMessage}");
+                    processExitEx.ExitCode = Process.ExitCode;
+                    processExitEx.Pid = Process.Id;
                     HandleWorkerProcessExitError(processExitEx);
                 }
             }
@@ -163,11 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             finally
             {
-                var processMonitor = _serviceProvider.GetScriptHostServiceOrNull<IHostProcessMonitor>();
-                if (processMonitor != null)
-                {
-                    processMonitor.UnregisterChildProcess(_process);
-                }
+                UnregisterFromProcessMonitor();
             }
         }
 
@@ -206,23 +208,70 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             // best effort process disposal
             try
             {
-                if (_process != null)
+                _eventSubscription?.Dispose();
+
+                if (Process != null)
                 {
-                    if (!_process.HasExited)
+                    if (!Process.HasExited)
                     {
-                        _process.Kill();
-                        if (!_process.WaitForExit(processExitTimeoutInMilliseconds))
+                        Process.Kill();
+                        if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
                             _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
                         }
                     }
-                    _process.Dispose();
+                    Process.Dispose();
                 }
             }
             catch (Exception exc)
             {
                 _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
                 //ignore
+            }
+        }
+
+        internal void OnHostStart(HostStartEvent evt)
+        {
+            if (!Disposing)
+            {
+                RegisterWithProcessMonitor();
+            }
+        }
+
+        /// <summary>
+        /// Ensures that our process is registered with <see cref="IHostProcessMonitor"/>.
+        /// </summary>
+        /// <remarks>
+        /// The goal is to ensure that all worker processes are registered with the monitor for the active host.
+        /// There are a few different cases to consider:
+        /// - Starting up in normal mode, we register on when the process is started.
+        /// - When a placeholder mode host is specialized, a new host will be started but the previously initialized
+        ///   worker process will remain running. We need to re-register with the new host.
+        /// - When the worker process dies and a new instance of this class is created.
+        /// </remarks>
+        internal void RegisterWithProcessMonitor()
+        {
+            var processMonitor = _serviceProvider.GetScriptHostServiceOrNull<IHostProcessMonitor>();
+            lock (_syncLock)
+            {
+                if (processMonitor != null && processMonitor != _processMonitor && Process != null)
+                {
+                    processMonitor.RegisterChildProcess(Process);
+                    _processMonitor = processMonitor;
+                }
+            }
+        }
+
+        internal void UnregisterFromProcessMonitor()
+        {
+            lock (_syncLock)
+            {
+                if (_processMonitor != null && Process != null)
+                {
+                    // if we've registered our process with the monitor, unregister
+                    _processMonitor.UnregisterChildProcess(Process);
+                    _processMonitor = null;
+                }
             }
         }
     }

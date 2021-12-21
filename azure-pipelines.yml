@@ -275,13 +275,18 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\V2SiteExtension
-    artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
+  - pwsh: |
+      if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
+      {
+        Write-Host "Patched site extension detected."
+        Write-Host "##vso[task.setvariable variable=isPatchVersion;isOutput=true]true"
+      }
+    displayName: 'Set isPatchVersion'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
-    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
@@ -497,6 +502,15 @@ jobs:
       command: 'test'
       testRunTitle: "Samples end to end tests"
       arguments: '--filter "Group=SamplesEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Drain mode end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Drain mode end to end tests"
+      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
