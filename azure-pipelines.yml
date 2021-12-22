@@ -21,7 +21,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2022TLS
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -55,7 +55,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2022TLS
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -335,7 +335,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2022TLS
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -357,7 +357,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2022TLS
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -416,7 +416,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2022TLS
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
