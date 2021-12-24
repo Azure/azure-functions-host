@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement;
@@ -119,7 +120,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             });
 
             // Management services
-       // TODO //     services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
+            services.AddSingleton<FunctionsSyncManager>();
+            services.AddSingleton<IFunctionsSyncManager>(x => x.GetRequiredService<FunctionsSyncManager>());
+            services.AddSingleton<IConfigurationReceiver>(x => x.GetRequiredService<FunctionsSyncManager>());
+
             services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
             services.AddSingleton<IFunctionMetadataProvider, HostFunctionMetadataProvider>();
             services.AddSingleton<IWebFunctionsManager, WebFunctionsManager>();

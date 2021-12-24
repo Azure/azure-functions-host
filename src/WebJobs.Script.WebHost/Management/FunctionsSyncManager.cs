@@ -16,6 +16,7 @@ using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -28,7 +29,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public class FunctionsSyncManager : IFunctionsSyncManager, IDisposable
+    public class FunctionsSyncManager : IFunctionsSyncManager, IConfigurationReceiver, IDisposable
     {
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
@@ -82,8 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
-        // Do not use in production. A method for testability.
-        internal IConfiguration Configuration
+        public IConfiguration Configuration
         {
             set
             {

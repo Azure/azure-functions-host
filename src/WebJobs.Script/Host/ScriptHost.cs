@@ -28,6 +28,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -79,6 +80,8 @@ namespace Microsoft.Azure.WebJobs.Script
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
 
+        private IConfigurationReceiver _configurationReceiver;
+
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
@@ -108,7 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            ScriptSettingsManager settingsManager = null)
+            ScriptSettingsManager settingsManager = null,
+            IConfigurationReceiver configurationReceiver = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
@@ -156,6 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }));
 
             _functionDataCache = functionDataCache;
+            _configurationReceiver = configurationReceiver;
         }
 
         public event EventHandler HostInitializing;
@@ -293,6 +298,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
+
+                // Update Configration on ConfigurationReceiver
+                _configurationReceiver.Configuration = _configuration;
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {

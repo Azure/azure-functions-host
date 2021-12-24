@@ -113,7 +113,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     {
                         new FunctionsMvcBuilder(services).AddNewtonsoftJson();
                     }
-                    services.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>(); // TODO testing
                     services.AddSingleton<HttpRequestQueue>();
                     services.AddSingleton<IHostLifetime, JobHostHostLifetime>();
                     services.AddSingleton<IWebJobsExceptionHandler, WebScriptHostExceptionHandler>();
