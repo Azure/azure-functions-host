@@ -3,7 +3,7 @@
 
 using Microsoft.Extensions.Configuration;
 
-namespace Microsoft.Azure.WebJobs.Script.Host
+namespace Microsoft.Azure.WebJobs.Script
 {
     public interface IConfigurationReceiver
     {

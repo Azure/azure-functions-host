@@ -28,7 +28,6 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Extensibility;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
-using Microsoft.Azure.WebJobs.Script.Host;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -300,7 +299,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
 
                 // Update Configration on ConfigurationReceiver
-                _configurationReceiver.Configuration = _configuration;
+                if (_configurationReceiver != null)
+                {
+                    _configurationReceiver.Configuration = _configuration;
+                }
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {
