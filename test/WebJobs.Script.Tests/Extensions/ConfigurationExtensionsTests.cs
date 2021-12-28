@@ -58,8 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 }";
 
             var expectedConcurrencyJson = @"{
-  ""dynamicConcurrencyEnabled"": ""True"",
-  ""snapshotPersistenceEnabled"": ""True""
+  ""dynamicConcurrencyEnabled"": ""true"",
+  ""snapshotPersistenceEnabled"": ""true""
 }";
 
             IConfiguration config = BuildConfigurationFromJson(hostJson);
