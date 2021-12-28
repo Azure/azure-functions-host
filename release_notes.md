@@ -3,7 +3,7 @@
 - My change description (#PR)
 -->
 
-* Add host.json payload (Concurrency and Extensions) to the SyncTriggerPayload (ArmCacheEnabled = true) (#7863)
+* Add extensions and concurrency sections to the SyncTriggerPayload (ArmCacheEnabled = true) (#7863)
 
 **Release sprint:** Sprint 113
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+113%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+113%22+label%3Afeature+is%3Aclosed) ]
