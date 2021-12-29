@@ -359,10 +359,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-LongRun", "Http
 		sample\NodeDrain\HttpTrigger-LongRun\index.js = sample\NodeDrain\HttpTrigger-LongRun\index.js
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Host", "..\azure-webjobs-sdk\src\Microsoft.Azure.WebJobs.Host\WebJobs.Host.csproj", "{6929BC92-1FFA-4AFB-908C-7A3E34374147}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs", "..\azure-webjobs-sdk\src\Microsoft.Azure.WebJobs\WebJobs.csproj", "{4507CDEF-F297-43AA-B831-13A576C2A960}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
+		..\azure-webjobs-sdk\src\Microsoft.Azure.WebJobs.Shared\WebJobs.Shared.projitems*{6929bc92-1ffa-4afb-908c-7a3e34374147}*SharedItemsImports = 5
 		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -402,6 +407,14 @@ Global
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6929BC92-1FFA-4AFB-908C-7A3E34374147}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6929BC92-1FFA-4AFB-908C-7A3E34374147}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6929BC92-1FFA-4AFB-908C-7A3E34374147}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6929BC92-1FFA-4AFB-908C-7A3E34374147}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4507CDEF-F297-43AA-B831-13A576C2A960}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4507CDEF-F297-43AA-B831-13A576C2A960}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4507CDEF-F297-43AA-B831-13A576C2A960}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4507CDEF-F297-43AA-B831-13A576C2A960}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
