@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
         }
 
-        public static IConfiguration BuildDefaultConfigration(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        public static IConfiguration BuildDefaultConfiguration(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
         {
             return CreateDefaultConfigurationWithHostJsonFileBuilder(applicationHostOptions, environment, loggerFactory, metricsLogger).Build();
         }

@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
             metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
             metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
-            return ScriptSettingsManager.BuildDefaultConfigration(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
+            return ScriptSettingsManager.BuildDefaultConfiguration(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
