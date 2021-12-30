@@ -748,7 +748,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private string GetExpectedConcurrencyPayload()
         {
-            return "{\"dynamicConcurrencyEnabled\":\"True\",\"snapshotPersistenceEnabled\":\"True\"}";
+            return "{\"dynamicConcurrencyEnabled\":\"true\",\"snapshotPersistenceEnabled\":\"true\"}";
         }
 
         private string GetExpectedExtensionPayload()
