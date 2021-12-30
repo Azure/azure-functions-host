@@ -14,6 +14,7 @@ using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Hosting;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -209,6 +210,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private async Task StartHostAsync(CancellationToken cancellationToken, int attemptCount = 0,
             JobHostStartupMode startupMode = JobHostStartupMode.Normal, Guid? parentOperationId = null)
         {
+            WebJobsExtensionOptionRegistry.OptIn = true;
+            WebJobsExtensionOptionRegistry.Clear();
+
             // Add this to the list of trackable startup operations. Restarts can use this to cancel any ongoing or pending operations.
             var activeOperation = ScriptHostStartupOperation.Create(cancellationToken, _logger, parentOperationId);
 

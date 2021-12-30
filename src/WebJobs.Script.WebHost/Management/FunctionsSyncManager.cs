@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Hosting;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -100,6 +101,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
+            var concurrency = WebJobsExtensionOptionRegistry.GetOptions(WebJobsExtensionOptionRegistry.ConcurrencySectionName);
+            var extensions = WebJobsExtensionOptionRegistry.GetOptions(WebJobsExtensionOptionRegistry.ExtensionsSectionName);
             var result = new SyncTriggersResult
             {
                 Success = true
