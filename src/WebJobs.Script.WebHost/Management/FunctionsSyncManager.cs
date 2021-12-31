@@ -38,6 +38,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string StorageProviderType = "storageProviderType";
         private const string NetheriteStorageConnectionName = "netheriteStorageConnectionName";
         private const string NetheriteEventHubsConnectionName = "netheriteEventHubsConnectionName";
+        private const string SQLServerConnectionName = "sqlConnectionStringName";
+        private const string MaxConcurrentActivityFunctions = "maxConcurrentActivityFunctions";
+        private const string MaxConcurrentOrchestratorFunctions = "maxConcurrentOrchestratorFunctions";
 
         // 45 alphanumeric characters gives us a buffer in our table/queue/blob container names.
         private const int MaxTaskHubNameSize = 45;
@@ -495,6 +498,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     trigger[NetheriteEventHubsConnectionName] = durableTaskConfig.NetheriteEventHubsConnectionName;
                 }
+
+                if (durableTaskConfig.SQLConnectionStringName != null)
+                {
+                    trigger[SQLServerConnectionName] = durableTaskConfig.SQLConnectionStringName;
+                }
+
+                trigger[MaxConcurrentActivityFunctions] = durableTaskConfig.MaxConcurrentActivityFunctions;
+                trigger[MaxConcurrentOrchestratorFunctions] = durableTaskConfig.MaxConcurrentOrchestratorFunctions;
             }
             return trigger;
         }
@@ -619,6 +630,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                             if (((JObject)storageOptions).TryGetValue("EventHubsConnectionName", StringComparison.OrdinalIgnoreCase, out JToken eventHubsConnectionName) && eventHubsConnectionName != null)
                             {
                                 config.NetheriteEventHubsConnectionName = eventHubsConnectionName.ToString();
+                            }
+                        }
+
+                        if (string.Equals(config.StorageType, "mssql", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (((JObject)storageOptions).TryGetValue("connectionStringName", StringComparison.OrdinalIgnoreCase, out JToken sqlConnectionStringName) && sqlConnectionStringName != null)
+                            {
+                                config.SQLConnectionStringName = sqlConnectionStringName.ToString();
+                            }
+
+                            if (durableHostConfig.TryGetValue("MaxConcurrentActivityFunctions", StringComparison.OrdinalIgnoreCase, out JToken maxActivityFunctions) && maxActivityFunctions != null)
+                            {
+                                config.MaxConcurrentActivityFunctions = maxActivityFunctions.ToObject<int>();
+                            }
+
+                            if (durableHostConfig.TryGetValue("MaxConcurrentOrchestratorFunctions", StringComparison.OrdinalIgnoreCase, out JToken maxOrchestratorFunctions) && maxOrchestratorFunctions != null)
+                            {
+                                config.MaxConcurrentOrchestratorFunctions = maxOrchestratorFunctions.ToObject<int>();
                             }
                         }
                     }
@@ -758,9 +787,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             public string NetheriteEventHubsConnectionName { get; set; }
 
+            public string SQLConnectionStringName { get; set; }
+
+            public int MaxConcurrentActivityFunctions { get; set; } = Environment.ProcessorCount;
+
+            public int MaxConcurrentOrchestratorFunctions { get; set; } = Environment.ProcessorCount;
+
             public bool HasValues()
             {
-                return this.HubName != null || this.Connection != null;
+                return this.HubName != null
+                    || this.Connection != null
+                    || this.StorageType != null
+                    || this.NetheriteStorageConnectionName != null
+                    || this.NetheriteEventHubsConnectionName != null
+                    || this.SQLConnectionStringName != null;
             }
         }
     }
