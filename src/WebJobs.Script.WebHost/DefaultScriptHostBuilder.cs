@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Extensions;
 using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -55,6 +56,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.Remove(jobHostService);
                 });
             }
+
+            builder.ConfigureAppConfiguration(config =>
+            {
+                config.AddWebJobsExtensionOption();
+            });
 
             return builder.Build();
         }
