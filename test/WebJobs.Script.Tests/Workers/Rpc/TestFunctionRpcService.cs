@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
         {
             StatusResult statusResult = new StatusResult();
             if (successful)
@@ -191,6 +191,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             FunctionMetadataResponse overallResponse = new FunctionMetadataResponse();
+            overallResponse.UseDefaultMetadataIndexing = useDefaultMetadataIndexing;
+
             foreach (FunctionMetadata response in functionMetadata)
             {
                 RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
