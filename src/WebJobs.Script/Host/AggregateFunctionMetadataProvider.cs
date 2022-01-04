@@ -72,10 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (IsNullOrEmpty(rawFunctions) || !workerIndexing)
                 {
                     // If worker denies indexing then falling back to the host for Indexing
-                    _functions = _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
+                    functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
                 }
             }
-            _functions = _functions.ToImmutableArray();
+            _functions = functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(functions.Count());
             return _functions;
         }
