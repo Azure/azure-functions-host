@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 }
             }
             _functions = functions.ToImmutableArray();
-            _logger.FunctionMetadataProviderFunctionFound(functions.Count());
+            _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             return _functions;
         }
 
