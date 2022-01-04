@@ -18,9 +18,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
+    <PackageReference Include="Grpc.Core" Version="2.32.0" />
     <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.3.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.0-beta004">
       <PrivateAssets>all</PrivateAssets>
@@ -30,8 +31,8 @@
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
-     <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
+    <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
   </ItemGroup>
 </Project>
