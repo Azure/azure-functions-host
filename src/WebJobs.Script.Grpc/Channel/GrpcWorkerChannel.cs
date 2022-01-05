@@ -524,11 +524,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Bindings = bindings,
                         RetryOptions = new Description.RetryOptions()
                         {
-                            Strategy = (Description.RetryStrategy)Enum.Parse(typeof(Description.RetryStrategy), metadata.RetryOptions.Strategy.ToString(), true),
-                            MaxRetryCount = metadata.RetryOptions.MaxRetryCount,
-                            DelayInterval = metadata.RetryOptions.DelayInterval.ToTimeSpan(),
-                            MaximumInterval = metadata.RetryOptions.MaximumInterval.ToTimeSpan(),
-                            MinimumInterval = metadata.RetryOptions.MinimumInterval.ToTimeSpan()
+                            Strategy = metadata.RetryOptions == null ? Description.RetryStrategy.ExponentialBackoff : (Description.RetryStrategy)Enum.Parse(typeof(Description.RetryStrategy), metadata.RetryOptions.Strategy.ToString(), true),
+                            MaxRetryCount = metadata.RetryOptions?.MaxRetryCount,
+                            DelayInterval = metadata.RetryOptions?.DelayInterval.ToTimeSpan(),
+                            MaximumInterval = metadata.RetryOptions?.MaximumInterval.ToTimeSpan(),
+                            MinimumInterval = metadata.RetryOptions?.MinimumInterval.ToTimeSpan()
                         },
                         ConfigurationSource = metadata.ConfigSource
                     });
