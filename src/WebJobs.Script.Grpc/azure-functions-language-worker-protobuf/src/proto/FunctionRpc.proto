@@ -274,10 +274,10 @@ message RpcFunctionMetadata {
   // Raw binding info
   repeated string raw_bindings = 10;
 
-  // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
+  // Retry Options
   RetryOptions retry_options = 11;
 
-  // Configuration Source: string representation of JToken configuration source property in function metadata
+  // Configuration Source
   ConfigurationSource config_source = 12;
 }
 
@@ -343,37 +343,37 @@ message RetryContext {
 
 // Host retry options
 message RetryOptions {
-  // 
+  // Retry strategy
   RetryStrategy strategy = 1;
 
-  // 
+  // Maximum retry count
   int32 maxRetryCount = 2 ;
 
-  //
+  // Delay interval
   google.protobuf.Duration delayInterval = 3;
 
-  //
+  // Minimum interval
   google.protobuf.Duration minimumInterval = 4;
 
-  //
+  // Maximum interval
   google.protobuf.Duration maximumInterval = 5;
 }
 
 // Host retry strategy
 enum RetryStrategy {
-  // 
+  // Exponential Backoff
   ExponentialBackoff = 0;
 
-  // 
+  // Fixed Delay
   FixedDelay = 1;
 }
 
-// Host retry strategy
+// Host configuration source
 enum ConfigurationSource {
-  // 
+  // configuration source is Attributes
   Attributes = 0;
 
-  // 
+  // configuration source is config
   Config = 1;
 }
 

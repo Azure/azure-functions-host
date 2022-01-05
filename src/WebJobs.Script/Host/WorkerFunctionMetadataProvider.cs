@@ -83,24 +83,20 @@ namespace Microsoft.Azure.WebJobs.Script
                     // configuration source validation
                     if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource.ToString()))
                     {
-                        //JToken isDirect = JToken.Parse(rawFunction.ConfigurationSource);
-                        var isDirectValue = rawFunction.ConfigurationSource.ToString(); // ?.ToString();
-                        if (string.Equals(isDirectValue, "Attributes", StringComparison.OrdinalIgnoreCase))
+                        var isDirectValue = rawFunction.ConfigurationSource.ToString();
+                        if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
                         {
                             function.SetIsDirect(true);
                         }
-                        else if (!string.Equals(isDirectValue, "Config", StringComparison.OrdinalIgnoreCase))
+                        else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
                         {
                             throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {function.Name}'.");
                         }
                     }
 
                     // retry option validation
-                    if (rawFunction.RetryOptions != null)
-                    {
-                        function.Retry = rawFunction.RetryOptions;
-                        Utility.ValidateRetryOptions(function.Retry);
-                    }
+                    function.Retry = rawFunction.RetryOptions;
+                    Utility.ValidateRetryOptions(function.Retry);
 
                     // binding validation
                     function = ValidateBindings(rawFunction.Bindings, function);
