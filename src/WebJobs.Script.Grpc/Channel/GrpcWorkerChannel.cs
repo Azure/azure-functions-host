@@ -524,9 +524,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         {
                             Strategy = (Description.RetryStrategy)Enum.Parse(typeof(Description.RetryStrategy), metadata.RetryOptions.Strategy.ToString(), true),
                             MaxRetryCount = metadata.RetryOptions.MaxRetryCount,
-                            DelayInterval = metadata.RetryOptions.DelayInterval,
-                            MaximumInterval = metadata.RetryOptions.MaximumInterval,
-                            MinimumInterval = metadata.RetryOptions.MinimumInterval
+                            DelayInterval = metadata.RetryOptions.DelayInterval.ToTimeSpan(),
+                            MaximumInterval = metadata.RetryOptions.MaximumInterval.ToTimeSpan(),
+                            MinimumInterval = metadata.RetryOptions.MinimumInterval.ToTimeSpan()
                         },
                         ConfigurationSource = metadata.ConfigSource
                     });
