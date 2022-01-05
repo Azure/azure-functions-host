@@ -278,7 +278,7 @@ message RpcFunctionMetadata {
   RetryOptions retry_options = 11;
 
   // Configuration Source: string representation of JToken configuration source property in function metadata
-  string config_source = 12;
+  ConfigurationSource config_source = 12;
 }
 
 // Host tells worker it is ready to receive metadata
@@ -366,6 +366,15 @@ enum RetryStrategy {
 
   // 
   FixedDelay = 1;
+}
+
+// Host retry strategy
+enum ConfigurationSource {
+  // 
+  Attributes = 0;
+
+  // 
+  Config = 1;
 }
 
 // Host requests worker to cancel invocation

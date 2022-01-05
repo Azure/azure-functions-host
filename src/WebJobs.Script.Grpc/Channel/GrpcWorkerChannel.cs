@@ -530,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                             MaximumInterval = metadata.RetryOptions?.MaximumInterval.ToTimeSpan(),
                             MinimumInterval = metadata.RetryOptions?.MinimumInterval.ToTimeSpan()
                         },
-                        ConfigurationSource = metadata.ConfigSource
+                        ConfigurationSource = (Description.ConfigurationSource)Enum.Parse(typeof(Description.ConfigurationSource), metadata.ConfigSource.ToString(), true),
                     });
                 }
             }

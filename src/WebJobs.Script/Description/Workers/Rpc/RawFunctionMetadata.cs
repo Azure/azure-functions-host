@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using Azure.Core;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
@@ -14,6 +15,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public RetryOptions RetryOptions { get; set; }
 
-        public string ConfigurationSource { get; set; }
+        public ConfigurationSource ConfigurationSource { get; set; }
     }
 }

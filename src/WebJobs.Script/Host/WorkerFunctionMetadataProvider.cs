@@ -81,15 +81,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     // skip function ScriptFile validation for now because this involves enumerating file directory
 
                     // configuration source validation
-                    if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource))
+                    if (!string.IsNullOrEmpty(rawFunction.ConfigurationSource.ToString()))
                     {
-                        JToken isDirect = JToken.Parse(rawFunction.ConfigurationSource);
-                        var isDirectValue = isDirect?.ToString();
-                        if (string.Equals(isDirectValue, "attributes", StringComparison.OrdinalIgnoreCase))
+                        //JToken isDirect = JToken.Parse(rawFunction.ConfigurationSource);
+                        var isDirectValue = rawFunction.ConfigurationSource.ToString(); // ?.ToString();
+                        if (string.Equals(isDirectValue, "Attributes", StringComparison.OrdinalIgnoreCase))
                         {
                             function.SetIsDirect(true);
                         }
-                        else if (!string.Equals(isDirectValue, "config", StringComparison.OrdinalIgnoreCase))
+                        else if (!string.Equals(isDirectValue, "Config", StringComparison.OrdinalIgnoreCase))
                         {
                             throw new FormatException($"Illegal value '{isDirectValue}' for 'configurationSource' property in {function.Name}'.");
                         }
