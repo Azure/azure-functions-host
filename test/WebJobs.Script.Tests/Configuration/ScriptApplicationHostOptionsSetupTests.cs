@@ -15,9 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
     public class ScriptApplicationHostOptionsSetupTests
     {
         [Fact]
+        public void IsFileSystemReadOnly_CanBeConfiguredExplicitly()
+        {
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, false);
+            Assert.False(options.IsFileSystemReadOnly);
+
+            options.IsFileSystemReadOnly = true;
+            Assert.True(options.IsFileSystemReadOnly);
+        }
+
+        [Fact]
         public void Configure_InStandbyMode_ReturnsExpectedConfiguration()
         {
-            var options = CreateConfiguredOptions(true);
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, true);
 
             Assert.EndsWith(@"functions\standby\logs", options.LogPath);
             Assert.EndsWith(@"functions\standby\wwwroot", options.ScriptPath);
@@ -41,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 EnvironmentSettingNames.AzureWebsiteAltZipDeployment,
                 EnvironmentSettingNames.AzureWebsiteRunFromPackage
             };
+            ScriptApplicationHostOptions options = null;
 
             // Test each environment variable being set
             foreach (var setting in zipSettings)
@@ -48,7 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 var environment = new TestEnvironment();
                 environment.SetEnvironmentVariable(setting, appSettingValue);
 
-                var options = CreateConfiguredOptions(true, environment);
+                options = new ScriptApplicationHostOptions();
+                ConfiguredOptions(options, true, environment);
 
                 Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
             }
@@ -60,8 +74,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 allSettingsEnvironment.SetEnvironmentVariable(setting, appSettingValue);
             }
 
-            var optionsAllSettings = CreateConfiguredOptions(true, allSettingsEnvironment);
-            Assert.Equal(optionsAllSettings.IsFileSystemReadOnly, expectedOutcome);
+            options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, true, allSettingsEnvironment);
+            Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
         }
 
         [Theory]
@@ -74,18 +89,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             // Linux Consumption-specific tests, ensure environment reflects that.
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "test-container");
 
-            var options = CreateConfiguredOptions(true, environment, expectedOutcome);
+            ScriptApplicationHostOptions options = new ScriptApplicationHostOptions();
+            ConfiguredOptions(options, true, environment, expectedOutcome);
 
             // No zip deployment settings set, it's not a zip deployment
             Assert.Equal(options.IsFileSystemReadOnly, false);
 
             // SCM_RUN_FROM_PACKAGE is set. If it's a valid URI, it's a zip deployment.
+            options = new ScriptApplicationHostOptions();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ScmRunFromPackage, appSettingValue);
-            options = CreateConfiguredOptions(true, environment, expectedOutcome);
+            ConfiguredOptions(options, true, environment, expectedOutcome);
             Assert.Equal(options.IsFileSystemReadOnly, expectedOutcome);
         }
 
-        private ScriptApplicationHostOptions CreateConfiguredOptions(bool inStandbyMode, IEnvironment environment = null, bool blobExists = false)
+        private void ConfiguredOptions(ScriptApplicationHostOptions options, bool inStandbyMode, IEnvironment environment = null, bool blobExists = false)
         {
             var builder = new ConfigurationBuilder();
             var configuration = builder.Build();
@@ -99,9 +116,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 BlobExistsReturnValue = blobExists
             };
 
-            var options = new ScriptApplicationHostOptions();
             setup.Configure(options);
-            return options;
         }
 
         private class TestScriptApplicationHostOptionsSetup : ScriptApplicationHostOptionsSetup

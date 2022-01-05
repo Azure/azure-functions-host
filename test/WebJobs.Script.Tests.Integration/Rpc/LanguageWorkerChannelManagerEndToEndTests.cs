@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public TestFixture Fixture { get; set; }
 
         [Fact]
-        public async Task InitializeAsync_DoNotInitialize_JavaWorker_ProxiesOnly()
+        public async Task InitializeAsync_DoNotInitialize_JavaWorker_NoFunctions()
         {
             var channelManager = _rpcWorkerChannelManager as WebHostRpcWorkerChannelManager;
             var javaChannel = await channelManager.GetChannelAsync(RpcWorkerConstants.JavaLanguageWorkerName);
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public class TestFixture : ScriptHostEndToEndTestFixture
         {
-            public TestFixture() : base(@"TestScripts\ProxiesOnly", "proxiesOnly", string.Empty,
+            public TestFixture() : base(@"TestScripts\NoFunction", "noFunctions", string.Empty,
                 startHost: true)
             {
             }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
@@ -140,6 +141,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
+        [InlineData(true, false, true)]
+        [InlineData(false, true, true)]
+        [InlineData(false, false, false)]
+        [InlineData(true, true, true)]
+        public void IsConsumption_ReturnsExpectedResult(bool isLinuxConsumption, bool isWindowsConsumption, bool expectedValue)
+        {
+            IEnvironment env = new TestEnvironment();
+            if (isLinuxConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "RandomContainerName");
+            }
+
+            if (isWindowsConsumption)
+            {
+                env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
+            }
+
+            Assert.Equal(expectedValue, env.IsConsumptionSku());
+        }
+
+        [Theory]
         [InlineData("~2", "true", true)]
         [InlineData("~2", "false", true)]
         [InlineData("~2", null, true)]
@@ -264,6 +286,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, concurrencyEnabledValue);
             environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName, processCountValue);
             Assert.Equal(expected, environment.IsWorkerDynamicConcurrencyEnabled());
+        }
+
+        [Theory]
+        [InlineData(null, null, "")]
+        [InlineData("", "", "")]
+        [InlineData("node", "python;java", "node;python;java")]
+        [InlineData("", "node;python", "node;python")]
+        [InlineData("", "python;java;", "python;java")]
+        [InlineData("node", "", "node")]
+        public void GetLanguageWorkerListToStartInPlaceholder_ReturnsExpectedResult(string workerRuntime, string workerRuntimeList, string expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
+            environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, workerRuntimeList);
+            var resultSet = environment.GetLanguageWorkerListToStartInPlaceholder();
+            if (string.IsNullOrEmpty(expected))
+            {
+                Assert.Empty(resultSet);
+                return;
+            }
+            var expectedSet = new HashSet<string>(expected.Split(';'));
+            Assert.True(resultSet.SetEquals(expectedSet));
+        }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData(null, "test", false)]
+        [InlineData("test", null, false)]
+        [InlineData("test", "test", true)]
+        public void AzureFilesAppSettingsExist_ReturnsExpectedResult(string connectionString, string contentShare, bool expected)
+        {
+            var environment = new TestEnvironment();
+            environment.SetEnvironmentVariable(AzureFilesConnectionString, connectionString);
+            environment.SetEnvironmentVariable(AzureFilesContentShare, contentShare);
+            Assert.Equal(expected, environment.AzureFilesAppSettingsExist());
         }
     }
 }

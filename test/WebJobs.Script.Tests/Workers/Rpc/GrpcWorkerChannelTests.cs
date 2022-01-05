@@ -110,6 +110,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ThrowsTaskCanceledException_IfDisposed()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _workerChannel.Dispose();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                await initTask;
+            });
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
@@ -432,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _testFunctionRpcService.PublishInvocationResponseEvent();
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation id: TestInvocationId")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "InvocationResponse received for invocation id: 'TestInvocationId'")));
         }
 
         [Fact]
@@ -443,9 +456,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
             _testFunctionRpcService.PublishFunctionLoadResponseEvent("TestFunctionId1");
             var traces = _logger.GetLogMessages();
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js1 with functionId:TestFunctionId1")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function:js2 with functionId:TestFunctionId2")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for functionId:TestFunctionId1")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")));
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.")));
         }
 
         [Fact]
@@ -483,16 +496,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var functionLoadRequest = _workerChannel.GetFunctionLoadRequest(metadata, null);
             Assert.False(functionLoadRequest.Metadata.IsProxy);
-            ProxyFunctionMetadata proxyMetadata = new ProxyFunctionMetadata(null)
-            {
-                Language = "node",
-                Name = "js1"
-            };
-
-            metadata.SetFunctionId("TestFunctionId1");
-
-            var proxyFunctionLoadRequest = _workerChannel.GetFunctionLoadRequest(proxyMetadata, null);
-            Assert.True(proxyFunctionLoadRequest.Metadata.IsProxy);
         }
 
         /// <summary>

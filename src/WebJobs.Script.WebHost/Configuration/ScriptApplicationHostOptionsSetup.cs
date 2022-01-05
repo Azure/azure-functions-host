@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 using System.Threading;
-using Microsoft.Azure.Storage.Blob;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                 options.IsStandbyConfiguration = true;
             }
 
-            options.IsFileSystemReadOnly = IsZipDeployment(out bool isScmRunFromPackage);
+            options.IsFileSystemReadOnly |= IsZipDeployment(out bool isScmRunFromPackage);
             options.IsScmRunFromPackage = isScmRunFromPackage;
         }
 
@@ -135,14 +135,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
             try
             {
-                CloudBlockBlob blob = new CloudBlockBlob(new Uri(url));
+                BlobClient blobClient = new BlobClient(new Uri(url));
 
                 int attempt = 0;
                 while (true)
                 {
                     try
                     {
-                        return blob.Exists();
+                        return blobClient.Exists();
                     }
                     catch (Exception ex) when (!ex.IsFatal())
                     {

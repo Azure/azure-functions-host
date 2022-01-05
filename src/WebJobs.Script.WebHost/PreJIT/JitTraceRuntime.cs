@@ -20,11 +20,7 @@ namespace Microsoft.Diagnostics.JitTrace
 
         private static void LogOnFailure(string failure)
         {
-            var log = LogFailure;
-            if (log != null)
-            {
-                log(failure);
-            }
+            LogFailure?.Invoke(failure);
         }
 
         /// <summary>
@@ -97,11 +93,7 @@ namespace Microsoft.Diagnostics.JitTrace
                 try
                 {
                     methodString = jittraceStream.ReadLine();
-                    if (methodString == null)
-                    {
-                        break;
-                    }
-                    if (methodString.Trim() == string.Empty)
+                    if (string.IsNullOrWhiteSpace(methodString))
                     {
                         break;
                     }

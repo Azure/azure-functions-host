@@ -28,9 +28,9 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
 
             if (extensionBundleSection.Exists())
             {
+                ConfigureBundleVersion(extensionBundleSection, options);
                 extensionBundleSection.Bind(options);
                 ValidateBundleId(options.Id);
-                ConfigureBundleVersion(extensionBundleSection, options);
 
                 string homeDirectory = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
                 if ((_environment.IsAppService()

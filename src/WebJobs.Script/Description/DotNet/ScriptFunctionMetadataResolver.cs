@@ -55,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly List<ISharedAssemblyProvider> SharedAssemblyProviders = new List<ISharedAssemblyProvider>
         {
             new DirectSharedAssemblyProvider(typeof(Newtonsoft.Json.JsonConvert).Assembly), /* Newtonsoft.Json */
-            new DirectSharedAssemblyProvider(typeof(Microsoft.WindowsAzure.Storage.StorageUri).Assembly), /* Microsoft.WindowsAzure.Storage */
         };
 
         private static readonly string[] DefaultNamespaceImports =
@@ -72,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             "Microsoft.AspNetCore.Http"
         };
 
-        private static readonly string[] PrivateHostAssemblies =
+        private static readonly string[] ScriptPrivateHostAssemblies =
         {
             "Azure.Core",
             "Azure.Identity",
@@ -85,6 +84,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             "Microsoft.Identity.Client.Extensions.Msal"
         };
 
+        private static Lazy<IEnumerable<string>> _privateHostAssemblies = new (GetPrivateHostAssemblies);
+
         public ScriptFunctionMetadataResolver(string scriptFilePath, ICollection<IScriptBindingProvider> bindingProviders, ILogger logger)
         {
             _scriptFileDirectory = Path.GetDirectoryName(scriptFilePath);
@@ -95,6 +96,30 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _scriptResolver = new CacheMetadataResolver(scriptResolver);
             _extensionSharedAssemblyProvider = new ExtensionSharedAssemblyProvider(bindingProviders);
             _logger = logger ?? NullLogger.Instance;
+        }
+
+        private static IEnumerable<string> GetPrivateHostAssemblies()
+        {
+            var runtimeAssemblies = FunctionAssemblyLoadContext.Shared.RuntimeAssemblies;
+            runtimeAssemblies.Reset += RuntimeAssembliesResetHandler;
+
+            var assemblies = runtimeAssemblies.Assemblies.Where(a => a.Value.ResolutionPolicy == "private")
+                                                                                            .Select(a => a.Key)
+                                                                                            .ToList();
+
+            assemblies.AddRange(ScriptPrivateHostAssemblies);
+
+            return assemblies;
+        }
+
+        private static void RuntimeAssembliesResetHandler(object sender, EventArgs e)
+        {
+            if (sender is RuntimeAssembliesInfo assembliesInfo)
+            {
+                assembliesInfo.Reset -= RuntimeAssembliesResetHandler;
+            }
+
+            _privateHostAssemblies = new (GetPrivateHostAssemblies);
         }
 
         public ScriptOptions CreateScriptOptions()
@@ -172,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             {
                 ImmutableArray<PortableExecutableReference> result = ImmutableArray<PortableExecutableReference>.Empty;
 
-                if (!PrivateHostAssemblies.Contains(reference))
+                if (!_privateHostAssemblies.Value.Contains(reference))
                 {
                     // Try to resolve using the default resolver (framework assemblies, e.g. System.Core, System.Xml, etc.)
                     result = _scriptResolver.ResolveReference(reference, baseFilePath, properties);

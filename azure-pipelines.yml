@@ -1,68 +1,53 @@
 variables:
-  buildNumber: $[ counter('constant', 13000) ] 
+  buildNumber: $[ counter('constant', 13000) ]
   isReleaseBranch: $[contains(variables['Build.SourceBranch'], 'release/')]
+  DOTNET_NOLOGO: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
 pr:
   branches:
     include:
     - dev
-    - release/3.0*
-    - release/ExtensionsMetadataGenerator/*
+    - release/4.*
 
 trigger:
   branches:
     include:
     - dev
-    - release/3.0*
-    - release/ExtensionsMetadataGenerator/*
+    - release/4.*
 
 jobs:
 - job: InitializePipeline
   pool:
     vmImage: 'windows-2019'
   steps:
-  - task: AzureKeyVault@1
-    inputs:
-      # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
-      azureSubscription: 'Azure-Functions-Host-CI'
-      keyVaultName: 'azure-functions-host-ci'
-      secretsFilter: '*'
   - task: PowerShell@2
     displayName: 'Initialize'
     name: Initialize
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-buildNumber ''$(buildNumber)'''
+
 - job: BuildArtifacts
   dependsOn: InitializePipeline
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
-    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/3.0' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-      suffixTemp: ci
-      packSuffixSwitchTemp: --version-suffix ci
+    ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
+      suffixTemp: $(buildNumber)
+      packSuffixSwitchTemp: --version-suffix $(buildNumber)
       emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
-      artifactSuffix: -ci
-      buildNumberSuffixTemp: $(buildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
-    buildNumberSuffix: $[variables.buildNumberSuffixTemp]
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
-    majorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MajorVersion']]
-    minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
-    patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
-    vmImage: 'windows-2019' 
+    vmImage: 'windows-2019'
   steps:
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  - template: build/install-dotnet.yml
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumberSuffix)" -majorMinorVersion "$(majorVersion).$(minorVersion)" -patchVersion "$(patchVersion)" -suffix "$(suffix)" -commitHash "$(Build.SourceVersion)"'
+      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
   - task: PowerShell@2
     condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
     displayName: "Update host references"
@@ -78,18 +63,18 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumberSuffix) -p:CommitHash=$(Build.SourceVersion) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
         **\WebJobs.Script.Grpc.csproj
-  
+
   - pwsh: |
       foreach ($baseName in @("WebJobs.Script", "WebJobs.Script.WebHost", "WebJobs.Script.Grpc"))
-      {    
+      {
         $packageName = "Microsoft.Azure." + $baseName + "*.nupkg"
         $sourcePath = "$(Build.Repository.LocalPath)/packages/$packageName"
-        if (-not (test-path $sourcePath))    
+        if (-not (test-path $sourcePath))
         {
           throw "Unable to find '$packageName' at './package'"
         }
@@ -105,7 +90,7 @@ jobs:
       nuGetFeedType: 'internal'
       publishVstsFeed: 'e6a70c92-4128-439f-8012-382fe78d6396/f37f760c-aebd-443e-9714-ce725cd427df'
       allowPackageConflicts: true
- 
+
   - task: DotNetCoreCLI@2
     displayName: 'Build performance package'
     inputs:
@@ -118,7 +103,7 @@ jobs:
     displayName: 'Build Abstractions and ExtensionsMetadataGenerator'
     inputs:
       command: 'build'
-      arguments: '-c Release -p:CommitHash=$(Build.SourceVersion)'
+      arguments: '-c Release'
       projects: |
         **\ExtensionsMetadataGenerator.csproj
         **\WebJobs.Script.Abstractions.csproj
@@ -232,7 +217,7 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
-    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))  
+    condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
@@ -254,34 +239,39 @@ jobs:
       Pattern: 'Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg'
       signConfigType: inlineSignParams
       inlineOperation: |
-       [
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetSign",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           },
-           {
-             "KeyCode": "CP-401405",
-             "OperationCode": "NuGetVerify",
-             "Parameters": {},
-             "ToolName": "sign",
-             "ToolVersion": "1.0"
-           }
-       ]
+        [
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetSign",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            },
+            {
+              "KeyCode": "CP-401405",
+              "OperationCode": "NuGetVerify",
+              "Parameters": {},
+              "ToolName": "sign",
+              "ToolVersion": "1.0"
+            }
+        ]
     condition: and(succeeded(), startsWith(variables['SignArtifacts'], 'true'))
   - task: DeleteFiles@1
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
-  - publish: $(Build.ArtifactStagingDirectory)\V2SiteExtension
-    artifact: V2SiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
+  - pwsh: |
+      if ((test-path $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension))
+      {
+        Write-Host "Patched site extension detected."
+        Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
+      }
+    displayName: 'Set isPatchVersion'
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
-    condition: and(succeeded(), ne(variables['patchVersion'], '0'))
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
@@ -294,12 +284,8 @@ jobs:
 - job: RunUnitTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  steps:
+  - template: build/install-dotnet.yml
   - task: DotNetCoreCLI@2
     displayName: 'Unit Tests'
     inputs:
@@ -314,15 +300,11 @@ jobs:
 - job: RunNonE2EIntegrationTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  steps:
+  - template: build/install-dotnet.yml
   - task: UseNode@1
-    inputs:      
-      version: '10.x'
+    inputs:
+      version: '14.x'
   - task: PowerShell@2
     displayName: 'Install Az.Storage Powershell module'
     inputs:
@@ -359,8 +341,10 @@ jobs:
       ConnectionStrings__CosmosDB: $(CosmosDB)
       AzureWebJobsEventHubSender: $(EventHub)
       AzureWebJobsEventHubReceiver: $(EventHub)
-      AzureWebJobsSecretStorageKeyVaultConnectionString: $(KeyVaultConnectionString)
-      AzureWebJobsSecretStorageKeyVaultName: $(KeyVaultName)
+      AzureWebJobsSecretStorageKeyVaultUri: $(KeyVaultUri)
+      AzureWebJobsSecretStorageKeyVaultTenantId: $(AzureTenantId)
+      AzureWebJobsSecretStorageKeyVaultClientId: $(AzureClientId)
+      AzureWebJobsSecretStorageKeyVaultClientSecret: $(AzureClientSecret)
   - task: PowerShell@2
     condition: always()
     displayName: 'Checkin secrets'
@@ -371,15 +355,11 @@ jobs:
 - job: RunIntegrationTests
   pool:
     vmImage: 'windows-2019'
-  steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '3.1.x'
-      performMultiLevelLookup: true
+  steps:
+  - template: build/install-dotnet.yml
   - task: UseNode@1
     inputs:
-      version: '10.x'
+      version: '14.x'
   - task: UsePythonVersion@0
     inputs:
       versionSpec: '3.7.x'
@@ -437,7 +417,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Node end to end tests"    
+    displayName: "Node end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -446,7 +426,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Direct load end to end tests"    
+    displayName: "Direct load end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -455,7 +435,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "F# end to end tests"    
+    displayName: "F# end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -464,7 +444,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Language worker end to end tests"    
+    displayName: "Language worker end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -473,7 +453,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Node script host end to end tests"    
+    displayName: "Node script host end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -482,7 +462,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Raw assembly end to end tests"    
+    displayName: "Raw assembly end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -491,7 +471,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Samples end to end tests"    
+    displayName: "Samples end to end tests"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -500,7 +480,16 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Windows"    
+    displayName: "Drain mode end to end tests"
+    condition: succeededOrFailed()
+    inputs:
+      command: 'test'
+      testRunTitle: "Drain mode end to end tests"
+      arguments: '--filter "Group=DrainModeEndToEndTests" --no-build'
+      projects: |
+        **\WebJobs.Script.Tests.Integration.csproj
+  - task: DotNetCoreCLI@2
+    displayName: "Standby mode end to end tests Windows"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -509,7 +498,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Standby mode end to end tests Linux"    
+    displayName: "Standby mode end to end tests Linux"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -518,7 +507,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Linux container end to end tests Windows"    
+    displayName: "Linux container end to end tests Windows"
     condition: succeededOrFailed()
     inputs:
       command: 'test'
@@ -527,7 +516,7 @@ jobs:
       projects: |
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
-    displayName: "Release verification tests"    
+    displayName: "Release verification tests"
     condition: eq(variables['isReleaseBranch'], 'True')
     inputs:
       command: 'test'

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -22,29 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private readonly string _hostSecretsBlobPath;
         private readonly string _secretsContainerName = "azure-webjobs-secrets";
         private readonly string _accountConnection;
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
         private BlobContainerClient _blobContainerClient;
 
-        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureStorageProvider azureStorageProvider)
+        public BlobStorageSecretsRepository(string secretSentinelDirectoryPath, string accountConnection, string siteSlotName, ILogger logger, IEnvironment environment, IAzureBlobStorageProvider azureBlobStorageProvider)
             : base(secretSentinelDirectoryPath, logger, environment)
         {
-            if (secretSentinelDirectoryPath == null)
-            {
-                throw new ArgumentNullException(nameof(secretSentinelDirectoryPath));
-            }
-            if (accountConnection == null)
-            {
-                throw new ArgumentNullException(nameof(accountConnection));
-            }
-            if (siteSlotName == null)
-            {
-                throw new ArgumentNullException(nameof(siteSlotName));
-            }
+            ArgumentNullException.ThrowIfNull(secretSentinelDirectoryPath);
+            ArgumentNullException.ThrowIfNull(accountConnection);
+            ArgumentNullException.ThrowIfNull(siteSlotName);
 
             _secretsBlobPath = siteSlotName.ToLowerInvariant();
             _hostSecretsBlobPath = string.Format("{0}/{1}", _secretsBlobPath, ScriptConstants.HostMetadataFileName);
             _accountConnection = accountConnection;
-            _azureStorageProvider = azureStorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
         private BlobContainerClient Container
@@ -71,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual BlobContainerClient CreateBlobContainerClient(string connection)
         {
-            if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobServiceClient, connection))
+            if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(connection, out BlobServiceClient blobServiceClient))
             {
                 var blobContainerClient = blobServiceClient.GetBlobContainerClient(_secretsContainerName);
                 blobContainerClient.CreateIfNotExists();
@@ -109,10 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            if (secrets == null)
-            {
-                throw new ArgumentNullException(nameof(secrets));
-            }
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             try
@@ -131,10 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public override async Task WriteSnapshotAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
         {
-            if (secrets == null)
-            {
-                throw new ArgumentNullException(nameof(secrets));
-            }
+            ArgumentNullException.ThrowIfNull(secrets);
 
             string blobPath = GetSecretsBlobPath(type, functionName);
             blobPath = SecretsUtility.GetNonDecryptableName(blobPath);

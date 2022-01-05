@@ -11,10 +11,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description.DotNet;
 using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
-using Microsoft.Build.Construction;
 using Microsoft.Extensions.Logging;
 using NuGet.Frameworks;
 using NuGet.LibraryModel;
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             // In order to determine whether we have a match, we:
             //  - Read the project frameworks and their dependencies,
             //      extracting the appropriate version range using the lock file format
-            //  - Read the lock file depenency groups
+            //  - Read the lock file dependency groups
             //  - Ensure that each project dependency matches a dependency in the lock file for the
             //      appropriate group matching the framework (including non-framework specific/project wide dependencies)
 
@@ -199,16 +199,16 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         {
             using (var reader = XmlTextReader.Create(new StringReader(File.ReadAllText(projectFilePath))))
             {
-                var root = ProjectRootElement.Create(reader);
+                XDocument root = XDocument.Load(reader);
 
-                return root.Items
-                   .Where(i => PackageReferenceElementName.Equals(i.ItemType, StringComparison.Ordinal))
-                   .Select(i => new LibraryRange
-                   {
-                       Name = i.Include,
-                       VersionRange = VersionRange.Parse(i.Metadata.First(m => PackageReferenceVersionElementName.Equals(m.Name, StringComparison.Ordinal)).Value)
-                   })
-                   .ToList();
+                return root.Descendants()?
+                    .Where(i => PackageReferenceElementName.Equals(i.Name.LocalName, StringComparison.Ordinal))
+                    .Select(i => new LibraryRange
+                    {
+                        Name = i.Attribute(PackageReferenceIncludeElementName)?.Value,
+                        VersionRange = VersionRange.Parse(i.Attribute(PackageReferenceVersionElementName)?.Value)
+                    })
+                    .ToList();
             }
         }
 

@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
@@ -59,15 +60,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HostNameProvider _hostNameProvider;
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
-        private readonly IAzureStorageProvider _azureStorageProvider;
+        private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, HttpClient httpClient, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureStorageProvider azureStorageProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
-            _httpClient = httpClient;
+            _httpClient = httpClientFactory.CreateClient();
             _secretManagerProvider = secretManagerProvider;
             _configuration = configuration;
             _hostIdProvider = hostIdProvider;
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _environment = environment;
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
-            _azureStorageProvider = azureStorageProvider;
+            _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -180,7 +181,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             //   - Portal/ARM APIs will continue to show old key info.
             // By clearing cache, we ensure that this host instance reloads keys when they're requested, and the SyncTriggers
             // operation will contain current keys.
-            _secretManagerProvider.Current.ClearCache();
+            if (_secretManagerProvider.SecretsEnabled)
+            {
+                _secretManagerProvider.Current.ClearCache();
+            }
         }
 
         internal static bool IsSyncTriggersEnvironment(IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment)
@@ -286,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         {
             if (_hashBlobClient == null)
             {
-                if (_azureStorageProvider.TryGetBlobServiceClientFromConnection(out BlobServiceClient blobClient, ConnectionStringNames.Storage))
+                if (_azureBlobStorageProvider.TryCreateBlobServiceClientFromConnection(ConnectionStringNames.Storage, out BlobServiceClient blobClient))
                 {
                     string hostId = await _hostIdProvider.GetHostIdAsync(CancellationToken.None);
                     var blobContainerClient = blobClient.GetBlobContainerClient(ScriptConstants.AzureWebJobsHostsContainerName);
@@ -300,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         public async Task<SyncTriggersPayload> GetSyncTriggersPayload()
         {
             var hostOptions = _applicationHostOptions.CurrentValue.ToHostOptions();
-            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsProxy());
+            var functionsMetadata = _functionMetadataManager.GetFunctionMetadata();
 
             // trigger information used by the ScaleController
             var triggers = await GetFunctionTriggers(functionsMetadata, hostOptions);
@@ -339,45 +343,48 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 }
             }
 
-            // Add functions secrets to the payload
-            // Only secret types we own/control can we cache directly
-            // Encryption is handled by Antares before storage
-            var secretsStorageType = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
-            if (string.IsNullOrEmpty(secretsStorageType) ||
-                string.Compare(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase) == 0 ||
-                string.Compare(secretsStorageType, "blob", StringComparison.OrdinalIgnoreCase) == 0)
+            if (_secretManagerProvider.SecretsEnabled)
             {
-                var functionAppSecrets = new FunctionAppSecrets();
-
-                // add host secrets
-                var hostSecretsInfo = await _secretManagerProvider.Current.GetHostSecretsAsync();
-                functionAppSecrets.Host = new FunctionAppSecrets.HostSecrets
+                // Add functions secrets to the payload
+                // Only secret types we own/control can we cache directly
+                // Encryption is handled by Antares before storage
+                var secretsStorageType = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsSecretStorageType);
+                if (string.IsNullOrEmpty(secretsStorageType) ||
+                    string.Equals(secretsStorageType, "files", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(secretsStorageType, "blob", StringComparison.OrdinalIgnoreCase))
                 {
-                    Master = hostSecretsInfo.MasterKey,
-                    Function = hostSecretsInfo.FunctionKeys,
-                    System = hostSecretsInfo.SystemKeys
-                };
+                    var functionAppSecrets = new FunctionAppSecrets();
 
-                // add function secrets
-                var httpFunctions = functionsMetadata.Where(p => !p.IsProxy() && p.InputBindings.Any(q => q.IsTrigger && string.Compare(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase) == 0)).Select(p => p.Name).ToArray();
-                functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
-                for (int i = 0; i < httpFunctions.Length; i++)
-                {
-                    var currFunctionName = httpFunctions[i];
-                    var currSecrets = await _secretManagerProvider.Current.GetFunctionSecretsAsync(currFunctionName);
-                    functionAppSecrets.Function[i] = new FunctionAppSecrets.FunctionSecrets
+                    // add host secrets
+                    var hostSecretsInfo = await _secretManagerProvider.Current.GetHostSecretsAsync();
+                    functionAppSecrets.Host = new FunctionAppSecrets.HostSecrets
                     {
-                        Name = currFunctionName,
-                        Secrets = currSecrets
+                        Master = hostSecretsInfo.MasterKey,
+                        Function = hostSecretsInfo.FunctionKeys,
+                        System = hostSecretsInfo.SystemKeys
                     };
-                }
 
-                result.Add("secrets", JObject.FromObject(functionAppSecrets));
-            }
-            else
-            {
-                // TODO: handle other external key storage types
-                // like KeyVault when the feature comes online
+                    // add function secrets
+                    var httpFunctions = functionsMetadata.Where(p => p.InputBindings.Any(q => q.IsTrigger && string.Equals(q.Type, "httptrigger", StringComparison.OrdinalIgnoreCase))).Select(p => p.Name).ToArray();
+                    functionAppSecrets.Function = new FunctionAppSecrets.FunctionSecrets[httpFunctions.Length];
+                    for (int i = 0; i < httpFunctions.Length; i++)
+                    {
+                        var currFunctionName = httpFunctions[i];
+                        var currSecrets = await _secretManagerProvider.Current.GetFunctionSecretsAsync(currFunctionName);
+                        functionAppSecrets.Function[i] = new FunctionAppSecrets.FunctionSecrets
+                        {
+                            Name = currFunctionName,
+                            Secrets = currSecrets
+                        };
+                    }
+
+                    result.Add("secrets", JObject.FromObject(functionAppSecrets));
+                }
+                else
+                {
+                    // TODO: handle other external key storage types
+                    // like KeyVault when the feature comes online
+                }
             }
 
             string json = JsonConvert.SerializeObject(result);
@@ -433,7 +440,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)
         {
             var triggers = (await functionsMetadata
-                .Where(f => !f.IsProxy())
                 .Select(f => f.ToFunctionTrigger(hostOptions))
                 .WhenAll())
                 .Where(t => t != null);
@@ -446,12 +452,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     triggers = triggers.Select(t => UpdateDurableFunctionConfig(t, durableTaskConfig));
                 }
-            }
-
-            if (FileUtility.FileExists(Path.Combine(hostOptions.RootScriptPath, ScriptConstants.ProxyMetadataFileName)))
-            {
-                // This is because we still need to scale function apps that are proxies only
-                triggers = triggers.Append(JObject.FromObject(new { type = "routingTrigger" }));
             }
 
             return triggers;
@@ -687,7 +687,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (response.IsSuccessStatusCode)
                 {
-                    _logger.LogDebug($"SyncTriggers call succeeded.");
+                    _logger.LogDebug("SyncTriggers call succeeded.");
                     return (true, null);
                 }
                 else

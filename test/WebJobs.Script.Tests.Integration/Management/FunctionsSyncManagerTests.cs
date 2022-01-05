@@ -25,6 +25,7 @@ using Moq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
+using static Microsoft.Azure.WebJobs.Script.Tests.TestHelpers;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
@@ -45,12 +46,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly Mock<IScriptWebHostEnvironment> _mockWebHostEnvironment;
         private readonly Mock<IEnvironment> _mockEnvironment;
         private readonly HostNameProvider _hostNameProvider;
+        private readonly Mock<ISecretManagerProvider> _secretManagerProviderMock;
         private readonly Mock<ISecretManager> _secretManagerMock;
+        private readonly TestScriptHostService _scriptHostManager; // To refresh underlying IConfiguration for IAzureBlobStorageProvider
         private string _function1;
         private bool _emptyContent;
+        private bool _secretsEnabled;
 
         public FunctionsSyncManagerTests()
         {
+            _secretsEnabled = true;
             _testRootScriptPath = Path.GetTempPath();
             _testHostConfigFilePath = Path.Combine(_testRootScriptPath, ScriptConstants.HostMetadataFileName);
             FileUtility.DeleteFileSafe(_testHostConfigFilePath);
@@ -84,14 +89,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             loggerFactory.AddProvider(_loggerProvider);
             _contentBuilder = new StringBuilder();
             _mockHttpHandler = new MockHttpHandler(_contentBuilder);
-            var httpClient = CreateHttpClient(_mockHttpHandler);
+            var httpClientFactory = TestHelpers.CreateHttpClientFactory(_mockHttpHandler);
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_hostOptions);
             var tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();
             var changeTokens = new[] { tokenSource };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
-            var secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
+            _secretManagerProviderMock = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
             _secretManagerMock = new Mock<ISecretManager>(MockBehavior.Strict);
-            secretManagerProviderMock.SetupGet(p => p.Current).Returns(_secretManagerMock.Object);
+            _secretManagerProviderMock.SetupGet(p => p.Current).Returns(_secretManagerMock.Object);
+            _secretManagerProviderMock.SetupGet(p => p.SecretsEnabled).Returns(() => _secretsEnabled);
             var hostSecretsInfo = new HostSecretsInfo();
             hostSecretsInfo.MasterKey = "aaa";
             hostSecretsInfo.FunctionKeys = new Dictionary<string, string>
@@ -134,9 +140,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
-            var azureStorageProvider = TestHelpers.GetAzureStorageProvider(configuration);
 
-            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
+            _scriptHostManager = new TestScriptHostService(configuration);
+            var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
+
+            _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
@@ -297,6 +305,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         }
 
         [Fact]
+        public async Task TrySyncTriggers_SecretsEnabled_ClearsSecretsCache()
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                _secretManagerMock.Verify(p => p.ClearCache(), Times.Once);
+            }
+        }
+
+        [Fact]
+        public async Task TrySyncTriggers_SecretsDisabled_DoesNotClearSecretsCache()
+        {
+            _secretsEnabled = false;
+
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var result = await _functionsSyncManager.TrySyncTriggersAsync();
+                Assert.True(result.Success);
+
+                _secretManagerMock.Verify(p => p.ClearCache(), Times.Never);
+                _secretManagerProviderMock.Verify(p => p.Current, Times.Never);
+                _secretManagerProviderMock.Verify(p => p.SecretsEnabled, Times.Exactly(2));
+            }
+        }
+
+        [Fact]
         public async Task TrySyncTriggers_BackgroundSync_DoesNotPostsEmptyContent()
         {
             _emptyContent = true;
@@ -311,18 +347,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
                 Assert.Equal("No functions found. Skipping Sync operation.", logs.Single());
-            }
-        }
-
-        [Fact]
-        public async Task TrySyncTriggers_ClearsSecretsCache()
-        {
-            using (var env = new TestScopedEnvironmentVariable(_vars))
-            {
-                var result = await _functionsSyncManager.TrySyncTriggersAsync();
-                Assert.True(result.Success);
-
-                _secretManagerMock.Verify(p => p.ClearCache(), Times.Once);
             }
         }
 
@@ -669,6 +693,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _vars.Add("AzureWebJobsStorage", storageConnectionString);
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
+                // _functionsSyncManager is initialized in the constructor with all the secrets from environment,
+                // so HostAzureBlobStorageProvider will have AzureWebJobsStorage defined in both ActiveHostConfigurationSource
+                // and the WebHost IConfiguration source from DI.
+                // The TestScopedEnvironmentVariable only changes the WebHost level IConfiguration (so if it is overriden to
+                // "notaconnectionstring" the test behaves as expected.
+                // When it is set to empty, the connection string from the ActiveHostConfigurationSource wins (never changed since it is set in
+                // constructor as mentioned).
+                // Therefore, we need to force refresh the configuration with an ActiveHostChanged event. This is because setting an empty environment variable
+                // removes it, but will not remove it from the ActiveHostConfigurationSource.
+                _scriptHostManager.OnActiveHostChanged();
                 var blob = await _functionsSyncManager.GetHashBlobAsync();
                 Assert.Null(blob);
             }
@@ -713,11 +747,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var httpRequest = _functionsSyncManager.BuildSetTriggersRequest();
             Assert.Equal(expectedSyncTriggersUri, httpRequest.RequestUri.AbsoluteUri);
             Assert.Equal(HttpMethod.Post, httpRequest.Method);
-        }
-
-        private static HttpClient CreateHttpClient(MockHttpHandler httpHandler)
-        {
-            return new HttpClient(httpHandler);
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()

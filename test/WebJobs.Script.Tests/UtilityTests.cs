@@ -1,4 +1,4 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
@@ -13,8 +13,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -800,6 +802,34 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 Assert.False(Utility.IsCodelessDotNetLanguageFunction(func2));
                 Assert.False(Utility.IsCodelessDotNetLanguageFunction(nodeFunc));
             }
+        }
+
+        [Theory]
+        [InlineData(false, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(false, true, FunctionAppContentEditingState.Allowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, false, FunctionAppContentEditingState.NotAllowed)]
+        [InlineData(true, true, FunctionAppContentEditingState.Unknown, false)]
+        public void GetFunctionAppContentEditingState_Returns_Expected(bool isFileSystemReadOnly, bool azureFilesAppSettingsExist, FunctionAppContentEditingState isFunctionAppContentEditable, bool isLinuxConsumption = true)
+        {
+            var environment = new TestEnvironment();
+            if (isLinuxConsumption)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerName, "test-container");
+            }
+            if (azureFilesAppSettingsExist)
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesConnectionString, "test value");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureFilesContentShare, "test value");
+            }
+
+            var applicationHostOptions = new ScriptApplicationHostOptions
+            {
+                IsFileSystemReadOnly = isFileSystemReadOnly
+            };
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+
+            Assert.Equal(Utility.GetFunctionAppContentEditingState(environment, optionsWrapper), isFunctionAppContentEditable);
         }
 
         [Theory]

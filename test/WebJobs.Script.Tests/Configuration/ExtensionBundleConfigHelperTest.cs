@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             ExtensionBundleConfigurationHelper setup = new ExtensionBundleConfigurationHelper(configuration, _environment);
             ExtensionBundleOptions options = new ExtensionBundleOptions();
             var ex = Assert.Throws<ArgumentException>(() => setup.Configure(options));
-            Assert.StartsWith($"The value of id property in extensionBundle section of {ScriptConstants.HostMetadataFileName} file is invalid or missing.", ex.Message);
+            Assert.StartsWith($"The value of version property in extensionBundle section of {ScriptConstants.HostMetadataFileName} file is invalid or missing.", ex.Message);
         }
 
         [Theory]

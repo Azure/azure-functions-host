@@ -34,11 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly HttpClient _client;
         private readonly IScriptWebHostEnvironment _webHostEnvironment;
 
-        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, HttpClient client, IScriptWebHostEnvironment webHostEnvironment,
+        public InstanceManager(IOptionsFactory<ScriptApplicationHostOptions> optionsFactory, IHttpClientFactory httpClientFactory, IScriptWebHostEnvironment webHostEnvironment,
             IEnvironment environment, ILogger<InstanceManager> logger, IMetricsLogger metricsLogger, IMeshServiceClient meshServiceClient, IRunFromPackageHandler runFromPackageHandler,
             IPackageDownloadHandler packageDownloadHandler)
         {
-            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _client = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _webHostEnvironment = webHostEnvironment ?? throw new ArgumentNullException(nameof(webHostEnvironment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger;
@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             else
             {
-                _logger.LogError($"Missing ZipUrl and AzureFiles config. Continue with empty root.");
+                _logger.LogError("Missing ZipUrl and AzureFiles config. Continue with empty root.");
                 return null;
             }
         }
@@ -272,7 +272,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"{nameof(ValidateAzureFilesContext)}");
+                _logger.LogError(e, nameof(ValidateAzureFilesContext));
                 return e.Message;
             }
         }

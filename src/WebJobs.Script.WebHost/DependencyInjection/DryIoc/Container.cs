@@ -63,7 +63,6 @@ namespace DryIoc
     using NewArrayExpr = System.Linq.Expressions.NewArrayExpression;
     using MemberAssignmentExpr = System.Linq.Expressions.MemberAssignment;
     using FactoryDelegateExpr = System.Linq.Expressions.Expression<FactoryDelegate>;
-    using global::Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection.DryIoc;
     using global::Microsoft.Azure.WebJobs.Script;
     using global::Microsoft.Azure.WebJobs.Script.Config;
 #endif
@@ -1945,12 +1944,6 @@ namespace DryIoc
             _singletonScope = singletonScope;
             
             _scopeContext = scopeContext;
-
-            if (_scopeContext == null && !FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableEnhancedScopes))
-            {
-                // Enhanced scopes do not need this context.
-                _scopeContext = new AsyncScopeContext();
-            }
 
             _ownCurrentScope = ownCurrentScope;
 

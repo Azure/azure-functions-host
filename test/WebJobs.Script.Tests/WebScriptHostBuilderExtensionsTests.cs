@@ -18,10 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IEnvironment>(p =>
                     {
-                        var environment = new TestEnvironment();
-                        environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagDisableDevInDebug);
-
-                        return environment;
+                        return new TestEnvironment();
                     });
 
                     var stateProvider = new Mock<IDebugStateProvider>();

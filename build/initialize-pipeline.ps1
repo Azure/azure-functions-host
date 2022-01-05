@@ -1,9 +1,8 @@
-param (
-  [string]$buildNumber
-)
-
 $buildReason = $env:BUILD_REASON
 $sourceBranch = $env:BUILD_SOURCEBRANCH
+
+Write-Host "BUILD_REASON: '$buildReason'"
+Write-Host "BUILD_SOURCEBRANCH: '$sourceBranch'"
 
 if ($buildReason -eq "PullRequest") {
   # parse PR title to see if we should pack this
@@ -16,30 +15,16 @@ if ($buildReason -eq "PullRequest") {
   }
 }
 
-# Get major, minor and patchVersions
-[xml]$XMLContents = [xml](Get-Content -Path ".\build\common.props")
-$XMLContents.GetElementsByTagName("MajorVersion") |  ForEach-Object {
-  $majorVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=MajorVersion;isOutput=true]$majorVersion"
-  Write-Host "Setting 'MajorVersion' to $majorVersion"
-}
+$buildNumber = ""
 
-$XMLContents.GetElementsByTagName("MinorVersion") |  ForEach-Object {
-  $minorVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=MinorVersion;isOutput=true]$minorVersion"
-  Write-Host "Setting 'MinorVersion' to $minorVersion"
-}
-
-$XMLContents.GetElementsByTagName("PatchVersion") |  ForEach-Object {
-  $patchVersion = $_.InnerText
-  Write-Host "##vso[task.setvariable variable=PatchVersion;isOutput=true]$patchVersion"
-  Write-Host "Setting 'PatchVersion' to $patchVersion"
-}
-
-#Update buildnumber with the same (Will be used by release pipelines)
-$customBuildNumber = "$majorVersion.$minorVersion.$patchVersion"
-if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release")))
+if(($buildReason -eq "PullRequest") -or !($sourceBranch.ToLower().Contains("release/4.")))
 {
-  $customBuildNumber = "$customBuildNumber-$buildNumber"
+  $buildNumber = $env:buildNumber
+  Write-Host "BuildNumber: '$buildNumber'"
 }
-Write-Host "##vso[build.updatebuildnumber]$customBuildNumber"
+
+Import-Module $PSScriptRoot\Get-AzureFunctionsVersion -Force
+$version = Get-AzureFunctionsVersion $buildNumber $buildNumber
+
+Write-Host "Site extension version: $version"
+Write-Host "##vso[build.updatebuildnumber]$version"

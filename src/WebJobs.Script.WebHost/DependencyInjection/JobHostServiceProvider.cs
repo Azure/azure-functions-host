@@ -31,10 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
 
         public JobHostServiceProvider(IServiceCollection descriptors, IServiceProvider rootProvider, IServiceScopeFactory rootScopeFactory)
         {
-            if (descriptors == null)
-            {
-                throw new ArgumentNullException(nameof(descriptors));
-            }
+            ArgumentNullException.ThrowIfNull(descriptors);
 
             _rootProvider = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
             _rootScopeFactory = rootScopeFactory ?? throw new ArgumentNullException(nameof(rootScopeFactory));

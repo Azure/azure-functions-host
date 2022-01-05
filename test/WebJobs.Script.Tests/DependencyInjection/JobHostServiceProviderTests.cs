@@ -92,78 +92,67 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void Scopes_ChildScopeIsIsolated()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableEnhancedScopes))
-            {
-                var services = new ServiceCollection();
-                services.AddScoped<A>();
+            var services = new ServiceCollection();
+            services.AddScoped<A>();
 
-                var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-                var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
+            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
 
-                var a1 = jobHostProvider.GetService<A>();
-                jobHostProvider.CreateScope();
-                var a2 = jobHostProvider.GetService<A>();
-                Assert.NotNull(a1);
-                Assert.NotNull(a2);
-                Assert.Same(a1, a2);
-            }
+            var a1 = jobHostProvider.GetService<A>();
+            jobHostProvider.CreateScope();
+            var a2 = jobHostProvider.GetService<A>();
+            Assert.NotNull(a1);
+            Assert.NotNull(a2);
+            Assert.Same(a1, a2);
         }
 
         [Fact]
         public void Scopes_Factories()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableEnhancedScopes))
+            IList<IServiceProvider> serviceProviders = new List<IServiceProvider>();
+
+            var services = new ServiceCollection();
+            services.AddTransient<A>(p =>
             {
-                IList<IServiceProvider> serviceProviders = new List<IServiceProvider>();
+                serviceProviders.Add(p);
+                return new A();
+            });
 
-                var services = new ServiceCollection();
-                services.AddTransient<A>(p =>
-                {
-                    serviceProviders.Add(p);
-                    return new A();
-                });
+            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
+            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
 
-                var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-                var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            // Get this service twice.
+            // The IServiceProvider passed to the factory should be different because they are separate scopes.
+            var scope1 = jobHostProvider.CreateScope();
+            scope1.ServiceProvider.GetService<A>();
 
-                // Get this service twice.
-                // The IServiceProvider passed to the factory should be different because they are separate scopes.
-                var scope1 = jobHostProvider.CreateScope();
-                scope1.ServiceProvider.GetService<A>();
+            var scope2 = jobHostProvider.CreateScope();
+            scope2.ServiceProvider.GetService<A>();
 
-                var scope2 = jobHostProvider.CreateScope();
-                scope2.ServiceProvider.GetService<A>();
-
-                Assert.Equal(2, serviceProviders.Count);
-                Assert.NotSame(serviceProviders[0], serviceProviders[1]);
-            }
+            Assert.Equal(2, serviceProviders.Count);
+            Assert.NotSame(serviceProviders[0], serviceProviders[1]);
         }
 
-        [Theory]
-        [InlineData("")]
-        [InlineData(ScriptConstants.FeatureFlagEnableEnhancedScopes)]
-        public void Scopes_DelegateFactory(string flag)
+        [Fact]
+        public void Scopes_DelegateFactory()
         {
-            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, flag))
-            {
-                var services = new ServiceCollection();
+            var services = new ServiceCollection();
 
-                services.AddScoped<A>();
-                services.AddScoped<ServiceFactory>(provider => (type) => provider.GetRequiredService(type));
+            services.AddScoped<A>();
+            services.AddScoped<ServiceFactory>(provider => (type) => provider.GetRequiredService(type));
 
-                var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
-                var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
+            var rootScopeFactory = new WebHostServiceProvider(new ServiceCollection());
+            var jobHostProvider = new JobHostServiceProvider(services, rootScopeFactory, rootScopeFactory);
 
-                var scope1 = jobHostProvider.CreateScope();
-                var a1 = scope1.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
+            var scope1 = jobHostProvider.CreateScope();
+            var a1 = scope1.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
 
-                var scope2 = jobHostProvider.CreateScope();
-                var a2 = scope2.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
+            var scope2 = jobHostProvider.CreateScope();
+            var a2 = scope2.ServiceProvider.GetService<ServiceFactory>()(typeof(A));
 
-                Assert.NotNull(a1);
-                Assert.NotNull(a2);
-                Assert.NotSame(a1, a2);
-            }
+            Assert.NotNull(a1);
+            Assert.NotNull(a2);
+            Assert.NotSame(a1, a2);
         }
 
         private class A

@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="UpdateRuntimeAssemblies">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)..\..\..\..\src.ruleset</CodeAnalysisRuleSet>
+    <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
   </PropertyGroup>
 
   <ItemGroup>

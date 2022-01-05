@@ -16,17 +16,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private const string ApiVersion = "1.0";
 
         private readonly IEnvironment _environment;
-        private readonly HttpClient _httpClient;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<ManagedIdentityTokenProvider> _logger;
 
-        public ManagedIdentityTokenProvider(IEnvironment environment, HttpClient httpClient,
+        public ManagedIdentityTokenProvider(IEnvironment environment, IHttpClientFactory httpClientFactory,
             IMetricsLogger metricsLogger, ILogger<ManagedIdentityTokenProvider> logger)
         {
             _environment = environment;
-            _httpClient = httpClient;
             _metricsLogger = metricsLogger;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
 
         private string GetRunFromPackageIdentity()
@@ -102,9 +102,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 {
                     using (var httpRequestMessage = new HttpRequestMessage(HttpMethod.Get, tokenEndpoint))
                     {
+                        var httpClient = _httpClientFactory.CreateClient();
                         var msiToken = _environment.GetEnvironmentVariable(EnvironmentSettingNames.MsiSecret);
                         httpRequestMessage.Headers.Add(ScriptConstants.XIdentityHeader, msiToken);
-                        using (var response = await _httpClient.SendAsync(httpRequestMessage))
+                        using (var response = await httpClient.SendAsync(httpRequestMessage))
                         {
                             response.EnsureSuccessStatusCode();
                             var readAsStringAsync = await response.Content.ReadAsStringAsync();

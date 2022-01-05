@@ -165,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             catch (Exception exc) when (!exc.IsFatal())
             {
-                _logger.LogError(exc, $"{nameof(FlushFunctionExecutionActivities)}");
+                _logger.LogError(exc, nameof(FlushFunctionExecutionActivities));
             }
         }
 
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             catch (Exception e)
             {
-                _logger.LogError(e, $"{nameof(SetTimerInterval)}");
+                _logger.LogError(e, nameof(SetTimerInterval));
             }
         }
 

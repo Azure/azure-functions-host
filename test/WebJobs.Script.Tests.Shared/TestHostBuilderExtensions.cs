@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -55,6 +56,7 @@ namespace Microsoft.WebJobs.Script.Tests
             AddMockedSingleton<IHttpWorkerService>(services);
             AddMockedSingleton<IApplicationLifetime>(services);
             AddMockedSingleton<IDependencyValidator>(services);
+            AddMockedSingleton<IAzureBlobStorageProvider>(services);
             services.AddSingleton<HostNameProvider>();
             services.AddSingleton<IMetricsLogger>(metricsLogger);
             services.AddWebJobsScriptHostRouting();
