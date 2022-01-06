@@ -8,10 +8,10 @@ public class RequestData
     public string Value { get; set; }
 }
 
-public static IActionResult Run(RequestData data, HttpRequest req, out string outBlob, ExecutionContext context, TraceWriter log)
+public static IActionResult Run(RequestData data, HttpRequest req, out string outBlob, ExecutionContext context, ILogger log)
 {
-    log.Info($"C# HTTP trigger function processed a request. {req.Host.Host}{req.Path}");
-    log.Info($"InvocationId: {context.InvocationId}");
+    log.LogInformation($"C# HTTP trigger function processed a request. {req.Host.Host}{req.Path}");
+    log.LogInformation($"InvocationId: {context.InvocationId}");
 
     outBlob = data.Value;
 

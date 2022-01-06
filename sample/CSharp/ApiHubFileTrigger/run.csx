@@ -1,5 +1,5 @@
-﻿public static string Run(string input, TraceWriter log)
+﻿public static string Run(string input, ILogger log)
 {
-    log.Info($"C# ApiHub trigger function processed a file...");
+    log.LogInformation($"C# ApiHub trigger function processed a file...");
     return input;
 }

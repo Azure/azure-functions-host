@@ -3,9 +3,9 @@
 
 using SendGrid.Helpers.Mail;
 
-public static Mail Run(Order order, TraceWriter log)
+public static Mail Run(Order order, ILogger log)
 {
-    log.Info($"C# Queue trigger function processed order: {order.OrderId}");
+    log.LogInformation($"C# Queue trigger function processed order: {order.OrderId}");
 
     var message = new Mail
     {

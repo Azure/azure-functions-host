@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 /// <param name="req"></param>
 /// <param name="log"></param>
 /// <returns></returns>
-public static IActionResult Run(HttpRequest req, TraceWriter log)
+public static IActionResult Run(HttpRequest req, ILogger log)
 {
     return new OkObjectResult(new Primary().GetValue());
 }

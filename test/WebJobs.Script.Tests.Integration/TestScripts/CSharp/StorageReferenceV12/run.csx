@@ -3,9 +3,9 @@
 
 using Azure.Storage.Blobs;
 
-public static void Run(string input, TraceWriter log)
+public static void Run(string input, ILogger log)
 {
     // it is enough to just reference the type; compilation should fail
     BlobClient blobClient;
-    log.Info(input);
+    log.LogInformation(input);
 }

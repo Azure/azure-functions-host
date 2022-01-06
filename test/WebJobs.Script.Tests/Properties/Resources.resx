@@ -151,9 +151,9 @@
   <data name="TestFunctionWithMissingBindingArgumentsCode" xml:space="preserve">
     <value>using System;
 
-public static void Run(string myQueueItem, TraceWriter log)
+public static void Run(string myQueueItem, ILogger log)
 {
-    log.Info($"C# Queue trigger function processed: {myQueueItem}");
+    log.LogInformation($"C# Queue trigger function processed: {myQueueItem}");
 }</value>
   </data>
 </root>

@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         /// <summary>
         /// All unhandled invocation exceptions will flow through this method.
-        /// We format the error and write it to our function specific <see cref="TraceWriter"/>.
+        /// We format the error and write it to our function specific <see cref="ILogger"/>.
         /// </summary>
         /// <param name="ex">The exception instance.</param>
         public virtual void OnError(Exception ex)

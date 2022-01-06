@@ -1,6 +1,6 @@
-﻿public static string Run(Input input, string blobIn, TraceWriter log)
+﻿public static string Run(Input input, string blobIn, ILogger log)
 {
-    log.Info($"C# manually triggered function called: InId: {input.InId}, OutId: {input.OutId}");
+    log.LogInformation($"C# manually triggered function called: InId: {input.InId}, OutId: {input.OutId}");
     return blobIn; 
 }
 

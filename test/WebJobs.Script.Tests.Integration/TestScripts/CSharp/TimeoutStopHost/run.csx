@@ -3,13 +3,13 @@ using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host;
 
-public static void Run(string input, TextWriter writer, TraceWriter log)
+public static void Run(string input, TextWriter writer, ILogger log)
 {
-    log.Info(input);
+    log.LogInformation(input);
 
     while (true)
     {
-        log.Info("Waiting");
+        log.LogInformation("Waiting");
         Thread.Sleep(100);
     }
 }

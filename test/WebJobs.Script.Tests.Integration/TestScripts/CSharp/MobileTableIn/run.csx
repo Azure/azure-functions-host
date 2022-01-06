@@ -2,11 +2,11 @@
 
 using Newtonsoft.Json.Linq;
 
-public static void Run(QueueInput input, JObject item, TraceWriter log)
+public static void Run(QueueInput input, JObject item, ILogger log)
 {
     item["Text"] = "This was updated!";
 
-    log.Info($"Updating item {item["Id"]}");
+    log.LogInformation($"Updating item {item["Id"]}");
 }
 
 public class QueueInput

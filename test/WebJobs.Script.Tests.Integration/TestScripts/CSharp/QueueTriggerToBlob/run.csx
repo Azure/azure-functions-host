@@ -1,4 +1,4 @@
-﻿public static string Run(WorkItem input, TraceWriter log)
+﻿public static string Run(WorkItem input, ILogger log)
 {
     string json = string.Format("{{ \"id\": \"{0}\" }}", input.Id);
 

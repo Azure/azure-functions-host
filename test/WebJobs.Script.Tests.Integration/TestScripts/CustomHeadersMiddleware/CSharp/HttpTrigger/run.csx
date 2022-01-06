@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-public static IActionResult Run(HttpRequest req, TraceWriter log)
+public static IActionResult Run(HttpRequest req, ILogger log)
 {
-    log.Info("C# HTTP trigger function processed a request.");
+    log.LogInformation("C# HTTP trigger function processed a request.");
 
     return new OkObjectResult("Success");
 }

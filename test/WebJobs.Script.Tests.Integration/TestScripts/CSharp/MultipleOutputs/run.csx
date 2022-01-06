@@ -1,4 +1,4 @@
-﻿public static string Run(Input input, out string blob1, out string blob2, TraceWriter log)
+﻿public static string Run(Input input, out string blob1, out string blob2, ILogger log)
 {
     blob1 = "Test Blob 1";
     blob2 = "Test Blob 2";

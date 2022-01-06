@@ -1,4 +1,4 @@
-﻿public static async Task<Item> Run(string input, TraceWriter log)
+﻿public static async Task<Item> Run(string input, ILogger log)
 {
     var item = new Item
     {
@@ -6,7 +6,7 @@
         Text = "Hello from C#!"
     };
 
-    log.Info($"Inserting item {item.Id}");
+    log.LogInformation($"Inserting item {item.Id}");
 
     // artificially making this function async to test
     // async return values

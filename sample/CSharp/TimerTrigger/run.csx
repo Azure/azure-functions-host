@@ -1,4 +1,4 @@
-﻿public static void Run(TimerInfo timerInfo, TraceWriter log)
+﻿public static void Run(TimerInfo timerInfo, ILogger log)
 {
-    log.Info("C# Timer trigger function executed.");
+    log.LogInformation("C# Timer trigger function executed.");
 }

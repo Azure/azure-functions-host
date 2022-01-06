@@ -4,9 +4,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
-public static IActionResult Run(HttpRequest req, TraceWriter log, ClaimsPrincipal principal)
+public static IActionResult Run(HttpRequest req, ILogger log, ClaimsPrincipal principal)
 {
-    log.Info("C# HTTP trigger function processed a request.");
+    log.LogInformation("C# HTTP trigger function processed a request.");
 
     string[] identityStrings = principal.Identities.Select(GetIdentityString).ToArray();
 

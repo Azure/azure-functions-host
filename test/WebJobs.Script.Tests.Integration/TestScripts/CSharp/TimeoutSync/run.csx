@@ -1,8 +1,8 @@
 ﻿using System.Threading;
 
-public static void Run(string inputData, TraceWriter log)
+public static void Run(string inputData, ILogger log)
 {
-    log.Info(inputData);
+    log.LogInformation(inputData);
 
     int count = 0;
     while (count < 10)

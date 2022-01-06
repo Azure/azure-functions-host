@@ -1,4 +1,4 @@
-﻿public static void Run(string input, TraceWriter log)
+﻿public static void Run(string input, ILogger log)
 {
-    log.Info(input);
+    log.LogInformation(input);
 }

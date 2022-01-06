@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 
-public static async Task Run(string input, TraceWriter log, CancellationToken token)
+public static async Task Run(string input, ILogger log, CancellationToken token)
 {
     switch (input)
     {
@@ -21,5 +21,5 @@ public static async Task Run(string input, TraceWriter log, CancellationToken to
             throw new InvalidOperationException($"'{input}' is an unknown command.");
     }
 
-    log.Info("Done");
+    log.LogInformation("Done");
 }
