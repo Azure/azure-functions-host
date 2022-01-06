@@ -631,9 +631,16 @@ namespace Microsoft.Azure.WebJobs.Script
             return ContainsFunctionWithWorkerRuntime(filteredFunctions, workerRuntime);
         }
 
-        internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions)
+        internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
-            if (IsSingleLanguage(functions, null))
+            var workerRuntime = environment != null ? environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) : null;
+
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                return workerRuntime;
+            }
+
+            if (functions != null && IsSingleLanguage(functions, null))
             {
                 var filteredFunctions = functions?.Where(f => !f.IsCodeless());
                 string functionLanguage = filteredFunctions.FirstOrDefault()?.Language;
