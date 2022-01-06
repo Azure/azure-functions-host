@@ -218,7 +218,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
+
+            if (functions != null)
+            {
+                _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions);
+            }
 
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {

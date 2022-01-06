@@ -314,7 +314,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
         }
 
-        /*
         [Fact]
         public async Task ShutdownChannels_NullFunctions()
         {
@@ -327,7 +326,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(6000);
             mockLanguageWorkerChannelManager.Verify(m => m.ShutdownChannelsAsync(), Times.Once);
         }
-        */
 
         [Fact]
         public async Task ShutdownChannels_DotNetFunctions()
