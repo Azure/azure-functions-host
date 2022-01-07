@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapGrpcService<FunctionRpcService>();
+                endpoints.MapGrpcService<FunctionRpc.FunctionRpcBase>();
             });
         }
     }
