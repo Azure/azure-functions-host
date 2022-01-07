@@ -596,6 +596,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Theory]
+        [InlineData(null)]
+        [InlineData("java")]
+        public void GetWorkerRuntimeTests(string workerRuntime)
+        {
+            FunctionMetadata func1 = new FunctionMetadata()
+            {
+                Name = "func1",
+                Language = workerRuntime
+            };
+
+            IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
+            {
+                 func1
+            };
+
+            var testEnv = new TestEnvironment();
+            testEnv.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, workerRuntime);
+            Assert.True(Utility.GetWorkerRuntime(functionMetadatas, testEnv) == workerRuntime);
+        }
+
+        [Theory]
         [InlineData("node", "java")]
         [InlineData("java", "node")]
         [InlineData("python", "")]
