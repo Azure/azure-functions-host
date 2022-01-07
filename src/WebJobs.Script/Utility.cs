@@ -633,11 +633,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal static string GetWorkerRuntime(IEnumerable<FunctionMetadata> functions, IEnvironment environment = null)
         {
-            var workerRuntime = environment != null ? environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime) : null;
+            string workerRuntime = null;
 
-            if (!string.IsNullOrEmpty(workerRuntime))
+            if (environment != null)
             {
-                return workerRuntime;
+                workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+
+                if (!string.IsNullOrEmpty(workerRuntime))
+                {
+                    return workerRuntime;
+                }
             }
 
             if (functions != null && IsSingleLanguage(functions, null))
