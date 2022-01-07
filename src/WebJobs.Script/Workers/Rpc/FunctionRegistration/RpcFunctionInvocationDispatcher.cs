@@ -217,7 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions, _environment);
+
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Shutdown any placeholder channels for empty function apps or dotnet function apps.
