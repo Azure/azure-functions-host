@@ -41,14 +41,14 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public async Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh)
         {
-            IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
             IEnumerable<FunctionMetadata> functions = new List<FunctionMetadata>();
             _logger.FunctionMetadataProviderParsingFunctions();
 
-            bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, environment);
-
             if (_functions.IsDefaultOrEmpty || forceRefresh)
             {
+                IEnumerable<RawFunctionMetadata> rawFunctions = new List<RawFunctionMetadata>();
+                bool workerIndexing = Utility.CanWorkerIndex(workerConfigs, environment);
+
                 if (workerIndexing)
                 {
                     if (_dispatcher == null)
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Script
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
         {
             List<FunctionMetadata> validatedMetadata = new List<FunctionMetadata>();
-            if (functions == null || functions.Count() == 0)
+            if (IsNullOrEmpty(functions))
             {
                 _logger.LogDebug("There is no metadata to be validated.");
                 return validatedMetadata;
@@ -180,7 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)
         {
-            if (functions == null || (functions != null && !functions.Any()))
+            if (functions == null || !functions.Any())
             {
                 return true;
             }
