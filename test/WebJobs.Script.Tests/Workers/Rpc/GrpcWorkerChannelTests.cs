@@ -110,6 +110,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ThrowsTaskCanceledException_IfDisposed()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _workerChannel.Dispose();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                await initTask;
+            });
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);

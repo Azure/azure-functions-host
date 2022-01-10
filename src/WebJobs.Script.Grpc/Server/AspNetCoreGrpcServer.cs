@@ -60,10 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (!_disposed)
             {
-                if (disposing)
+                var temp = _grpcHost;
+                if (disposing && temp != null)
                 {
-                    await _grpcHost.StopAsync();
-                    _grpcHost.Dispose();
+                    await temp.StopAsync();
+                    temp.Dispose();
                 }
                 _disposed = true;
             }
