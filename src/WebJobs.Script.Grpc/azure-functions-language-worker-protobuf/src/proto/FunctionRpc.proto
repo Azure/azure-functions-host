@@ -51,7 +51,7 @@ message StreamingMessage {
     WorkerActionResponse worker_action_response = 7;
     
     // Host sends required metadata to worker to load function
-    FunctionLoadRequest function_load_request = 8;
+    FunctionLoadRequests function_load_requests = 8;
     // Worker responds after loading with the load result
     FunctionLoadResponse function_load_response = 9;
     
@@ -220,7 +220,12 @@ message CloseSharedMemoryResourcesResponse {
   map<string, bool> close_map_results = 1;
 }
 
-// Host tells the worker to load a Function
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequests {
+  repeated FunctionLoadRequest FunctionLoadRequest = 1;
+}
+
+// Load request of a single Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;

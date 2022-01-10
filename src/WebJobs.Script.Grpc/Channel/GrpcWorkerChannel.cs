@@ -300,10 +300,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
-                {
-                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
-                }
+
+                SendFunctionsLoadRequest(_functions, managedDependencyOptions);
             }
         }
 
@@ -347,20 +345,34 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return request;
         }
 
-        internal void SendFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
+        internal void SendFunctionsLoadRequest(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
-            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:'{functionName}' with functionId:'{functionId}'", metadata.Name, metadata.GetFunctionId());
 
             // send a load request for the registered function
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions)
+                FunctionLoadRequests = GetFunctionLoadRequests(functions, managedDependencyOptions)
             });
+        }
+
+        internal FunctionLoadRequests GetFunctionLoadRequests(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        {
+            var functionLoadRequests = new FunctionLoadRequests();
+
+            foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled()))
+            {
+                var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
+                functionLoadRequests.FunctionLoadRequest.Add(functionLoadRequest);
+            }
+
+            return functionLoadRequests;
         }
 
         internal FunctionLoadRequest GetFunctionLoadRequest(FunctionMetadata metadata, ManagedDependencyOptions managedDependencyOptions)
         {
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequest for function:'{functionName}' with functionId:'{functionId}'", metadata.Name, metadata.GetFunctionId());
+
             FunctionLoadRequest request = new FunctionLoadRequest()
             {
                 FunctionId = metadata.GetFunctionId(),
