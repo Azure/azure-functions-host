@@ -352,7 +352,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
-            Assert.True(functionLoadLogs.Count() == 2);
+            Assert.True(functionLoadLogs.Count() == 1);
         }
 
         [Fact]
