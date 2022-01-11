@@ -2,7 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -14,8 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
     public class RpcWorkerProcessTests
     {
         private RpcWorkerProcess _rpcWorkerProcess;
-
         private Mock<IScriptEventManager> _eventManager;
+        private Mock<IHostProcessMonitor> _hostProcessMonitorMock;
 
         public RpcWorkerProcessTests()
         {
@@ -26,7 +28,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var languageWorkerConsoleLogSource = new Mock<IWorkerConsoleLogSource>();
             var testEnv = new TestEnvironment();
             var testWorkerConfigs = TestHelpers.GetTestWorkerConfigs();
+
+            _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
+            var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
+            var scriptHostServiceProviderMock = scriptHostManagerMock.As<IServiceProvider>();
+            scriptHostServiceProviderMock.Setup(p => p.GetService(typeof(IHostProcessMonitor))).Returns(() => _hostProcessMonitorMock.Object);
+
             var serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
+            serviceProviderMock.Setup(p => p.GetService(typeof(IScriptHostManager))).Returns(scriptHostManagerMock.Object);
 
             _rpcWorkerProcess = new RpcWorkerProcess("node",
                 "testworkerId",
@@ -40,6 +49,78 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 languageWorkerConsoleLogSource.Object,
                 new TestMetricsLogger(),
                 serviceProviderMock.Object);
+        }
+
+        [Fact]
+        public void Constructor_RegistersHostStartedEvent()
+        {
+            Func<IObserver<ScriptEvent>, bool> validate = p =>
+            {
+                // validate the internal reactive ISink<HostStartEvent> implementation that
+                // results from the Subscribe extension method
+                Type eventType = p.GetType().GetInterfaces()[0].GetGenericArguments()[0];
+                return eventType == typeof(HostStartEvent);
+            };
+
+            _eventManager.Verify(_ => _.Subscribe(It.Is<IObserver<ScriptEvent>>(p => validate(p))), Times.Once());
+        }
+
+        [Fact]
+        public void OnHostStart_RegistersProcessWithMonitor()
+        {
+            Process process = Process.GetCurrentProcess();
+            _rpcWorkerProcess.Process = process;
+
+            _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
+
+            HostStartEvent evt = new HostStartEvent();
+            _rpcWorkerProcess.OnHostStart(evt);
+            _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
+        }
+
+        [Fact]
+        public void RegisterWithProcessMonitor_Succeeds()
+        {
+            Process process = Process.GetCurrentProcess();
+            _rpcWorkerProcess.Process = process;
+
+            _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
+
+            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
+
+            // registration is skipped if attempted again for the same monitor
+            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
+
+            // if the monitor changes (e.g. due to a host restart)
+            // registration is performed
+            _hostProcessMonitorMock = new Mock<IHostProcessMonitor>(MockBehavior.Strict);
+            _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
+            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.RegisterChildProcess(process), Times.Once);
+        }
+
+        [Fact]
+        public void UnregisterFromProcessMonitor_Succeeds()
+        {
+            Process process = Process.GetCurrentProcess();
+            _rpcWorkerProcess.Process = process;
+
+            _hostProcessMonitorMock.Setup(p => p.RegisterChildProcess(process));
+            _hostProcessMonitorMock.Setup(p => p.UnregisterChildProcess(process));
+
+            // not yet registered so noop
+            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Never);
+
+            _rpcWorkerProcess.RegisterWithProcessMonitor();
+            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Once);
+
+            // attempting to unregister again is a noop
+            _rpcWorkerProcess.UnregisterFromProcessMonitor();
+            _hostProcessMonitorMock.Verify(p => p.UnregisterChildProcess(process), Times.Once);
         }
 
         [Fact]
