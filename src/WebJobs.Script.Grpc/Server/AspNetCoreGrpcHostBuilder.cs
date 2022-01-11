@@ -5,6 +5,7 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,24 +14,24 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 {
     internal static class AspNetCoreGrpcHostBuilder
     {
-        public static IHostBuilder CreateHostBuilder(IScriptEventManager scriptEventManager, int port) =>
-            Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-                .ConfigureWebHost(webBuilder =>
+        public static IHostBuilder CreateHostBuilder(FunctionRpc.FunctionRpcBase service, IScriptEventManager scriptEventManager, int port) =>
+            new HostBuilder().ConfigureWebHost(webBuilder =>
+            {
+                webBuilder.UseKestrel(options =>
                 {
-                    webBuilder.UseKestrel(options =>
-                      {
-                          options.Listen(IPAddress.Parse(WorkerConstants.HostName), port, listenOptions =>
-                          {
-                              listenOptions.Protocols = HttpProtocols.Http2;
-                          });
-                      });
-
-                    webBuilder.ConfigureServices(services =>
-                      {
-                          services.AddSingleton(scriptEventManager);
-                      });
-
-                    webBuilder.UseStartup<Startup>();
+                    options.Listen(IPAddress.Parse(WorkerConstants.HostName), port, listenOptions =>
+                    {
+                        listenOptions.Protocols = HttpProtocols.Http2;
+                    });
                 });
+
+                webBuilder.ConfigureServices(services =>
+                  {
+                      services.AddSingleton(scriptEventManager);
+                      services.AddSingleton(service);
+                  });
+
+                webBuilder.UseStartup<Startup>();
+            });
     }
 }
