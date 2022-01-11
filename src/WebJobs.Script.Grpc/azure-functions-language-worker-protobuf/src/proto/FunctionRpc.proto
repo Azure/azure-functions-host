@@ -51,7 +51,7 @@ message StreamingMessage {
     WorkerActionResponse worker_action_response = 7;
     
     // Host sends required metadata to worker to load function
-    FunctionLoadRequests function_load_requests = 8;
+    FunctionLoadRequest function_load_request = 8;
     // Worker responds after loading with the load result
     FunctionLoadResponse function_load_response = 9;
     
@@ -79,6 +79,9 @@ message StreamingMessage {
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
     FunctionMetadataResponses function_metadata_responses = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequests function_load_requests = 31;
   }
 }
 
