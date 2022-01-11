@@ -79,6 +79,9 @@ message StreamingMessage {
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
     FunctionMetadataResponses function_metadata_responses = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequests function_load_requests = 31;
   }
 }
 
@@ -220,7 +223,12 @@ message CloseSharedMemoryResourcesResponse {
   map<string, bool> close_map_results = 1;
 }
 
-// Host tells the worker to load a Function
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequests {
+  repeated FunctionLoadRequest FunctionLoadRequest = 1;
+}
+
+// Load request of a single Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;

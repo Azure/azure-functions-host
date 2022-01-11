@@ -20,6 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         void SendFunctionLoadRequests(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout);
 
+        void SendFunctionsLoadRequest(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout);
+
         Task SendFunctionEnvironmentReloadRequest();
 
         Task<List<RawFunctionMetadata>> GetFunctionMetadata();

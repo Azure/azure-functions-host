@@ -333,7 +333,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 foreach (IRpcWorkerChannel initializedLanguageWorkerChannel in channels)
                 {
                     initializedLanguageWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                    initializedLanguageWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                    initializedLanguageWorkerChannel.SendFunctionsLoadRequest(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                 }
                 SetFunctionDispatcherStateToInitializedAndLog();
             }

@@ -159,5 +159,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return null;
         }
+
+        public void SendFunctionsLoadRequest(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout)
+        {
+            _testLogger.LogInformation("RegisterFunctions called by single request");
+        }
     }
 }
