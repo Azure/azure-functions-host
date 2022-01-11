@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,10 +23,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private bool _disposed = false;
         private IHost _grpcHost;
 
-        public AspNetCoreGrpcServer(IScriptEventManager scriptEventManager, ILogger<AspNetCoreGrpcServer> logger)
+        public AspNetCoreGrpcServer(FunctionRpc.FunctionRpcBase service, IScriptEventManager scriptEventManager, ILogger<AspNetCoreGrpcServer> logger)
         {
             int port = WorkerUtilities.GetUnusedTcpPort();
-            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(scriptEventManager, port);
+            _grpcHostBuilder = AspNetCoreGrpcHostBuilder.CreateHostBuilder(service, scriptEventManager, port);
             _logger = logger;
             Uri = new Uri($"http://{WorkerConstants.HostName}:{port}");
         }
