@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     if (_dispatcher == null)
                     {
-                        throw new ArgumentNullException(nameof(_dispatcher));
+                        throw new InvalidOperationException(nameof(_dispatcher));
                     }
 
                     // start up GRPC channels
@@ -72,6 +72,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (IsNullOrEmpty(rawFunctions) || !workerIndexing)
                 {
                     // If worker denies indexing then falling back to the host for Indexing
+                    _logger.LogDebug("Fallback to host indexing as worker denied indexing");
                     functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
                 }
             }
