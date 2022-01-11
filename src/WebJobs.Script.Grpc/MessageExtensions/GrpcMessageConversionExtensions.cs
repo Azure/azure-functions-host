@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     RpcDataType.None => null,
                     RpcDataType.String => typedData.String,
                     RpcDataType.Json => JsonConvert.DeserializeObject(typedData.Json, _datetimeSerializerSettings),
-                    RpcDataType.Bytes or RpcDataType.Stream => typedData.Bytes.ToByteArray(),
+                    var type when type == RpcDataType.Bytes || type == RpcDataType.Stream => typedData.Bytes.ToByteArray(),
                     RpcDataType.Http => GrpcMessageExtensionUtilities.ConvertFromHttpMessageToExpando(typedData.Http),
                     RpcDataType.Int => typedData.Int,
                     RpcDataType.Double => typedData.Double,
