@@ -573,7 +573,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Disposing FunctionDispatcher");
                     _disposeToken.Cancel();
-                    _disposeToken.Dispose();
+                    // We're explicitly NOT disposing the token here, because if anything our Task.Delay() is waiting on it
+                    // Disposing here gives zero time to observe the cancel and is likely to yield an ObjectDisposeException in a race.
+                    // Since this is relatively rare, let the GC clean it up.
+                    //_disposeToken.Dispose();
                     _startWorkerProcessLock.Dispose();
                     _workerErrorSubscription.Dispose();
                     _workerRestartSubscription.Dispose();
