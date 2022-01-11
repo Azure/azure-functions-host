@@ -527,6 +527,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     // Issue only one restart at a time.
                     await _startWorkerProcessLock.WaitAsync();
+                    // After waiting on the lock (which could take some time), make sure we're not in a disposed state trying to start things up
+                    if (_disposing || _disposed)
+                    {
+                        return;
+                    }
                     await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
                 }
                 finally
