@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         await _dispatcher.FinishInitialization(functions);
                     }
                 }
-                if (IsNullOrEmpty(rawFunctions) || !workerIndexing)
+                if (!workerIndexing || IsDefaultIndexingRequired(rawFunctions))
                 {
                     // If worker denies indexing then falling back to the host for Indexing
                     _logger.LogDebug("Fallback to host indexing as worker denied indexing");
@@ -177,6 +177,18 @@ namespace Microsoft.Azure.WebJobs.Script
             }
 
             return function;
+        }
+
+        private bool IsDefaultIndexingRequired(IEnumerable<RawFunctionMetadata> functions)
+        {
+            foreach (RawFunctionMetadata function in functions)
+            {
+                if (function.UseDefaultMetadataIndexing == true)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private bool IsNullOrEmpty(IEnumerable<RawFunctionMetadata> functions)
