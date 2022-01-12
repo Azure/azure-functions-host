@@ -101,8 +101,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)
         {
-            var concurrency = WebJobsExtensionOptionRegistry.GetOptions(WebJobsExtensionOptionRegistry.ConcurrencySectionName);
-            var extensions = WebJobsExtensionOptionRegistry.GetOptions(WebJobsExtensionOptionRegistry.ExtensionsSectionName);
             var result = new SyncTriggersResult
             {
                 Success = true

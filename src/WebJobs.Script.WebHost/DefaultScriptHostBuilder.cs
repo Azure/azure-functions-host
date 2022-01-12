@@ -3,8 +3,8 @@
 
 using System;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Host.Extensions;
 using Microsoft.Azure.WebJobs.Hosting;
+using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
