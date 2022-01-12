@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
@@ -12,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public DateTime Timestamp { get; set; }
 
-        public Stopwatch StopWatch { get; set; }
+        public ValueStopwatch StopWatch { get; set; }
 
         public TimeSpan Duration { get; private set; }
 
@@ -26,10 +25,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public void Complete()
         {
-            if (StopWatch != null)
+            if (StopWatch.IsActive)
             {
-                StopWatch.Stop();
-                Duration = StopWatch.Elapsed;
+                Duration = StopWatch.GetElapsedTime();
             }
             else
             {
