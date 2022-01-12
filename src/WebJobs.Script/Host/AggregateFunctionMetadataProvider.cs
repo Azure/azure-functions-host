@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     // If worker denies indexing then falling back to the host for Indexing
                     _logger.LogDebug("Fallback to host indexing as worker denied indexing");
-                    functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh);
+                    functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
                 }
             }
             _functions = functions.ToImmutableArray();
