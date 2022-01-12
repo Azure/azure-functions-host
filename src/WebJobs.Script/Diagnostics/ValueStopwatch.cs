@@ -6,11 +6,12 @@ using System.Diagnostics;
 
 namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 {
-    // Based on: https://github.com/dotnet/aspnetcore/blob/master/src/Shared/ValueStopwatch/ValueStopwatch.cs
+    // Based on: https://github.com/dotnet/runtime/blob/main/src/libraries/Common/src/Extensions/ValueStopwatch/ValueStopwatch.cs
     public struct ValueStopwatch
     {
         private static readonly double TimestampToTicks = TimeSpan.TicksPerSecond / (double)Stopwatch.Frequency;
 
+        // Note: *not* readonly to prevent a defensive copy
         private long _startTimestamp;
 
         private ValueStopwatch(long startTimestamp)
