@@ -49,12 +49,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public bool IsEnabled(LogLevel logLevel)
         {
-            if (_debugStateProvider.InDiagnosticMode)
-            {
-                // when in diagnostic mode, we log everything
-                return true;
-            }
-            return logLevel >= _logLevel;
+            // When in diagnostic mode, we log everything, but that has a .UtcNow check,
+            // so first see if we even need to make that assessment.
+            return logLevel >= _logLevel || _debugStateProvider.InDiagnosticMode;
         }
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)

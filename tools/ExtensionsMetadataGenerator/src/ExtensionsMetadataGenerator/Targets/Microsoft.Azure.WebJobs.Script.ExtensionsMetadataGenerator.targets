@@ -4,22 +4,22 @@
     <_FunctionsExtensionsTaskFramework Condition=" '$(MSBuildRuntimeType)' == 'Core'">netstandard2.0</_FunctionsExtensionsTaskFramework>
     <_FunctionsExtensionsTaskFramework Condition=" '$(_FunctionsExtensionsTaskFramework)' == ''">net46</_FunctionsExtensionsTaskFramework>
     <_FunctionsExtensionsTasksDir Condition=" '$(_FunctionsExtensionsTasksDir)'=='' ">$(MSBuildThisFileDirectory)..\tools\$(_FunctionsExtensionsTaskFramework)</_FunctionsExtensionsTasksDir>
-    <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>    
+    <_FunctionsExtensionsTaskAssemblyFullPath Condition=" '$(_FunctionsExtensionsTaskAssemblyFullPath)'=='' ">$(_FunctionsExtensionsTasksDir)\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator.dll</_FunctionsExtensionsTaskAssemblyFullPath>
     <_FunctionsExtensionsDir>$(TargetDir)</_FunctionsExtensionsDir>
     <_FunctionsExtensionsDir Condition="$(_IsFunctionsSdkBuild) == 'true'">$(_FunctionsExtensionsDir)bin</_FunctionsExtensionsDir>
     <_ExtensionsMetadataGeneratorTargetsImported>true</_ExtensionsMetadataGeneratorTargetsImported>
-    <IsPackable>false</IsPackable>
-    
+    <IsPackable Condition="'$(IsPackable)' == ''">false</IsPackable>
+
     <!-- If the Sdk is present, we want to make sure that we generate extension metadata (extensions.json) and clean the output after
            the function metdata (function.json) has been generated. If not, we may delete files that function generation needs.
          If the Sdk is not present, we need this to run after Build, as there is no function metadata generation step. -->
     <_GenerateFunctionsExtensionsMetadataPostBuildAfterTargets>Build</_GenerateFunctionsExtensionsMetadataPostBuildAfterTargets>
     <_GenerateFunctionsExtensionsMetadataPostBuildAfterTargets Condition="$(_IsFunctionsSdkBuild) != ''">_GenerateFunctionsPostBuild</_GenerateFunctionsExtensionsMetadataPostBuildAfterTargets>
-  </PropertyGroup>  
+  </PropertyGroup>
 
   <UsingTask TaskName="RemoveRuntimeDependencies"
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
-  
+
   <Target Name="_FunctionsBuildCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostBuild" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
     <RemoveRuntimeDependencies OutputPath="$(TargetDir)bin" IgnoreFiles="@(FunctionsPreservedDependencies)"/>
   </Target>
@@ -27,7 +27,7 @@
   <Target Name="_FunctionsPublishCleanOutput" AfterTargets="_GenerateFunctionsExtensionsMetadataPostPublish" Condition="$(_FunctionsSkipCleanOutput) != 'true'" >
     <RemoveRuntimeDependencies OutputPath="$(PublishDir)bin" IgnoreFiles="@(FunctionsPreservedDependencies)"/>
   </Target>
-  
+
   <UsingTask TaskName="GenerateFunctionsExtensionsMetadata"
              AssemblyFile="$(_FunctionsExtensionsTaskAssemblyFullPath)"/>
 
@@ -46,7 +46,7 @@
   </Target>
 
   <!--
-    This target must run after the function assemblies are copied to the bin directory. Otherwise, 
+    This target must run after the function assemblies are copied to the bin directory. Otherwise,
     extensions will be missed during Publish. This AfterTargets (which references a target in
     Microsoft.NET.Sdk.Functions.Publish.targets) ensures that the ordering is correct, even if the
     ExtensionsMetadataGenerator package is referenced directly in the project file.
@@ -65,17 +65,17 @@
 
     <!--
       Copy publish assemblies that not already included in ReferenceCopyLocalPaths
-      via CopyLocalLockFileAssemblies=true. This will include RID-specific assets 
-      that would be published in  the runtimes/ folder, but excluded from 
+      via CopyLocalLockFileAssemblies=true. This will include RID-specific assets
+      that would be published in  the runtimes/ folder, but excluded from
       CopyLocalLockFileAssemblies when no RuntimeIdentifier is set.
     -->
     <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
-      <!-- 
-       NOTE: The exclusion here is to ensure that we do not override any existing 
+      <!--
+       NOTE: The exclusion here is to ensure that we do not override any existing
              ReferenceCopyLocalPaths with assets from RunResolvedPublishAssemblies.
-             The ReferenceCopyLocalPaths can have conflicts resolved that are not 
+             The ReferenceCopyLocalPaths can have conflicts resolved that are not
              also resolved in the publish set, and publish currently relies on copy
-             local paths having precedence over it to ensure conflict resolution 
+             local paths having precedence over it to ensure conflict resolution
              applies. We must preserve that precedence here.
      -->
       <_RidSpecificAssembliesByDestination
@@ -96,8 +96,8 @@
     </ItemGroup>
 
     <!--
-       Copy reference assemblies needed for runtime compilation to refs/ folder. Only 
-       those that are not a also runtime assemblies and therefore already included in 
+       Copy reference assemblies needed for runtime compilation to refs/ folder. Only
+       those that are not a also runtime assemblies and therefore already included in
        ReferenceCopyLocalPaths via CopyLocalLockFileAssemblies=true are needed.
       -->
     <ItemGroup Condition="'$(PreserveCompilationContext)' == 'true'">

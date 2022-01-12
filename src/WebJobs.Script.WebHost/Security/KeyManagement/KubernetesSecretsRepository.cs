@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     /// <summary>
-    /// An <see cref="ISecretsRepository"/> implementation that uses the key vault as the backing store.
+    /// An <see cref="ISecretsRepository"/> implementation that uses Kubernetes as the backing store.
     /// </summary>
     public class KubernetesSecretsRepository : ISecretsRepository, IDisposable
     {
@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public bool IsEncryptionSupported => false;
 
-        public string Name => nameof(KeyVaultSecretsRepository);
+        public string Name => nameof(KubernetesSecretsRepository);
 
         public async Task<ScriptSecrets> ReadAsync(ScriptSecretsType type, string functionName)
         {
