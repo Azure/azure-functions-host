@@ -37,5 +37,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var sanitized = Sanitizer.Sanitize(input);
             Assert.Equal(expectedOutput, sanitized);
         }
+
+        /// <summary>
+        /// Ensures our short circuit for performance using MayContainCredentials
+        /// isn't inadvertently bypassing any credential tokens we add later.
+        /// </summary>
+        [Fact]
+        public void EnsureShortCircuitSanity()
+        {
+            foreach (var token in Sanitizer.CredentialTokens)
+            {
+                Assert.True(Sanitizer.MayContainCredentials(token));
+            }
+        }
     }
 }
