@@ -4,7 +4,7 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Script.Tests.Benchmarks
+namespace Microsoft.Azure.WebJobs.Script.Benchmarks
 {
     public class ScriptLoggingBuilderExtensionsBenchmarks
     {
