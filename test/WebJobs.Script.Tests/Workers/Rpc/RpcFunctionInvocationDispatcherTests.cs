@@ -126,6 +126,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, initializedChannelsCount);
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData(RpcWorkerConstants.JavaLanguageWorkerName)]
+        public async Task WorkerRuntime_Setting_ChannelInitializationState_Succeeds(string workerRuntime)
+        {
+            _testLoggerProvider.ClearAllLogMessages();
+            int expectedProcessCount = 1;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: workerRuntime, workerIndexing: true);
+
+            // create channels and ensure that they aren't ready for invocation requests yet
+            await functionDispatcher.InitializeAsync(new List<FunctionMetadata>());
+
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                int createdChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, false);
+                Assert.Equal(expectedProcessCount, createdChannelsCount);
+
+                IEnumerable<IRpcWorkerChannel> channels = await functionDispatcher.GetInitializedWorkerChannelsAsync();
+                Assert.Equal(0, channels.Count());
+
+                // set up invocation buffers, send load requests, and ensure that the channels are now set up for invocation requests
+                var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
+                await functionDispatcher.FinishInitialization(functions);
+                int initializedChannelsCount = await WaitForJobhostWorkerChannelsToStartup(functionDispatcher, expectedProcessCount, true);
+                Assert.Equal(expectedProcessCount, initializedChannelsCount);
+            }
+            else
+            {
+                foreach (var currChannel in functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels())
+                {
+                    Assert.True(((TestRpcWorkerChannel)currChannel).ExecutionContexts.Count == 0);
+                }
+            }
+        }
+
         [Fact]
         public async Task Starting_MultipleJobhostChannels_Failed()
         {

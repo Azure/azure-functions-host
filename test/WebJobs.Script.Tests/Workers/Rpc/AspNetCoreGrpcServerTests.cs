@@ -3,7 +3,9 @@
 
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
@@ -13,14 +15,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void CleanDisposal()
         {
-            var server = new AspNetCoreGrpcServer(new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
+            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
             server.Dispose();
         }
 
         [Fact]
         public async Task CleanDisposalAsync()
         {
-            var server = new AspNetCoreGrpcServer(new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
+            var server = new AspNetCoreGrpcServer(new Mock<FunctionRpc.FunctionRpcBase>().Object, new TestScriptEventManager(), NullLogger<AspNetCoreGrpcServer>.Instance);
             await server.DisposeAsync();
         }
     }
