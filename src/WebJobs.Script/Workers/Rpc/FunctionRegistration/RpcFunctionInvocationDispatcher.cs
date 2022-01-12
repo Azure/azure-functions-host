@@ -217,7 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions, _environment);
+
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Shutdown any placeholder channels for empty function apps or dotnet function apps.
@@ -526,6 +527,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     // Issue only one restart at a time.
                     await _startWorkerProcessLock.WaitAsync();
+                    // After waiting on the lock (which could take some time), make sure we're not in a disposed state trying to start things up
+                    if (_disposing || _disposed)
+                    {
+                        return;
+                    }
                     await InitializeJobhostLanguageWorkerChannelAsync(_languageWorkerErrors.Count);
                 }
                 finally
@@ -572,7 +578,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 {
                     _logger.LogDebug("Disposing FunctionDispatcher");
                     _disposeToken.Cancel();
-                    _disposeToken.Dispose();
+                    // We're explicitly NOT disposing the token here, because if anything our Task.Delay() is waiting on it
+                    // Disposing here gives zero time to observe the cancel and is likely to yield an ObjectDisposeException in a race.
+                    // Since this is relatively rare, let the GC clean it up.
+                    //_disposeToken.Dispose();
                     _startWorkerProcessLock.Dispose();
                     _workerErrorSubscription.Dispose();
                     _workerRestartSubscription.Dispose();
