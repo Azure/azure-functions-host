@@ -19,6 +19,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName, string source, string details, string summary, string exceptionType, string exceptionMessage, string functionInvocationId, string hostInstanceId, string activityId, string runtimeSiteName, string slotName, DateTime eventTimeStamp)
         {
+            if (!FunctionsSystemLogsEventSource.Instance.IsEnabled())
+            {
+                return;
+            }
+
             string formattedEventTimestamp = eventTimeStamp.ToString(EventTimestampFormat);
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {

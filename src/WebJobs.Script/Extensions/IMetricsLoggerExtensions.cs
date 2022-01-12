@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             public DisposableEvent(string eventName, string functionName, IMetricsLogger metricsLogger)
             {
-                _metricEvent = metricsLogger.BeginEvent(eventName, functionName, $"{{\"IsStopwatchHighResolution:\" {Stopwatch.IsHighResolution}}}");
+                _metricEvent = metricsLogger.BeginEvent(eventName, functionName, Stopwatch.IsHighResolution ? @"{""IsStopwatchHighResolution"": True}" : @"{""IsStopwatchHighResolution"": False}");
                 _metricsLogger = metricsLogger;
             }
 
