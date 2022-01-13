@@ -15,5 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         public string RetryOptions { get; set; }
 
         public string ConfigurationSource { get; set; }
+
+        public bool UseDefaultMetadataIndexing { get; set; } = true;
     }
 }

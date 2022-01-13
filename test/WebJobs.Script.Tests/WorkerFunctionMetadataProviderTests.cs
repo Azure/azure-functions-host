@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<FormatException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("At least one binding must be declared.", ex.Message);
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("Multiple bindings with name 'dupe' discovered. Binding names must be unique.", ex.Message);
@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal("No trigger binding specified. A function must have a trigger input binding.", ex.Message);
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal($"The binding name {bindingName} is invalid. Please assign a valid name to the binding.", ex.Message);
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             try
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             }
             catch (ArgumentException)
             {
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var ex = Assert.Throws<ArgumentException>(() =>
             {
-                WorkerFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
+                AggregateFunctionMetadataProvider.ValidateBindings(rawBindings, functionMetadata);
             });
 
             Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.", ex.Message);
