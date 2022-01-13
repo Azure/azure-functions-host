@@ -9,6 +9,7 @@ using System.Text;
 using Microsoft.Azure.WebJobs.Host.Hosting;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             public override void Load()
             {
                 _path = new Stack<string>();
-                var json = WebJobsExtensionOptionRegistry.GetOptions();
+                var json = GetOptions(WebJobsExtensionOptionRegistry.GetExtensionConfigs());
                 ProcessObject(json);
                 OnReload();
             }
@@ -89,6 +90,37 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                     ProcessToken(array[i]);
                     _path.Pop();
                 }
+            }
+
+            private JObject GetOptions(IReadOnlyDictionary<string, object> extensionOptions)
+            {
+                var json = new JObject();
+                foreach ( var kv in extensionOptions)
+                {
+                    var originalJson = JObject.Parse(JsonConvert.SerializeObject(kv.Value, new JsonSerializerSettings
+                    {
+                        ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+                    }));
+                    json.Add(kv.Key, GetSanitizedOptionJson(kv.Key, originalJson));
+                }
+                return json;
+            }
+
+            private JObject GetSanitizedOptionJson(string section, JObject originalJson)
+            {
+                return section switch // TODO Should be case insensitive?
+                {
+                    "kafka" => Serialize<SanitizedOptions.KafkaOptions>(originalJson),
+                    "EventHubs" => Serialize<SanitizedOptions.EventHubOptions>(originalJson),
+                    // In case the Options are already sanitized.
+                    "Http" => JObject.Parse(JsonConvert.SerializeObject(originalJson)),
+                    _ => new JObject(),
+                };
+            }
+
+            private JObject Serialize<T>(JObject json)
+            {
+                return JObject.Parse(JsonConvert.SerializeObject(json.ToObject<T>()));
             }
         }
     }
