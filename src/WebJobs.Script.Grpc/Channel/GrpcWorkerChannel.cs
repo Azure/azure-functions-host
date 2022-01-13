@@ -466,10 +466,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionMetadataResponses)
+            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionMetadataResponse)
                         .Timeout(_functionLoadTimeout)
                         .Take(1)
-                        .Subscribe((msg) => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponses), HandleWorkerMetadataRequestError));
+                        .Subscribe((msg) => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError));
 
             _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
@@ -485,22 +485,26 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
-        internal void ProcessFunctionMetadataResponses(FunctionMetadataResponses functionMetadataResponses)
+        internal void ProcessFunctionMetadataResponses(FunctionMetadataResponse functionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
             var functions = new List<RawFunctionMetadata>();
 
-            foreach (var metadataResponse in functionMetadataResponses.FunctionLoadRequestsResults)
+            if (functionMetadataResponse.UseDefaultMetadataIndexing == false)
             {
-                var metadata = metadataResponse.Metadata;
-                if (metadata != null)
+                foreach (var metadata in functionMetadataResponse.FunctionMetadataResults)
                 {
+                    if (metadata == null)
+                    {
+                        continue;
+                    }
                     if (metadata.Status != null && metadata.Status.IsFailure(out Exception metadataRequestEx))
                     {
-                        _workerChannelLogger.LogError($"Worker failed to index function {metadataResponse.FunctionId}");
-                        _metadataRequestErrors[metadataResponse.FunctionId] = metadataRequestEx;
+                        _workerChannelLogger.LogError($"Worker failed to index function {metadata.FunctionId}");
+                        _metadataRequestErrors[metadata.FunctionId] = metadataRequestEx;
                     }
+
                     var functionMetadata = new FunctionMetadata()
                     {
                         FunctionDirectory = metadata.Directory,
@@ -509,7 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Name = metadata.Name
                     };
 
-                    functionMetadata.SetFunctionId(metadataResponse.FunctionId);
+                    functionMetadata.SetFunctionId(metadata.FunctionId);
 
                     var bindings = new List<string>();
                     foreach (string binding in metadata.RawBindings)
@@ -522,7 +526,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         Metadata = functionMetadata,
                         Bindings = bindings,
                         RetryOptions = metadata.RetryOptions,
-                        ConfigurationSource = metadata.ConfigSource
+                        ConfigurationSource = metadata.ConfigSource,
+                        UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
                     });
                 }
             }
