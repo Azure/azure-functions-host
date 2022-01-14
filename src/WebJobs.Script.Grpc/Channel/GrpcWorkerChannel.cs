@@ -300,32 +300,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
-                {
-                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
-                }
-            }
-        }
 
-        public void SendFunctionsLoadRequest(ManagedDependencyOptions managedDependencyOptions, TimeSpan? functionTimeout)
-        {
-            if (_functions != null)
-            {
-                if (functionTimeout.HasValue)
+                // Check if the worker supports this feature
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequest));
+                if (capabilityEnabled)
                 {
-                    _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(_functions.Count())
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                    SendFunctionsLoadRequest(_functions.OrderBy(metadata => metadata.IsDisabled()), managedDependencyOptions);
                 }
                 else
                 {
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+                    foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+                    {
+                        SendFunctionLoadRequest(metadata, managedDependencyOptions);
+                    }
                 }
-
-                SendFunctionsLoadRequest(_functions, managedDependencyOptions);
             }
         }
 
