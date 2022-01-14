@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
         private static readonly MediaTypeMap _defaultInstance = new MediaTypeMap();
         private static readonly FileExtensionContentTypeProvider _mimeMapping = new FileExtensionContentTypeProvider();
         private readonly ConcurrentDictionary<string, MediaTypeHeaderValue> _mediatypeMap = CreateMediaTypeMap();
-        private readonly MediaTypeHeaderValue _defaultMediaType = MediaTypeHeaderValue.Parse("application/octet-stream");
+        private static readonly MediaTypeHeaderValue _defaultMediaType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
         public static MediaTypeMap Default
         {
@@ -25,11 +25,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Helpers
             ArgumentNullException.ThrowIfNull(fileExtension);
 
             return _mediatypeMap.GetOrAdd(fileExtension,
-                (extension) =>
+                static (extension) =>
                 {
                     try
                     {
-                        if (_mimeMapping.TryGetContentType(fileExtension, out string mediaTypeValue))
+                        if (_mimeMapping.TryGetContentType(extension, out string mediaTypeValue))
                         {
                             if (MediaTypeHeaderValue.TryParse(mediaTypeValue, out MediaTypeHeaderValue mediaType))
                             {

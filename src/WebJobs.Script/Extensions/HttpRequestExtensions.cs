@@ -21,14 +21,17 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 {
     public static class HttpRequestExtensions
     {
+        private static readonly PathString _adminRoot = new PathString("/admin");
+        private static readonly PathString _adminDownloadRequestRoot = new PathString("/admin/functions/download");
+
         public static bool IsAdminRequest(this HttpRequest request)
         {
-            return request.Path.StartsWithSegments("/admin");
+            return request.Path.StartsWithSegments(_adminRoot);
         }
 
         public static bool IsAdminDownloadRequest(this HttpRequest request)
         {
-            return request.Path.StartsWithSegments("/admin/functions/download");
+            return request.Path.StartsWithSegments(_adminDownloadRequestRoot);
         }
 
         public static TValue GetRequestPropertyOrDefault<TValue>(this HttpRequest request, string key)
@@ -58,12 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static string GetHeaderValueOrDefault(this HttpRequest request, string headerName)
         {
-            StringValues values;
-            if (request.Headers.TryGetValue(headerName, out values))
-            {
-                return values.First();
-            }
-            return null;
+            return request.Headers.TryGetValue(headerName, out var values) ? values[0] : null;
         }
 
         public static TValue GetItemOrDefault<TValue>(this HttpRequest request, string key)

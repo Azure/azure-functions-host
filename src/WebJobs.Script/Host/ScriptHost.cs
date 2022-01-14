@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
-        private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly bool _isHttpWorker;
         private readonly HttpWorkerOptions _httpWorkerOptions;
@@ -71,6 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
+        private ValueStopwatch _stopwatch;
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
@@ -278,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            _stopwatch.Start();
+            _stopwatch = ValueStopwatch.StartNew();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
@@ -945,7 +945,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _httpRoutesManager.InitializeHttpFunctionRoutes(this);
 
-            _logger.ScriptHostInitialized(_stopwatch.ElapsedMilliseconds);
+            _logger.ScriptHostInitialized((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
 
             HostInitialized?.Invoke(this, EventArgs.Empty);
 
@@ -958,7 +958,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             base.OnHostStarted();
 
-            _logger.ScriptHostStarted(_stopwatch.ElapsedMilliseconds);
+            _logger.ScriptHostStarted((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
         }
 
         protected override void Dispose(bool disposing)
