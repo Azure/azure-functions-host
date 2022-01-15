@@ -235,23 +235,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             var metadata = new FunctionMetadata();
             var evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
-            evt.StopWatch = Stopwatch.StartNew();
+            evt.StopWatch = ValueStopwatch.StartNew();
             Assert.False(evt.Completed);
 
             // complete immediately (potentially within system timer resolution)
             evt.Complete();
             Assert.True(evt.Completed);
-            Assert.False(evt.StopWatch.IsRunning);
+            Assert.True(evt.StopWatch.IsActive); // The stopwatch has no state, but has been activated
 
             evt = new FunctionStartedEvent(Guid.NewGuid(), metadata);
-            evt.StopWatch = Stopwatch.StartNew();
+            evt.StopWatch = ValueStopwatch.StartNew();
             Assert.False(evt.Completed);
 
             // complete after a delay
             await Task.Delay(250);
             evt.Complete();
             Assert.True(evt.Completed);
-            Assert.False(evt.StopWatch.IsRunning);
+            Assert.True(evt.StopWatch.IsActive); // The stopwatch has no state, but has been activated
         }
 
         [Fact]

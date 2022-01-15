@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
         {
             StatusResult statusResult = new StatusResult();
             if (successful)
@@ -190,28 +190,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 statusResult.Status = StatusResult.Types.Status.Failure;
             }
 
-            FunctionMetadataResponses overallResponse = new FunctionMetadataResponses();
+            FunctionMetadataResponse overallResponse = new FunctionMetadataResponse();
+            overallResponse.UseDefaultMetadataIndexing = useDefaultMetadataIndexing;
+
             foreach (FunctionMetadata response in functionMetadata)
             {
                 RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
                 {
                     Name = response.Name,
                     Language = response.Language,
-                    Status = statusResult
+                    Status = statusResult,
+                    FunctionId = functionId
                 };
 
-                FunctionLoadRequest loadRequest = new FunctionLoadRequest()
-                {
-                    FunctionId = functionId,
-                    Metadata = indexingResponse,
-                };
-
-                overallResponse.FunctionLoadRequestsResults.Add(loadRequest);
+                overallResponse.FunctionMetadataResults.Add(indexingResponse);
             }
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
-                FunctionMetadataResponses = overallResponse
+                FunctionMetadataResponse = overallResponse
             };
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }

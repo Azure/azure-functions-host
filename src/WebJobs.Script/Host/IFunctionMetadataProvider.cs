@@ -13,6 +13,6 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
 
-        Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, bool forceRefresh = false);
+        Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment, bool forceRefresh = false);
     }
 }

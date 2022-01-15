@@ -32,7 +32,6 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
@@ -54,7 +53,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IHttpRoutesManager _httpRoutesManager;
         private readonly IMetricsLogger _metricsLogger = null;
         private readonly string _hostLogPath;
-        private readonly Stopwatch _stopwatch = new Stopwatch();
         private readonly IOptions<JobHostOptions> _hostOptions;
         private readonly bool _isHttpWorker;
         private readonly HttpWorkerOptions _httpWorkerOptions;
@@ -71,6 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly IOptions<LanguageWorkerOptions> _languageWorkerOptions;
         private static readonly int _processId = Process.GetCurrentProcess().Id;
 
+        private ValueStopwatch _stopwatch;
         private IPrimaryHostStateProvider _primaryHostStateProvider;
         public static readonly string Version = GetAssemblyFileVersion(typeof(ScriptHost).Assembly);
         private ScriptSettingsManager _settingsManager;
@@ -189,13 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script
         // Maps from FunctionName to a set of errors for that function.
         public virtual IDictionary<string, ICollection<string>> FunctionErrors { get; private set; }
 
-        public virtual bool IsPrimary
-        {
-            get
-            {
-                return _primaryHostStateProvider.IsPrimary;
-            }
-        }
+        public virtual bool IsPrimary => _primaryHostStateProvider.IsPrimary;
 
         public bool IsStandbyHost => ScriptOptions.IsStandbyConfiguration;
 
@@ -280,7 +273,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            _stopwatch.Start();
+            _stopwatch = ValueStopwatch.StartNew();
             using (_metricsLogger.LatencyEvent(MetricEventNames.HostStartupLatency))
             {
                 PreInitialize();
@@ -319,8 +312,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 IsFunctionDataCacheEnabled = GetIsFunctionDataCacheEnabled();
 
-                var directTypes = GetDirectTypes(functionMetadataList);
                 await InitializeFunctionDescriptorsAsync(functionMetadataList, cancellationToken);
+
                 if (!workerIndexing)
                 {
                     // Initialize worker function invocation dispatcher only for valid functions after creating function descriptors
@@ -329,7 +322,8 @@ namespace Microsoft.Azure.WebJobs.Script
                     var filteredFunctionMetadata = functionMetadataList.Where(m => !Utility.IsCodelessDotNetLanguageFunction(m));
                     await _functionDispatcher.InitializeAsync(Utility.GetValidFunctions(filteredFunctionMetadata, Functions), cancellationToken);
                 }
-                GenerateFunctions(directTypes);
+
+                GenerateFunctions();
                 ScheduleFileSystemCleanup();
             }
         }
@@ -495,7 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Generate function wrappers from descriptors.
         /// </summary>
-        private void GenerateFunctions(IEnumerable<Type> directTypes)
+        private void GenerateFunctions()
         {
             // generate Type level attributes
             var typeAttributes = CreateTypeAttributes(ScriptOptions);
@@ -508,9 +502,18 @@ namespace Microsoft.Azure.WebJobs.Script
             Type functionWrapperType = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, Functions);
 
             // configure the Type locator
-            var types = new List<Type>();
-            types.Add(functionWrapperType);
-            types.AddRange(directTypes);
+            var types = new List<Type>
+            {
+                functionWrapperType
+            };
+
+            foreach (var descriptor in Functions)
+            {
+                if (descriptor.Metadata.Properties.TryGetValue(ScriptConstants.FunctionMetadataDirectTypeKey, out Type type))
+                {
+                    types.Add(type);
+                }
+            }
 
             _typeLocator.SetTypes(types);
         }
@@ -707,36 +710,30 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Get the set of types that should be directly loaded. These have the "configurationSource" : "attributes" set.
+        /// Sets the type that should be directly loaded by WebJobs if using attribute based configuration (these have the "configurationSource" : "attributes" set)
         /// They will be indexed and invoked directly by the WebJobs SDK and skip the IL generator and invoker paths.
         /// </summary>
-        private IEnumerable<Type> GetDirectTypes(IEnumerable<FunctionMetadata> functionMetadataList)
+        private void TrySetDirectType(FunctionMetadata metadata)
         {
-            HashSet<Type> visitedTypes = new HashSet<Type>();
-
-            foreach (var metadata in functionMetadataList)
+            if (!metadata.IsDirect())
             {
-                if (!metadata.IsDirect())
-                {
-                    continue;
-                }
-
-                string path = metadata.ScriptFile;
-                var typeName = Utility.GetFullClassName(metadata.EntryPoint);
-
-                Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
-                var type = assembly.GetType(typeName);
-                if (type != null)
-                {
-                    visitedTypes.Add(type);
-                }
-                else
-                {
-                    // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
-                    _logger.FailedToLoadType(typeName, path);
-                }
+                return;
             }
-            return visitedTypes;
+
+            string path = metadata.ScriptFile;
+            var typeName = Utility.GetFullClassName(metadata.EntryPoint);
+
+            Assembly assembly = FunctionAssemblyLoadContext.Shared.LoadFromAssemblyPath(path);
+            var type = assembly.GetType(typeName);
+            if (type != null)
+            {
+                metadata.Properties.Add(ScriptConstants.FunctionMetadataDirectTypeKey, type);
+            }
+            else
+            {
+                // This likely means the function.json and dlls are out of sync. Perhaps a badly generated function.json?
+                _logger.FailedToLoadType(typeName, path);
+            }
         }
 
         internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders, CancellationToken cancellationToken)
@@ -768,6 +765,10 @@ namespace Microsoft.Azure.WebJobs.Script
                             ValidateFunction(descriptor, httpFunctions);
                             functionDescriptors.Add(descriptor);
                         }
+
+                        // If this is metadata represents a function that supports direct type indexing,
+                        // set that type int he function metadata
+                        TrySetDirectType(metadata);
                     }
                     catch (Exception ex)
                     {
@@ -947,7 +948,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             _httpRoutesManager.InitializeHttpFunctionRoutes(this);
 
-            _logger.ScriptHostInitialized(_stopwatch.ElapsedMilliseconds);
+            _logger.ScriptHostInitialized((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
 
             HostInitialized?.Invoke(this, EventArgs.Empty);
 
@@ -960,7 +961,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
             base.OnHostStarted();
 
-            _logger.ScriptHostStarted(_stopwatch.ElapsedMilliseconds);
+            _logger.ScriptHostStarted((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
         }
 
         protected override void Dispose(bool disposing)

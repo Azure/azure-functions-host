@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
+            _mockrpcWorkerProcess.Setup(m => m.Id).Returns(910);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
@@ -397,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendFunctionEnvironmentReloadRequest();
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'"));
             Assert.True(functionLoadLogs.Count() == 1);
         }
 
@@ -462,7 +463,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_Successful_FunctionMetadataResponses()
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse()
         {
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
@@ -473,7 +474,51 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_Failed_FunctionMetadataResponses()
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_True()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true, useDefaultMetadataIndexing: true);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_False()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true, useDefaultMetadataIndexing: false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_True_HostIndexing()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false, useDefaultMetadataIndexing: true);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_False_WorkerIndexing()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false, useDefaultMetadataIndexing: false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_FunctionMetadataResponse()
         {
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
