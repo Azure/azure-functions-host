@@ -307,9 +307,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, FunctionsScaleMonitorService>());
                 }
                 services.TryAddSingleton<FunctionsScaleManager>();
+
+                // after all extensions have been registererd, we can discover options types
+                var extensionOptionsProvider = applicationHostOptions.RootServiceProvider.GetService<ExtensionOptionsProvider>();
+                extensionOptionsProvider.RegisterOptionTypes(services);
             });
 
             RegisterFileProvisioningService(builder);
+
             return builder;
         }
 
