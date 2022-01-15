@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -111,14 +110,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public async Task<WorkerStatus> GetWorkerStatusAsync()
         {
-            var sw = Stopwatch.StartNew();
+            var sw = ValueStopwatch.StartNew();
             await _httpWorkerService.PingAsync();
-            sw.Stop();
+            var elapsed = sw.GetElapsedTime();
             var workerStatus = new WorkerStatus
             {
-                Latency = sw.Elapsed
+                Latency = elapsed
             };
-            _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {sw.ElapsedMilliseconds}ms");
+            _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {elapsed.TotalMilliseconds}ms");
             return workerStatus;
         }
     }

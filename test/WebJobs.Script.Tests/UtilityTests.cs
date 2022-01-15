@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
@@ -128,24 +129,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             tokenSource.CancelAfter(500);
 
             // set up a long delay and ensure it is cancelled
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
+            var sw = ValueStopwatch.StartNew();
             await Utility.DelayWithBackoffAsync(20, tokenSource.Token);
-            sw.Stop();
-            Assert.True(sw.Elapsed < TimeSpan.FromSeconds(2), $"Expected sw.Elapsed < TimeSpan.FromSeconds(2); Actual: {sw.Elapsed.TotalMilliseconds}");
+            var elapsed = sw.GetElapsedTime();
+            Assert.True(elapsed < TimeSpan.FromSeconds(2), $"Expected sw.Elapsed < TimeSpan.FromSeconds(2); Actual: {elapsed.TotalMilliseconds}");
         }
 
         [Fact]
         public async Task DelayWithBackoffAsync_DelaysAsExpected()
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
+            var sw = ValueStopwatch.StartNew();
             await Utility.DelayWithBackoffAsync(2, CancellationToken.None);
-            sw.Stop();
+            var elapsed = sw.GetElapsedTime();
 
             // Workaround annoying test failures such as "Expected sw.Elapsed >= TimeSpan.FromSeconds(2); Actual: 1999.4092" by waiting slightly less than 2 seconds
             // Not sure what causes it, but either Task.Delay sometimes doesn't wait quite long enough or there is some clock skew.
-            TimeSpan roundedElapsedSpan = sw.Elapsed.RoundSeconds(digits: 1);
+            TimeSpan roundedElapsedSpan = elapsed.RoundSeconds(digits: 1);
             Assert.True(roundedElapsedSpan >= TimeSpan.FromSeconds(2), $"Expected roundedElapsedSpan >= TimeSpan.FromSeconds(2); Actual: {roundedElapsedSpan.TotalSeconds}");
         }
 

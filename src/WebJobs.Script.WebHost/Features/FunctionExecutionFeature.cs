@@ -3,13 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -54,15 +52,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
                     { "sku", _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku) }
                 };
 
-                var dispatchStopwatch = request.GetItemOrDefault<Stopwatch>(ScriptConstants.AzureFunctionsColdStartKey);
-                if (dispatchStopwatch != null)
+                var dispatchStopwatch = request.GetItemOrDefault<ValueStopwatch>(ScriptConstants.AzureFunctionsColdStartKey);
+                if (dispatchStopwatch.IsActive)
                 {
-                    dispatchStopwatch.Stop();
-                    coldStartData.Add("dispatchDuration", dispatchStopwatch.ElapsedMilliseconds);
+                    coldStartData.Add("dispatchDuration", dispatchStopwatch.GetElapsedTime().TotalMilliseconds);
                 }
             }
 
-            var sw = Stopwatch.StartNew();
+            var sw = ValueStopwatch.StartNew();
 
             var arguments = new Dictionary<string, object>();
             if (_descriptor.IsWarmupFunction())
@@ -75,11 +72,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Features
             }
 
             await _host.CallAsync(_descriptor.Name, arguments, cancellationToken);
-            sw.Stop();
 
             if (coldStartData != null)
             {
-                coldStartData.Add("functionDuration", sw.ElapsedMilliseconds);
+                coldStartData.Add("functionDuration", sw.GetElapsedTime().TotalMilliseconds);
 
                 var logData = new Dictionary<string, object>
                 {

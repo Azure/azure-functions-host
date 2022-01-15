@@ -138,7 +138,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 return exists;
             },
             pollingInterval: 500,
-            userMessageCallback: () => sb.ToString() + Environment.NewLine + userMessageCallback());
+            userMessageCallback: () =>
+            {
+                if (userMessageCallback != null)
+                {
+                    sb.AppendLine().Append(userMessageCallback());
+                }
+                return sb.ToString();
+            });
         }
 
         public static void ClearFunctionLogs(string functionName)

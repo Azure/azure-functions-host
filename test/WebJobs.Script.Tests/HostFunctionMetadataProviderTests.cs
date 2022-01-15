@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result.Length);
+            Assert.Equal(18, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
             Assert.True(AreRequiredMetricsEmitted(_testMetricsLogger));
         }
 
@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
-            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, false).Result;
+            var functionMetadatas = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result;
 
             Assert.Equal(2, functionMetadatas.Length);
 

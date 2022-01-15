@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 FunctionName = functionName,
                 EventName = eventName.ToLowerInvariant(),
                 Timestamp = DateTime.UtcNow,
-                StopWatch = Stopwatch.StartNew(),
+                StopWatch = ValueStopwatch.StartNew(),
                 Data = data
             };
         }

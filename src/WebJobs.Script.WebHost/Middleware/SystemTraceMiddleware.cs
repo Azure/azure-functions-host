@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security.Authentication;
@@ -29,15 +30,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         {
             var requestId = SetRequestId(context.Request);
 
-            var sw = Stopwatch.StartNew();
+            var sw = ValueStopwatch.StartNew();
             string userAgent = context.Request.GetHeaderValueOrDefault("User-Agent");
             _logger.ExecutingHttpRequest(requestId, context.Request.Method, userAgent, context.Request.Path);
 
             await _next.Invoke(context);
 
-            sw.Stop();
             string identities = GetIdentities(context);
-            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, sw.ElapsedMilliseconds);
+            _logger.ExecutedHttpRequest(requestId, identities, context.Response.StatusCode, (long)sw.GetElapsedTime().TotalMilliseconds);
         }
 
         internal static string SetRequestId(HttpRequest request)
