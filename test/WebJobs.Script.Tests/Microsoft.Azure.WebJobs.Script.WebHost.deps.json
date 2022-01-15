@@ -587,7 +587,7 @@
       },
       "Microsoft.ApplicationInsights.AspNetCore/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "Microsoft.ApplicationInsights.DependencyCollector": "2.17.0",
           "Microsoft.ApplicationInsights.EventCounterCollector": "2.17.0",
           "Microsoft.ApplicationInsights.PerfCounterCollector": "2.17.0",
