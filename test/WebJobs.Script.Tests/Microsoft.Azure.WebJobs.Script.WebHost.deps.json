@@ -611,7 +611,7 @@
       },
       "Microsoft.ApplicationInsights.DependencyCollector/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "System.Diagnostics.DiagnosticSource": "5.0.0",
           "System.Diagnostics.StackTrace": "4.3.0"
         },
@@ -627,7 +627,7 @@
       },
       "Microsoft.ApplicationInsights.EventCounterCollector/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0"
+          "Microsoft.ApplicationInsights": "2.20.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.AI.EventCounterCollector.dll": {
@@ -641,7 +641,7 @@
       },
       "Microsoft.ApplicationInsights.PerfCounterCollector/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "Microsoft.Extensions.Caching.Memory": "2.2.0",
           "System.Diagnostics.PerformanceCounter": "4.7.0"
         },
@@ -671,7 +671,7 @@
       },
       "Microsoft.ApplicationInsights.WindowsServer/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "Microsoft.ApplicationInsights.DependencyCollector": "2.17.0",
           "Microsoft.ApplicationInsights.PerfCounterCollector": "2.17.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.17.0",
@@ -691,7 +691,7 @@
       },
       "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "System.IO.FileSystem.AccessControl": "4.7.0"
         },
         "runtime": {
@@ -1480,7 +1480,7 @@
       },
       "Microsoft.Azure.WebJobs.Logging.ApplicationInsights/3.0.30-11874": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "Microsoft.ApplicationInsights.AspNetCore": "2.17.0",
           "Microsoft.ApplicationInsights.DependencyCollector": "2.17.0",
           "Microsoft.ApplicationInsights.PerfCounterCollector": "2.17.0",
@@ -2322,7 +2322,7 @@
       },
       "Microsoft.Extensions.Logging.ApplicationInsights/2.17.0": {
         "dependencies": {
-          "Microsoft.ApplicationInsights": "2.17.0",
+          "Microsoft.ApplicationInsights": "2.20.0",
           "Microsoft.Extensions.Logging": "3.1.9"
         },
         "runtime": {
