@@ -153,6 +153,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
+
+                    services.AddSingleton<ExtensionOptionsProvider>(serviceProvider =>
+                    {
+                        return new ExtensionOptionsProvider(serviceProvider, services);
+                    });
                 });
 
             return builder;

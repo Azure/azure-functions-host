@@ -133,7 +133,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 },
                 configureScriptHostServices: s =>
                 {
-                    s.AddSingleton<IFunctionsSyncManager>(_ => FunctionsSyncManagerMock.Object);
+                    //s.AddSingleton<IFunctionsSyncManager>(_ => FunctionsSyncManagerMock.Object);
+                    s.AddSingleton<IFunctionsSyncManager, FunctionsSyncManager>();
                     s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
                 },
                 configureWebHostServices: s =>

@@ -61,10 +61,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly IFunctionMetadataManager _functionMetadataManager;
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
-
+        private readonly ExtensionOptionsProvider _extensionOptionsProvider;
         private BlobClient _hashBlobClient;
 
-        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
+        public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider, ExtensionOptionsProvider extensionOptionsProvider)
         {
             _applicationHostOptions = applicationHostOptions;
             _logger = logger;
@@ -77,6 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
+            _extensionOptionsProvider = extensionOptionsProvider;
         }
 
         internal bool ArmCacheEnabled
@@ -94,13 +95,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Success = true
             };
 
-            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
-            {
-                result.Success = false;
-                result.Error = "Invalid environment for SyncTriggers operation.";
-                _logger.LogWarning(result.Error);
-                return result;
-            }
+            // TEMP - comment out so SyncTriggers_AdminLevel_Succeeds test can be used to exercise
+            //if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            //{
+            //    result.Success = false;
+            //    result.Error = "Invalid environment for SyncTriggers operation.";
+            //    _logger.LogWarning(result.Error);
+            //    return result;
+            //}
 
             try
             {
@@ -332,16 +334,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
-            // TEMP: refactor this code to properly add extensions in all scenario(#7394)
-            // Add the host.json extensions to the payload
-            if (_environment.IsKubernetesManagedHosting())
+            Dictionary<string, JObject> extensionOptions = _extensionOptionsProvider.GetExtensionOptions();
+            JObject extensions = new JObject();
+            foreach (var pair in extensionOptions)
             {
-                JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
-                if (extensionsPayload != null)
-                {
-                    result.Add("extensions", extensionsPayload);
-                }
+                extensions.Add(pair.Key, pair.Value);
             }
+            result.Add("extensions", extensions);
 
             if (_secretManagerProvider.SecretsEnabled)
             {
