@@ -273,6 +273,12 @@ message RpcFunctionMetadata {
 
   // Raw binding info
   repeated string raw_bindings = 10;
+
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 13;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 14;
 }
 
 // Host tells worker it is ready to receive metadata
