@@ -27,6 +27,7 @@
           "Microsoft.Azure.WebJobs.Script.Grpc": "4.2.0",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.IdentityModel.Tokens": "6.15.1",
+          "Microsoft.Security.Utilities": "1.3.0",
           "Microsoft.SourceLink.GitHub": "1.0.0",
           "StyleCop.Analyzers": "1.1.0-beta004",
           "System.Net.NameResolution": "4.3.0"
@@ -608,7 +609,7 @@
           }
         }
       },
-      "Microsoft.Azure.Functions.JavaWorker/2.1.0-SNAPSHOT": {},
+      "Microsoft.Azure.Functions.JavaWorker/2.0.0": {},
       "Microsoft.Azure.Functions.NodeJsWorker/3.0.0": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.1468": {},
       "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.1479": {},
@@ -1320,6 +1321,14 @@
           "lib/netstandard1.1/Microsoft.OData.Edm.dll": {
             "assemblyVersion": "7.6.4.0",
             "fileVersion": "7.6.4.10325"
+          }
+        }
+      },
+      "Microsoft.Security.Utilities/1.3.0": {
+        "runtime": {
+          "lib/net5.0/Microsoft.Security.Utilities.dll": {
+            "assemblyVersion": "1.3.0.0",
+            "fileVersion": "1.3.0.2"
           }
         }
       },
@@ -2536,7 +2545,7 @@
           "Microsoft.ApplicationInsights.WindowsServer": "2.20.0",
           "Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel": "2.20.0",
           "Microsoft.AspNetCore.Mvc.WebApiCompatShim": "2.2.0",
-          "Microsoft.Azure.Functions.JavaWorker": "2.1.0-SNAPSHOT",
+          "Microsoft.Azure.Functions.JavaWorker": "2.0.0",
           "Microsoft.Azure.Functions.NodeJsWorker": "3.0.0",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.0": "4.0.1468",
           "Microsoft.Azure.Functions.PowerShellWorker.PS7.2": "4.0.1479",
@@ -2949,12 +2958,12 @@
       "path": "microsoft.azure.documentdb.core/2.11.2",
       "hashPath": "microsoft.azure.documentdb.core.2.11.2.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.JavaWorker/2.1.0-SNAPSHOT": {
+    "Microsoft.Azure.Functions.JavaWorker/2.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-nfkXjDciYGWQbIbt69fzKNsJb3wjNYQF54C2eGY0dtFmkjGLYeUEPJRBlsU6vVzD1RrcBrnvnUvKGf0+7pZqAA==",
-      "path": "microsoft.azure.functions.javaworker/2.1.0-snapshot",
-      "hashPath": "microsoft.azure.functions.javaworker.2.1.0-snapshot.nupkg.sha512"
+      "sha512": "sha512-4VHCAPX/lDFHI50hYEeej2kfm1ZEGVSOxwQKhA8WJRl/cExgYlcgUWGlr6tA6jId3JBC75fiSaTeE7gdNG/ukA==",
+      "path": "microsoft.azure.functions.javaworker/2.0.0",
+      "hashPath": "microsoft.azure.functions.javaworker.2.0.0.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.NodeJsWorker/3.0.0": {
       "type": "package",
@@ -3404,6 +3413,13 @@
       "path": "microsoft.odata.edm/7.6.4",
       "hashPath": "microsoft.odata.edm.7.6.4.nupkg.sha512"
     },
+    "Microsoft.Security.Utilities/1.3.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xpkFI06qTl0U0JG0/NNwCT5nim8niyh7e+PzBFm412fulfF7KOELmgeG3sOMYjt+Jmkn3RfjmAT9+VXB5RRWSw==",
+      "path": "microsoft.security.utilities/1.3.0",
+      "hashPath": "microsoft.security.utilities.1.3.0.nupkg.sha512"
+    },
     "Microsoft.SourceLink.Common/1.0.0": {
       "type": "package",
       "serviceable": true,
@@ -3589,7 +3605,7 @@
     "runtime.native.System.Security.Cryptography.Apple/4.3.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-DloMk88juo0OuOWr56QG7MNchmafTLYWvABy36izkrLI5VledI0rq28KGs1i9wbpeT9NPQrx/wTf8U2vazqQ3Q==",
+      "sha512": "sha512-jwjwlEL0Elv6gwoyaokRn12nv/JE+UW/DXJEbzhjCPvGbef36StnHKc9XaZD/rGWqYicrphZ7eumR/jdmNcjRg==",
       "path": "runtime.native.system.security.cryptography.apple/4.3.0",
       "hashPath": "runtime.native.system.security.cryptography.apple.4.3.0.nupkg.sha512"
     },
@@ -3617,7 +3633,7 @@
     "runtime.osx.10.10-x64.runtime.native.System.Security.Cryptography.Apple/4.3.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-kVXCuMTrTlxq4XOOMAysuNwsXWpYeboGddNGpIgNSZmv1b6r/s/DPk0fYMB7Q5Qo4bY68o48jt4T4y5BVecbCQ==",
+      "sha512": "sha512-Kh9W4agE0r/hK8AX1LvyQI2NrKHBL8pO0gRoDTdDb0LL6Ta1Z2OtFx3lOaAE0ZpCUc/dt9Wzs3rA7a3IsKdOVA==",
       "path": "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple/4.3.0",
       "hashPath": "runtime.osx.10.10-x64.runtime.native.system.security.cryptography.apple.4.3.0.nupkg.sha512"
     },

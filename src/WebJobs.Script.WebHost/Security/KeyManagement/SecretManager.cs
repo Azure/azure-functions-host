@@ -16,7 +16,9 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Extensions.Logging;
-using DataProtectionCostants = Microsoft.Azure.Web.DataProtection.Constants;
+using Microsoft.Security.Utilities;
+
+using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -36,7 +38,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string _repositoryClassName;
         private DateTime _lastCacheResetTime;
 
-        // for testing
+        internal const string AzureFunctionsSignature = "AzFu";
+
+        // Seeds (passed to the Marvin checksum algorithm) for grouping
+        // Azure Functions Host keys. See references from unit tests for
+        // information on how these seeds were generated/are versioned.
+        internal const ulong MasterKeySeed = 0x4d61737465723030;
+        internal const ulong SystemKeySeed = 0x53797374656d3030;
+        internal const ulong FunctionKeySeed = 0x46756e6374693030;
+
         public SecretManager()
         {
         }
@@ -254,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (value == null)
                 {
                     // Generate a new secret (clear)
-                    masterKey = GenerateSecret();
+                    masterKey = GenerateIdentifiableSecret(MasterKeySeed);
                     result = OperationResult.Created;
                 }
                 else
@@ -303,7 +313,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             OperationResult result = OperationResult.NotFound;
 
-            secret = secret ?? GenerateSecret();
+            secret ??= GenerateIdentifiableSecret(FunctionKeySeed);
 
             await ModifyFunctionSecretsAsync(secretsType, keyScope, secrets =>
             {
@@ -493,11 +503,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             return new HostSecrets
             {
-                MasterKey = GenerateKey(ScriptConstants.DefaultMasterKeyName),
+                MasterKey = GenerateMasterKey(),
                 FunctionKeys = new List<Key>
-            {
-                GenerateKey(ScriptConstants.DefaultFunctionKeyName)
-            },
+                {
+                    GenerateFunctionKey(),
+                },
                 SystemKeys = new List<Key>()
             };
         }
@@ -506,10 +516,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (secrets.MasterKey.IsEncrypted)
             {
-                secrets.MasterKey.Value = GenerateSecret();
+                secrets.MasterKey.Value = GenerateIdentifiableSecret(MasterKeySeed);
             }
-            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys);
-            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys);
+            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys, SystemKeySeed);
+            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys, FunctionKeySeed);
             return secrets;
         }
 
@@ -519,24 +529,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 Keys = new List<Key>
                 {
-                    GenerateKey(ScriptConstants.DefaultFunctionKeyName)
+                    GenerateFunctionKey()
                 }
             };
         }
 
         private FunctionSecrets GenerateFunctionSecrets(FunctionSecrets secrets)
         {
-            secrets.Keys = RegenerateKeys(secrets.Keys);
+            secrets.Keys = RegenerateKeys(secrets.Keys, FunctionKeySeed);
             return secrets;
         }
 
-        private IList<Key> RegenerateKeys(IList<Key> list)
+        private IList<Key> RegenerateKeys(IList<Key> list, ulong seed)
         {
             return list.Select(k =>
             {
                 if (k.IsEncrypted)
                 {
-                    k.Value = GenerateSecret();
+                    k.Value = GenerateIdentifiableSecret(seed);
                 }
                 return k;
             }).ToList();
@@ -594,9 +604,38 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
         }
 
-        private Key GenerateKey(string name = null)
+        internal static string GenerateMasterKeyValue()
         {
-            string secret = GenerateSecret();
+            return GenerateIdentifiableSecret(MasterKeySeed);
+        }
+
+        internal static string GenerateFunctionKeyValue()
+        {
+            return GenerateIdentifiableSecret(FunctionKeySeed);
+        }
+
+        internal static string GenerateSystemKeyValue()
+        {
+            return GenerateIdentifiableSecret(SystemKeySeed);
+        }
+
+        private Key GenerateMasterKey()
+        {
+            string secret = GenerateMasterKeyValue();
+
+            return CreateKey(ScriptConstants.DefaultMasterKeyName, secret);
+        }
+
+        private Key GenerateFunctionKey()
+        {
+            string secret = GenerateFunctionKeyValue();
+
+            return CreateKey(ScriptConstants.DefaultFunctionKeyName, secret);
+        }
+
+        private Key CreateKey(string name, ulong seed)
+        {
+            string secret = GenerateIdentifiableSecret(seed);
 
             return CreateKey(name, secret);
         }
@@ -608,17 +647,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return _keyValueConverterFactory.WriteKey(key);
         }
 
-        internal static string GenerateSecret()
+        internal static string GenerateIdentifiableSecret(ulong seed)
         {
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                byte[] data = new byte[40];
-                rng.GetBytes(data);
-                string secret = Convert.ToBase64String(data);
-
-                // Replace pluses as they are problematic as URL values
-                return secret.Replace('+', 'a');
-            }
+            // Return a generated secret with a completely URL-safe base64-encoding
+            // alphabet, 'a-zA-Z0-9' as well as '-' and '_'. We preserve the trailing
+            // equal sign padding in the token in order to improve the ability to
+            // match against the general token format (with performing a checksum
+            // validation. This is safe in Azure Functions utilization because a
+            // token will only appear in a URL as a query string parameter, where
+            // equal signs do not require encoding.
+            return IdentifiableSecrets.GenerateUrlSafeBase64Key(seed, 40, AzureFunctionsSignature, elidePadding: false);
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
@@ -725,22 +763,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private string GetEncryptionKeysHashes()
         {
             string result = string.Empty;
-            string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
+            string azureWebsiteLocalEncryptionKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteLocalEncryptionKey) ?? string.Empty;
             SHA256 hash = SHA256.Create();
 
             if (!string.IsNullOrEmpty(azureWebsiteLocalEncryptionKey))
             {
                 byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteLocalEncryptionKey));
                 string azureWebsiteLocalEncryptionKeyHash = Convert.ToBase64String(hashBytes);
-                result += $"{DataProtectionCostants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
+                result += $"{DataProtectionConstants.AzureWebsiteLocalEncryptionKey}={azureWebsiteLocalEncryptionKeyHash};";
             }
 
-            string azureWebsiteEnvironmentMachineKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionCostants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
+            string azureWebsiteEnvironmentMachineKey = SystemEnvironment.Instance.GetEnvironmentVariable(DataProtectionConstants.AzureWebsiteEnvironmentMachineKey) ?? string.Empty;
             if (!string.IsNullOrEmpty(azureWebsiteEnvironmentMachineKey))
             {
                 byte[] hashBytes = hash.ComputeHash(Encoding.UTF8.GetBytes(azureWebsiteEnvironmentMachineKey));
                 string azureWebsiteEnvironmentMachineKeyHash = Convert.ToBase64String(hashBytes);
-                result += $"{DataProtectionCostants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
+                result += $"{DataProtectionConstants.AzureWebsiteEnvironmentMachineKey}={azureWebsiteEnvironmentMachineKeyHash};";
             }
 
             return result;
