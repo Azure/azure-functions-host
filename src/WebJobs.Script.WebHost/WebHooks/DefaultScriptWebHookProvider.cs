@@ -73,11 +73,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ISecretManager secretManager = _secretManagerProvider.Current;
             var hostSecrets = await secretManager.GetHostSecretsAsync();
             string keyName = GetKeyName(extensionName);
-            string keyValue = null;
+            string keyValue;
             if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
             {
                 // if the requested secret doesn't exist, create it on demand
-                keyValue = SecretManager.GenerateSecret();
+                keyValue = SecretManager.GenerateSystemKeyValue();
                 await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
             }
 
