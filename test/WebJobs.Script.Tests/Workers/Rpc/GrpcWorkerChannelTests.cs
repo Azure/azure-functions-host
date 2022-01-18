@@ -357,6 +357,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void SendLoadRequestsList_PublishesOutboundEvents()
+        {
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "true" } });
+            _metricsLogger.ClearCollections();
+            _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            AreExpectedMetricsGenerated();
+            Assert.True(functionLoadLogs.Count() == 2);
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents_OrdersDisabled()
         {
             var funcName = "ADisabledFunc";
