@@ -234,7 +234,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void FunctionEnvironmentReloadResponse(FunctionEnvironmentReloadResponse res, IDisposable latencyEvent)
         {
-            _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse");
+            _workerChannelLogger.LogDebug("Received FunctionEnvironmentReloadResponse from WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             if (res.Result.IsFailure(out Exception reloadEnvironmentVariablesException))
             {
                 _workerChannelLogger.LogError(reloadEnvironmentVariablesException, "Failed to reload environment variables");
@@ -308,7 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public Task SendFunctionEnvironmentReloadRequest()
         {
-            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest");
+            _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
 
             _eventSubscriptions

@@ -159,6 +159,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<WebJobsScriptHostService>();
             services.AddSingleton<IHostedService>(s => s.GetRequiredService<WebJobsScriptHostService>());
 
+            // Performs function assembly analysis to generete log use of unoptimized assemblies.
+            services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
+
             // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
             // Order is important.
             // All other IHostedService injections need to go before this.
