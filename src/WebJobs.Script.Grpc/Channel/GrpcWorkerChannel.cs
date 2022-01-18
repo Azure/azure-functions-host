@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
                 if (capabilityEnabled)
                 {
-                    SendFunctionsLoadRequest(_functions.OrderBy(metadata => metadata.IsDisabled()), managedDependencyOptions);
+                    SendFunctionLoadRequestsList(_functions, managedDependencyOptions);
                 }
                 else
                 {
@@ -316,11 +316,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void SendFunctionsLoadRequest(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        internal void SendFunctionLoadRequestsList(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
 
-            // send a load request for the registered function
+            // send load requests for the registered functions
             SendStreamingMessage(new StreamingMessage
             {
                 FunctionLoadRequests = GetFunctionLoadRequests(functions, managedDependencyOptions)
