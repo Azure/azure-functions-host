@@ -357,6 +357,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void SendLoadRequestCollection_PublishesOutboundEvents()
+        {
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "true" } });
+            _metricsLogger.ClearCollections();
+            IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
+            AreExpectedMetricsGenerated();
+            Assert.True(functionLoadLogs.Count() == 2);
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions:'{0}'", functionMetadata.ToList().Count))));
+        }
+
+        [Fact]
         public void SendLoadRequests_PublishesOutboundEvents_OrdersDisabled()
         {
             var funcName = "ADisabledFunc";

@@ -299,11 +299,49 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+
+                // Check if the worker supports this feature
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
+                if (capabilityEnabled)
                 {
-                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
+                    SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
+                }
+                else
+                {
+                    foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+                    {
+                        SendFunctionLoadRequest(metadata, managedDependencyOptions);
+                    }
                 }
             }
+        }
+
+        internal void SendFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        {
+            _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
+
+            FunctionLoadRequestCollection functionLoadRequestCollection = GetFunctionLoadRequestCollection(functions, managedDependencyOptions);
+
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequestCollection with number of functions:'{count}'", functionLoadRequestCollection.FunctionLoadRequests.Count);
+
+            // send load requests for the registered functions
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionLoadRequestCollection = functionLoadRequestCollection
+            });
+        }
+
+        internal FunctionLoadRequestCollection GetFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        {
+            var functionLoadRequestCollection = new FunctionLoadRequestCollection();
+
+            foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled()))
+            {
+                var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
+                functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
+            }
+
+            return functionLoadRequestCollection;
         }
 
         public Task SendFunctionEnvironmentReloadRequest()
