@@ -19,7 +19,9 @@ trigger:
 jobs:
 - job: InitializePipeline
   pool:
-    vmImage: 'windows-2019'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: AzureKeyVault@1
     inputs:
@@ -51,7 +53,9 @@ jobs:
     minorVersion: $[dependencies.InitializePipeline.outputs['Initialize.MinorVersion']]
     patchVersion: $[dependencies.InitializePipeline.outputs['Initialize.PatchVersion']]
   pool:
-    vmImage: 'windows-2019'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -275,6 +279,11 @@ jobs:
     displayName: 'Delete CodeSignSummary files'
     inputs:
       contents: '**\CodeSignSummary-*.md'
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - SiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\SiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\SiteExtension
     artifact: SiteExtension
   - pwsh: |
@@ -284,21 +293,49 @@ jobs:
         Write-Host "##vso[task.setvariable variable=isPatchVersion]true"
       }
     displayName: 'Set isPatchVersion'
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - ZippedPatchSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension'
+      Verbosity: 'Information'
+    condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
   - publish: $(Build.ArtifactStagingDirectory)\ZippedPatchSiteExtension
     artifact: PatchedSiteExtension
     condition: and(succeeded(), eq(variables['isPatchVersion'], 'true'))
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - PrivateSiteExtension'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\PrivateSiteExtension'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\PrivateSiteExtension
     artifact: PrivateSiteExtension
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Symbols'
+    inputs:
+      BuildDropPath: '$(Build.ArtifactStagingDirectory)\Symbols'
+      Verbosity: 'Information'
   - publish: $(Build.ArtifactStagingDirectory)\Symbols
     artifact: Symbols
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - NugetPackages'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\packages'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\packages
     artifact: NugetPackages
+  - task: ManifestGeneratorTask@0
+    displayName: 'SBOM Generation Task - Performance'
+    inputs:
+      BuildDropPath: '$(Build.Repository.LocalPath)\WebJobs.Script.Performance.App'
+      Verbosity: 'Information'
   - publish: $(Build.Repository.LocalPath)\WebJobs.Script.Performance.App
     artifact: Performance
 
 - job: RunUnitTests
   pool:
-    vmImage: 'windows-2019'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -318,7 +355,9 @@ jobs:
 
 - job: RunNonE2EIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
@@ -375,7 +414,9 @@ jobs:
 
 - job: RunIntegrationTests
   pool:
-    vmImage: 'windows-2019'
+    name: '1ES-Hosted-AzFunc'
+    demands:
+      - ImageOverride -equals MMS2019TLS
   steps:
   - task: UseDotNet@2
     inputs:
