@@ -274,12 +274,6 @@ message RpcFunctionMetadata {
   // Raw binding info
   repeated string raw_bindings = 10;
 
-  // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
-  string retry_options = 11;
-
-  // Configuration Source: string representation of JToken configuration source property in function metadata
-  string config_source = 12;
-
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 13;
 
