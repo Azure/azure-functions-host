@@ -563,8 +563,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         Metadata = functionMetadata,
                         Bindings = bindings,
-                        RetryOptions = metadata.RetryOptions,
-                        ConfigurationSource = metadata.ConfigSource,
                         UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
                     });
                 }
