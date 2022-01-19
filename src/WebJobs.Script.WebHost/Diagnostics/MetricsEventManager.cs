@@ -291,8 +291,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             GC.SuppressFinalize(this);
         }
 
-        // TODO: When StyleCop is updated to a release after Dec 2021, this can be a much simpler readonly record struct
+        // TODO: StyleCop.Analayzers 1.2.0 allows this, but there'd be a case insensitve/sensitive difference.
+        // If we can be sensitive, the below is a drop-in simpler and faster replacement. If we have to stay insensitive, we need the slower approach below.
+        // This isn't performance cost we see but does add up - case insensitive matching is always a slower path.
         //public readonly record struct EventKey(string eventName, string functionName);
+
         internal readonly struct EventKey : IEquatable<EventKey>
         {
             public EventKey(string eventName, string functionName) => (EventName, FunctionName) = (eventName, functionName);
@@ -562,7 +565,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             }
 
             /// <summary>
-            /// This evil mutable struct is for keeping metrics *as we go*, rather than collecting events and summarizing on the timer interval.
+            /// This tally keeper is for keeping metrics *as we go*, rather than collecting events and summarizing on the timer interval.
             /// In the aggregate: it's a much faster and lower allocation way of tracking the same numbers.
             /// </summary>
             private class FunctionMetricSummary
