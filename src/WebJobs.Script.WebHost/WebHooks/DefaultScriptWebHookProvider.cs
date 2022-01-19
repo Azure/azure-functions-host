@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
             {
                 // if the requested secret doesn't exist, create it on demand
-                keyValue = SecretManager.GenerateSecret();
+                keyValue = SecretManager.GenerateIdentifiableSecret(SecretManager.SystemKeySeed);
                 await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
             }
 

@@ -17,6 +17,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
+using Microsoft.Security.Utilities;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Newtonsoft.Json;
@@ -52,6 +53,88 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             _hostNameProvider = new HostNameProvider(_testEnvironment);
             _startupContextProvider = new StartupContextProvider(_testEnvironment, loggerFactory.CreateLogger<StartupContextProvider>());
+        }
+
+        [Fact]
+        public void SecretManager_GenerateIdentifiableSecret_HonorsSeed()
+        {
+            ulong seed = uint.MaxValue;
+            string secret = SecretManager.GenerateIdentifiableSecret(uint.MaxValue);
+            ValidateSecret(secret, seed);
+        }
+
+        [Fact]
+        public async Task SecretManager_NewlyGeneratedKeysAreIdentifiable()
+        {
+            using (var directory = new TempDirectory())
+            {
+                string startupContextPath = Path.Combine(directory.Path, Guid.NewGuid().ToString());
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteStartupContextCache, startupContextPath);
+                _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.WebSiteAuthEncryptionKey, TestEncryptionKey);
+
+                // Because we don't initialize any disk context, we can configure
+                // the secret manager to allocate fresh keys on start-up.
+                using (var secretManager = CreateSecretManager(directory.Path, createHostSecretsIfMissing: true))
+                {
+                    var hostSecrets = await secretManager.GetHostSecretsAsync();
+
+                    // Here and elsewhere we elide the '!' character which is prepended to every
+                    // generated secret value, as a clue that actual encryption is simulated in
+                    // the test case.
+                    ValidateSecret(hostSecrets.MasterKey.Substring(1), SecretManager.MasterKeySeed);
+
+                    foreach (string key in hostSecrets.SystemKeys.Values)
+                    {
+                        ValidateSecret(key.Substring(1), SecretManager.SystemKeySeed);
+                    }
+
+                    foreach (string key in hostSecrets.FunctionKeys.Values)
+                    {
+                        ValidateSecret(key.Substring(1), SecretManager.FunctionKeySeed);
+                    }
+                }
+            }
+        }
+
+        private static void ValidateSecret(string secret, ulong seed)
+        {
+            // All Azure function keys are 40 bytes in length,
+            // 56 characters when base64-encoded.
+            Assert.True(secret.Length == 56);
+
+            // Azure Function secrets are base64-encoded using a URL friendly character set.
+            // These tokens therefore never include the '+' or '/' characters.
+            Assert.False(secret.Contains('+'));
+            Assert.False(secret.Contains('/'));
+
+            // This code reverses the character substitution of URL unfriendly characters
+            // with URL friendly replacements. The hyphen and underscore characters are
+            // part of RFC 3569's 'unreserved characters' alphabet and can be used for
+            // URL compatible base64-encodings (the Golang encoder uses this alphabet
+            // as an alternate to the standard base64-encoding alphabet, for example).
+            secret = secret.Replace('-', '+');
+            secret = secret.Replace('_', '/');
+
+            Assert.True(IdentifiableSecrets.ValidateKey(secret, seed, SecretManager.AzureFunctionsSignature));
+
+            ulong[] testSeeds = new[]
+            {
+                uint.MinValue, uint.MaxValue, SecretManager.SystemKeySeed,
+                SecretManager.MasterKeySeed, SecretManager.FunctionKeySeed,
+            };
+
+            // Strictly speaking, these tests shouldn't be required, failure
+            // would indicate a bug in the Microsoft.Security.Utilities API itself
+            // Still, this is a new dependency, so we'll do some sanity checking.
+            foreach (ulong testSeed in testSeeds)
+            {
+                if (testSeed == seed)
+                {
+                    // We looked at this one already.
+                    continue;
+                }
+                Assert.False(IdentifiableSecrets.ValidateKey(secret, testSeed, SecretManager.AzureFunctionsSignature));
+            }
         }
 
         [Fact]
@@ -1105,7 +1188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             return mockValueConverterFactory;
         }
 
-        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
+        internal SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             logger = logger ?? _logger;
             metricsLogger = metricsLogger ?? new TestMetricsLogger();

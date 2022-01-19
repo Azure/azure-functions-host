@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
+using Microsoft.Security.Utilities;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -18,38 +19,70 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class DefaultScriptWebHookProviderTests
     {
         private const string TestHostName = "test.azurewebsites.net";
+        private const string TestUrlRoot = $"https://{TestHostName}/runtime/webhooks/testextension?code=";
 
-        private readonly HostSecretsInfo _hostSecrets;
-        private readonly Mock<ISecretManager> _mockSecretManager;
-        private readonly IScriptWebHookProvider _webHookProvider;
-
-        public DefaultScriptWebHookProviderTests()
+        private static DefaultScriptWebHookProvider CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets)
         {
-            _mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
-            _hostSecrets = new HostSecretsInfo();
-            _mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(_hostSecrets);
+            mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
+            hostSecrets = new HostSecretsInfo();
             var mockSecretManagerProvider = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
-            mockSecretManagerProvider.Setup(p => p.Current).Returns(_mockSecretManager.Object);
+            mockSecretManagerProvider.Setup(p => p.Current).Returns(mockSecretManager.Object);
             var loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(loggerProvider);
             var testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, TestHostName);
             var hostNameProvider = new HostNameProvider(testEnvironment);
-            _webHookProvider = new DefaultScriptWebHookProvider(mockSecretManagerProvider.Object, hostNameProvider);
+            return new DefaultScriptWebHookProvider(mockSecretManagerProvider.Object, hostNameProvider);
         }
 
         [Fact]
         public void GetUrl_ReturnsExpectedResult()
         {
-            _hostSecrets.SystemKeys = new Dictionary<string, string>
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
+            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+
+            // When an extension has an existing secret, it should be returned.
+            hostSecrets.SystemKeys = new Dictionary<string, string>
             {
                 { "testextension_extension", "abc123" }
             };
 
             var configProvider = new TestExtensionConfigProvider();
-            var url = _webHookProvider.GetUrl(configProvider);
-            Assert.Equal("https://test.azurewebsites.net/runtime/webhooks/testextension?code=abc123", url.ToString());
+            var url = webHookProvider.GetUrl(configProvider);
+            Assert.Equal($"{TestUrlRoot}abc123", url.ToString());
+        }
+
+        [Fact]
+        public void GetUrl_GeneratesIdentifiableSystemSecret()
+        {
+            var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
+            mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
+
+            string secretValue = string.Empty;
+
+            mockSecretManager.Setup(p =>
+                p.AddOrUpdateFunctionSecretAsync(
+                    "testextension_extension",
+                    It.IsAny<string>(),
+                    HostKeyScopes.SystemKeys,
+                    ScriptSecretsType.Host))
+                        .Callback<string, string, string, ScriptSecretsType>((key, secret, scope, type) => secretValue = secret)
+                        .Returns(() => Task.FromResult(new KeyOperationResult(secretValue, OperationResult.Created)));
+
+            // When an extension has no existing secret, one should be generated using
+            // the Azure Functions system key seed and standard fixed signature.
+            hostSecrets.SystemKeys = new Dictionary<string, string>();
+
+            var configProvider = new TestExtensionConfigProvider();
+            var url = webHookProvider.GetUrl(configProvider);
+            Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
+
+            // TDB, the next version of Microsoft.Security.Utilities will avoid this need.
+            secretValue = secretValue.Replace('-', '+');
+            secretValue = secretValue.Replace('_', '/');
+
+            Assert.True(IdentifiableSecrets.ValidateKey(secretValue, SecretManager.SystemKeySeed, SecretManager.AzureFunctionsSignature));
         }
 
         [Extension("My Test Extension", configurationSection: "TestExtension")]
