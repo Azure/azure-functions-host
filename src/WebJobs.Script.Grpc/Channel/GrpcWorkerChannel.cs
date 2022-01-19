@@ -304,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
                 if (capabilityEnabled)
                 {
-                    SendFunctionLoadRequestsList(_functions, managedDependencyOptions);
+                    SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
                 }
                 else
                 {
@@ -316,28 +316,32 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        internal void SendFunctionLoadRequestsList(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        internal void SendFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
         {
             _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
+
+            FunctionLoadRequestCollection functionLoadRequestCollection = GetFunctionLoadRequestCollection(functions, managedDependencyOptions);
+
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequestCollection with number of functions:'{count}'", functionLoadRequestCollection.FunctionLoadRequests.Count);
 
             // send load requests for the registered functions
             SendStreamingMessage(new StreamingMessage
             {
-                FunctionLoadRequests = GetFunctionLoadRequests(functions, managedDependencyOptions)
+                FunctionLoadRequestCollection = functionLoadRequestCollection
             });
         }
 
-        internal FunctionLoadRequests GetFunctionLoadRequests(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        internal FunctionLoadRequestCollection GetFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
         {
-            var functionLoadRequests = new FunctionLoadRequests();
+            var functionLoadRequestCollection = new FunctionLoadRequestCollection();
 
             foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled()))
             {
                 var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
-                functionLoadRequests.FunctionLoadRequest.Add(functionLoadRequest);
+                functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
             }
 
-            return functionLoadRequests;
+            return functionLoadRequestCollection;
         }
 
         public Task SendFunctionEnvironmentReloadRequest()
