@@ -304,7 +304,7 @@ message FunctionMetadataResponse {
   StatusResult result = 2;
 
   // if set to true then host will perform indexing
-  bool useDefaultMetadataIndexing = 3;
+  bool use_default_metadata_indexing = 3;
 }
 
 // Host requests worker to invoke a Function
