@@ -78,7 +78,10 @@ message StreamingMessage {
 
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
-    FunctionMetadataResponses function_metadata_responses = 30;
+    FunctionMetadataResponse function_metadata_response = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequestCollection function_load_request_collection = 31;
   }
 }
 
@@ -220,7 +223,12 @@ message CloseSharedMemoryResourcesResponse {
   map<string, bool> close_map_results = 1;
 }
 
-// Host tells the worker to load a Function
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequestCollection {
+  repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Load request of a single Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
@@ -273,6 +281,12 @@ message RpcFunctionMetadata {
 
   // Raw binding info
   repeated string raw_bindings = 10;
+
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 13;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 14;
 }
 
 // Host tells worker it is ready to receive metadata
@@ -282,12 +296,15 @@ message FunctionsMetadataRequest {
 }
 
 // Worker sends function metadata back to host
-message FunctionMetadataResponses {
+message FunctionMetadataResponse {
   // list of function indexing responses
-  repeated FunctionLoadRequest function_load_requests_results = 1;
+  repeated RpcFunctionMetadata function_metadata_results = 1;
 
   // status of overall metadata request
   StatusResult result = 2;
+
+  // if set to true then host will perform indexing
+  bool useDefaultMetadataIndexing = 3;
 }
 
 // Host requests worker to invoke a Function
