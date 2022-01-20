@@ -730,8 +730,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             finally
             {
-                GetHostLogger(instance).LogDebug("Disposing ScriptHost: '{hostInstanceId}'", hostInstanceId);
-
                 if (isStandbyHost && !_scriptWebHostEnvironment.InStandbyMode)
                 {
                     // For cold start reasons delay disposing script host if specializing out of placeholder mode
@@ -756,7 +754,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 {
                     DisposeDependencyTrackingModule(instance);
                     instance.Dispose();
-                    _logger.LogDebug("ScriptHost disposed: '{hostInstanceId}'", hostInstanceId);
+                    _logger.LogDebug("ScriptHost disposed");
                 }
             }
         }
