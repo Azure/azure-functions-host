@@ -5,6 +5,7 @@
 -->
 - Add admin/host/config API (#7394)
 - Updated Java Worker Version to [2.2.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.2.2-SNAPSHOT)
+- Added support for no storage account scenarios (#8083)
 - Updated Node.js Worker Version to [3.2.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.2.0)
 
 **Release sprint:** Sprint 118
