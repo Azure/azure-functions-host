@@ -96,11 +96,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="TestScripts\Empty\" />
-  </ItemGroup>
-
+  
   <ItemGroup>
     <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
     <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
