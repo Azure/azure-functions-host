@@ -98,24 +98,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
         private static void ValidateSecret(string secret, ulong seed)
         {
-            // All Azure function keys are 40 bytes in length,
-            // 56 characters when base64-encoded.
-            Assert.True(secret.Length == 56);
+            // All Azure function keys are 40 bytes in length, 56 chars
+            // when base64-encoded. A URL friendly encoding elides the
+            // '==' padding, however.
+            Assert.True(secret.Length == 54);
 
             // Azure Function secrets are base64-encoded using a URL friendly character set.
             // These tokens therefore never include the '+' or '/' characters.
             Assert.False(secret.Contains('+'));
             Assert.False(secret.Contains('/'));
 
-            // This code reverses the character substitution of URL unfriendly characters
-            // with URL friendly replacements. The hyphen and underscore characters are
-            // part of RFC 3569's 'unreserved characters' alphabet and can be used for
-            // URL compatible base64-encodings (the Golang encoder uses this alphabet
-            // as an alternate to the standard base64-encoding alphabet, for example).
-            secret = secret.Replace('-', '+');
-            secret = secret.Replace('_', '/');
-
-            Assert.True(IdentifiableSecrets.ValidateKey(secret, seed, SecretManager.AzureFunctionsSignature));
+            Assert.True(IdentifiableSecrets.ValidateBase64Key(secret,
+                                                              seed,
+                                                              SecretManager.AzureFunctionsSignature,
+                                                              encodeForUrl: true));
 
             ulong[] testSeeds = new[]
             {
@@ -133,7 +129,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     // We looked at this one already.
                     continue;
                 }
-                Assert.False(IdentifiableSecrets.ValidateKey(secret, testSeed, SecretManager.AzureFunctionsSignature));
+
+                Assert.False(IdentifiableSecrets.ValidateBase64Key(secret,
+                                                                  testSeed,
+                                                                  SecretManager.AzureFunctionsSignature,
+                                                                  encodeForUrl: true));
             }
         }
 

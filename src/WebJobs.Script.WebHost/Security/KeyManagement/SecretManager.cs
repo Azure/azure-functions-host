@@ -630,12 +630,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static string GenerateIdentifiableSecret(ulong seed)
         {
-            string secret = IdentifiableSecrets.GenerateIdentifiableKey(seed, 40, AzureFunctionsSignature);
-
-            secret = secret.Replace('+', '-');
-            secret = secret.Replace('/', '_');
-
-            return secret;
+            return IdentifiableSecrets.GenerateBase64Key(seed, 40, AzureFunctionsSignature, encodeForUrl: true);
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
