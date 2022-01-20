@@ -2,6 +2,7 @@
 
 using System;
 using System.Net;
+using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,6 +14,10 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, Execut
 
     switch (scenario)
     {
+        case "swa":
+            var query = HttpUtility.ParseQueryString(req.RequestUri.Query ?? string.Empty);
+            var code = query["code"];
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(code) };
         case "appServiceFixupMiddleware":
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(req.RequestUri.ToString()) };
         case "appInsights-Success":
