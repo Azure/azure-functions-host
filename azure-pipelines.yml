@@ -48,15 +48,15 @@ jobs:
   steps:
   - template: build/install-dotnet.yml
   - task: PowerShell@2
+    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'true')
+    displayName: "Update host references"
+    inputs:
+      filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
+  - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
       arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
-  - task: PowerShell@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
-    displayName: "Update host references"
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\update-hostreferences.ps1'
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
@@ -83,11 +83,11 @@ jobs:
           throw "Unable to find '$packageName' at './package'"
         }
         Copy-Item -Path $sourcePath -Destination $(Build.ArtifactStagingDirectory) -ErrorAction Stop -Verbose -Force}
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
+    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'true')
     displayName: 'Copy package to ArtifactStagingDirectory'
 
   - task: NuGetCommand@2
-    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'True')
+    condition: eq(variables['RUNBUILDFORINTEGRATIONTESTS'], 'true')
     inputs:
       command: 'push'
       packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg;!$(Build.ArtifactStagingDirectory)/**/*.symbols.nupkg'
