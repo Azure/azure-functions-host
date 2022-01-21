@@ -79,6 +79,9 @@ message StreamingMessage {
     // Worker indexing message types
     FunctionsMetadataRequest functions_metadata_request = 29;
     FunctionMetadataResponse function_metadata_response = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequestCollection function_load_request_collection = 31;
   }
 }
 
@@ -220,7 +223,12 @@ message CloseSharedMemoryResourcesResponse {
   map<string, bool> close_map_results = 1;
 }
 
-// Host tells the worker to load a Function
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequestCollection {
+  repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Load request of a single Function
 message FunctionLoadRequest {
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 1;
@@ -274,12 +282,6 @@ message RpcFunctionMetadata {
   // Raw binding info
   repeated string raw_bindings = 10;
 
-  // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
-  string retry_options = 11;
-
-  // Configuration Source: string representation of JToken configuration source property in function metadata
-  string config_source = 12;
-
   // unique function identifier (avoid name collisions, facilitate reload case)
   string function_id = 13;
 
@@ -302,7 +304,7 @@ message FunctionMetadataResponse {
   StatusResult result = 2;
 
   // if set to true then host will perform indexing
-  bool useDefaultMetadataIndexing = 3;
+  bool use_default_metadata_indexing = 3;
 }
 
 // Host requests worker to invoke a Function
