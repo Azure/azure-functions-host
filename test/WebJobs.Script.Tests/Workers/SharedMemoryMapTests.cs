@@ -2,8 +2,10 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
@@ -209,13 +211,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             Stream readContent = await sharedMemoryMap.GetStreamAsync();
 
-            // Read content into MemoryStream to easily put them into a byte[].
-            using (MemoryStream tempStream = new MemoryStream())
+            static IEnumerable<byte> StreamToEnumerable(Stream stream)
             {
-                await readContent.CopyToAsync(tempStream);
-                byte[] readBytes = tempStream.ToArray();
-                Assert.Equal(content, readBytes);
+                for (int i = stream.ReadByte(); i != -1; i = stream.ReadByte())
+                {
+                    yield return (byte)i;
+                }
             }
+
+            var readContentEnumerable = StreamToEnumerable(readContent);
+            Assert.True(content.SequenceEqual(readContentEnumerable));
 
             sharedMemoryMap.Dispose();
         }
