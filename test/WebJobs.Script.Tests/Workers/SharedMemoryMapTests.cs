@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
             Stream readContent = await sharedMemoryMap.GetStreamAsync();
 
-            static IEnumerable<byte> StreamToEmulerable(Stream stream)
+            static IEnumerable<byte> StreamToEnumerable(Stream stream)
             {
                 for (int i = stream.ReadByte(); i != -1; i = stream.ReadByte())
                 {
@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 }
             }
 
-            var readContentEnumerable = StreamToEmulerable(readContent);
+            var readContentEnumerable = StreamToEnumerable(readContent);
             Assert.True(content.SequenceEqual(readContentEnumerable));
 
             sharedMemoryMap.Dispose();
