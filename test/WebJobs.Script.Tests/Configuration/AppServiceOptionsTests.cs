@@ -30,18 +30,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 .Build();
 
             var options = host.Services.GetService<IOptionsMonitor<AppServiceOptions>>();
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "blah");
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName, "blah");
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, "blahh+1234");
+            env.SetAzureWebsiteName("blah");
+            env.SetAzureWebsiteSlotName("blah");
+            env.SetAzureWebsiteOwnerName("blahh+1234");
             var oldUniqueSlotName = env.GetAzureWebsiteUniqueSlotName();
             var oldSubscriptionId = env.GetSubscriptionId();
 
             Assert.Equal(options.CurrentValue.AppName, oldUniqueSlotName);
             Assert.Equal(options.CurrentValue.SubscriptionId, oldSubscriptionId);
 
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName, "properblah");
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSlotName, "properblah");
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteOwnerName, "properblahh+1234proper");
+            env.SetAzureWebsiteName("properblah");
+            env.SetAzureWebsiteSlotName("properblah");
+            env.SetAzureWebsiteOwnerName("properblahh+1234proper");
 
             // should still have the old values.
             Assert.Equal(options.CurrentValue.AppName, oldUniqueSlotName);

@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
             _roleInstance = _environment.GetInstanceId();
 
-            _regionName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.RegionName) ?? string.Empty;
+            _regionName = _environment.RegionName ?? string.Empty;
         }
 
         public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);

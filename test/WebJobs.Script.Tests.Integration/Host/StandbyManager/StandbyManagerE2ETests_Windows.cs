@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     [Trait(TestTraits.Group, TestTraits.StandbyModeTestsWindows)]
     public class StandbyManagerE2ETests_Windows : StandbyManagerE2ETestBase
     {
-        private static IDictionary<string, string> _settings;
+        private static Dictionary<string, string> _settings;
         public StandbyManagerE2ETests_Windows()
         {
             _settings = new Dictionary<string, string>()

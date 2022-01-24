@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Middleware
             var host = new TestFunctionHost(scriptPath, logPath,
                 configureWebHostServices: s =>
                 {
-                    IDictionary<string, string> dict = new Dictionary<string, string>();
+                    Dictionary<string, string> dict = new Dictionary<string, string>();
                     addEnvironmentVariables?.Invoke(dict);
                     s.AddSingleton<IEnvironment>(_ => new TestEnvironment(dict));
                 });

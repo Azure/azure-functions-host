@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsLegacyPlaceholderTemplateSite(this IEnvironment environment)
         {
-            string siteName = environment.GetEnvironmentVariable(AzureWebsiteName);
+            string siteName = environment.AzureWebsiteName;
             return string.IsNullOrEmpty(siteName) ? false : siteName.Equals(ScriptConstants.LegacyPlaceholderTemplateSiteName, StringComparison.InvariantCultureIgnoreCase);
         }
 
@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Linux Consumption App Service app; otherwise, false.</returns>
         public static bool IsLinuxConsumption(this IEnvironment environment)
         {
-            return !environment.IsAppService() && !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ContainerName));
+            return !environment.IsAppService() && !string.IsNullOrEmpty(environment.ContainerName);
         }
 
         /// <summary>
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <returns><see cref="true"/> if running in a Azure App Service; otherwise, false.</returns>
         public static bool IsAppService(this IEnvironment environment)
         {
-            return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteInstanceId));
+            return !string.IsNullOrEmpty(environment.AzureWebsiteInstanceId);
         }
 
         /// <summary>
@@ -284,8 +284,8 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static string GetAzureWebsiteUniqueSlotName(this IEnvironment environment)
         {
-            string name = environment.GetEnvironmentVariable(AzureWebsiteName);
-            string slotName = environment.GetEnvironmentVariable(AzureWebsiteSlotName);
+            string name = environment.AzureWebsiteName;
+            string slotName = environment.AzureWebsiteSlotName;
 
             if (!string.IsNullOrEmpty(slotName) &&
                 !string.Equals(slotName, ScriptConstants.DefaultProductionSlotName, StringComparison.OrdinalIgnoreCase))
@@ -335,11 +335,11 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (environment.IsLinuxConsumption())
             {
-                return environment.GetEnvironmentVariableOrDefault(ContainerName, string.Empty);
+                return environment.ContainerName ?? string.Empty;
             }
             else
             {
-                return environment.GetEnvironmentVariableOrDefault(AzureWebsiteInstanceId, string.Empty);
+                return environment.AzureWebsiteInstanceId ?? string.Empty;
             }
         }
 
@@ -373,11 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets the name of the app's slot, if it exists.
         /// </summary>
-        public static string GetSlotName(this IEnvironment environment)
-        {
-            string slotName = environment.GetEnvironmentVariable(AzureWebsiteSlotName);
-            return slotName?.ToLowerInvariant();
-        }
+        public static string GetSlotName(this IEnvironment environment) => environment.AzureWebsiteSlotName;
 
         /// <summary>
         /// Gets a value indicating whether it is safe to start specializing the host instance (e.g. file system is ready, etc.)

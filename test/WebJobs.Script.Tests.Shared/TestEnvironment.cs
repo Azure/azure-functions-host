@@ -4,55 +4,47 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class TestEnvironment : IEnvironment
     {
-        private readonly IDictionary<string, string> _variables;
+        public TestEnvironment() : this(new Hashtable()) { }
 
-        public TestEnvironment()
-            : this(new Dictionary<string, string>())
+        public TestEnvironment(Dictionary<string, string> variables) : this()
         {
-        }
-
-        public TestEnvironment(IDictionary<string, string> variables)
-        {
-            _variables = variables ?? throw new ArgumentNullException(nameof(variables));
-        }
-
-        public void Clear()
-        {
-            _variables.Clear();
-        }
-
-        public string GetEnvironmentVariable(string name)
-        {
-            _variables.TryGetValue(name, out string result);
-
-            return result;
-        }
-
-        public virtual void SetEnvironmentVariable(string name, string value)
-        {
-            if (value == null && _variables.ContainsKey(name))
+            foreach (var pair in variables)
             {
-                _variables.Remove(name);
+                VariableCache[pair.Key] = pair.Value;
+            }
+            Rehydrate();
+        }
+
+        public TestEnvironment(IDictionary variables) : base(variables)
+        {
+        }
+
+        public void Clear() => VariableCache.Clear();
+
+        public override void SetEnvironmentVariable(string name, string value) => Set(name, value);
+
+        private void Set(string name, string value)
+        {
+            if (value == null && VariableCache[name] != null)
+            {
+                VariableCache.Remove(name);
                 return;
             }
 
-            _variables[name] = value;
+            VariableCache[name] = value;
+
+            Rehydrate();
         }
 
-        public static TestEnvironment FromEnvironmentVariables()
-        {
-            var variables = Environment.GetEnvironmentVariables()
-                .Cast<DictionaryEntry>()
-                .ToDictionary(e => (string)e.Key, e => (string)e.Value, StringComparer.OrdinalIgnoreCase);
+        internal void SetAzureWebsiteName(string value) => Set(EnvironmentSettingNames.AzureWebsiteName, value);
 
-            return new TestEnvironment(variables);
-        }
+        internal void SetAzureWebsiteOwnerName(string value) => Set(EnvironmentSettingNames.AzureWebsiteOwnerName, value);
+
+        internal void SetAzureWebsiteSlotName(string value) => Set(EnvironmentSettingNames.AzureWebsiteSlotName, value);
     }
 }

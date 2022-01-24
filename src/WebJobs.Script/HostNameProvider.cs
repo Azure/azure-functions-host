@@ -35,11 +35,11 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (string.IsNullOrEmpty(_hostName))
                 {
                     // default to the the value specified in environment
-                    _hostName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName);
+                    _hostName = _environment.AzureWebsiteHostName;
                     if (string.IsNullOrEmpty(_hostName))
                     {
                         // Linux Dedicated on AppService doesn't have WEBSITE_HOSTNAME
-                        string websiteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
+                        string websiteName = _environment.AzureWebsiteName;
                         if (!string.IsNullOrEmpty(websiteName))
                         {
                             _hostName = $"{websiteName}.azurewebsites.net";
