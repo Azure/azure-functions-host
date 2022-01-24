@@ -13,6 +13,8 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, Execut
 
     switch (scenario)
     {
+        case "swa":
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(req.RequestUri.ToString()) };
         case "appServiceFixupMiddleware":
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(req.RequestUri.ToString()) };
         case "appInsights-Success":

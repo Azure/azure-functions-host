@@ -135,6 +135,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IFunctionsSyncManager>(_ => FunctionsSyncManagerMock.Object);
                     s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                    ConfigureScriptHost(s);
                 },
                 configureWebHostServices: s =>
                 {
@@ -143,15 +144,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
 
-            QueueClient = storageAccount.CreateCloudQueueClient();
-            BlobClient = storageAccount.CreateCloudBlobClient();
+                QueueClient = storageAccount.CreateCloudQueueClient();
+                BlobClient = storageAccount.CreateCloudBlobClient();
 
-            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
-            TableClient = tableStorageAccount.CreateCloudTableClient();
+                TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+                TableClient = tableStorageAccount.CreateCloudTableClient();
 
-            await CreateTestStorageEntities();
+                await CreateTestStorageEntities();
+            }
 
             MasterKey = await Host.GetMasterKeyAsync();
         }
@@ -161,6 +165,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         public virtual void ConfigureWebHost(IServiceCollection services)
+        {
+        }
+
+        public virtual void ConfigureScriptHost(IServiceCollection services)
         {
         }
 
