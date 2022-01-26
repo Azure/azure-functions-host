@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Extensions;
@@ -65,7 +66,24 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         //Remove readonly for Integration Testing
         private IConfiguration _configuration;
 
+        private IExtensionsOptionProvider _extensionsOptionProvider;
+
+        private IConcurrencyOptionProvider _concurrencyOptionProvider;
+
         private BlobClient _hashBlobClient;
+
+        private static HashSet<string> _supportedExtensions = new HashSet<string>
+        {
+            // Filter the extensions that supported for the SyncTrigger
+            "durableTask",
+            "kafka",
+            "eventHubs",
+            "cosmosDB",
+            "queue",
+            "blob",
+            "http",
+            "serviceBus"
+        };
 
         public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
@@ -87,6 +105,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             set
             {
                 _configuration = value;
+            }
+        }
+
+        public IExtensionsOptionProvider ExtensionsOptionProvider
+        {
+            set
+            {
+                _extensionsOptionProvider = value;
+            }
+        }
+
+        public IConcurrencyOptionProvider ConcurrencyOptionProvider
+        {
+            set
+            {
+                _concurrencyOptionProvider = value;
             }
         }
 
@@ -339,6 +373,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Add all listable functions details to the payload
             JObject functions = new JObject();
+            // TODO move before L387 and remove Console.WriteLine
+            JToken extensionsPayload = GetExtensionsPayload();
+            Console.WriteLine($"Extensions Payload\n{extensionsPayload.ToString()}");
+            // TODO move before L395 and remove Console.WriteLine
+            JToken concurrencyPayload = _concurrencyOptionProvider.GetConcurrencyOption();
+            Console.WriteLine($"Concurrency Payload\n{concurrencyPayload.ToString()}");
 
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
@@ -347,14 +387,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // TEMP: refactor this code to properly add extensions in all scenario(#7394)
             // Add the host.json extensions to the payload
 
-            JToken hostJsonPayload = _configuration.Convert("AzureFunctionsJobHost");
-            JToken extensionsPayload = hostJsonPayload["extensions"];
+            // JToken extensionsPayload = GetExtensionsPayload();
             if (extensionsPayload != null)
             {
                 result.Add("extensions", extensionsPayload);
             }
 
-            JToken concurrencyPayload = hostJsonPayload["concurrency"];
             if (concurrencyPayload != null)
             {
                 result.Add("concurrency", concurrencyPayload);
@@ -424,6 +462,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Content = json,
                 Count = count
             };
+        }
+
+        internal JObject GetExtensionsPayload()
+        {
+            var json = new JObject();
+            var extensionsOptions = _extensionsOptionProvider.GetExtensionOptions();
+            foreach (var extension in extensionsOptions)
+            {
+                if (_supportedExtensions.Contains(extension.Key))
+                {
+                    json.Add(extension.Key, extension.Value);
+                }
+            }
+            return json;
         }
 
         internal async Task<IEnumerable<JObject>> GetFunctionTriggers(IEnumerable<FunctionMetadata> functionsMetadata, ScriptJobHostOptions hostOptions)

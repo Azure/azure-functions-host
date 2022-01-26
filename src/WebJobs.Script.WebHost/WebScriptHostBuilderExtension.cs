@@ -27,6 +27,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
@@ -153,6 +154,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
+
+                    // Hidrate ExtensionOptionProvider to FunctionSyncManager
+                    var functionSyncManager = rootServiceProvider.GetService<IFunctionsSyncManager>();
+                    var serviceProvider = services.BuildServiceProvider();
+                    functionSyncManager.ExtensionsOptionProvider = new ExtensionsOptionProvider(serviceProvider, services);
+
+                    // Passing ConcurrencyOptions to FunctionSyncManager
+                    functionSyncManager.ConcurrencyOptionProvider = new ConcurrencyOptionProvider(serviceProvider);
                 });
 
             return builder;
