@@ -300,6 +300,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
 
+                // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
+                // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
+                _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
+
                 // Check if the worker supports this feature
                 bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
                 if (capabilityEnabled)
@@ -308,7 +312,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else
                 {
-                    foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+                    foreach (FunctionMetadata metadata in _functions)
                     {
                         SendFunctionLoadRequest(metadata, managedDependencyOptions);
                     }
@@ -335,7 +339,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             var functionLoadRequestCollection = new FunctionLoadRequestCollection();
 
-            foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled()))
+            foreach (FunctionMetadata metadata in functions)
             {
                 var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
                 functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
