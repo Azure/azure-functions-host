@@ -58,7 +58,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Information);
                 VerifyLogLevel(allLogs, "[Test Worker Message No keyword]", LogLevel.Information);
             }
-
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
