@@ -5,6 +5,8 @@ using System;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
@@ -25,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         /// <summary>
         /// Gets the underlying configuration object used by this instance of the <see cref="ScriptSettingsManager"/>.
         /// </summary>
-        internal IConfiguration Configuration { get;  }
+        internal IConfiguration Configuration { get; }
 
         public static ScriptSettingsManager Instance
         {
@@ -45,15 +47,15 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public bool IsElasticPremiumSku => WebsiteSku == ScriptConstants.ElasticPremiumSku;
 
         public virtual string AzureWebsiteInstanceId
-         {
-             get
-             {
-                 string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
-                     ?? Utility.GetStableHash(Environment.MachineName).ToString("X").PadLeft(32, '0');
+        {
+            get
+            {
+                string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
+                    ?? Utility.GetStableHash(Environment.MachineName).ToString("X").PadLeft(32, '0');
 
-                 return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
-             }
-         }
+                return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
+            }
+        }
 
         public virtual string ApplicationInsightsInstrumentationKey
         {
@@ -108,6 +110,26 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 .AddJsonFile("appsettings.json", optional: true)
                 .Add(new HostJsonFileConfigurationSource(applicationHostOptions, environment, loggerFactory, metricsLogger))
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
+        }
+
+        public static Tuple<IServiceProvider, IServiceCollection> CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        {
+            var hostBuilder = new HostBuilder();
+
+            IServiceCollection serviceCollection = null;
+            hostBuilder.ConfigureAppConfiguration(configurationBuilder =>
+            {
+                configurationBuilder.AddJsonFile("appsettings.json", optional: true)
+                .Add(new HostJsonFileConfigurationSource(applicationHostOptions, environment, loggerFactory, metricsLogger))
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+            });
+            hostBuilder.ConfigureServices(services =>
+            {
+                serviceCollection = services;
+            });
+
+            var host = hostBuilder.Build();
+            return Tuple.Create(host.Services, serviceCollection);
         }
     }
 }

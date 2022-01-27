@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
@@ -11,7 +12,11 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -19,6 +24,8 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -140,7 +147,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostNameProvider = new HostNameProvider(_mockEnvironment.Object);
 
-            var configuration = GetConfiguration();
+            var (serviceProvider, services) = CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder();
+            var configuration = serviceProvider.GetService<IConfiguration>();
 
             var functionMetadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
             var functionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(jobHostOptions), functionMetadataProvider, null, new OptionsWrapper<HttpWorkerOptions>(new HttpWorkerOptions()), _loggerFactory, new OptionsWrapper<LanguageWorkerOptions>(CreateLanguageWorkerConfigSettings()));
@@ -149,6 +157,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
 
             _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, _loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
+            _functionsSyncManager.ExtensionsOptionProvider = new ExtensionsOptionProvider(serviceProvider, services);
+            _functionsSyncManager.ConcurrencyOptionProvider = new ConcurrencyOptionProvider(serviceProvider);
+        }
+
+        private Tuple<IServiceProvider, IServiceCollection> CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder()
+        {
+            var metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
+            metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
+            metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
+            return ScriptSettingsManager.CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
         }
 
         private IConfiguration GetConfiguration()
@@ -170,6 +188,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private void ResetConfiguraiton()
         {
             _functionsSyncManager.Configuration = GetConfiguration();
+        }
+
+        private void ResetConfigurationProvider<T, U>()
+            where T : class
+            where U : IExtensionConfigProvider
+        {
+            var (serviceProvider, services) = CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder();
+
+            // TODO: Consider generate KafkaExtensionConfigProvider dyamically.
+            var kafkaBuilder = new TestWebJobsExtensionBuilder(
+                services,
+                ExtensionInfo.FromInstance(Activator.CreateInstance(typeof(U)) as IExtensionConfigProvider));
+
+            kafkaBuilder.BindOptions<T>();
+            _functionsSyncManager.ExtensionsOptionProvider = new ExtensionsOptionProvider(serviceProvider, services);
+            _functionsSyncManager.ConcurrencyOptionProvider = new ConcurrencyOptionProvider(serviceProvider);
+        }
+        internal class TestWebJobsExtensionBuilder : IWebJobsExtensionBuilder
+        {
+            private readonly IServiceCollection _services;
+            private readonly ExtensionInfo _extensionInfo;
+
+            public TestWebJobsExtensionBuilder(IServiceCollection services, ExtensionInfo extentionInfo)
+            {
+                _services = services;
+                _extensionInfo = extentionInfo;
+            }
+
+            public IServiceCollection Services => _services;
+
+            public ExtensionInfo ExtensionInfo => _extensionInfo;
         }
 
         private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null, bool isDurable = true)
@@ -659,7 +708,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [Fact]
         public async Task TrySyncTriggers_Concurrency_And_Extension_Posted()
         {
-            using(var env = new TestScopedEnvironmentVariable(_vars))
+            using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 var concurrencyConifg = GetConcurrencySection();
 
@@ -700,7 +749,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithSections(concurrencyPayload: null, extensionsPayload: GetExpectedExtensionPayload());
+                VerifyResultWithSections(concurrencyPayload: GetDefaultConcurrencyPayload(), extensionsPayload: GetExpectedExtensionPayload());
             }
         }
 
@@ -720,7 +769,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithSections(concurrencyPayload: GetExpectedConcurrencyPayload(), extensionsPayload: null);
+                VerifyResultWithSections(concurrencyPayload: GetExpectedConcurrencyPayload(), extensionsPayload: GetExpectedDefaultHttpExtensionPayload());
             }
         }
 
@@ -748,12 +797,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private string GetExpectedConcurrencyPayload()
         {
-            return "{\"dynamicConcurrencyEnabled\":\"true\",\"snapshotPersistenceEnabled\":\"true\"}";
+            return "{\"dynamicConcurrencyEnabled\":true,\"maximumFunctionConcurrency\":500,\"cpuThreshold\":0.8,\"snapshotPersistenceEnabled\":true}";
+        }
+
+        private string GetDefaultConcurrencyPayload()
+        {
+            return "{\"dynamicConcurrencyEnabled\":false,\"maximumFunctionConcurrency\":500,\"cpuThreshold\":0.8,\"snapshotPersistenceEnabled\":true}";
         }
 
         private string GetExpectedExtensionPayload()
         {
-            return "{\"durableTask\":{\"hubName\":\"DurableTask\",\"storageProvider\":{\"connectionStringName\":\"DurableConnection\"}}}";
+             return "{\"durableTask\":{\"httpSettings\":{\"defaultAsyncRequestSleepTimeMilliseconds\":30000},\"hubName\":\"DurableTask\",\"storageProvider\":{\"connectionStringName\":\"DurableConnection\"},\"tracing\":{\"traceInputsAndOutputs\":false,\"allowVerboseLinuxTelemetry\":false,\"traceReplayEvents\":false,\"distributedTracingEnabled\":false,\"distributedTracingProtocol\":\"HttpCorrelationProtocol\"},\"notifications\":{\"eventGrid\":null},\"maxConcurrentActivityFunctions\":null,\"maxConcurrentOrchestratorFunctions\":null,\"localRpcEndpointEnabled\":null,\"extendedSessionsEnabled\":false,\"extendedSessionIdleTimeoutInSeconds\":30,\"maxOrchestrationActions\":100000,\"overridableExistingInstanceStates\":1,\"entityMessageReorderWindowInMinutes\":30,\"useGracefulShutdown\":false,\"rollbackEntityOperationsOnExceptions\":true,\"useAppLease\":true,\"appLeaseOptions\":{\"renewInterval\":\"00:00:25\",\"acquireInterval\":\"00:05:00\",\"leaseInterval\":\"00:01:00\"}}}";
+        }
+
+        private string GetExpectedDefaultHttpExtensionPayload()
+        {
+            return "{\"http\":{\"routePrefix\":\"api\",\"maxOutstandingRequests\":-1,\"maxConcurrentRequests\":-1,\"dynamicThrottlesEnabled\":false,\"enableChunkedRequestBinding\":false}}";
         }
 
         [Fact]
@@ -799,17 +858,37 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             ResetMockFileSystem(hostJsonContent: hostJson, extensionsJsonContent: extensionJson);
             if (resetConfiguration)
             {
-                // This operation update the IConfiguration Setup of FunctionSyncManager.
+                // This operation update the ExtensionsConfigProvider and ConcurrencyConfigProvider Setup of FunctionSyncManager.
                 // If you change the host.json payload and want to test extensions/concurrency section on the SyncTrigger payload
                 // You need to update the Mock behavior by the latest FileUtils settings.
-                ResetConfiguraiton();
+                ResetConfigurationProvider<DurableTaskOptions, DurableTaskExtensionConfigProvider>();
             }
         }
+
+        // This is just for testing. TODO we should create this dynamically
+        // Actual Durable implementation have several providers.
+        private class DurableTaskExtensionConfigProvider : IExtensionConfigProvider
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
 
         private void SetupHttpTrigger(string hostJson)
         {
             ResetMockFileSystem(hostJsonContent: hostJson);
-            ResetConfiguraiton();
+            ResetConfigurationProvider<Microsoft.Azure.WebJobs.Extensions.Http.HttpOptions, HttpExtensionConfigProvider>();
+        }
+
+        // This is just for testing. TODO we should create this dynamically
+        private class HttpExtensionConfigProvider : IExtensionConfigProvider
+        {
+            public void Initialize(ExtensionConfigContext context)
+            {
+                throw new NotImplementedException();
+            }
         }
 
         private JObject GetHostConfig(JObject durableConfig, bool useBundles = false, JObject concurrencyConfig = null, string version = null)
