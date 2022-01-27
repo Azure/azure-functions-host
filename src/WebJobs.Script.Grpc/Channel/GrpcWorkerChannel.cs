@@ -293,11 +293,20 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .Timeout(_functionLoadTimeout)
                         .Take(_functions.Count())
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+
+                    _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                        .Timeout(_functionLoadTimeout)
+                        .Take(_functions.Count())
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
                 }
                 else
                 {
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
                 }
 
                 // Check if the worker supports this feature
@@ -455,6 +464,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+        }
+
+        internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
+        {
+            foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
+            {
+                LoadResponse(loadResponse);
+            }
         }
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)

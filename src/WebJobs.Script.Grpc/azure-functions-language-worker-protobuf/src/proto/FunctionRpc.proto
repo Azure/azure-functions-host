@@ -82,6 +82,8 @@ message StreamingMessage {
 
     // Host sends required metadata to worker to load functions
     FunctionLoadRequestCollection function_load_request_collection = 31;
+    // Host gets the list of load responses
+    FunctionLoadResponseCollection function_load_response_collection = 32;
   }
 }
 
@@ -238,6 +240,11 @@ message FunctionLoadRequest {
 
   // A flag indicating if managed dependency is enabled or not
   bool managed_dependency_enabled = 3;
+}
+
+// Host gets the list of load responses
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
 }
 
 // Worker tells host result of reload
