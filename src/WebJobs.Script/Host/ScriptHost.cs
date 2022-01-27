@@ -79,8 +79,6 @@ namespace Microsoft.Azure.WebJobs.Script
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
 
-        private IConfigurationReceiver _configurationReceiver;
-
         // Specify the "builtin binding types". These are types that are directly accesible without needing an explicit load gesture.
         // This is the set of bindings we shipped prior to binding extensibility.
         // Map from BindingType to the Assembly Qualified Type name for its IExtensionConfigProvider object.
@@ -110,8 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script
             IExtensionBundleManager extensionBundleManager,
             IFunctionDataCache functionDataCache,
             IOptions<LanguageWorkerOptions> languageWorkerOptions,
-            ScriptSettingsManager settingsManager = null,
-            IConfigurationReceiver configurationReceiver = null)
+            ScriptSettingsManager settingsManager = null)
             : base(options, jobHostContextFactory)
         {
             _environment = environment;
@@ -159,7 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 }));
 
             _functionDataCache = functionDataCache;
-            _configurationReceiver = configurationReceiver;
         }
 
         public event EventHandler HostInitializing;
@@ -297,12 +293,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 // Generate Functions
                 IEnumerable<FunctionMetadata> functionMetadataList = GetFunctionsMetadata(workerIndexing);
-
-                // Update Configration on ConfigurationReceiver
-                if (_configurationReceiver != null)
-                {
-                    _configurationReceiver.Configuration = _configuration;
-                }
 
                 if (!_environment.IsPlaceholderModeEnabled())
                 {

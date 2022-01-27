@@ -169,25 +169,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return ScriptSettingsManager.CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
         }
 
-        private IConfiguration GetConfiguration()
-        {
-            var metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
-            metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
-            metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
-            return ScriptSettingsManager.BuildDefaultConfiguration(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
-        }
-
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
         {
             string taskHubSegment = postedTaskHub != null ? $",\"taskHubName\":\"{postedTaskHub}\"" : "";
             return "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
                 $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function2\"{taskHubSegment}}}," +
                 $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
-        }
-
-        private void ResetConfiguraiton()
-        {
-            _functionsSyncManager.Configuration = GetConfiguration();
         }
 
         private void ResetConfigurationProvider<T, U>()

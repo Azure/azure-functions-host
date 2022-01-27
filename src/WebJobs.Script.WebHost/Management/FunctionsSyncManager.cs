@@ -29,7 +29,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 {
-    public class FunctionsSyncManager : IFunctionsSyncManager, IConfigurationReceiver, IDisposable
+    public class FunctionsSyncManager : IFunctionsSyncManager, IDisposable
     {
         private const string HubName = "HubName";
         private const string TaskHubName = "taskHubName";
@@ -98,14 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _hostNameProvider = hostNameProvider;
             _functionMetadataManager = functionMetadataManager;
             _azureBlobStorageProvider = azureBlobStorageProvider;
-        }
-
-        public IConfiguration Configuration
-        {
-            set
-            {
-                _configuration = value;
-            }
         }
 
         public IExtensionsOptionProvider ExtensionsOptionProvider
