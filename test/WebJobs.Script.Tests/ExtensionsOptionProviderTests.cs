@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var kafkaBuilder = new TestWebJobsExtensionBuilder(
                 serviceCollection,
                 ExtensionInfo.FromInstance(new KafkaExtensionConfigProvider()));
-            
+
             kafkaBuilder.BindOptions<KafkaOptions>();
 
             var extensionsOptionProvider = new ExtensionsOptionProvider(host.Services, kafkaBuilder.Services);
