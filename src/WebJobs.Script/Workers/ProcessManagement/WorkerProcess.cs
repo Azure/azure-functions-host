@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             };
             if (WorkerProcessUtilities.IsConsoleLog(msg))
             {
-                _workerProcessLogger?.LogDebug(WorkerProcessUtilities.RemoveLogPrefix(msg));
+                _workerProcessLogger?.Log(level, WorkerProcessUtilities.RemoveLogPrefix(msg));
             }
             else
             {

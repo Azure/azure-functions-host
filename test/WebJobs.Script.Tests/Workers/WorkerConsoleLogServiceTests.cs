@@ -36,25 +36,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");
-
-            workerProcess.BuildAndLogConsoleLog("LanguageWorkerConsoleLog[Test worker log]", LogLevel.Information);
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Message No keyword]");
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Error Message]");
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Warning Message]");
 
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var allLogs = _testLogger.GetLogMessages();
-            Assert.True(allLogs.Count == 4);
+            Assert.True(allLogs.Count == 6);
             VerifyLogLevel(allLogs, "Test Error Message", LogLevel.Error);
+            VerifyLogLevel(allLogs, "[Test Worker Error Message]", LogLevel.Error);
             VerifyLogLevel(allLogs, "Test Warning Message", LogLevel.Warning);
+            VerifyLogLevel(allLogs, "[Test Worker Warning Message]", LogLevel.Warning);
             if (useStdErrForErroLogsOnly)
             {
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Error);
+                VerifyLogLevel(allLogs, "[Test Worker Message No keyword]", LogLevel.Error);
             }
             else
             {
                 VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Information);
+                VerifyLogLevel(allLogs, "[Test Worker Message No keyword]", LogLevel.Information);
             }
 
-            VerifyLogLevel(allLogs, "[Test worker log]", LogLevel.Debug);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
