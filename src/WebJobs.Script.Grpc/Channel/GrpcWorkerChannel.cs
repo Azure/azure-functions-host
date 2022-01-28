@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
 
                     _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
                         .Timeout(_functionLoadTimeout)
                         .Take(_functions.Count())
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
@@ -305,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
 
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
                 }
 
@@ -468,6 +468,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
         {
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponseCollection with number of functions: '{count}'.", loadResponseCollection.FunctionLoadResponses.Count);
+
             foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
             {
                 LoadResponse(loadResponse);
