@@ -365,21 +365,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             // Add all listable functions details to the payload
             JObject functions = new JObject();
-            // TODO move before L387 and remove Console.WriteLine
+
+            // Fetch the extensions payload
             JToken extensionsPayload = GetExtensionsPayload();
-            Console.WriteLine($"Extensions Payload\n{extensionsPayload.ToString()}");
-            // TODO move before L395 and remove Console.WriteLine
+            // Fetch the concurrency payload
             JToken concurrencyPayload = _concurrencyOptionProvider.GetConcurrencyOption();
-            Console.WriteLine($"Concurrency Payload\n{concurrencyPayload.ToString()}");
 
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
-            // TEMP: refactor this code to properly add extensions in all scenario(#7394)
-            // Add the host.json extensions to the payload
-
-            // JToken extensionsPayload = GetExtensionsPayload();
             if (extensionsPayload != null)
             {
                 result.Add("extensions", extensionsPayload);
