@@ -26,7 +26,7 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class ExtensionsOptionProviderTests
+    public class SyncTriggerOptionProviderTests
     {
         [Fact]
         public void DefaultValueBinding()
@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             kafkaBuilder.BindOptions<KafkaOptions>();
 
-            var extensionsOptionProvider = new ExtensionsOptionProvider(host.Services, kafkaBuilder.Services);
+            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, kafkaBuilder.Services);
             var extensions = extensionsOptionProvider.GetExtensionOptions();
             var option = extensions.FirstOrDefault();
             // 64 is the default value
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             kafkaBuilder.BindOptions<KafkaOptions>();
 
-            var extensionsOptionProvider = new ExtensionsOptionProvider(host.Services, kafkaBuilder.Services);
+            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, kafkaBuilder.Services);
             var extensions = extensionsOptionProvider.GetExtensionOptions();
             var option = extensions.FirstOrDefault();
 

@@ -63,12 +63,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private readonly SemaphoreSlim _syncSemaphore = new SemaphoreSlim(1, 1);
         private readonly IAzureBlobStorageProvider _azureBlobStorageProvider;
 
-        //Remove readonly for Integration Testing
-        private IConfiguration _configuration;
+        private readonly IConfiguration _configuration;
 
-        private IExtensionsOptionProvider _extensionsOptionProvider;
-
-        private IConcurrencyOptionProvider _concurrencyOptionProvider;
+        private ISyncTriggerOptionProvider _syncTriggerOptionProvider;
 
         private BlobClient _hashBlobClient;
 
@@ -100,19 +97,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
-        public IExtensionsOptionProvider ExtensionsOptionProvider
+        public ISyncTriggerOptionProvider ExtensionsOptionProvider
         {
             set
             {
-                _extensionsOptionProvider = value;
-            }
-        }
-
-        public IConcurrencyOptionProvider ConcurrencyOptionProvider
-        {
-            set
-            {
-                _concurrencyOptionProvider = value;
+                _syncTriggerOptionProvider = value;
             }
         }
 
@@ -131,13 +120,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Success = true
             };
 
-            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
-            {
-                result.Success = false;
-                result.Error = "Invalid environment for SyncTriggers operation.";
-                _logger.LogWarning(result.Error);
-                return result;
-            }
+            //if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            //{
+            //    result.Success = false;
+            //    result.Error = "Invalid environment for SyncTriggers operation.";
+            //    _logger.LogWarning(result.Error);
+            //    return result;
+            //}
 
             try
             {
@@ -369,7 +358,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Fetch the extensions payload
             JToken extensionsPayload = GetExtensionsPayload();
             // Fetch the concurrency payload
-            JToken concurrencyPayload = _concurrencyOptionProvider.GetConcurrencyOption();
+            JToken concurrencyPayload = _syncTriggerOptionProvider.GetConcurrencyOption();
 
             var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
@@ -454,7 +443,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         internal JObject GetExtensionsPayload()
         {
             var json = new JObject();
-            var extensionsOptions = _extensionsOptionProvider.GetExtensionOptions();
+            var extensionsOptions = _syncTriggerOptionProvider.GetExtensionOptions();
             foreach (var extension in extensionsOptions)
             {
                 if (_supportedExtensions.Contains(extension.Key))

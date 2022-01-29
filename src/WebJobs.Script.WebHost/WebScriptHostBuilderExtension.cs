@@ -156,12 +156,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
 
                     // Hidrate ExtensionOptionProvider to FunctionSyncManager
-                    var functionSyncManager = rootServiceProvider.GetService<IFunctionsSyncManager>();
+                    var functionSyncManager = (FunctionsSyncManager)rootServiceProvider.GetService<IFunctionsSyncManager>();
                     var serviceProvider = services.BuildServiceProvider();
-                    functionSyncManager.ExtensionsOptionProvider = new ExtensionsOptionProvider(serviceProvider, services);
-
-                    // Passing ConcurrencyOptions to FunctionSyncManager
-                    functionSyncManager.ConcurrencyOptionProvider = new ConcurrencyOptionProvider(serviceProvider);
+                    functionSyncManager.ExtensionsOptionProvider = new SyncTriggerOptionProvider(serviceProvider, services);
                 });
 
             return builder;

@@ -1,13 +1,15 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Host.Scale;
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public interface IConcurrencyOptionProvider
+    public interface ISyncTriggerOptionProvider
     {
+        Dictionary<string, JObject> GetExtensionOptions();
+
         JObject GetConcurrencyOption();
     }
 }

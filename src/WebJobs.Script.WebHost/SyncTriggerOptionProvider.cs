@@ -5,16 +5,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
-    public class ExtensionsOptionProvider : IExtensionsOptionProvider
+    public class SyncTriggerOptionProvider : ISyncTriggerOptionProvider
     {
         private readonly List<Type> _extensionOptionTypes;
         private readonly IServiceProvider _serviceProvider;
@@ -35,7 +37,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 Formatting = Formatting.Indented
             };
 
-        public ExtensionsOptionProvider(IServiceProvider serviceProvider, IServiceCollection services)
+        private readonly JsonSerializerSettings _concurrencySettings = new JsonSerializerSettings
+        {
+            ContractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            }
+        };
+
+        public SyncTriggerOptionProvider(IServiceProvider serviceProvider, IServiceCollection services)
         {
             _serviceProvider = serviceProvider;
             // TODO : The following code might have better ways, however, I can't find it until now.
@@ -66,6 +76,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
 
             return result;
+        }
+
+        public JObject GetConcurrencyOption()
+        {
+            var configuration = _serviceProvider.GetService<IConfiguration>();
+            var concurrencyOption = new ConcurrencyOptions();
+            var key = ConfigurationSectionNames.JobHost + ConfigurationPath.KeyDelimiter
+                    + "concurrency";
+            configuration.Bind(key, concurrencyOption);
+            var json = JsonConvert.SerializeObject(concurrencyOption, _concurrencySettings);
+            return JObject.Parse(json);
         }
 
         private JObject FormatOptions(object options)
