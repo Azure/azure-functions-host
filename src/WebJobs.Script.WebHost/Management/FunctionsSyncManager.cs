@@ -97,20 +97,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             _azureBlobStorageProvider = azureBlobStorageProvider;
         }
 
-        public ISyncTriggerOptionProvider ExtensionsOptionProvider
-        {
-            set
-            {
-                _syncTriggerOptionProvider = value;
-            }
-        }
-
         internal bool ArmCacheEnabled
         {
             get
             {
                 return _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled, "1") == "1";
             }
+        }
+
+        public void SetSyncTriggerOptionProvider(ISyncTriggerOptionProvider syncTriggerOptionProvider)
+        {
+            _syncTriggerOptionProvider = syncTriggerOptionProvider;
         }
 
         public async Task<SyncTriggersResult> TrySyncTriggersAsync(bool isBackgroundSync = false)

@@ -157,7 +157,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(configuration, scriptHostManager: _scriptHostManager);
 
             _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, _loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClientFactory, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureBlobStorageProvider);
-            _functionsSyncManager.ExtensionsOptionProvider = new SyncTriggerOptionProvider(serviceProvider, services);
+            _functionsSyncManager.SetSyncTriggerOptionProvider(new SyncTriggerOptionProvider(serviceProvider, services));
         }
 
         private Tuple<IServiceProvider, IServiceCollection> CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder()
@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 ExtensionInfo.FromInstance(Activator.CreateInstance(typeof(U)) as IExtensionConfigProvider));
 
             kafkaBuilder.BindOptions<T>();
-            _functionsSyncManager.ExtensionsOptionProvider = new SyncTriggerOptionProvider(serviceProvider, services);
+            _functionsSyncManager.SetSyncTriggerOptionProvider(new SyncTriggerOptionProvider(serviceProvider, services));
         }
         internal class TestWebJobsExtensionBuilder : IWebJobsExtensionBuilder
         {
