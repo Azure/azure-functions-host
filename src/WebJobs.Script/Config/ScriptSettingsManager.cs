@@ -98,25 +98,5 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                 .AddJsonFile("appsettings.json", optional: true)
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
         }
-
-        public static Tuple<IServiceProvider, IServiceCollection> CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
-        {
-            var hostBuilder = new HostBuilder();
-
-            IServiceCollection serviceCollection = null;
-            hostBuilder.ConfigureAppConfiguration(configurationBuilder =>
-            {
-                configurationBuilder.AddJsonFile("appsettings.json", optional: true)
-                .Add(new HostJsonFileConfigurationSource(applicationHostOptions, environment, loggerFactory, metricsLogger))
-                .Add(new ScriptEnvironmentVariablesConfigurationSource());
-            });
-            hostBuilder.ConfigureServices(services =>
-            {
-                serviceCollection = services;
-            });
-
-            var host = hostBuilder.Build();
-            return Tuple.Create(host.Services, serviceCollection);
-        }
     }
 }

@@ -18,6 +18,7 @@ using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
@@ -165,7 +166,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var metricsLogger = new Mock<IMetricsLogger>(MockBehavior.Strict);
             metricsLogger.Setup(p => p.BeginEvent(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(new object());
             metricsLogger.Setup(p => p.EndEvent(It.IsAny<Object>()));
-            return ScriptSettingsManager.CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
+            return CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(_hostOptions, _mockEnvironment.Object, _loggerFactory, metricsLogger.Object);
+        }
+
+        private static Tuple<IServiceProvider, IServiceCollection> CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder(ScriptApplicationHostOptions applicationHostOptions, IEnvironment environment, ILoggerFactory loggerFactory, IMetricsLogger metricsLogger)
+        {
+            var hostBuilder = new HostBuilder();
+
+            IServiceCollection serviceCollection = null;
+            hostBuilder.ConfigureAppConfiguration(configurationBuilder =>
+            {
+                configurationBuilder.AddJsonFile("appsettings.json", optional: true)
+                .Add(new HostJsonFileConfigurationSource(applicationHostOptions, environment, loggerFactory, metricsLogger))
+                .Add(new ScriptEnvironmentVariablesConfigurationSource());
+            });
+            hostBuilder.ConfigureServices(services =>
+            {
+                serviceCollection = services;
+            });
+
+            var host = hostBuilder.Build();
+            return Tuple.Create(host.Services, serviceCollection);
         }
 
         private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
