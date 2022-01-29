@@ -117,13 +117,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 Success = true
             };
 
-            //if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
-            //{
-            //    result.Success = false;
-            //    result.Error = "Invalid environment for SyncTriggers operation.";
-            //    _logger.LogWarning(result.Error);
-            //    return result;
-            //}
+            if (!IsSyncTriggersEnvironment(_webHostEnvironment, _environment))
+            {
+                result.Success = false;
+                result.Error = "Invalid environment for SyncTriggers operation.";
+                _logger.LogWarning(result.Error);
+                return result;
+            }
 
             try
             {
