@@ -77,12 +77,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var configProvider = new TestExtensionConfigProvider();
             var url = webHookProvider.GetUrl(configProvider);
             Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
-
-            // TDB, the next version of Microsoft.Security.Utilities will avoid this need.
-            secretValue = secretValue.Replace('-', '+');
-            secretValue = secretValue.Replace('_', '/');
-
-            Assert.True(IdentifiableSecrets.ValidateKey(secretValue, SecretManager.SystemKeySeed, SecretManager.AzureFunctionsSignature));
+            Assert.True(IdentifiableSecrets.ValidateBase64Key(secretValue,
+                                                              SecretManager.SystemKeySeed,
+                                                              SecretManager.AzureFunctionsSignature,
+                                                              encodeForUrl: true));
         }
 
         [Extension("My Test Extension", configurationSection: "TestExtension")]
