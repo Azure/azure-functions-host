@@ -83,10 +83,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                     // the test case.
                     ValidateSecret(hostSecrets.MasterKey.Substring(1), SecretManager.MasterKeySeed);
 
-                    foreach (string key in hostSecrets.SystemKeys.Values)
-                    {
-                        ValidateSecret(key.Substring(1), SecretManager.SystemKeySeed);
-                    }
+                    // Create host secrets if missing knob does not allocate a system
+                    // key. The system key creation/validation test is done in the
+                    // DefaultScriptWebHookProvider tests.
+                    Assert.True(hostSecrets.SystemKeys.Count == 0);
 
                     foreach (string key in hostSecrets.FunctionKeys.Values)
                     {

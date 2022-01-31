@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v6.0": {
-      "Microsoft.Azure.WebJobs.Script.WebHost/4.1.1": {
+      "Microsoft.Azure.WebJobs.Script.WebHost/4.1.0": {
         "dependencies": {
           "Azure.Identity": "1.4.1",
           "Azure.Security.KeyVault.Secrets": "4.2.0",
@@ -16,10 +16,10 @@
           "Microsoft.Azure.Cosmos.Table": "1.0.8",
           "Microsoft.Azure.Functions.PythonWorker": "3.1.2.6",
           "Microsoft.Azure.Storage.File": "11.1.7",
-          "Microsoft.Azure.WebJobs": "3.0.32",
+          "Microsoft.Azure.WebJobs": "3.0.32-11886",
           "Microsoft.Azure.WebJobs.Host.Storage": "5.0.0-beta.1",
-          "Microsoft.Azure.WebJobs.Script": "4.1.1",
-          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1.1",
+          "Microsoft.Azure.WebJobs.Script": "4.1.0",
+          "Microsoft.Azure.WebJobs.Script.Grpc": "4.1.0",
           "Microsoft.Azure.WebSites.DataProtection": "2.1.91-alpha",
           "Microsoft.Security.Utilities": "1.1.0",
           "Microsoft.SourceLink.GitHub": "1.0.0",
@@ -605,10 +605,10 @@
           }
         }
       },
-      "Microsoft.Azure.Functions.JavaWorker/2.1.0-SNAPSHOT": {},
+      "Microsoft.Azure.Functions.JavaWorker/2.0.0": {},
       "Microsoft.Azure.Functions.NodeJsWorker/3.0.0": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.1273": {},
-      "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.1274": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.1049": {},
+      "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.1128": {},
       "Microsoft.Azure.Functions.PythonWorker/3.1.2.6": {},
       "Microsoft.Azure.KeyVault.Core/2.0.4": {
         "dependencies": {
@@ -2691,7 +2691,7 @@
       "Microsoft.Azure.WebJobs.Script.Grpc/4.1.1": {
         "dependencies": {
           "Grpc.AspNetCore": "2.39.0",
-          "Microsoft.Azure.WebJobs.Script": "4.1.1",
+          "Microsoft.Azure.WebJobs.Script": "4.1.0",
           "System.IO.FileSystem.Primitives": "4.3.0"
         },
         "runtime": {
@@ -3070,12 +3070,12 @@
       "path": "microsoft.azure.documentdb.core/2.11.2",
       "hashPath": "microsoft.azure.documentdb.core.2.11.2.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.JavaWorker/2.1.0-SNAPSHOT": {
+    "Microsoft.Azure.Functions.JavaWorker/2.0.0": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-nfkXjDciYGWQbIbt69fzKNsJb3wjNYQF54C2eGY0dtFmkjGLYeUEPJRBlsU6vVzD1RrcBrnvnUvKGf0+7pZqAA==",
-      "path": "microsoft.azure.functions.javaworker/2.1.0-snapshot",
-      "hashPath": "microsoft.azure.functions.javaworker.2.1.0-snapshot.nupkg.sha512"
+      "path": "microsoft.azure.functions.javaworker/2.0.0",
+      "hashPath": "microsoft.azure.functions.javaworker.2.0.0.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.NodeJsWorker/3.0.0": {
       "type": "package",
@@ -3084,18 +3084,18 @@
       "path": "microsoft.azure.functions.nodejsworker/3.0.0",
       "hashPath": "microsoft.azure.functions.nodejsworker.3.0.0.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.1273": {
+    "Microsoft.Azure.Functions.PowerShellWorker.PS7.0/4.0.1049": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-O2F/czniV+MSAgswrSkxZSi7Ettv8dU6V5jMCGu/CWgeWcdyMGPDFyS81X3sf06+/mn26V4VUiNBmrJT3XsT0w==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.0/4.0.1273",
+      "path": "microsoft.azure.functions.powershellworker.ps7.0/4.0.1049",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.0.4.0.1273.nupkg.sha512"
     },
-    "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.1274": {
+    "Microsoft.Azure.Functions.PowerShellWorker.PS7.2/4.0.1128": {
       "type": "package",
       "serviceable": true,
       "sha512": "sha512-dfK2I4x4jIIyw+NnQMWR3f6eCs8WQtAF2ldd+KHWu7rlI+qcfDIOC6P3JTiKKtRLoUTqW01cUaDY9V5KY0QamQ==",
-      "path": "microsoft.azure.functions.powershellworker.ps7.2/4.0.1274",
+      "path": "microsoft.azure.functions.powershellworker.ps7.2/4.0.1128",
       "hashPath": "microsoft.azure.functions.powershellworker.ps7.2.4.0.1274.nupkg.sha512"
     },
     "Microsoft.Azure.Functions.PythonWorker/3.1.2.6": {
