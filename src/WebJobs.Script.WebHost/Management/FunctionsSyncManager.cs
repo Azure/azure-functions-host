@@ -334,17 +334,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var triggersArray = new JArray(triggers);
             int count = triggersArray.Count;
 
-            if (!ArmCacheEnabled)
-            {
-                // TODO: Discuss if we need other sections for Arm cache is not enabled.
-                // extended format is disabled - just return triggers
-                return new SyncTriggersPayload
-                {
-                    Content = JsonConvert.SerializeObject(triggersArray),
-                    Count = count
-                };
-            }
-
             // Add triggers to the payload
             JObject result = new JObject();
             result.Add("triggers", triggersArray);
@@ -357,10 +346,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             // Fetch the concurrency payload
             JToken concurrencyPayload = _syncTriggerOptionProvider.GetConcurrencyOption();
 
-            var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
-            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
-            result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
-
             if (extensionsPayload != null)
             {
                 result.Add("extensions", extensionsPayload);
@@ -369,6 +354,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             if (concurrencyPayload != null)
             {
                 result.Add("concurrency", concurrencyPayload);
+            }
+
+            var minimumSyncTriggerPayload = new SyncTriggersPayload
+            {
+                Content = JsonConvert.SerializeObject(result),
+                Count = count
+            };
+
+            var listableFunctions = _functionMetadataManager.GetFunctionMetadata().Where(m => !m.IsCodeless());
+            var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
+            result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
+
+            if (!ArmCacheEnabled)
+            {
+                // Minimum payload includes triggers, extensions, and concurrency
+                return minimumSyncTriggerPayload;
             }
 
             if (_secretManagerProvider.SecretsEnabled)
@@ -423,11 +424,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // limit. If we're over limit, revert to the minimal triggers
                 // format.
                 _logger.LogWarning($"SyncTriggers payload of length '{json.Length}' exceeds max length of '{ScriptConstants.MaxTriggersStringLength}'. Reverting to minimal format.");
-                return new SyncTriggersPayload
-                {
-                    Content = JsonConvert.SerializeObject(triggersArray),
-                    Count = count
-                };
+                return minimumSyncTriggerPayload;
             }
 
             return new SyncTriggersPayload

@@ -204,11 +204,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             var (serviceProvider, services) = CreateDefaultConfigurationWithHostJsonFileAndEnvBuilder();
 
             // TODO: Consider generate KafkaExtensionConfigProvider dyamically.
-            var kafkaBuilder = new TestWebJobsExtensionBuilder(
+            var extensionsBuilder = new TestWebJobsExtensionBuilder(
                 services,
                 ExtensionInfo.FromInstance(Activator.CreateInstance(typeof(U)) as IExtensionConfigProvider));
 
-            kafkaBuilder.BindOptions<T>();
+            extensionsBuilder.BindOptions<T>();
             _functionsSyncManager.SetSyncTriggerOptionProvider(new SyncTriggerOptionProvider(serviceProvider, services));
         }
         internal class TestWebJobsExtensionBuilder : IWebJobsExtensionBuilder
@@ -294,6 +294,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteArmCacheEnabled)).Returns(cacheEnabled ? "1" : "0");
 
+            var durableConfig = GetDurableExtensionsSection();
+            // HostJsonFileConfigrationProvider validate the host.json format. It requires version section.
+            var hostConfig = GetHostConfig(durableConfig: durableConfig, useBundles: false, concurrencyConfig: null, version: "2.0");
+
+            // SyncTriggerPayload extension/concurrency section requires resetConfiguration as true
+            SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0", resetConfiguration: true);
+
             using (var env = new TestScopedEnvironmentVariable(_vars))
             {
                 Assert.Equal(_functionsSyncManager.ArmCacheEnabled, cacheEnabled);
@@ -311,7 +318,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 if (cacheEnabled)
                 {
-                    VerifyResultWithCacheOn();
+                    VerifyResultWithCacheOn("DurableConnection", "DurableTask", true);
                 }
                 else
                 {
@@ -320,7 +327,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
-        private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue")
+        private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", bool inspectExtensionsAndConcurrency = false)
         {
             string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub);
             // verify triggers
@@ -350,9 +357,44 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.Equal("aaa", (string)function1Secrets["secrets"]["TestFunctionKey1"]);
             Assert.Equal("bbb", (string)function1Secrets["secrets"]["TestFunctionKey2"]);
 
+            if (inspectExtensionsAndConcurrency) {
+                // verify extensions 
+                var extensions = result["extensions"];
+                Assert.Equal(GetExpectedExtensionPayload(connection, expectedTaskHub), extensions.ToString(Formatting.None));
+
+                // verify concurrency
+                var concurrency = result["concurrency"];
+                Assert.Equal(GetDefaultConcurrencyPayload(), concurrency.ToString(Formatting.None));
+            }
+
             var (logObject, triggersLog) = GetSyncTriggerPayloadLogWithTuple();
             Assert.Equal(expectedSyncTriggersPayload, logObject["triggers"].ToString(Formatting.None));
             Assert.False(triggersLog.Contains("secrets"));
+        }
+
+        private void VerifyResultWithCacheOff()
+        {
+            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload("DurableConnection", "DurableTask");
+            var result = JObject.Parse(_contentBuilder.ToString());
+
+            // verify triggerrs
+            var triggers = result["triggers"];
+            Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
+
+            // verify extensions 
+            var extensions = result["extensions"];
+            Assert.Equal(GetExpectedExtensionPayload(), extensions.ToString(Formatting.None));
+
+            // verify concurrency
+            var concurrency = result["concurrency"];
+            Assert.Equal(GetDefaultConcurrencyPayload(), concurrency.ToString(Formatting.None));
+
+            var (logObject, triggersLog) = GetSyncTriggerPayloadLogWithTuple();
+            Assert.Equal(expectedSyncTriggersPayload, logObject["triggers"].ToString(Formatting.None));
+
+            // verify secrets and functions are not exists 
+            Assert.False(triggersLog.Contains("secrets"));
+            Assert.False(triggersLog.Contains("functions"));
         }
 
         private void VerifyResultWithSections(string concurrencyPayload = null, string extensionsPayload = null)
@@ -378,21 +420,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             {
                 Assert.Null(extensions);
             }
-        }
-
-        private void VerifyResultWithCacheOff()
-        {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload();
-            var triggers = JArray.Parse(_contentBuilder.ToString());
-            var triggersString = triggers.ToString(Formatting.None);
-            Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
-
-            var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(x => x.FormattedMessage.Contains("Content=")).ToList();
-            var log = logs[0];
-            int startIdx = log.FormattedMessage.IndexOf("Content=") + 8;
-            int endIdx = log.FormattedMessage.LastIndexOf(')');
-            var triggersLog = log.FormattedMessage.Substring(startIdx, endIdx - startIdx).Trim();
-            Assert.Equal(expectedSyncTriggersPayload, triggersLog);
         }
 
         private Tuple<JObject, string> GetSyncTriggerPayloadLogWithTuple()
@@ -812,9 +839,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             return "{\"dynamicConcurrencyEnabled\":false,\"maximumFunctionConcurrency\":500,\"cpuThreshold\":0.8,\"snapshotPersistenceEnabled\":true}";
         }
 
-        private string GetExpectedExtensionPayload()
+        private string GetExpectedExtensionPayload(string connection = "DurableConnection", string taskHubName = "DurableTask")
         {
-             return "{\"durableTask\":{\"httpSettings\":{\"defaultAsyncRequestSleepTimeMilliseconds\":30000},\"hubName\":\"DurableTask\",\"storageProvider\":{\"connectionStringName\":\"DurableConnection\"},\"tracing\":{\"traceInputsAndOutputs\":false,\"allowVerboseLinuxTelemetry\":false,\"traceReplayEvents\":false,\"distributedTracingEnabled\":false,\"distributedTracingProtocol\":\"HttpCorrelationProtocol\"},\"notifications\":{\"eventGrid\":null},\"maxConcurrentActivityFunctions\":null,\"maxConcurrentOrchestratorFunctions\":null,\"localRpcEndpointEnabled\":null,\"extendedSessionsEnabled\":false,\"extendedSessionIdleTimeoutInSeconds\":30,\"maxOrchestrationActions\":100000,\"overridableExistingInstanceStates\":1,\"entityMessageReorderWindowInMinutes\":30,\"useGracefulShutdown\":false,\"rollbackEntityOperationsOnExceptions\":true,\"useAppLease\":true,\"appLeaseOptions\":{\"renewInterval\":\"00:00:25\",\"acquireInterval\":\"00:05:00\",\"leaseInterval\":\"00:01:00\"}}}";
+             return $"{{\"durableTask\":{{\"httpSettings\":{{\"defaultAsyncRequestSleepTimeMilliseconds\":30000}},\"hubName\":\"{taskHubName}\",\"storageProvider\":{{\"connectionStringName\":\"{connection}\"}},\"tracing\":{{\"traceInputsAndOutputs\":false,\"allowVerboseLinuxTelemetry\":false,\"traceReplayEvents\":false,\"distributedTracingEnabled\":false,\"distributedTracingProtocol\":\"HttpCorrelationProtocol\"}},\"notifications\":{{\"eventGrid\":null}},\"maxConcurrentActivityFunctions\":null,\"maxConcurrentOrchestratorFunctions\":null,\"localRpcEndpointEnabled\":null,\"extendedSessionsEnabled\":false,\"extendedSessionIdleTimeoutInSeconds\":30,\"maxOrchestrationActions\":100000,\"overridableExistingInstanceStates\":1,\"entityMessageReorderWindowInMinutes\":30,\"useGracefulShutdown\":false,\"rollbackEntityOperationsOnExceptions\":true,\"useAppLease\":true,\"appLeaseOptions\":{{\"renewInterval\":\"00:00:25\",\"acquireInterval\":\"00:05:00\",\"leaseInterval\":\"00:01:00\"}}}}}}";
         }
 
         private string GetExpectedDefaultHttpExtensionPayload()
@@ -865,7 +892,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             ResetMockFileSystem(hostJsonContent: hostJson, extensionsJsonContent: extensionJson);
             if (resetConfiguration)
             {
-                // This operation update the ExtensionsConfigProvider and ConcurrencyConfigProvider Setup of FunctionSyncManager.
+                // This operation update the SyncTriggerConfigProvider Setup of FunctionSyncManager.
                 // If you change the host.json payload and want to test extensions/concurrency section on the SyncTrigger payload
                 // You need to update the Mock behavior by the latest FileUtils settings.
                 ResetConfigurationProvider<DurableTaskOptions, DurableTaskExtensionConfigProvider>();
@@ -907,10 +934,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 extensionsConfig.Add("durableTask", durableConfig);
             }
 
-            var hostConfig = new JObject
+            var hostConfig = new JObject();
+
+            if (durableConfig != null)
             {
-                { "extensions", extensionsConfig }
-            };
+                hostConfig.Add("extensions", extensionsConfig);
+            }
 
             if (version != null)
             {
