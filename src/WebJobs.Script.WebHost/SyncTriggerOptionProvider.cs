@@ -31,14 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             { "blobs", "blob" }
         };
 
-        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-            {
-                ContractResolver = new ExtensionsOptionContractResolver(),
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                DefaultValueHandling = DefaultValueHandling.Include,
-                Formatting = Formatting.Indented
-            };
-
         private readonly JsonSerializerSettings _concurrencySettings = new JsonSerializerSettings
         {
             ContractResolver = new DefaultContractResolver
