@@ -82,6 +82,9 @@ message StreamingMessage {
 
     // Host sends required metadata to worker to load functions
     FunctionLoadRequestCollection function_load_request_collection = 31;
+
+    // Host gets the list of function load responses
+    FunctionLoadResponseCollection function_load_response_collection = 32;
   }
 }
 
@@ -226,6 +229,11 @@ message CloseSharedMemoryResourcesResponse {
 // Host tells the worker to load a list of Functions
 message FunctionLoadRequestCollection {
   repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Host gets the list of function load responses
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
 }
 
 // Load request of a single Function
