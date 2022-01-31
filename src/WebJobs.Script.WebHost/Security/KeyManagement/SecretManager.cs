@@ -644,8 +644,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal static string GenerateIdentifiableSecret(ulong seed)
         {
-            string secret = IdentifiableSecrets.GenerateBase64Key(seed, 40, AzureFunctionsSignature, encodeForUrl: true);
-            return secret.EndsWith("==") ? secret : secret + "==";
+            // Return a generated secret with a completely URL-safe base64-encoding
+            // alphabet, 'a-zA-Z0-9' as well as '-' and '_'. We preserve the trailing
+            // equal sign padding in the token in order to improve the ability to
+            // match against the general token format (with performing a checksum
+            // validation. This is safe in Azure Functions utilization because a
+            // token will only appear in a URL as a query string parameter, where
+            // equal signs do not require encoding.
+            return IdentifiableSecrets.GenerateUrlSafeBase64Key(seed, 40, AzureFunctionsSignature, elidePadding: false);
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
