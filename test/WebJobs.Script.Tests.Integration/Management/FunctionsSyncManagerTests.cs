@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
@@ -44,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private const string DefaultTestTaskHub = "TestHubValue";
         private const string DefaultTestConnection = "DurableStorage";
         private const string SyncManagerLogCategory = "Microsoft.Azure.WebJobs.Script.WebHost.Management.FunctionsSyncManager";
+        private const string TestPayloadLocation = "Management\\Payloads\\";
 
         private readonly string _testRootScriptPath;
         private readonly string _testHostConfigFilePath;
@@ -263,7 +265,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 string syncString = _contentBuilder.ToString();
                 Assert.True(syncString.Length < ScriptConstants.MaxTriggersStringLength);
                 var syncContent = JToken.Parse(syncString);
-                Assert.Equal(JTokenType.Array, syncContent.Type);
+
+                // verify sections exist
+                Assert.NotNull(syncContent["triggers"]);
+                Assert.NotNull(syncContent["extensions"]);
+                Assert.NotNull(syncContent["concurrency"]);
+
+                // verify not exists
+                Assert.Null(syncContent["secrets"]);
+                Assert.Null(syncContent["functions"]);
             }
         }
 
@@ -831,22 +841,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private string GetExpectedConcurrencyPayload()
         {
-            return "{\"dynamicConcurrencyEnabled\":true,\"maximumFunctionConcurrency\":500,\"cpuThreshold\":0.8,\"snapshotPersistenceEnabled\":true}";
+            return ReadPayloadFromFileOrCache("ExpectedConcurrencyPayload.json");
         }
 
         private string GetDefaultConcurrencyPayload()
         {
-            return "{\"dynamicConcurrencyEnabled\":false,\"maximumFunctionConcurrency\":500,\"cpuThreshold\":0.8,\"snapshotPersistenceEnabled\":true}";
+            return ReadPayloadFromFileOrCache("DefaultConcurrencyPayload.json");
         }
 
         private string GetExpectedExtensionPayload(string connection = "DurableConnection", string taskHubName = "DurableTask")
         {
-             return $"{{\"durableTask\":{{\"httpSettings\":{{\"defaultAsyncRequestSleepTimeMilliseconds\":30000}},\"hubName\":\"{taskHubName}\",\"storageProvider\":{{\"connectionStringName\":\"{connection}\"}},\"tracing\":{{\"traceInputsAndOutputs\":false,\"allowVerboseLinuxTelemetry\":false,\"traceReplayEvents\":false,\"distributedTracingEnabled\":false,\"distributedTracingProtocol\":\"HttpCorrelationProtocol\"}},\"notifications\":{{\"eventGrid\":null}},\"maxConcurrentActivityFunctions\":null,\"maxConcurrentOrchestratorFunctions\":null,\"localRpcEndpointEnabled\":null,\"extendedSessionsEnabled\":false,\"extendedSessionIdleTimeoutInSeconds\":30,\"maxOrchestrationActions\":100000,\"overridableExistingInstanceStates\":1,\"entityMessageReorderWindowInMinutes\":30,\"useGracefulShutdown\":false,\"rollbackEntityOperationsOnExceptions\":true,\"useAppLease\":true,\"appLeaseOptions\":{{\"renewInterval\":\"00:00:25\",\"acquireInterval\":\"00:05:00\",\"leaseInterval\":\"00:01:00\"}}}}}}";
+            string template = ReadPayloadFromFileOrCache("ExpectedExtensionPayload.json");
+            return String.Format(template, new object[] { connection, taskHubName });
         }
 
         private string GetExpectedDefaultHttpExtensionPayload()
         {
-            return "{\"http\":{\"dynamicThrottlesEnabled\":false,\"enableChunkedRequestBinding\":false,\"maxConcurrentRequests\":-1,\"maxOutstandingRequests\":-1,\"routePrefix\":\"api\"}}";
+            return ReadPayloadFromFileOrCache("ExpectedDefaultHttpExtensionPayload.json");
+        }
+
+        private static readonly ConcurrentDictionary<string, string> payloadCache = new ConcurrentDictionary<string, string>();
+        private string ReadPayloadFromFileOrCache(string fileName)
+        {
+            string payload = null;
+            if (!payloadCache.ContainsKey(fileName))
+            {
+                payload = File.ReadAllText(TestPayloadLocation + fileName);
+                payloadCache.AddOrUpdate(fileName, payload, (k, v) => v);
+            } else
+            {
+                payload = payloadCache[fileName];
+            }
+                
+            return payload;
         }
 
         [Fact]

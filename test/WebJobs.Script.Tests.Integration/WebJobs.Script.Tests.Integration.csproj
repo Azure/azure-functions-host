@@ -102,6 +102,21 @@
     <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
     <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Update="Management\Payloads\DefaultConcurrencyPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Management\Payloads\ExpectedDefaultHttpExtensionPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Management\Payloads\ExpectedExtensionPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+	<Content Update="Management\Payloads\ExpectedConcurrencyPayload.json">
+	  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	</Content>
+  </ItemGroup>
    
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
