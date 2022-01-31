@@ -22,59 +22,88 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Moq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class SyncTriggerOptionProviderTests
     {
-        [Fact]
-        public void DefaultValueBinding()
+        /// <summary>
+        /// Testing Default Value Fetching
+        /// Test Cases Context
+        /// KafkaOptions: General Extensions that Payload need for Arc scenario.
+        /// DurableTaskOptions: Payload need for Arc and doesn't support IOptionFormatter
+        /// </summary>
+        [Theory]
+        [InlineData(typeof(KafkaOptions), typeof(KafkaExtensionConfigProvider), "maxBatchSize", 64)]
+        [InlineData(typeof(DurableTaskOptions), typeof(DurableTaskExtensionConfigProvider), "extendedSessionIdleTimeoutInSeconds", 30)]
+        public void DefaultValueBinding(Type optionType, Type extensionConfigProviderType, string shortOptionKey, int expected)
         {
             var (host, serviceCollection) = GetTestHost(new Dictionary<string, string>());
+            var extesionConfigProvider = Activator.CreateInstance(extensionConfigProviderType) as IExtensionConfigProvider;
 
             // TODO: Consider generate KafkaExtensionConfigProvider dyamically.
-            var kafkaBuilder = new TestWebJobsExtensionBuilder(
+            var extensionBuilder = new TestWebJobsExtensionBuilder(
                 serviceCollection,
-                ExtensionInfo.FromInstance(new KafkaExtensionConfigProvider()));
+                ExtensionInfo.FromInstance(extesionConfigProvider));
 
-            kafkaBuilder.BindOptions<KafkaOptions>();
+            // Execute kafkaBuilder.BindOptions<T>();
+            MethodInfo genericBindOption = typeof(WebJobsExtensionBuilderExtensions).GetMethod("BindOptions", BindingFlags.Public | BindingFlags.Static);
+            MethodInfo bindOption = genericBindOption.MakeGenericMethod(new Type[] { optionType });
+            bindOption.Invoke(null, new object[] { extensionBuilder });
 
-            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, kafkaBuilder.Services);
+            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, extensionBuilder.Services);
             var extensions = extensionsOptionProvider.GetExtensionOptions();
             var option = extensions.FirstOrDefault();
             // 64 is the default value
-            Assert.Equal(64, option.Value["maxBatchSize"]);
+            Assert.Equal(expected, option.Value.SelectToken(shortOptionKey));
         }
 
-        [Fact]
-        public void OverrideDefaultValue()
+        /// <summary>
+        /// Testing Default Value Fetching
+        /// Test Cases Context
+        /// KafkaOptions: General Extensions that Payload need for Arc scenario.
+        /// QueuesOptions: IrregularNaming convention between host.json(queue) and QueuesOptions
+        /// EventHubOptions: IrregularNaming convention between host.json(eventHubs) and EventHubOptions
+        /// BlobsOptions: IrregularNaming converntion between host.json(blob) and BlobsOptions
+        /// DurableTaskOptions: Payload need for Arc and doesn't support IOptionFormatter
+        /// </summary>
+        [Theory]
+        [InlineData("kafka", "kafka:maxBatchSize", "maxBatchSize", "65", typeof(KafkaOptions), typeof(KafkaExtensionConfigProvider), 65)]
+        [InlineData("queue", "queue:batchSize", "batchSize", "10", typeof(QueuesOptions), typeof(QueuesExtensionConfigProvider), 10)]
+        [InlineData("eventHubs", "eventHubs:eventProcessorOptions:maxBatchSize", "eventProcessorOptions.maxBatchSize", "12", typeof(EventHubOptions), typeof(EventHubExtensionConfigProvider), 12)]
+        [InlineData("blob", "blob:maxDegreeOfParallelism", "maxDegreeOfParallelism", "13", typeof(BlobsOptions), typeof(BlobsExtensionConfigProvider), 13)]
+        [InlineData("durableTask", "durableTask:extendedSessionIdleTimeoutInSeconds", "extendedSessionIdleTimeoutInSeconds", "14", typeof(DurableTaskOptions), typeof(DurableTaskExtensionConfigProvider), 14)]
+        public void OverwriteDefaultValue(string optionName, string fullOptionKey, string shortOptionKey, string optionValue, Type optionType, Type extensionConfigProviderType, int expectedValue)
         {
             var optionsConfig = new Dictionary<string, string>()
             {
-                { "kafka:maxBatchSize", "65" }
+                { fullOptionKey, optionValue }
             };
 
             var (host, serviceCollection) = GetTestHost(optionsConfig);
 
+            var extesionConfigProvider = Activator.CreateInstance(extensionConfigProviderType) as IExtensionConfigProvider;
             // TODO: Consider generate KafkaExtensionConfigProvider dyamically.
-            var kafkaBuilder = new TestWebJobsExtensionBuilder(
+            var extensionBuilder = new TestWebJobsExtensionBuilder(
                 serviceCollection,
-                ExtensionInfo.FromInstance(new KafkaExtensionConfigProvider()));
+                ExtensionInfo.FromInstance(extesionConfigProvider));
 
-            kafkaBuilder.BindOptions<KafkaOptions>();
+            // Execute kafkaBuilder.BindOptions<T>();
+            MethodInfo genericBindOption = typeof(WebJobsExtensionBuilderExtensions).GetMethod("BindOptions", BindingFlags.Public | BindingFlags.Static);
+            MethodInfo bindOption = genericBindOption.MakeGenericMethod(new Type[] { optionType });
+            bindOption.Invoke(null, new object[] { extensionBuilder });
 
-            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, kafkaBuilder.Services);
+            var extensionsOptionProvider = new SyncTriggerOptionProvider(host.Services, extensionBuilder.Services);
             var extensions = extensionsOptionProvider.GetExtensionOptions();
             var option = extensions.FirstOrDefault();
 
             // 64 is the default value
-            Assert.Equal("kafka", option.Key);
-            Assert.Equal(65, option.Value["maxBatchSize"]);
+            Assert.Equal(optionName, option.Key);
+            Assert.Equal(expectedValue, option.Value.SelectToken(shortOptionKey));
         }
-
-        public void IrregularSectionNameExtensions()
-        { }
 
         private Tuple<IHost, IServiceCollection> GetTestHost(IDictionary<string, string> optionsConfig)
         {
@@ -134,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public string Format()
             {
-                throw new NotImplementedException();
+                return JsonConvert.SerializeObject(this);
             }
         }
 
@@ -156,7 +185,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public string Format()
             {
-                throw new NotImplementedException();
+                var json = new JObject();
+                json["BatchCheckpointFrequency"] = BatchCheckpointFrequency;
+                var eventProcessorOptions = new JObject();
+                eventProcessorOptions["MaxBatchSize"] = EventProcessorOptions.MaxBatchSize;
+                eventProcessorOptions["PrefetchCount"] = EventProcessorOptions.PrefetchCount;
+                json["EventProcessorOptions"] = eventProcessorOptions;
+                json["InitialOffsetOptions"] = JObject.FromObject(InitialOffsetOptions);
+                return json.ToString();
             }
         }
 
@@ -210,7 +246,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             public string Format()
             {
-                throw new NotImplementedException();
+                return JsonConvert.SerializeObject(this);
             }
         }
 
@@ -223,7 +259,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private class ServiceBusExtensionConfigProvider : IExtensionConfigProvider
+        private class QueuesOptions : IOptionsFormatter
+        {
+            public int BatchSize { get; set; }
+
+            public string Format()
+            {
+                return JsonConvert.SerializeObject(this);
+            }
+        }
+
+        // Storage Queue uses QueuesOptions on WebJobs SDK.
+        private class DurableTaskExtensionConfigProvider : IExtensionConfigProvider
         {
             public void Initialize(ExtensionConfigContext context)
             {
@@ -231,12 +278,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
         }
 
-        private class ServiceBusOptions : IOptionsFormatter
+        // DurableTask doesn't implement IOptionFormatter
+        private class DurableTaskOptions
         {
-            public string Format()
-            {
-                throw new NotImplementedException();
-            }
+            public int ExtendedSessionIdleTimeoutInSeconds { get; set; } = 30;
         }
 
         internal class TestWebJobsExtensionBuilder : IWebJobsExtensionBuilder

@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Azure.WebJobs.Host.Scale;
+using Microsoft.Azure.WebJobs.Hosting;
 using Microsoft.Azure.WebJobs.Script.Configuration;
+using Microsoft.Azure.WebJobs.Script.WebHost.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -69,10 +71,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
                 var options = Activator.CreateInstance(optionsType);
                 var key = ConfigurationSectionNames.JobHost + ConfigurationPath.KeyDelimiter
-                     + "extensions" + ConfigurationPath.KeyDelimiter + name;
+                            + "extensions" + ConfigurationPath.KeyDelimiter + name;
                 configuration.Bind(key, options);
-                // convert to JObject
-                result.Add(name, FormatOptions(options));
+
+                IOptionsFormatter optionsFormatter = options as IOptionsFormatter;
+                if (optionsFormatter != null)
+                {
+                    result.Add(name, JObject.Parse(optionsFormatter.Format()).ToCamelCase());
+                }
+                else
+                {
+                    // We don't support the extensions that doesn't implement IOptionsFormatter.
+
+                    // TODO : For Avoiding Breaking change of Durable Functions with Arc
+                    // Once Durable Functions supoorts IOptionsFormatter, remove this line
+                    if ("durableTask".Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result.Add(name, JObject.FromObject(options).ToCamelCase());
+                    }
+                }
             }
 
             return result;
@@ -87,11 +104,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             configuration.Bind(key, concurrencyOption);
             var json = JsonConvert.SerializeObject(concurrencyOption, _concurrencySettings);
             return JObject.Parse(json);
-        }
-
-        private JObject FormatOptions(object options)
-        {
-            return JObject.Parse(JsonConvert.SerializeObject(options, _settings));
         }
     }
 }
