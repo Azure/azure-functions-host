@@ -384,6 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload();
             var triggers = JArray.Parse(_contentBuilder.ToString());
+            var triggersString = triggers.ToString(Formatting.None);
             Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
 
             var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Where(x => x.FormattedMessage.Contains("Content=")).ToList();
@@ -818,7 +819,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private string GetExpectedDefaultHttpExtensionPayload()
         {
-            return "{\"http\":{\"routePrefix\":\"api\",\"maxOutstandingRequests\":-1,\"maxConcurrentRequests\":-1,\"dynamicThrottlesEnabled\":false,\"enableChunkedRequestBinding\":false}}";
+            return "{\"http\":{\"dynamicThrottlesEnabled\":false,\"enableChunkedRequestBinding\":false,\"maxConcurrentRequests\":-1,\"maxOutstandingRequests\":-1,\"routePrefix\":\"api\"}}";
         }
 
         [Fact]
