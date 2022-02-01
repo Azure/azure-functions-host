@@ -69,19 +69,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         private BlobClient _hashBlobClient;
 
-        private static HashSet<string> _supportedExtensions = new HashSet<string>
-        {
-            // Filter the extensions that supported for the SyncTrigger
-            "durableTask",
-            "kafka",
-            "eventHubs",
-            "cosmosDB",
-            "queue",
-            "blob",
-            "http",
-            "serviceBus"
-        };
-
         public FunctionsSyncManager(IConfiguration configuration, IHostIdProvider hostIdProvider, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger<FunctionsSyncManager> logger, IHttpClientFactory httpClientFactory, ISecretManagerProvider secretManagerProvider, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, HostNameProvider hostNameProvider, IFunctionMetadataManager functionMetadataManager, IAzureBlobStorageProvider azureBlobStorageProvider)
         {
             _applicationHostOptions = applicationHostOptions;
@@ -440,10 +427,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var extensionsOptions = _syncTriggerOptionProvider.GetExtensionOptions();
             foreach (var extension in extensionsOptions)
             {
-                if (_supportedExtensions.Contains(extension.Key))
-                {
-                    json.Add(extension.Key, extension.Value);
-                }
+                json.Add(extension.Key, extension.Value);
             }
             return json;
         }
