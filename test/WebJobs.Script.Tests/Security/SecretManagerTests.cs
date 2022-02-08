@@ -1259,7 +1259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             return mockValueConverterFactory;
         }
 
-        internal SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
+        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
         {
             logger = logger ?? _logger;
             metricsLogger = metricsLogger ?? new TestMetricsLogger();
