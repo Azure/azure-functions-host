@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             if (bindings != null)
             {
-                return string.Join(",", bindings.ToList().Select(b => b.Type.ToString()));
+                return string.Join(",", bindings.Select(b => b.Type));
             }
             else
             {

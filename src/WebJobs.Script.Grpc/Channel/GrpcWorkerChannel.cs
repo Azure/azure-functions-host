@@ -299,11 +299,53 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
-                foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+
+                // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
+                // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
+                _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
+
+                // Check if the worker supports this feature
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
+                if (capabilityEnabled)
                 {
-                    SendFunctionLoadRequest(metadata, managedDependencyOptions);
+                    SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
+                }
+                else
+                {
+                    foreach (FunctionMetadata metadata in _functions)
+                    {
+                        SendFunctionLoadRequest(metadata, managedDependencyOptions);
+                    }
                 }
             }
+        }
+
+        internal void SendFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        {
+            _functionLoadRequestResponseEvent = _metricsLogger.LatencyEvent(MetricEventNames.FunctionLoadRequestResponse);
+
+            FunctionLoadRequestCollection functionLoadRequestCollection = GetFunctionLoadRequestCollection(functions, managedDependencyOptions);
+
+            _workerChannelLogger.LogDebug("Sending FunctionLoadRequestCollection with number of functions:'{count}'", functionLoadRequestCollection.FunctionLoadRequests.Count);
+
+            // send load requests for the registered functions
+            SendStreamingMessage(new StreamingMessage
+            {
+                FunctionLoadRequestCollection = functionLoadRequestCollection
+            });
+        }
+
+        internal FunctionLoadRequestCollection GetFunctionLoadRequestCollection(IEnumerable<FunctionMetadata> functions, ManagedDependencyOptions managedDependencyOptions)
+        {
+            var functionLoadRequestCollection = new FunctionLoadRequestCollection();
+
+            foreach (FunctionMetadata metadata in functions)
+            {
+                var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
+                functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
+            }
+
+            return functionLoadRequestCollection;
         }
 
         public Task SendFunctionEnvironmentReloadRequest()
@@ -525,8 +567,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         Metadata = functionMetadata,
                         Bindings = bindings,
-                        RetryOptions = metadata.RetryOptions,
-                        ConfigurationSource = metadata.ConfigSource,
                         UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
                     });
                 }

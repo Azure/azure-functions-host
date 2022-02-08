@@ -17,7 +17,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
     {
         private IScriptEventManager _eventManager;
         private IProcessRegistry _processRegistry;
-        private TestLogger _testLogger = new TestLogger("test");
+        private TestLogger _testUserLogger = new TestLogger("Host.Function.Console");
+        private TestLogger _testSystemLogger = new TestLogger("Worker.rpcWorkerProcess");
         private WorkerConsoleLogService _workerConsoleLogService;
         private WorkerConsoleLogSource _workerConsoleLogSource;
         private Mock<IServiceProvider> _serviceProviderMock;
@@ -30,31 +31,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _workerConsoleLogSource = new WorkerConsoleLogSource();
             _eventManager = new ScriptEventManager();
             _processRegistry = new EmptyProcessRegistry();
-            _workerConsoleLogService = new WorkerConsoleLogService(_testLogger, _workerConsoleLogSource);
+            _workerConsoleLogService = new WorkerConsoleLogService(_testUserLogger, _workerConsoleLogSource);
             _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErroLogsOnly);
+            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErroLogsOnly);
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");
-
-            workerProcess.BuildAndLogConsoleLog("LanguageWorkerConsoleLog[Test worker log]", LogLevel.Information);
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Message No keyword]");
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Error Message]");
+            workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Warning Message]");
 
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
-            var allLogs = _testLogger.GetLogMessages();
-            Assert.True(allLogs.Count == 4);
-            VerifyLogLevel(allLogs, "Test Error Message", LogLevel.Error);
-            VerifyLogLevel(allLogs, "Test Warning Message", LogLevel.Warning);
+            var userLogs = _testUserLogger.GetLogMessages();
+            var systemLogs = _testSystemLogger.GetLogMessages();
+            Assert.True(userLogs.Count == 3);
+            Assert.True(systemLogs.Count == 3);
+            VerifyLogLevel(userLogs, "Test Error Message", LogLevel.Error);
+            VerifyLogLevel(systemLogs, "[Test Worker Error Message]", LogLevel.Error);
+            VerifyLogLevel(userLogs, "Test Warning Message", LogLevel.Warning);
+            VerifyLogLevel(systemLogs, "[Test Worker Warning Message]", LogLevel.Warning);
             if (useStdErrForErroLogsOnly)
             {
-                VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Error);
+                VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Error);
+                VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Error);
             }
             else
             {
-                VerifyLogLevel(allLogs, "Test Message No keyword", LogLevel.Information);
+                VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Information);
+                VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Information);
             }
-
-            VerifyLogLevel(allLogs, "[Test worker log]", LogLevel.Debug);
         }
 
         private static void VerifyLogLevel(IList<LogMessage> allLogs, string msg, LogLevel expectedLevel)
