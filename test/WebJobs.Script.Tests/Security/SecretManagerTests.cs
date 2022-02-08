@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -17,6 +18,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
 using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Security.Utilities;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
@@ -64,6 +66,48 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public void SecretManager_GeneratesMasterKeysWithCorrectSeed()
+        {
+            // This is how the preliminary system key seed was generated.
+            // "Master01" can be used as the next string literal if this seed
+            // is versioned. The bytes are reversed in an attempt to retain a
+            // common prefix (left-hand data value) for the the seed if changed.
+            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master00").Reverse().ToArray());
+            Assert.Equal(expectedSeed, SecretManager.MasterKeySeed);
+
+            string secret = SecretManager.GenerateMasterKeyValue();
+            ValidateSecret(secret, SecretManager.MasterKeySeed);
+        }
+
+        [Fact]
+        public void SecretManager_GeneratesSystemKeyValuesWithCorrectSeed()
+        {
+            // This is how the preliminary system key seed was generated.
+            // "System01" can be used as the next string literal if this seed
+            // is versioned. The bytes are reversed in an attempt to retain a
+            // common prefix (left-hand data value) for the the seed if changed.
+            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System00").Reverse().ToArray());
+            Assert.Equal(expectedSeed, SecretManager.SystemKeySeed);
+
+            string secret = SecretManager.GenerateSystemKeyValue();
+            ValidateSecret(secret, SecretManager.SystemKeySeed);
+        }
+
+        [Fact]
+        public void SecretManager_GeneratesFunctionKeysWithCorrectSeed()
+        {
+            // This is how the preliminary system key seed was generated.
+            // "Functi01" can be used as the next string literal if this seed
+            // is versioned. The bytes are reversed in an attempt to retain a
+            // common prefix (left-hand data value) for the the seed if changed.
+            ulong expectedSeed = BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi00").Reverse().ToArray());
+            Assert.Equal(expectedSeed, SecretManager.FunctionKeySeed);
+
+            string secret = SecretManager.GenerateFunctionKeyValue();
+            ValidateSecret(secret, SecretManager.FunctionKeySeed);
+        }
+
+        [Fact]
         public async Task SecretManager_NewlyGeneratedKeysAreIdentifiable()
         {
             using (var directory = new TempDirectory())
@@ -77,41 +121,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 using (var secretManager = CreateSecretManager(directory.Path, createHostSecretsIfMissing: true))
                 {
                     var hostSecrets = await secretManager.GetHostSecretsAsync();
-
-                    // Here and elsewhere we elide the '!' character which is prepended to every
-                    // generated secret value, as a clue that actual encryption is simulated in
-                    // the test case.
-                    ValidateSecret(hostSecrets.MasterKey.Substring(1), SecretManager.MasterKeySeed);
-
-                    // Create host secrets if missing knob does not allocate a system
-                    // key. The system key creation/validation test is done in the
-                    // DefaultScriptWebHookProvider tests.
-                    Assert.True(hostSecrets.SystemKeys.Count == 0);
-
-                    foreach (string key in hostSecrets.FunctionKeys.Values)
-                    {
-                        ValidateSecret(key.Substring(1), SecretManager.FunctionKeySeed);
-                    }
+                    ValidateHostSecrets(hostSecrets);
                 }
             }
         }
 
+        private bool ValidateHostSecrets(HostSecretsInfo hostSecrets)
+        {
+            // Here and elsewhere we elide the '!' character which is prepended to every
+            // generated secret value, as a clue that actual encryption is simulated in
+            // the test case.
+            string normalizedKey = NormalizeKey(hostSecrets.MasterKey);
+            ValidateSecret(normalizedKey, SecretManager.MasterKeySeed);
+
+            // Create host secrets if missing knob does not allocate a system
+            // key. The system key creation/validation test is done in the
+            // DefaultScriptWebHookProvider tests.
+            Assert.True(hostSecrets.SystemKeys.Count == 0);
+
+            foreach (string key in hostSecrets.FunctionKeys.Values)
+            {
+                normalizedKey = NormalizeKey(key);
+                ValidateSecret(normalizedKey, SecretManager.FunctionKeySeed);
+            }
+
+            return true;
+        }
+
+        private string NormalizeKey(string key)
+        {
+            // Elide the '!' appended to secrets which are simulated as encrypted.
+            return key.StartsWith("!") ? key.Substring(1) : key;
+        }
+
         private static void ValidateSecret(string secret, ulong seed)
         {
-            // All Azure function keys are 40 bytes in length, 56 chars
-            // when base64-encoded. A URL friendly encoding elides the
-            // '==' padding, however.
-            Assert.True(secret.Length == 54);
+            Assert.True(IdentifiableSecrets.ValidateBase64Key(secret,
+                                                              seed,
+                                                              SecretManager.AzureFunctionsSignature,
+                                                              encodeForUrl: true));
+
+            // Strictly speaking, these tests shouldn't be required, failure
+            // would indicate a bug in the Microsoft.Security.Utilities API itself
+            // Still, this is a new dependency, so we'll do some sanity checking.
 
             // Azure Function secrets are base64-encoded using a URL friendly character set.
             // These tokens therefore never include the '+' or '/' characters.
             Assert.False(secret.Contains('+'));
             Assert.False(secret.Contains('/'));
 
-            Assert.True(IdentifiableSecrets.ValidateBase64Key(secret,
-                                                              seed,
-                                                              SecretManager.AzureFunctionsSignature,
-                                                              encodeForUrl: true));
+            // All Azure function keys are 40 bytes in length, 56 base64-encoded chars.
+            Assert.True(secret.Length == 56);
+            Assert.True(Base64UrlEncoder.DecodeBytes(secret).Length == 40);
 
             ulong[] testSeeds = new[]
             {
@@ -119,9 +180,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 SecretManager.MasterKeySeed, SecretManager.FunctionKeySeed,
             };
 
-            // Strictly speaking, these tests shouldn't be required, failure
-            // would indicate a bug in the Microsoft.Security.Utilities API itself
-            // Still, this is a new dependency, so we'll do some sanity checking.
+            // Verify that validation fails for incorrect seed values.
             foreach (ulong testSeed in testSeeds)
             {
                 if (testSeed == seed)
@@ -135,6 +194,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                                                                   SecretManager.AzureFunctionsSignature,
                                                                   encodeForUrl: true));
             }
+
+            // Validate that validation fails for an incorrect signature.
+            Assert.False(IdentifiableSecrets.ValidateBase64Key(secret,
+                                                  seed,
+                                                  "XXXX",
+                                                  encodeForUrl: true));
         }
 
         [Fact]
@@ -448,6 +513,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(1, testRepository.FunctionSecrets.Count);
                 var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
                 string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                ValidateSecret(defaultKeyValue, SecretManager.FunctionKeySeed);
                 Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
             }
         }
@@ -471,7 +537,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 // verify all calls return the same result
                 var masterKey = tasks.First().Result.MasterKey;
+                var functionKey = tasks.First().Result.FunctionKeys.First();
                 Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
+                Assert.True(tasks.Select(p => p.Result).All(q => q.FunctionKeys.First().Value == functionKey.Value));
+
+                // verify generated master and function keys are valid
+                tasks.Select(p => p.Result).All(q => ValidateHostSecrets(q));
             }
         }
 

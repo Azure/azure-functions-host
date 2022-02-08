@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Script.Tests.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Extensions.Logging;
 using Microsoft.Security.Utilities;
@@ -25,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             mockSecretManager = new Mock<ISecretManager>(MockBehavior.Strict);
             hostSecrets = new HostSecretsInfo();
+            hostSecrets.SystemKeys = new Dictionary<string, string>();
+            hostSecrets.FunctionKeys = new Dictionary<string, string>();
             var mockSecretManagerProvider = new Mock<ISecretManagerProvider>(MockBehavior.Strict);
             mockSecretManagerProvider.Setup(p => p.Current).Returns(mockSecretManager.Object);
             var loggerProvider = new TestLoggerProvider();
@@ -56,10 +59,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetUrl_GeneratesIdentifiableSystemSecret()
         {
+            string secretValue = string.Empty;
+
             var webHookProvider = CreateDefaultScriptWebHookProvider(out Mock<ISecretManager> mockSecretManager, out HostSecretsInfo hostSecrets);
             mockSecretManager.Setup(p => p.GetHostSecretsAsync()).ReturnsAsync(hostSecrets);
-
-            string secretValue = string.Empty;
 
             mockSecretManager.Setup(p =>
                 p.AddOrUpdateFunctionSecretAsync(
@@ -72,7 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // When an extension has no existing secret, one should be generated using
             // the Azure Functions system key seed and standard fixed signature.
-            hostSecrets.SystemKeys = new Dictionary<string, string>();
 
             var configProvider = new TestExtensionConfigProvider();
             var url = webHookProvider.GetUrl(configProvider);

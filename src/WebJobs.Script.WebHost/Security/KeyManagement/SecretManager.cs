@@ -40,23 +40,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         internal const string AzureFunctionsSignature = "AzFu";
 
-        // Checksum seed for master keys. The string transformation here results in a
-        // a seed that is versioned in the least significant bits (as a ulong):
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Master00").Reverse().ToArray());
-        // If there is a need to version, use "Master01" as the next string literal.
+        // Seeds (passed to the Marvin checksum algorithm) for grouping
+        // Azure Functions Host keys. See references from unit tests for
+        // information on how these seeds were generated/are versioned.
         internal const ulong MasterKeySeed = 0x4d61737465723030;
-
-        // Checksum seed for system keys.
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("System00").Reverse().ToArray());
-        // If there is a need to version, use "System01" as the next string literal.
         internal const ulong SystemKeySeed = 0x53797374656d3030;
-
-        // Checksum seed for function keys.
-        // BitConverter.ToUInt64(Encoding.ASCII.GetBytes("Functi00").Reverse());
-        // If there is a need to version, use "Functi01" next.
         internal const ulong FunctionKeySeed = 0x46756e6374693030;
 
-        // for testing
         public SecretManager()
         {
         }
@@ -614,16 +604,31 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
         }
 
+        internal static string GenerateMasterKeyValue()
+        {
+            return GenerateIdentifiableSecret(MasterKeySeed);
+        }
+
+        internal static string GenerateFunctionKeyValue()
+        {
+            return GenerateIdentifiableSecret(FunctionKeySeed);
+        }
+
+        internal static string GenerateSystemKeyValue()
+        {
+            return GenerateIdentifiableSecret(SystemKeySeed);
+        }
+
         private Key GenerateMasterKey()
         {
-            string secret = GenerateIdentifiableSecret(MasterKeySeed);
+            string secret = GenerateMasterKeyValue();
 
             return CreateKey(ScriptConstants.DefaultMasterKeyName, secret);
         }
 
         private Key GenerateFunctionKey()
         {
-            string secret = GenerateIdentifiableSecret(FunctionKeySeed);
+            string secret = GenerateFunctionKeyValue();
 
             return CreateKey(ScriptConstants.DefaultFunctionKeyName, secret);
         }
