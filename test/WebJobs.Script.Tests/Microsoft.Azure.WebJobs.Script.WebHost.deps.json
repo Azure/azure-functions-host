@@ -1323,7 +1323,7 @@
           }
         }
       },
-      "Microsoft.Security.Utilities/1.1.0": {
+      "Microsoft.Security.Utilities/1.3.0": {
         "runtime": {
           "lib/net5.0/Marvin.dll": {
             "assemblyVersion": "1.3.0.0",
