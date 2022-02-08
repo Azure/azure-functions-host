@@ -30,24 +30,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Name = "TestFunction"
             };
             metadata.Bindings.Add(new BindingMetadata { Type = "httpTrigger" });
-            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.In });
             metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.Out });
-            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
             metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
             var invokeLatencyEvent = _functionInstanceLogger.LogInvocationMetrics(metadata);
 
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
 
-            Assert.Equal(5, _metrics.LoggedEvents.Count());
+            Assert.Equal(3, _metrics.LoggedEvents.Count());
             Assert.Contains("function.binding.httptrigger_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.blob.in_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.blob.out_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.table.in_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.table.in_testfunction", _metrics.LoggedEvents);
+            Assert.Contains("function.binding.blob_testfunction", _metrics.LoggedEvents);
+            Assert.Contains("function.binding.table_testfunction", _metrics.LoggedEvents);
 
             // log the events once more
             invokeLatencyEvent = _functionInstanceLogger.LogInvocationMetrics(metadata);
-            Assert.Equal(10, _metrics.LoggedEvents.Count());
+            Assert.Equal(6, _metrics.LoggedEvents.Count());
         }
     }
 }
