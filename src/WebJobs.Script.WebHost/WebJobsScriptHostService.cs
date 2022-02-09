@@ -694,15 +694,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// <param name="instance">The <see cref="IHost"/> instance to remove</param>
         private async Task Orphan(IHost instance, CancellationToken cancellationToken = default)
         {
+            if (instance == null)
+            {
+                _logger.LogDebug("Cannot stop or dispose a null host instance.");
+                return;
+            }
+
             var isStandbyHost = false;
+            string hostInstanceId = "unknown";
             try
             {
-                var scriptHost = (ScriptHost)instance?.Services.GetService<ScriptHost>();
+                var scriptHost = instance.Services.GetService<ScriptHost>();
                 if (scriptHost != null)
                 {
                     scriptHost.HostInitializing -= OnHostInitializing;
                     scriptHost.HostInitialized -= OnHostInitialized;
                     isStandbyHost = scriptHost.IsStandbyHost;
+                    hostInstanceId = scriptHost.ScriptOptions.InstanceId;
                 }
             }
             catch (ObjectDisposedException)
@@ -712,45 +720,43 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
             try
             {
-                await (instance?.StopAsync(cancellationToken) ?? Task.CompletedTask);
+                await instance.StopAsync(cancellationToken);
             }
             catch (Exception ex) when (!ex.IsFatal())
             {
                 // some errors are expected here - e.g. in error/shutdown situations
                 // we might attempt to stop the host before it has fully started
+                _logger.LogError(ex, "Failed to stop host instance '{hostInstanceId}'.", hostInstanceId);
             }
             finally
             {
-                if (instance != null)
+                GetHostLogger(instance).LogDebug("Disposing ScriptHost.");
+
+                if (isStandbyHost && !_scriptWebHostEnvironment.InStandbyMode)
                 {
-                    GetHostLogger(instance).LogDebug("Disposing ScriptHost.");
-
-                    if (isStandbyHost && !_scriptWebHostEnvironment.InStandbyMode)
+                    // For cold start reasons delay disposing script host if specializing out of placeholder mode
+                    Utility.ExecuteAfterColdStartDelay(_environment, () =>
                     {
-                        // For cold start reasons delay disposing script host if specializing out of placeholder mode
-                        Utility.ExecuteAfterColdStartDelay(_environment, () =>
+                        try
                         {
-                            try
-                            {
-                                GetHostLogger(instance).LogDebug("Starting Standby ScriptHost dispose");
-                                instance.Dispose();
-                                _logger.LogDebug("Standby ScriptHost disposed");
-                            }
-                            catch (Exception e)
-                            {
-                                _logger.LogError(e, "Failed to dispose Standby ScriptHost instance");
-                                throw;
-                            }
-                        }, cancellationToken);
+                            GetHostLogger(instance).LogDebug("Starting Standby ScriptHost dispose");
+                            instance.Dispose();
+                            _logger.LogDebug("Standby ScriptHost disposed");
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.LogError(e, "Failed to dispose Standby ScriptHost instance");
+                            throw;
+                        }
+                    }, cancellationToken);
 
-                        _logger.LogDebug("Standby ScriptHost marked for disposal");
-                    }
-                    else
-                    {
-                        DisposeDependencyTrackingModule(instance);
-                        instance.Dispose();
-                        _logger.LogDebug("ScriptHost disposed");
-                    }
+                    _logger.LogDebug("Standby ScriptHost marked for disposal");
+                }
+                else
+                {
+                    DisposeDependencyTrackingModule(instance);
+                    instance.Dispose();
+                    _logger.LogDebug("ScriptHost disposed");
                 }
             }
         }
