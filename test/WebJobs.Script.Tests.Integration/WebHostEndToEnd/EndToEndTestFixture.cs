@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.BindingExtensions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
 using Microsoft.Azure.WebJobs.Script.Models;
+using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -316,6 +317,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var logs = Host.GetScriptHostLogMessages();
             var errors = logs.Where(x => x.Level == Microsoft.Extensions.Logging.LogLevel.Error).ToList();
             Assert.True(errors.Count > 0);
+        }
+
+        public async Task AddMasterKey(HttpRequestMessage request)
+        {
+            var masterKey = await Host.GetMasterKeyAsync();
+            request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, masterKey);
         }
 
         private class TestExtensionBundleManager : IExtensionBundleManager
