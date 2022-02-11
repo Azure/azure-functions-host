@@ -349,6 +349,7 @@ jobs:
     inputs:
       targetType: 'inline'
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
@@ -410,6 +411,11 @@ jobs:
     inputs:
       targetType: 'inline'
       script: 'Install-Module -Name Az.Storage -RequiredVersion 1.11.0 -Scope CurrentUser -Force -AllowClobber'
+  - task: Npm@1
+    displayName: 'npm ci'
+    inputs:
+      command: ci
+      workingDir: sample/CustomHandlerRetry
   - task: AzureKeyVault@1
     inputs:
       # Note: This is actually a Service Connection in DevOps, not an Azure subscription name
