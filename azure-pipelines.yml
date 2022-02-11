@@ -354,6 +354,11 @@ jobs:
     inputs:
       command: ci
       workingDir: sample/CustomHandlerRetry
+   - task: Npm@1
+     displayName: 'npm ci'
+     inputs:
+       command: ci
+       workingDir: /
 
   - task: AzureKeyVault@1
     inputs:
