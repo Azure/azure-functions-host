@@ -30,20 +30,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 Name = "TestFunction"
             };
             metadata.Bindings.Add(new BindingMetadata { Type = "httpTrigger" });
+            metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.In });
             metadata.Bindings.Add(new BindingMetadata { Type = "blob", Direction = BindingDirection.Out });
+            metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
             metadata.Bindings.Add(new BindingMetadata { Type = "table", Direction = BindingDirection.In });
             var invokeLatencyEvent = _functionInstanceLogger.LogInvocationMetrics(metadata);
 
             Assert.Equal($"{MetricEventNames.FunctionInvokeLatency}_testfunction", (string)invokeLatencyEvent);
 
-            Assert.Equal(3, _metrics.LoggedEvents.Count());
+            Assert.Equal(5, _metrics.LoggedEvents.Count());
             Assert.Contains("function.binding.httptrigger_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.blob_testfunction", _metrics.LoggedEvents);
-            Assert.Contains("function.binding.table_testfunction", _metrics.LoggedEvents);
+            Assert.Equal(1, _metrics.LoggedEvents.Count(x => x == "function.binding.httptrigger_testfunction"));
+
+            // for non-trigger bindings, event name does not include direction.
+            // So log entries for input and output binding will have same event name.
+            Assert.Equal(2, _metrics.LoggedEvents.Count(x => x == "function.binding.blob_testfunction"));
+            Assert.Equal(2, _metrics.LoggedEvents.Count(x => x == "function.binding.table_testfunction"));
 
             // log the events once more
             invokeLatencyEvent = _functionInstanceLogger.LogInvocationMetrics(metadata);
-            Assert.Equal(6, _metrics.LoggedEvents.Count());
+            Assert.Equal(10, _metrics.LoggedEvents.Count());
         }
     }
 }
