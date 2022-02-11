@@ -12,7 +12,12 @@ param (
     [Parameter(Mandatory=$true)]
     [ValidateNotNullOrEmpty()]
     [System.String]
-    $SourcePath
+    $SourcePath,
+
+    [Parameter(Mandatory=$false)]
+    [ValidateNotNullOrEmpty()]
+    [System.String]
+    $FunctionsRuntimeVersion = '4'
 )
 
 function WriteLog
@@ -53,7 +58,7 @@ function GetContentType
     {
         ".txt" { "text/plain" }
         ".json" { "application/json" }
-        default { "application/octet-stream"}
+        default { "application/octet-stream" }
     }
 }
 
@@ -95,13 +100,14 @@ function GetFunctionsBuildVersion
 
 WriteLog -Message "Script started."
 
+return
+
 if (-not (Test-Path $SourcePath))
 {
     throw "SourcePath '$SourcePath' does not exist."
 }
 
 $CONTAINER_NAME = "functionsbuilds"
-$FUNC_RUNTIME_VERSION = '3'
 
 # This is the list of files to upload
 $filesToUpload = @(
@@ -134,10 +140,10 @@ catch
 }
 
 # These are the destination paths in the storage account
-# "https://<storageAccountName>.blob.core.windows.net/$CONTAINER_NAME/$FUNC_RUNTIME_VERSION/latest/Functions.zip"
-# "https://<storageAccountName>.blob.core.windows.net/$CONTAINER_NAME/$FUNC_RUNTIME_VERSION/$version/Functions.<version>.zip"
-$latestDestinationPath = "$FUNC_RUNTIME_VERSION/latest"
-$versionDestinationPath = "$FUNC_RUNTIME_VERSION/$($version)"
+# "https://<storageAccountName>.blob.core.windows.net/$CONTAINER_NAME/$FunctionsRuntimeVersion/latest/PackageInfo.json"
+# "https://<storageAccountName>.blob.core.windows.net/$CONTAINER_NAME/$FunctionsRuntimeVersion/$version/Functions.<version>.zip"
+$latestDestinationPath = "$FunctionsRuntimeVersion/latest"
+$versionDestinationPath = "$FunctionsRuntimeVersion/$($version)"
 
 # Delete the files in the latest folder if it is not empty
 $filesToDelete = @(Get-AzStorageBlob -Container $CONTAINER_NAME -Context $context -ErrorAction SilentlyContinue | Where-Object {$_.Name -like "*$latestDestinationPath*" })
