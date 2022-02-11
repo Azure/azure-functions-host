@@ -47,7 +47,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.32" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4-11874" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0">
       <NoWarn>NU1701</NoWarn>
@@ -58,9 +58,9 @@
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="2.1.2" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS6" Version="3.0.630" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7" Version="3.0.1475" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.1" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.31" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.4-10859" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.1-10859" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.30-11874" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.2-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />    
     <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
