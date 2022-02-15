@@ -11,6 +11,12 @@ function Get-AzureFunctionsVersion {
     $suffixCmd = "/p:VersionSuffix=$suffix"
   }
 
+  Write-Host "buildNumber: $buildNumber"
+  if ($suffixCmd)
+  {
+    Write-Host "suffixCmd: $suffixCmd"
+  }
+
   # use the same logic as the projects to generate the site extension version
   $cmd = "build", "$PSScriptRoot\common.props", "/t:EchoVersion", "-restore:False", "/p:BuildNumber=$buildNumber", $suffixCmd, "--nologo", "-clp:NoSummary"  
   $version = (& dotnet $cmd).Trim()
