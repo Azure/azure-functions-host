@@ -62,13 +62,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
         }
 
-        public void PublishFunctionLoadResponsesEvent(List<string> functionIds)
+        public void PublishFunctionLoadResponsesEvent(List<string> functionIds, StatusResult statusResult)
         {
-            StatusResult statusResult = new StatusResult()
-            {
-                Status = StatusResult.Types.Status.Success
-            };
-
             FunctionLoadResponseCollection functionLoadResponseCollection = new FunctionLoadResponseCollection();
 
             foreach (string functionId in functionIds)
