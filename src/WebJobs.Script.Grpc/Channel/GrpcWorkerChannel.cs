@@ -228,7 +228,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return new WorkerInitRequest()
             {
                 HostVersion = ScriptHost.Version,
-                WorkerDirectory = _workerConfig.Description.WorkerDirectory
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
         }
 
