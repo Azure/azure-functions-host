@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -488,6 +489,18 @@ namespace Microsoft.Azure.WebJobs.Script
                 return concurrencyEnabled && string.IsNullOrEmpty(environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName));
             }
             return false;
+        }
+
+        public static HashSet<string> GetLanguageWorkerListToStartInPlaceholder(this IEnvironment environment)
+        {
+            string placeholderList = environment.GetEnvironmentVariableOrDefault(RpcWorkerConstants.FunctionWorkerPlaceholderModeListSettingName, string.Empty);
+            var placeholderRuntimeSet = new HashSet<string>(placeholderList.Trim().Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(p => p.Trim()));
+            string workerRuntime = environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            if (!string.IsNullOrEmpty(workerRuntime))
+            {
+                placeholderRuntimeSet.Add(workerRuntime);
+            }
+            return placeholderRuntimeSet;
         }
     }
 }

@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.IO;
 using System.Threading;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.WebHost;
@@ -26,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             _options = new ScriptApplicationHostOptions
             {
-                SecretsPath = "c:\\path1"
+                SecretsPath = Path.Combine("c:", "path1")
             };
             var factory = new TestOptionsFactory<ScriptApplicationHostOptions>(_options);
             _tokenSource = new TestChangeTokenSource<ScriptApplicationHostOptions>();

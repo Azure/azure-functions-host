@@ -60,11 +60,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             _hostOptions = new ScriptApplicationHostOptions
             {
-                ScriptPath = @"x:\root",
+                ScriptPath = Path.Combine("x:", "root"),
                 IsSelfHost = false,
-                LogPath = @"x:\tmp\log",
-                SecretsPath = @"x:\secrets",
-                TestDataPath = @"x:\sampledata"
+                LogPath = Path.Combine("x:", "tmp", "log"),
+                SecretsPath = Path.Combine("x:", "secrets"),
+                TestDataPath = Path.Combine("x:", "sampledata")
             };
 
             var jobHostOptions = new ScriptJobHostOptions
@@ -343,18 +343,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 var logs = _loggerProvider.GetAllLogMessages().Where(m => m.Category.Equals(SyncManagerLogCategory)).Select(p => p.FormattedMessage).ToArray();
                 Assert.Equal("No functions found. Skipping Sync operation.", logs.Single());
-            }
-        }
-
-        [Fact]
-        public async Task TrySyncTriggers_ClearsSecretsCache()
-        {
-            using (var env = new TestScopedEnvironmentVariable(_vars))
-            {
-                var result = await _functionsSyncManager.TrySyncTriggersAsync();
-                Assert.True(result.Success);
-
-                _secretManagerMock.Verify(p => p.ClearCache(), Times.Once);
             }
         }
 

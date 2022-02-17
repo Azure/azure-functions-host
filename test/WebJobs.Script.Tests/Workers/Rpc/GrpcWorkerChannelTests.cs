@@ -110,6 +110,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public async Task StartWorkerProcessAsync_ThrowsTaskCanceledException_IfDisposed()
+        {
+            var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
+            _workerChannel.Dispose();
+            _testFunctionRpcService.PublishStartStreamEvent(_workerId);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent();
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                await initTask;
+            });
+        }
+
+        [Fact]
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
@@ -449,13 +462,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void ReceivesInboundEvent_WorkerMetadataResponse()
+        public void ReceivesInboundEvent_Successful_FunctionMetadataResponses()
         {
             var functionMetadata = GetTestFunctionsList("python");
-            var functions = _workerChannel.WorkerGetFunctionMetadata();
-            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionMetadata);
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, true);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Received the worker function metadata response from worker {_workerChannel.Id}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_FunctionMetadataResponses()
+        {
+            var functionMetadata = GetTestFunctionsList("python");
+            var functions = _workerChannel.GetFunctionMetadata();
+            var functionId = "id123";
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
         }
 
         [Fact]

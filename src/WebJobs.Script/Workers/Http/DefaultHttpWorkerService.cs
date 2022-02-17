@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
 
                     HttpResponseMessage invocationResponse = await SendInvocationRequestAsync(scriptInvocationContext, httpRequestMessage);
 
-                    // Only process output bindings if response is succeess code
+                    // Only process output bindings if response is success code
                     invocationResponse.EnsureSuccessStatusCode();
 
                     HttpScriptInvocationResult httpScriptInvocationResult = await GetHttpScriptInvocationResult(invocationResponse);

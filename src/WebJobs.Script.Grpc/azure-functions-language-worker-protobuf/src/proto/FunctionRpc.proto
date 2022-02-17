@@ -67,7 +67,7 @@ message StreamingMessage {
 
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
-
+    
     FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
     FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
@@ -77,9 +77,8 @@ message StreamingMessage {
     CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
 
     // Worker indexing message types
-    WorkerFunctionMetadataRequest worker_function_metadata_request = 29;
-    WorkerFunctionMetadataResponse worker_function_metadata_response = 30;
-    WorkerFunctionMetadata worker_function_metadata = 31;
+    FunctionsMetadataRequest functions_metadata_request = 29;
+    FunctionMetadataResponses function_metadata_responses = 30;
   }
 }
 
@@ -265,51 +264,36 @@ message RpcFunctionMetadata {
 
   // Is set to true for proxy
   bool is_proxy = 7;
-}
-
-// Host tells worker it is ready to receive metadata
-message WorkerFunctionMetadataRequest {
-  // base directory for function app
-  string directory = 1;
-}
-
-// Worker sends function metadata back to host
-message WorkerFunctionMetadataResponse {
-  // list of function indexing responses
-  repeated WorkerFunctionMetadata results = 1;
-
-  // status of overall metadata request
-  StatusResult overall_status = 2;
-}
-
-// Message type that holds function metadata information
-message WorkerFunctionMetadata {
-  // function name
-  string name = 4;
-
-  // base directory for the Function
-  string directory = 1;
-
-  // Script file specified
-  string script_file = 2;
-
-  // Entry point specified
-  string entry_point = 3;
-
-  // Function id
-  string id = 11;
-
-  // Bindings info
-  repeated string bindings = 6;
-
-  // Is set to true for proxy
-  bool is_proxy = 7;
 
   // Function indexing status
   StatusResult status = 8;
 
   // Function language
   string language = 9;
+
+  // Raw binding info
+  repeated string raw_bindings = 10;
+
+  // Retry Options: string representation of JObject retry options (maxRetryCount, intervals, etc.)
+  string retry_options = 11;
+
+  // Configuration Source: string representation of JToken configuration source property in function metadata
+  string config_source = 12;
+}
+
+// Host tells worker it is ready to receive metadata
+message FunctionsMetadataRequest {
+  // base directory for function app
+  string function_app_directory = 1;
+}
+
+// Worker sends function metadata back to host
+message FunctionMetadataResponses {
+  // list of function indexing responses
+  repeated FunctionLoadRequest function_load_requests_results = 1;
+
+  // status of overall metadata request
+  StatusResult result = 2;
 }
 
 // Host requests worker to invoke a Function
@@ -503,8 +487,9 @@ message RpcLog {
 
   // Category of the log. Defaults to User if not specified.
   enum RpcLogCategory {
-	User = 0;
-	System = 1;
+    User = 0;
+    System = 1;
+    CustomMetric = 2;
   }
 
   // Unique id for invocation (if exists)
@@ -526,11 +511,14 @@ message RpcLog {
   // Exception (if exists)
   RpcException exception = 6;
 
-  // json serialized property bag, or could use a type scheme like map<string, TypedData>
+  // json serialized property bag
   string properties = 7;
 
-  // Category of the log. Either user(default) or system.
+  // Category of the log. Either user(default), system, or custom metric.
   RpcLogCategory log_category = 8;
+
+  // strongly-typed (ish) property bag
+  map<string, TypedData> propertiesMap = 9;
 }
 
 // Encapsulates an Exception 

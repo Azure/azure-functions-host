@@ -7,6 +7,7 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -28,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public FunctionMetadataManagerTests()
         {
             _mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..\..\..\..\..\sample\node");
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             _defaultHttpWorkerOptions = new HttpWorkerOptions();
             _scriptJobHostOptions.RootScriptPath = functionsPath;
 
@@ -63,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             ImmutableDictionary<string, ImmutableArray<string>> mockFunctionErrors = new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray());
             Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false)).Returns(functionMetadataCollection.ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(It.IsAny<IEnumerable<RpcWorkerConfig>>(), false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(mockFunctionErrors);
 
             var managerMock = new Mock<IScriptHostManager>();
@@ -90,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionProvider = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             functionMetadataCollection.Add(GetTestFunctionMetadata(scriptFile));
@@ -142,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionProvider = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "anotherFunction"));
@@ -169,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionProvider = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "anotherFunction"));
@@ -190,9 +191,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionMetadataCollection = new Collection<FunctionMetadata>();
             var mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
             var mockFunctionProvider = new Mock<IFunctionProvider>();
+
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             const string aFunction = "aFunction";
@@ -229,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionProviderDuplicate = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "duplicateFunction"));
@@ -242,7 +244,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             FunctionMetadataManager testFunctionMetadataManager = TestFunctionMetadataManager.GetFunctionMetadataManager(new OptionsWrapper<ScriptJobHostOptions>(_scriptJobHostOptions),
                 mockFunctionMetadataProvider.Object, new List<IFunctionProvider>() { mockFunctionProvider.Object, mockFunctionProviderDuplicate.Object },
-                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(), new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
+                new OptionsWrapper<HttpWorkerOptions>(_defaultHttpWorkerOptions), MockNullLoggerFactory.CreateLoggerFactory(),
+                new OptionsWrapper<LanguageWorkerOptions>(TestHelpers.GetTestLanguageWorkerOptions()));
 
             var ex = Assert.Throws<InvalidOperationException>(() => testFunctionMetadataManager.LoadFunctionMetadata());
             Assert.Equal("Found duplicate FunctionMetadata with the name duplicateFunction", ex.Message);
@@ -257,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var mockFunctionProvider = new Mock<IFunctionProvider>();
             var workerConfigs = TestHelpers.GetTestWorkerConfigs();
 
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadata(workerConfigs, false)).Returns(new Collection<FunctionMetadata>().ToImmutableArray());
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, false)).Returns(Task.FromResult(new Collection<FunctionMetadata>().ToImmutableArray()));
             mockFunctionMetadataProvider.Setup(m => m.FunctionErrors).Returns(new Dictionary<string, ICollection<string>>().ToImmutableDictionary(kvp => kvp.Key, kvp => kvp.Value.ToImmutableArray()));
 
             functionMetadataCollection.Add(GetTestFunctionMetadata("somefile.dll", name: "myFunction"));
