@@ -35,12 +35,13 @@ jobs:
   condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
   variables:
     ${{ if or( eq( variables['Build.Reason'], 'PullRequest' ), and( not( contains( variables['Build.SourceBranch'], 'release/4.' ) ), not( contains( variables['Build.SourceBranch'], 'release/ExtensionsMetadataGenerator/' ) ) ) ) }}:
-      suffixTemp: $(buildNumber)
-      packSuffixSwitchTemp: --version-suffix $(buildNumber)
-      emgSuffixSwitchTemp: --version-suffix ci$(buildNumber)
+      suffixTemp: $(artifactsBuildNumber)
+      packSuffixSwitchTemp: --version-suffix $(artifactsBuildNumber)
+      emgSuffixSwitchTemp: --version-suffix ci$(artifactsBuildNumber)
     suffix: $[variables.suffixTemp] # this resolves to an empty string if it is missing
     packSuffixSwitch: $[variables.packSuffixSwitchTemp]
     emgSuffixSwitch: $[variables.emgSuffixSwitchTemp]
+    artifactsBuildNumber: $[dependencies.InitializePipeline.outputs['Initialize.ArtifactsBuildNumber']]
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
@@ -56,7 +57,7 @@ jobs:
     displayName: "Build artifacts"
     inputs:
       filePath: '$(Build.Repository.LocalPath)\build\build-extensions.ps1'
-      arguments: '-buildNumber "$(buildNumber)" -suffix "$(suffix)"'
+      arguments: -buildNumber "$(artifactsBuildNumber)" -suffix "$(suffix)"
   - task: CopyFiles@2
     inputs:
       SourceFolder: '$(Build.Repository.LocalPath)\buildoutput'
@@ -67,7 +68,7 @@ jobs:
     inputs:
       command: 'custom'
       custom: 'pack'
-      arguments: -o packages -p:BuildNumber=$(buildNumber) -c Release $(packSuffixSwitch)
+      arguments: -o packages -p:BuildNumber=$(artifactsBuildNumber) -c Release $(packSuffixSwitch)
       projects: |
         **\WebJobs.Script.csproj
         **\WebJobs.Script.WebHost.csproj
