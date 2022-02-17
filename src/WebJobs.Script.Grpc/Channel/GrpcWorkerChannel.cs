@@ -294,11 +294,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .Timeout(_functionLoadTimeout)
                         .Take(_functions.Count())
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
+                        .Timeout(_functionLoadTimeout)
+                        .Take(_functions.Count())
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
                 }
                 else
                 {
                     _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
+
+                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
+                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
                 }
 
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
@@ -460,6 +468,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+        }
+
+        internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
+        {
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponseCollection with number of functions: '{count}'.", loadResponseCollection.FunctionLoadResponses.Count);
+
+            foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
+            {
+                LoadResponse(loadResponse);
+            }
         }
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
