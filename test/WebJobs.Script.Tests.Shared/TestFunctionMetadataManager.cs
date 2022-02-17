@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var changeTokens = new[] { source };
             var optionsMonitor = new OptionsMonitor<ScriptApplicationHostOptions>(factory, changeTokens, factory);
 
-            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, SystemEnvironment.Instance);
+            return new FunctionMetadataManager(jobHostOptions, functionMetadataProvider, httpOptions, managerMock.Object, loggerFactory, languageWorkerOptions, optionsMonitor, SystemEnvironment.Instance);
         }
     }
 }

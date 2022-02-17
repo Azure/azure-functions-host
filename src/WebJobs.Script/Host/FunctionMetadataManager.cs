@@ -24,6 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private const string _functionConfigurationErrorMessage = "Unable to determine the primary function script.Make sure atleast one script file is present.Try renaming your entry point script to 'run' or alternatively you can specify the name of the entry point script explicitly by adding a 'scriptFile' property to your function metadata.";
         private readonly IServiceProvider _serviceProvider;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private IFunctionMetadataProvider _functionMetadataProvider;
         private bool _isHttpWorker;
         private IEnvironment _environment;
@@ -36,13 +37,14 @@ namespace Microsoft.Azure.WebJobs.Script
         private ConcurrentDictionary<string, FunctionMetadata> _functionMetadataMap = new ConcurrentDictionary<string, FunctionMetadata>(StringComparer.OrdinalIgnoreCase);
 
         public FunctionMetadataManager(IOptions<ScriptJobHostOptions> scriptOptions, IFunctionMetadataProvider functionMetadataProvider,
-            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory, IOptions<LanguageWorkerOptions> languageWorkerOptions, IEnvironment environment)
+            IOptions<HttpWorkerOptions> httpWorkerOptions, IScriptHostManager scriptHostManager, ILoggerFactory loggerFactory,
+            IOptions<LanguageWorkerOptions> languageWorkerOptions, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IEnvironment environment)
         {
             _scriptOptions = scriptOptions;
             _languageWorkerOptions = languageWorkerOptions;
             _serviceProvider = scriptHostManager as IServiceProvider;
             _functionMetadataProvider = functionMetadataProvider;
-
+            _applicationHostOptions = applicationHostOptions;
             _loggerFactory = loggerFactory;
             _logger = loggerFactory.CreateLogger(LogCategories.Startup);
             _isHttpWorker = httpWorkerOptions?.Value?.Description != null;
@@ -132,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script
             ImmutableArray<FunctionMetadata> immutableFunctionMetadata;
             var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
 
-            IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider);
+            IFunctionMetadataProvider metadataProvider = new AggregateFunctionMetadataProvider(_loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(), dispatcher, _functionMetadataProvider, _applicationHostOptions);
 
             immutableFunctionMetadata = metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, forceRefresh).GetAwaiter().GetResult();
 
