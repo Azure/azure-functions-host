@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         await _dispatcher.FinishInitialization(functions);
                     }
 
-                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateAppFormat());
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateAppFormat(_applicationHostOptions.CurrentValue.ScriptPath, _logger));
                 }
                 if (!workerIndexing || IsDefaultIndexingRequired(rawFunctions))
                 {
@@ -88,19 +88,25 @@ namespace Microsoft.Azure.WebJobs.Script
             return _functions;
         }
 
-        public void ValidateAppFormat(IFileSystem fileSystem = null)
+        internal static void ValidateAppFormat(string scriptPath, ILogger logger, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
+            bool mixedApp = false;
 
-            if (fileSystem.Directory.Exists(_applicationHostOptions.CurrentValue.ScriptPath))
+            if (fileSystem.Directory.Exists(scriptPath))
             {
-                var functionDirectories = fileSystem.Directory.EnumerateDirectories(_applicationHostOptions.CurrentValue.ScriptPath).ToImmutableArray();
+                var functionDirectories = fileSystem.Directory.EnumerateDirectories(scriptPath).ToImmutableArray();
                 foreach (var functionDirectory in functionDirectories)
                 {
                     if (Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
                     {
-                        _logger.Log(LogLevel.Information, "Detected mixed function app. All functions may not be indexed.");
+                        mixedApp = true;
                     }
+                }
+
+                if (mixedApp)
+                {
+                    logger.Log(LogLevel.Information, "Detected mixed function app. All functions may not be indexed.");
                 }
             }
         }

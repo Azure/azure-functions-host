@@ -8,21 +8,32 @@ using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
+using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class WorkerFunctionMetadataProviderTests
+    public class AggregateFunctionMetadataProviderTests
     {
+        private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
 
-        public WorkerFunctionMetadataProviderTests()
+        public AggregateFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            /*
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(
+                _loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>(),
+                RpcFunctionInvocationDispatcherTests.GetTestFunctionDispatcher(3, runtime: RpcWorkerConstants.NodeLanguageWorkerName),
+                TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions),
+                );
+            */
         }
 
         [Fact]
@@ -135,6 +146,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.", ex.Message);
+        }
+
+        [Fact]
+        public void GetFunctionMetadataAsync_MixedApp()
+        {
+            var logger = new TestLogger("FunctionDispatcherTests");
+            string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            AggregateFunctionMetadataProvider.ValidateAppFormat(scriptPath, logger);
+            var traces = logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
+            Assert.True(functionLoadLogs.Any());
         }
     }
 }
