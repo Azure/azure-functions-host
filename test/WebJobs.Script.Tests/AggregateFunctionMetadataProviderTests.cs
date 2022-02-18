@@ -151,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetFunctionMetadataAsync_MixedApp()
         {
-            var logger = new TestLogger("FunctionDispatcherTests");
+            var logger = new TestLogger("AggregateFunctionMetadataProviderTests");
             string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             AggregateFunctionMetadataProvider.ValidateAppFormat(scriptPath, logger);
             var traces = logger.GetLogMessages();
