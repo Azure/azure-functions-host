@@ -589,6 +589,7 @@ jobs:
         **\WebJobs.Script.Tests.Integration.csproj
   - task: DotNetCoreCLI@2
     displayName: "Release verification tests"
+    condition: eq(variables['isReleaseBranch'], 'True')
     inputs:
       command: 'test'
       testRunTitle: "Release verification tests"
