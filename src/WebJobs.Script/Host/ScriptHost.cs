@@ -962,8 +962,17 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.ScriptHostStarted((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
         }
 
+        protected override async Task StopAsyncCore(CancellationToken cancellationToken)
+        {
+            _logger.StoppingScriptHost(ScriptOptions.InstanceId);
+            await base.StopAsyncCore(cancellationToken);
+            _logger.StoppedScriptHost(ScriptOptions.InstanceId);
+        }
+
         protected override void Dispose(bool disposing)
         {
+            _logger.DisposingScriptHost(ScriptOptions.InstanceId);
+
             if (disposing)
             {
                 foreach (var subscription in _eventSubscriptions)
@@ -990,6 +999,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // dispose base last to ensure that errors there don't
             // cause us to not dispose ourselves
             base.Dispose(disposing);
+
+            _logger.DisposedScriptHost(ScriptOptions.InstanceId);
         }
     }
 }
