@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
 
             Assert.True(file.Exists, $"Expected PGO file '{file.FullName}' does not exist. The file was either renamed or deleted.");
             var lineCount = File.ReadAllLines(path).Length;
-            Assert.True(lineCount > 6500, $"Jit Trace file line count of {lineCount} is less than 6500 lines! There is likely a bug removing lines from the linux trace.");
+            Assert.True(lineCount > 6500, $"Jit Trace file line count of {lineCount} for {fileName} is less than 6500 lines! There is likely a bug removing lines from the linux trace.");
         }
     }
 }
