@@ -2,6 +2,7 @@
 <!-- Please add your release notes in the following format:
 - My change description (#PR)
 -->
+- Update Python Worker Version to [4.0.0](https://github.com/Azure/azure-functions-python-worker/releases/tag/4.0.0)
 - Fixing race during language worker start (#7979)
 - Updated Java Worker Version to [2.2.1-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.2.1-SNAPSHOT)
 - Updated Node.js Worker Version to [3.1.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.1.0)
