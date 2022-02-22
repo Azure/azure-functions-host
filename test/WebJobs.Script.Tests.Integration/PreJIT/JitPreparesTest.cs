@@ -16,7 +16,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
     {
         [Theory]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
-        [InlineData(WarmUpConstants.LinuxJitTraceFileName, 1.0)]
         [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
         public void ColdStart_JitFailuresTest(string fileName, double threshold)
         {
@@ -35,7 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
         }
 
         [Theory]
-        [InlineData(WarmUpConstants.JitTraceFileName)]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
         public void ColdStart_JitFailuresTest(string fileName)
         {
