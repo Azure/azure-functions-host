@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Logging;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
@@ -22,45 +23,71 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
+        private readonly IFunctionsHostingConfigurations _functionsHostingConfigurations;
+        private readonly IApplicationLifetime _applicationLifetime;
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private IFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
+        private System.Timers.Timer _activationTimer;
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
+        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
         private bool _disposed = false;
 
-        public WorkerConcurrencyManager(IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
-            IEnvironment environment, IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions, ILoggerFactory loggerFactory)
+        public WorkerConcurrencyManager(
+            IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
+            IEnvironment environment,
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IFunctionsHostingConfigurations functionsHostingConfigurations,
+            IApplicationLifetime applicationLifetime,
+            ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _workerConcurrencyOptions = workerConcurrencyOptions;
-
+            _functionsHostingConfigurations = functionsHostingConfigurations;
+            _applicationLifetime = applicationLifetime;
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
+        }
+
+        // For tests
+        public TimeSpan ActivationTimerInterval
+        {
+            get => _activationTimerInterval;
+            set => _activationTimerInterval = value;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
+            // the feature applies only to "node","powershell","python"
+            string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime).ToLower();
+            if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
+                || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
+                || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+            {
+                _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
 
-            if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
-            {
-                _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
-                return Task.CompletedTask;
-            }
-            string workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
-            if (_environment.IsWorkerDynamicConcurrencyEnabled())
-            {
-                _logger.LogDebug($"Starting dynamic worker concurrency monitoring.");
-                _timer = new System.Timers.Timer()
+                if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
                 {
-                    AutoReset = false,
-                    Interval = _workerConcurrencyOptions.Value.CheckInterval.TotalMilliseconds,
-                };
-
-                _timer.Elapsed += OnTimer;
-                _timer.Start();
+                    _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
+                    return Task.CompletedTask;
+                }
+                if (_environment.IsWorkerDynamicConcurrencyEnabled())
+                {
+                    Activate();
+                }
+                else
+                {
+                    // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
+                    _activationTimer = new System.Timers.Timer()
+                    {
+                        AutoReset = false,
+                        Interval = _activationTimerInterval.TotalMilliseconds
+                    };
+                    _activationTimer.Elapsed += OnActivationTimer;
+                    _activationTimer.Start();
+                }
             }
 
             return Task.CompletedTask;
@@ -98,6 +125,53 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 // don't allow background exceptions to escape
                 _logger.LogError(ex, "Error monitoring worker concurrency");
             }
+            _timer.Start();
+        }
+
+        private void OnActivationTimer(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_timer == null && _functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
+                {
+                    // if the feature is not active and ScmHostingConfigurations has the flag
+                    Activate();
+                    _logger.LogDebug($"Dynamic worker concurrency monitoring was started by activation timer.");
+                }
+                else if (_timer != null && !_functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
+                {
+                    // if the feature was activated by FunctionsHostingConfigurations and then disabled - shutdown the host
+                    _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
+                    _applicationLifetime.StopApplication();
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Best effort
+                _logger.LogError(ex, "Error on activation worker concurrency monitoring");
+                // return and do not start the activation timmer again
+                return;
+            }
+
+            _activationTimer.Start();
+        }
+
+        private void Activate()
+        {
+            _logger.LogDebug("Starting dynamic worker concurrency monitoring.");
+            _timer = new System.Timers.Timer()
+            {
+                AutoReset = false,
+                Interval = _workerConcurrencyOptions.Value.CheckInterval.TotalMilliseconds,
+            };
+
+            _timer.Elapsed += OnTimer;
             _timer.Start();
         }
 
@@ -188,6 +262,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
                 if (disposing)
                 {
                     _timer?.Dispose();
+                    _activationTimer?.Dispose();
                 }
 
                 _disposed = true;
