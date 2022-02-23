@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
         [Theory]
         [InlineData(WarmUpConstants.JitTraceFileName, 1.0)]
         [Trait(TestTraits.Group, TestTraits.ReleaseTests)]
-        public void ColdStart_JitFailuresTest(string fileName, double threshold)
+        public void ColdStart_JitFailuresTest_Windows(string fileName, double threshold)
         {
             var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.PreJIT
 
         [Theory]
         [InlineData(WarmUpConstants.LinuxJitTraceFileName)]
-        public void ColdStart_JitFailuresTest(string fileName)
+        public void ColdStart_JitFailuresTest_Linux(string fileName)
         {
             var path = Path.Combine(Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath), WarmUpConstants.PreJitFolderName, fileName);
 
