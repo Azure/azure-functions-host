@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
-    internal class FunctionsRuntimeConfigurations : IFunctionsHostingConfigurations
+    internal class FunctionsHostingConfigurations : IFunctionsHostingConfigurations
     {
         private readonly TimeSpan _updateInterval = TimeSpan.FromMinutes(10);
         private readonly IEnvironment _environment;
@@ -21,10 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         private DateTime _configTTL = DateTime.UtcNow.AddMinutes(10); // next sync will be in 10 minutes
         private Dictionary<string, string> _configs;
 
-        public FunctionsRuntimeConfigurations (IEnvironment environment, ILoggerFactory loggerFactory)
+        public FunctionsHostingConfigurations (IEnvironment environment, ILoggerFactory loggerFactory)
         {
             _environment = environment;
-            _logger = loggerFactory.CreateLogger<FunctionsRuntimeConfigurations>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _logger = loggerFactory.CreateLogger<FunctionsHostingConfigurations>() ?? throw new ArgumentNullException(nameof(loggerFactory));
             _configFilePath = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeConfigFilePath);
             if (string.IsNullOrEmpty(_configFilePath))
             {
@@ -33,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         }
 
         // For tests
-        internal FunctionsRuntimeConfigurations (IEnvironment environment, ILoggerFactory loggerFactory, string configsFile, DateTime configsTTL, TimeSpan updateInterval)
+        internal FunctionsHostingConfigurations (IEnvironment environment, ILoggerFactory loggerFactory, string configsFile, DateTime configsTTL, TimeSpan updateInterval)
             : this(environment, loggerFactory)
         {
             _configFilePath = configsFile;

@@ -60,33 +60,37 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            // the feature applies only to "node","powershell","python"
-            string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime).ToLower();
-            if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
-                || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
-                || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+            string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            if (!string.IsNullOrEmpty(workerRuntime))
             {
-                _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
+                // the feature applies only to "node","powershell","python"
+                workerRuntime = workerRuntime.ToLower();
+                if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
+                    || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
+                    || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+                {
+                    _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
 
-                if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
-                {
-                    _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
-                    return Task.CompletedTask;
-                }
-                if (_environment.IsWorkerDynamicConcurrencyEnabled())
-                {
-                    Activate();
-                }
-                else
-                {
-                    // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
-                    _activationTimer = new System.Timers.Timer()
+                    if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
                     {
-                        AutoReset = false,
-                        Interval = _activationTimerInterval.TotalMilliseconds
-                    };
-                    _activationTimer.Elapsed += OnActivationTimer;
-                    _activationTimer.Start();
+                        _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
+                        return Task.CompletedTask;
+                    }
+                    if (_environment.IsWorkerDynamicConcurrencyEnabled())
+                    {
+                        Activate();
+                    }
+                    else
+                    {
+                        // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
+                        _activationTimer = new System.Timers.Timer()
+                        {
+                            AutoReset = false,
+                            Interval = _activationTimerInterval.TotalMilliseconds
+                        };
+                        _activationTimer.Elapsed += OnActivationTimer;
+                        _activationTimer.Start();
+                    }
                 }
             }
 
