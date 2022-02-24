@@ -118,6 +118,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
                     workerDescription.WorkerDirectory = workerDir;
 
+                    //Read the profiles from worker description and load the profile for which the conditions match
+                    List<RpcWorkerDescriptionProfile> descriptionProfiles = ReadWorkerDescriptionFromProfiles(workerConfig);
+                    if ( descriptionProfiles.Count > 0)
+                    {
+                        workerDescription = LoadWorkerDescriptionFromProfiles(descriptionProfiles, workerDescription);
+                    }
+
                     // Check if any appsettings are provided for that langauge
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
@@ -157,6 +164,91 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
                 }
             }
+        }
+
+        private List<RpcWorkerDescriptionProfile> ReadWorkerDescriptionFromProfiles(JObject workerConfig)
+        {
+            List<RpcWorkerDescriptionProfile> descriptionProfiles = new List<RpcWorkerDescriptionProfile>();
+            JToken profiles = workerConfig.GetValue(RpcWorkerConstants.WorkerDescriptionProfiles);
+            if (profiles != null)
+            {
+                try
+                {
+                    descriptionProfiles = profiles.ToObject<List<RpcWorkerDescriptionProfile>>();
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogDebug(ex, $"Failed to parse profiles. Default worker description will be used.");
+                }
+            }
+            return descriptionProfiles;
+        }
+
+        private RpcWorkerDescription LoadWorkerDescriptionFromProfiles(List<RpcWorkerDescriptionProfile> descriptionProfiles, RpcWorkerDescription defaultWorkerDescription)
+        {
+            foreach (var profile in descriptionProfiles)
+            {
+                if ( profile.Validate() && CheckProfileConditions(profile))
+                {
+                    RpcWorkerDescription profileDescription = profile.ProfileDescription;
+                    profileDescription.Arguments = profileDescription.Arguments?.Count > 0 ? profileDescription.Arguments : defaultWorkerDescription.Arguments;
+                    profileDescription.DefaultExecutablePath = string.IsNullOrEmpty(profileDescription.DefaultExecutablePath) ? defaultWorkerDescription.DefaultExecutablePath : profileDescription.DefaultExecutablePath;
+                    profileDescription.DefaultWorkerPath = string.IsNullOrEmpty(profileDescription.DefaultWorkerPath) ? defaultWorkerDescription.DefaultWorkerPath : profileDescription.DefaultWorkerPath;
+                    profileDescription.Extensions = profileDescription.Extensions?.Count > 0 ? profileDescription.Extensions : defaultWorkerDescription.Extensions;
+                    profileDescription.Language = string.IsNullOrEmpty(profileDescription.Language) ? defaultWorkerDescription.Language : profileDescription.Language;
+                    profileDescription.WorkerDirectory = string.IsNullOrEmpty(profileDescription.WorkerDirectory) ? defaultWorkerDescription.WorkerDirectory : profileDescription.WorkerDirectory;
+                    return profileDescription;
+                }
+            }
+            return defaultWorkerDescription;
+        }
+
+        private bool CheckProfileConditions(RpcWorkerDescriptionProfile profile)
+        {
+            foreach (var condition in profile.Conditions)
+            {
+                if (!ValidateProfileCondition(condition))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private bool ValidateProfileCondition(ProfileCondition condition)
+        {
+            string value = string.Empty;
+            switch ( condition.Type)
+            {
+                case ConditionType.Environment:
+                    value = _environment.GetEnvironmentVariable(condition.Name);
+                    break;
+                case ConditionType.HostProperty:
+                    Enum.TryParse(condition.Name, out ConditionHostPropertyName hostPropertyName);
+                    switch ( hostPropertyName)
+                    {
+                        case ConditionHostPropertyName.Sku:
+                            // TODO: Add sku check
+                            break;
+                        case ConditionHostPropertyName.Platform:
+                            value = _systemRuntimeInformation.GetOSPlatform().ToString();
+                            break;
+                        case ConditionHostPropertyName.HostVersion:
+                            // TODO: Add host version check
+                            break;
+                        default:
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            if ( string.IsNullOrEmpty(value) || string.IsNullOrEmpty(condition.Expression))
+            {
+                return false;
+            }
+            return Regex.IsMatch(value, condition.Expression);
         }
 
         internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
