@@ -139,7 +139,7 @@ namespace DryIoc.Microsoft.DependencyInjection
 
         /// <summary>Uses passed descriptor to register service in container: 
         /// maps DI Lifetime to DryIoc Reuse,
-        /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegisterInstance.</summary>
+        /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegistercInstance.</summary>
         /// <param name="container">The container.</param>
         /// <param name="descriptor">Service descriptor.</param>
         public static void RegisterDescriptor(this IContainer container, ServiceDescriptor descriptor, IReuse singletonReuse = null)
@@ -152,9 +152,18 @@ namespace DryIoc.Microsoft.DependencyInjection
             }
             else if (descriptor.ImplementationFactory != null)
             {
-                container.RegisterDelegate(descriptor.ServiceType,
-                    r => descriptor.ImplementationFactory(r.Resolve<IServiceProvider>()),
-                    reuse);
+                if (descriptor.Lifetime == ServiceLifetime.Singleton)
+                {
+                    container.RegisterDelegate(descriptor.ServiceType,
+                        r => descriptor.ImplementationFactory(r.Resolve<IServiceProvider>()),
+                        reuse);
+                }
+                else
+                {
+                    container.RegisterDelegate(descriptor.ServiceType,
+                        r => descriptor.ImplementationFactory(((Container)r).ScopedServiceProvider ?? r.Resolve<IServiceProvider>()),
+                        reuse);
+                }
             }
             else
             {
