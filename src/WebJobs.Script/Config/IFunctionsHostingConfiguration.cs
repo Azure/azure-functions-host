@@ -3,7 +3,7 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Config
 {
-    internal interface IFunctionsHostingConfigurations
+    internal interface IFunctionsHostingConfiguration
     {
         bool FunctionsWorkerDynamicConcurrencyEnabled { get; }
     }

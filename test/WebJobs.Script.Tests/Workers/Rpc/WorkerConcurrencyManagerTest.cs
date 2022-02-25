@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         private readonly TestLoggerProvider _loggerProvider;
         private readonly ILoggerFactory _loggerFactory;
         private readonly TestEnvironment _testEnvironment;
-        private readonly IFunctionsHostingConfigurations _functionsHostingConfigurations;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
         private readonly IApplicationLifetime _applicationLifetime;
 
         public WorkerConcurrencyManagerTest()
@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.PythonLanguageWorkerName);
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
-            Mock<IFunctionsHostingConfigurations> conf = new Mock<IFunctionsHostingConfigurations>();
+            Mock<IFunctionsHostingConfiguration> conf = new Mock<IFunctionsHostingConfiguration>();
             conf.Setup(x => x.FunctionsWorkerDynamicConcurrencyEnabled).Returns(false);
             _functionsHostingConfigurations = conf.Object;
             Mock<IApplicationLifetime> applicationLifetime = new Mock<IApplicationLifetime>();
@@ -339,14 +339,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         }
 
         [Fact]
-        public async Task ActivateWorkerConcurency_ScmHostingConfiguration_WorkAsExpected()
+        public async Task ActivateWorkerConcurency_FunctionsHostingConfiguration_WorkAsExpected()
         {
             TestEnvironment testEnvironment = new TestEnvironment();
             testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, RpcWorkerConstants.NodeLanguageWorkerName);
             Mock<IFunctionInvocationDispatcher> functionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>(MockBehavior.Strict);
             Mock<IFunctionInvocationDispatcherFactory> functionInvocationDispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>(MockBehavior.Strict);
             functionInvocationDispatcherFactory.Setup(x => x.GetFunctionDispatcher()).Returns(functionInvocationDispatcher.Object);
-            Mock<IFunctionsHostingConfigurations> conf = new Mock<IFunctionsHostingConfigurations>();
+            Mock<IFunctionsHostingConfiguration> conf = new Mock<IFunctionsHostingConfiguration>();
             conf.Setup(x => x.FunctionsWorkerDynamicConcurrencyEnabled).Returns(true);
             WorkerConcurrencyOptions options = new WorkerConcurrencyOptions();
 

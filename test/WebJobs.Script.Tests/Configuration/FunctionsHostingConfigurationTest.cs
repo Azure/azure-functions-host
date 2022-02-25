@@ -17,13 +17,13 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 {
-    public class FunctionsHostingConfigurationsTest
+    public class FunctionsHostingConfigurationTest
     {
         private readonly TestEnvironment _environment;
         private readonly TestLoggerProvider _loggerProvider;
         private readonly LoggerFactory _loggerFactory;
 
-        public FunctionsHostingConfigurationsTest()
+        public FunctionsHostingConfigurationTest()
         {
             _environment = new TestEnvironment();
             _loggerProvider = new TestLoggerProvider();
@@ -32,20 +32,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Fact]
-        public void ScmHostingConfigurations_Registered_ByDefault()
+        public void FunctionsHostingConfiguration_Registered_ByDefault()
         {
             IHost host = new HostBuilder()
                 .ConfigureDefaultTestWebScriptHost()
                 .Build();
 
-            var conf = host.Services.GetService<IFunctionsHostingConfigurations>();
+            var conf = host.Services.GetService<IFunctionsHostingConfiguration>();
             Assert.NotNull(conf);
         }
 
         [Fact]
         public void FunctionsWorkerDynamicConcurrencyEnabled_Throws_InvalidOperationException()
         {
-            FunctionsHostingConfigurations conf = new FunctionsHostingConfigurations (_environment, _loggerFactory, "C:\\somedir\test.txt", DateTime.Now.AddMilliseconds(1), TimeSpan.FromMinutes(5));
+            FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, Path.Combine("C:\\", "test.txt"), DateTime.Now.AddMilliseconds(1), TimeSpan.FromMinutes(5));
             Assert.Throws<InvalidOperationException>(() => conf.FunctionsWorkerDynamicConcurrencyEnabled);
         }
 
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=value2");
 
-                FunctionsHostingConfigurations conf = new FunctionsHostingConfigurations (_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(100), TimeSpan.FromMilliseconds(100));
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(100), TimeSpan.FromMilliseconds(100));
                 Assert.False(conf.FunctionsWorkerDynamicConcurrencyEnabled);
 
                 File.WriteAllText(fileName, $"key1=value1,{RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled}=stamp");
@@ -73,8 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         }
 
         [Theory]
-        //[InlineData("", "", false)]
-        //[InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp,flag2=value2", "", true)]
+        [InlineData("", "", false)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp,flag2=value2", "", true)]
         [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,app2,flag2=value2", "app1", true)]
         [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,app2,flag2=value2", "app3", false)]
         public void FunctionsWorkerDynamicConcurrencyEnabled_ReturnsExpected(string config, string siteName, bool isEnabled)
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 File.WriteAllText(fileName, config);
-                FunctionsHostingConfigurations conf = new FunctionsHostingConfigurations(environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
                 conf.GetValue("test"); // to run Parse
                 Assert.Equal(conf.FunctionsWorkerDynamicConcurrencyEnabled, isEnabled);
             }
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 File.WriteAllText(fileName, "ENABLE_FEATUREX=1,A=B,TimeOut=123");
-                FunctionsHostingConfigurations conf = new FunctionsHostingConfigurations(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
                 conf.GetValue("test"); // to run Parse
                 Assert.Equal(3, conf.Config.Count);
                 Assert.Equal("1", conf.GetValue("ENABLE_FEATUREX"));
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 string fileName = Path.Combine(tempDir.Path, "settings.txt");
                 File.WriteAllText(fileName, config);
-                FunctionsHostingConfigurations conf = new FunctionsHostingConfigurations(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
+                FunctionsHostingConfiguration conf = new FunctionsHostingConfiguration(_environment, _loggerFactory, fileName, DateTime.Now.AddMilliseconds(1), TimeSpan.FromMilliseconds(100));
                 conf.GetValue("test"); // to run Parse
                 Assert.True(conf.Config.Count == configCount);
             }

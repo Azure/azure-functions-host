@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcherFactory _functionInvocationDispatcherFactory;
         private readonly IEnvironment _environment;
-        private readonly IFunctionsHostingConfigurations _functionsHostingConfigurations;
+        private readonly IFunctionsHostingConfiguration _functionsHostingConfigurations;
         private readonly IApplicationLifetime _applicationLifetime;
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IFunctionInvocationDispatcherFactory functionInvocationDispatcherFactory,
             IEnvironment environment,
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
-            IFunctionsHostingConfigurations functionsHostingConfigurations,
+            IFunctionsHostingConfiguration functionsHostingConfigurations,
             IApplicationLifetime applicationLifetime,
             ILoggerFactory loggerFactory)
         {
@@ -143,13 +143,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 if (_timer == null && _functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
                 {
-                    // if the feature is not active and ScmHostingConfigurations has the flag
+                    // if the feature is not active and FunctionsHostingConfiguration has the flag
                     Activate();
                     _logger.LogDebug($"Dynamic worker concurrency monitoring was started by activation timer.");
                 }
                 else if (_timer != null && !_functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
                 {
-                    // if the feature was activated by FunctionsHostingConfigurations and then disabled - shutdown the host
+                    // if the feature was activated by FunctionsHostingConfiguration and then disabled - shutdown the host
                     _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
                     _applicationLifetime.StopApplication();
                     return;
