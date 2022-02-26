@@ -1,0 +1,7 @@
+﻿{
+	"dynamicThrottlesEnabled": false,
+	"enableChunkedRequestBinding": false,
+	"maxConcurrentRequests": -1,
+	"maxOutstandingRequests": -1,
+	"routePrefix": "api"
+}
