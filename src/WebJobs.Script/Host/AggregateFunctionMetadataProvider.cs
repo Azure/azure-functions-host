@@ -62,7 +62,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
 
-                    if (!IsNullOrEmpty(rawFunctions))
+                    if (!IsDefaultIndexingRequired(rawFunctions) && !IsNullOrEmpty(rawFunctions))
                     {
                         functions = ValidateMetadata(rawFunctions);
                         // set up invocation buffers and send load requests
