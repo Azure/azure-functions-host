@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using ImTools;
+using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DryIoc.Microsoft.DependencyInjection
@@ -155,13 +156,13 @@ namespace DryIoc.Microsoft.DependencyInjection
                 if (descriptor.Lifetime == ServiceLifetime.Singleton)
                 {
                     container.RegisterDelegate(descriptor.ServiceType,
-                        r => descriptor.ImplementationFactory(r.Resolve<IServiceProvider>()),
+                        r => descriptor.ImplementationFactory(r.Resolve<JobHostServiceProvider>()),
                         reuse);
                 }
                 else
                 {
                     container.RegisterDelegate(descriptor.ServiceType,
-                        r => descriptor.ImplementationFactory(((Container)r).ScopedServiceProvider ?? r.Resolve<IServiceProvider>()),
+                        r => descriptor.ImplementationFactory((r as Container)?.ScopedServiceProvider ?? r.Resolve<JobHostServiceProvider>()),
                         reuse);
                 }
             }
