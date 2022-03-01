@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Tests.Security;
 using Microsoft.Azure.WebJobs.Script.WebHost;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Security.Utilities;
 using Microsoft.WebJobs.Script.Tests;
@@ -80,8 +81,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var url = webHookProvider.GetUrl(configProvider);
             Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
             Assert.True(IdentifiableSecrets.ValidateBase64Key(secretValue,
-                                                              SecretManager.SystemKeySeed,
-                                                              SecretManager.AzureFunctionsSignature,
+                                                              SecretGenerator.SystemKeySeed,
+                                                              SecretGenerator.AzureFunctionsSignature,
                                                               encodeForUrl: true));
         }
 

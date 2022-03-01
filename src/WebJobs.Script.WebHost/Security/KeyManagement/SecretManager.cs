@@ -15,8 +15,8 @@ using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Properties;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using Microsoft.Extensions.Logging;
-using Microsoft.Security.Utilities;
 
 using DataProtectionConstants = Microsoft.Azure.Web.DataProtection.Constants;
 
@@ -37,15 +37,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         private IMetricsLogger _metricsLogger;
         private string _repositoryClassName;
         private DateTime _lastCacheResetTime;
-
-        internal const string AzureFunctionsSignature = "AzFu";
-
-        // Seeds (passed to the Marvin checksum algorithm) for grouping
-        // Azure Functions Host keys. See references from unit tests for
-        // information on how these seeds were generated/are versioned.
-        internal const ulong MasterKeySeed = 0x4d61737465723030;
-        internal const ulong SystemKeySeed = 0x53797374656d3030;
-        internal const ulong FunctionKeySeed = 0x46756e6374693030;
 
         public SecretManager()
         {
@@ -264,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 if (value == null)
                 {
                     // Generate a new secret (clear)
-                    masterKey = GenerateIdentifiableSecret(MasterKeySeed);
+                    masterKey = SecretGenerator.GenerateMasterKeyValue();
                     result = OperationResult.Created;
                 }
                 else
@@ -313,7 +304,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             OperationResult result = OperationResult.NotFound;
 
-            secret ??= GenerateIdentifiableSecret(FunctionKeySeed);
+            secret ??= SecretGenerator.GenerateFunctionKeyValue();
 
             await ModifyFunctionSecretsAsync(secretsType, keyScope, secrets =>
             {
@@ -516,10 +507,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             if (secrets.MasterKey.IsEncrypted)
             {
-                secrets.MasterKey.Value = GenerateIdentifiableSecret(MasterKeySeed);
+                secrets.MasterKey.Value = SecretGenerator.GenerateMasterKeyValue();
             }
-            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys, SystemKeySeed);
-            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys, FunctionKeySeed);
+            secrets.SystemKeys = RegenerateKeys(secrets.SystemKeys, SecretGenerator.SystemKeySeed);
+            secrets.FunctionKeys = RegenerateKeys(secrets.FunctionKeys, SecretGenerator.FunctionKeySeed);
             return secrets;
         }
 
@@ -536,7 +527,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         private FunctionSecrets GenerateFunctionSecrets(FunctionSecrets secrets)
         {
-            secrets.Keys = RegenerateKeys(secrets.Keys, FunctionKeySeed);
+            secrets.Keys = RegenerateKeys(secrets.Keys, SecretGenerator.FunctionKeySeed);
             return secrets;
         }
 
@@ -546,7 +537,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 if (k.IsEncrypted)
                 {
-                    k.Value = GenerateIdentifiableSecret(seed);
+                    k.Value = SecretGenerator.GenerateIdentifiableSecret(seed);
                 }
                 return k;
             }).ToList();
@@ -604,38 +595,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             };
         }
 
-        internal static string GenerateMasterKeyValue()
-        {
-            return GenerateIdentifiableSecret(MasterKeySeed);
-        }
-
-        internal static string GenerateFunctionKeyValue()
-        {
-            return GenerateIdentifiableSecret(FunctionKeySeed);
-        }
-
-        internal static string GenerateSystemKeyValue()
-        {
-            return GenerateIdentifiableSecret(SystemKeySeed);
-        }
-
         private Key GenerateMasterKey()
         {
-            string secret = GenerateMasterKeyValue();
+            string secret = SecretGenerator.GenerateMasterKeyValue();
 
             return CreateKey(ScriptConstants.DefaultMasterKeyName, secret);
         }
 
         private Key GenerateFunctionKey()
         {
-            string secret = GenerateFunctionKeyValue();
+            string secret = SecretGenerator.GenerateFunctionKeyValue();
 
             return CreateKey(ScriptConstants.DefaultFunctionKeyName, secret);
         }
 
         private Key CreateKey(string name, ulong seed)
         {
-            string secret = GenerateIdentifiableSecret(seed);
+            string secret = SecretGenerator.GenerateIdentifiableSecret(seed);
 
             return CreateKey(name, secret);
         }
@@ -645,18 +621,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             var key = new Key(name, secret);
 
             return _keyValueConverterFactory.WriteKey(key);
-        }
-
-        internal static string GenerateIdentifiableSecret(ulong seed)
-        {
-            // Return a generated secret with a completely URL-safe base64-encoding
-            // alphabet, 'a-zA-Z0-9' as well as '-' and '_'. We preserve the trailing
-            // equal sign padding in the token in order to improve the ability to
-            // match against the general token format (with performing a checksum
-            // validation. This is safe in Azure Functions utilization because a
-            // token will only appear in a URL as a query string parameter, where
-            // equal signs do not require encoding.
-            return IdentifiableSecrets.GenerateUrlSafeBase64Key(seed, 40, AzureFunctionsSignature, elidePadding: false);
         }
 
         private void OnSecretsChanged(object sender, SecretsChangedEventArgs e)
