@@ -4,6 +4,7 @@
 -->
 - Fixing race during language worker start (#7979)
 - Updated Java Worker Version to [1.10.0-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/1.10.0-SNAPSHOT)
+- Add admin/host/config API (#7394)
 
 **Release sprint:** Sprint 113
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+113%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+113%22+label%3Afeature+is%3Aclosed) ]
