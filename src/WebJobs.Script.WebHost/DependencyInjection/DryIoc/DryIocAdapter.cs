@@ -156,13 +156,17 @@ namespace DryIoc.Microsoft.DependencyInjection
                 if (descriptor.Lifetime == ServiceLifetime.Singleton)
                 {
                     container.RegisterDelegate(descriptor.ServiceType,
-                        r => descriptor.ImplementationFactory(r.Resolve<JobHostServiceProvider>()),
+                        r =>
+                        {
+                            // Use the Root (or self, if already at Root) to resolve this at the Singleton scope.
+                            return descriptor.ImplementationFactory(r.RootOrSelf().Resolve<IServiceProvider>());
+                        },
                         reuse);
                 }
                 else
                 {
                     container.RegisterDelegate(descriptor.ServiceType,
-                        r => descriptor.ImplementationFactory((r as Container)?.ScopedServiceProvider ?? r.Resolve<JobHostServiceProvider>()),
+                        r => descriptor.ImplementationFactory(r.Resolve<IServiceProvider>()),
                         reuse);
                 }
             }
