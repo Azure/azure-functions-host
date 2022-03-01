@@ -140,7 +140,7 @@ namespace DryIoc.Microsoft.DependencyInjection
 
         /// <summary>Uses passed descriptor to register service in container: 
         /// maps DI Lifetime to DryIoc Reuse,
-        /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegistercInstance.</summary>
+        /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegisterInstance.</summary>
         /// <param name="container">The container.</param>
         /// <param name="descriptor">Service descriptor.</param>
         public static void RegisterDescriptor(this IContainer container, ServiceDescriptor descriptor, IReuse singletonReuse = null)
