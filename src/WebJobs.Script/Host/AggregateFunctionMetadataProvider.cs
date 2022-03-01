@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
-            ILogger<AggregateFunctionMetadataProvider> logger,
+            ILogger logger,
             IFunctionInvocationDispatcher invocationDispatcher,
             IFunctionMetadataProvider hostFunctionMetadataProvider)
         {

@@ -3,21 +3,28 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Newtonsoft.Json.Linq;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class WorkerFunctionMetadataProviderTests
     {
+        private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
+        private AggregateFunctionMetadataProvider _aggregateFunctionMetadataProvider;
 
         public WorkerFunctionMetadataProviderTests()
         {
@@ -135,6 +142,63 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             });
 
             Assert.Equal($"{ScriptConstants.SystemReturnParameterBindingName} bindings must specify a direction of 'out'.", ex.Message);
+        }
+
+        [Fact]
+        public void GetFunctionMetadataAsync_MixedApp()
+        {
+            TestLogger logger = new TestLogger("FunctionDispatcherTests");
+            var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
+            var functionMetadataCollection = new List<FunctionMetadata>();
+            functionMetadataCollection.Add(GetTestFunctionMetadata());
+
+            Mock<IFunctionInvocationDispatcher> mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
+            mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
+            mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default));
+            mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default));
+
+            Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
+            var configs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            var env = SystemEnvironment.Instance;
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
+            foreach (var config in configs)
+            {
+                config.Description.WorkerIndexing = "true";
+            }
+
+            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(configs, env, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+
+            var log = _loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>();
+
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(
+                logger,
+                mockRpcFunctionInvocationDispatcher.Object,
+                mockFunctionMetadataProvider.Object);
+
+            var abc = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(configs, env, false).GetAwaiter().GetResult();
+
+            var traces = logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Fallback to host indexing as worker denied indexing"));
+            Assert.True(functionLoadLogs.Any());
+        }
+
+        private static RawFunctionMetadata GetTestRawFunctionMetadata(bool useDefaultMetadataIndexing)
+        {
+            return new RawFunctionMetadata()
+            {
+                UseDefaultMetadataIndexing = useDefaultMetadataIndexing
+            };
+        }
+
+        private static FunctionMetadata GetTestFunctionMetadata(string name = "testFunction")
+        {
+            return new FunctionMetadata()
+            {
+                Name = name,
+                Language = "node"
+            };
         }
     }
 }
