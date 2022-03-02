@@ -331,15 +331,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var functionDetails = await WebFunctionsManager.GetFunctionMetadataResponse(listableFunctions, hostOptions, _hostNameProvider);
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
-            // TEMP: refactor this code to properly add extensions in all scenario(#7394)
-            // Add the host.json extensions to the payload
-            if (_environment.IsKubernetesManagedHosting())
+            JObject extensionsPayload = null;
+            extensionsPayload = _environment.IsKubernetesManagedHosting() ? await GetHostJsonExtensionsForKubernetesAsync(_applicationHostOptions, _logger) : await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+
+            if (extensionsPayload != null)
             {
-                JObject extensionsPayload = await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
-                if (extensionsPayload != null)
-                {
-                    result.Add("extensions", extensionsPayload);
-                }
+                result.Add("extensions", extensionsPayload);
             }
 
             if (_secretManagerProvider.SecretsEnabled)
@@ -409,6 +406,67 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         }
 
         internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
+        {
+            var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
+            string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
+            if (FileUtility.FileExists(hostJsonPath))
+            {
+                try
+                {
+                    var hostJson = JObject.Parse(await FileUtility.ReadAsync(hostJsonPath));
+
+                    var extensions = new JObject();
+                    var durableTask = new JObject();
+
+                    // Filter the minimum Durable Functions Payload
+                    string sectionPrefix = "extensions.durableTask.";
+                    string hubNamePropertyName = "hubName";
+                    string storageProviderPropertyName = "storageProvider";
+                    string maxConcurrentActivityFunctionsPropertyName = "maxConcurrentActivityFunctions";
+                    string maxConcurrentOrchestratorFunctionsPropertyName = "maxConcurrentOrchestratorFunctions";
+
+                    var hubName = hostJson.SelectToken($"{sectionPrefix}{hubNamePropertyName}");
+                    var storageProvider = hostJson.SelectToken($"{sectionPrefix}{storageProviderPropertyName}");
+                    var maxConcurrentActivityFunctions = hostJson.SelectToken($"{sectionPrefix}{maxConcurrentActivityFunctionsPropertyName}");
+                    var maxConcurrentOrchestratorFunctions = hostJson.SelectToken($"{sectionPrefix}{maxConcurrentOrchestratorFunctionsPropertyName}");
+
+                    if (hubName != null)
+                    {
+                        durableTask.Add(hubNamePropertyName, hubName);
+                    }
+
+                    if (storageProvider != null)
+                    {
+                        durableTask.Add(storageProviderPropertyName, storageProvider);
+                    }
+
+                    if (maxConcurrentActivityFunctions != null)
+                    {
+                        durableTask.Add(maxConcurrentActivityFunctionsPropertyName, maxConcurrentActivityFunctions);
+                    }
+
+                    if (maxConcurrentOrchestratorFunctions != null)
+                    {
+                        durableTask.Add(maxConcurrentOrchestratorFunctionsPropertyName, maxConcurrentOrchestratorFunctions);
+                    }
+
+                    if (durableTask.Count != 0)
+                    {
+                        extensions.Add("durableTask", durableTask);
+                        return extensions;
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    logger.LogWarning($"Unable to parse host configuration file '{hostJsonPath}'. : {ex}");
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        internal static async Task<JObject> GetHostJsonExtensionsForKubernetesAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
         {
             var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);

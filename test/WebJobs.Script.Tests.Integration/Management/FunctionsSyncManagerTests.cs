@@ -776,9 +776,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 { "extensions", extensionsConfig }
             };
             hostJsonContent = hostJsonContent ?? defaultHostConfig.ToString();
-            var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
-            testHostJsonStream.Position = 0;
-            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(testHostJsonStream);
+
+            fileBase.Setup(f => f.Open(Path.Combine(rootPath, @"host.json"), It.IsAny<FileMode>(), It.IsAny<FileAccess>(), It.IsAny<FileShare>())).Returns(() =>
+            {
+                var testHostJsonStream = new MemoryStream(Encoding.UTF8.GetBytes(hostJsonContent));
+                testHostJsonStream.Position = 0;
+                return testHostJsonStream;
+            });
 
             if (extensionsJsonContent != null)
             {
