@@ -67,24 +67,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         [InlineData(HostJsonWithoutExtensions, true, false, "")]
         [InlineData(HostJsonWithExtensions, true, true, "")]
         [InlineData(HostJsonWithWrongExtensions, true, false, "")]
-        public async Task GetHostJsonExtensionsAsyncTest(string hostJsonContents, bool isNull, bool skipWriteFile, string value)
+        public async Task GetHostJsonExtensionsKubernetesAsyncTest(string hostJsonContents, bool isNull, bool skipWriteFile, string value)
         {
             string scriptPath = string.Empty;
             try
             {
-                var logger = new Mock<ILogger>();
-                var monitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                var options = new ScriptApplicationHostOptions();
-                scriptPath = GetTempDirectory();
-                var hostJsonPath = Path.Combine(scriptPath, "host.json");
-                if (!skipWriteFile)
-                {
-                    await FileUtility.WriteAsync(hostJsonPath, hostJsonContents);
-                }
-
-                options.ScriptPath = scriptPath;
-                monitor.Setup(x => x.CurrentValue).Returns(options);
-                var json = await FunctionsSyncManager.GetHostJsonExtensionsAsync(monitor.Object, logger.Object);
+                var context = await SetupTestContextAsync(hostJsonContents, skipWriteFile);
+                var json = await FunctionsSyncManager.GetHostJsonExtensionsForKubernetesAsync(context.Options, context.Logger);
                 if (isNull)
                 {
                     Assert.Null(json);
@@ -100,11 +89,81 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData("MultipleExtensionsWithDurablePayload.json", false, false, "UpdatedTaskHubName", "SQLDB_Connection", 12, 10)]
+        [InlineData("MultipleExtensionsWithDurablePayload.json", true, true, null, null, 0, 0)] // host.json is not written
+        [InlineData("NoExtensionSection.json", true, false, null, null, 0, 0)]
+        [InlineData("NonDurableExtensionPayload.json", true, false, null, null, 0, 0)]
+        [InlineData("DurableWithoutStorageProviderPayload.json", false, false, "UpdatedTaskHubName", null, 12, 0)]
+        [InlineData("DurableWithStorageProviderPayload.json", false, false, null, "SQLDB_Connection", 0, 10)]
+        public async Task GetHostJsonExtensionsAsyncTest(string hostJsonPayloadFile, bool isNull, bool skipWriteFile, string hubName, string connectionStringName, int maxConcurrentActivityFunctions, int maxConcurrentOrchestratorFunctions)
+        {
+            string scriptPath = string.Empty;
+            var hostJsonContents = GetHostJsonFromFile(hostJsonPayloadFile);
+            try
+            {
+                var context = await SetupTestContextAsync(hostJsonContents, skipWriteFile);
+                var json = await FunctionsSyncManager.GetHostJsonExtensionsAsync(context.Options, context.Logger);
+                if (isNull)
+                {
+                    Assert.Null(json);
+                }
+                else
+                {
+                    Assert.Equal(hubName, json.SelectToken("durableTask.hubName")?.ToString());
+                    Assert.Equal(connectionStringName, json.SelectToken("durableTask.storageProvider.connectionStringName")?.ToString());
+                    Assert.Equal(maxConcurrentActivityFunctions, int.Parse(json.SelectToken("durableTask.maxConcurrentActivityFunctions")?.ToString() ?? "0"));
+                    Assert.Equal(maxConcurrentOrchestratorFunctions, int.Parse(json.SelectToken("durableTask.maxConcurrentOrchestratorFunctions")?.ToString() ?? "0"));
+                }
+            }
+            finally
+            {
+                await FileUtility.DeleteDirectoryAsync(scriptPath, true);
+            }
+        }
+
+        private async Task<TestContext> SetupTestContextAsync(string hostJsonContents, bool skipWriteFile)
+        {
+            var scriptPath = string.Empty;
+            var logger = new Mock<ILogger>();
+            var monitor = new Mock<IOptionsMonitor<ScriptApplicationHostOptions>>();
+            var options = new ScriptApplicationHostOptions();
+            scriptPath = GetTempDirectory();
+            var hostJsonPath = Path.Combine(scriptPath, "host.json");
+            if (!skipWriteFile)
+            {
+                await FileUtility.WriteAsync(hostJsonPath, hostJsonContents);
+            }
+
+            options.ScriptPath = scriptPath;
+            monitor.Setup(x => x.CurrentValue).Returns(options);
+            return new TestContext
+            {
+                Logger = logger.Object,
+                Options = monitor.Object,
+                ScriptPath = scriptPath
+            };
+        }
+
         private string GetTempDirectory()
         {
             var temp = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(temp);
             return temp;
+        }
+
+        private string GetHostJsonFromFile(string fileName)
+        {
+            return File.ReadAllText(Path.Combine("Managment", "Payloads", fileName));
+        }
+
+        private class TestContext
+        {
+            public ILogger Logger { get; set; }
+
+            public IOptionsMonitor<ScriptApplicationHostOptions> Options { get; set; }
+
+            public string ScriptPath { get; set; }
         }
     }
 }

@@ -103,13 +103,19 @@
     <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.assets.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Managment\Payloads\ExpectedConcurrencyPayload.json">
+    <None Update="Managment\Payloads\DurableWithoutStorageProviderPayload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Managment\Payloads\ExpectedHostJsonPayload.json">
+    <None Update="Managment\Payloads\DurableWithStorageProviderPayload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="Managment\Payloads\ExpectedHttpExtensionsPayload.json">
+    <None Update="Managment\Payloads\MultipleExtensionsWithDurablePayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Managment\Payloads\NoExtensionSection.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Managment\Payloads\NonDurableExtensionPayload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
