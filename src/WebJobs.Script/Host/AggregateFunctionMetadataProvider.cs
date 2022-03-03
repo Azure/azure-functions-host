@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
-            ILogger<AggregateFunctionMetadataProvider> logger,
+            ILogger logger,
             IFunctionInvocationDispatcher invocationDispatcher,
             IFunctionMetadataProvider hostFunctionMetadataProvider,
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
@@ -101,6 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
                     {
                         mixedApp = true;
+                        break;
                     }
                 }
 
