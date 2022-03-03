@@ -103,7 +103,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             try
             {
                 var context = await SetupTestContextAsync(hostJsonContents, skipWriteFile);
-                var json = await FunctionsSyncManager.GetHostJsonExtensionsAsync(context.Options, context.Logger);
+                var json = await FunctionsSyncManager.GetHostJsonExtensionsForDurableAsync(context.Options, context.Logger);
                 if (isNull)
                 {
                     Assert.Null(json);

@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             JObject extensionsPayload = null;
             extensionsPayload = _environment.IsKubernetesManagedHosting() ? 
                 await GetHostJsonExtensionsForKubernetesAsync(_applicationHostOptions, _logger) : 
-                await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+                await GetHostJsonExtensionsForDurableAsync(_applicationHostOptions, _logger);
 
             if (extensionsPayload != null)
             {
@@ -408,7 +408,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             };
         }
 
-        internal static async Task<JObject> GetHostJsonExtensionsAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
+        internal static async Task<JObject> GetHostJsonExtensionsForDurableAsync(IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, ILogger logger)
         {
             var hostOptions = applicationHostOptions.CurrentValue.ToHostOptions();
             string hostJsonPath = Path.Combine(hostOptions.RootScriptPath, ScriptConstants.HostMetadataFileName);
