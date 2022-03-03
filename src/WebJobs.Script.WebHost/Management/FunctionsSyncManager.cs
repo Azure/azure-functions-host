@@ -333,7 +333,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             result.Add("functions", new JArray(functionDetails.Select(p => JObject.FromObject(p))));
 
             JObject extensionsPayload = null;
-            extensionsPayload = _environment.IsKubernetesManagedHosting() ? await GetHostJsonExtensionsForKubernetesAsync(_applicationHostOptions, _logger) : await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
+            extensionsPayload = _environment.IsKubernetesManagedHosting() ? 
+                await GetHostJsonExtensionsForKubernetesAsync(_applicationHostOptions, _logger) : 
+                await GetHostJsonExtensionsAsync(_applicationHostOptions, _logger);
 
             if (extensionsPayload != null)
             {
