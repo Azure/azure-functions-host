@@ -6,14 +6,13 @@ import os
 
 app = func.FunctionApp(auth_level = func.AuthLevel.ANONYMOUS)
 
-
 @app.function_name(name="HttpTrigger1")
-@app.route(route="hello") # HTTP Trigger
+@app.route(route="HttpTrigger1") # HTTP Trigger
 def test_function(req: func.HttpRequest) -> func.HttpResponse:
      return func.HttpResponse("HttpTrigger1 function processed a request!!!")
 
 
 @app.function_name(name="HttpTrigger2")
-@app.route(route="hello2") # HTTP Trigger
+@app.route(route="HttpTrigger2") # HTTP Trigger
 def test_function2(req: func.HttpRequest) -> func.HttpResponse:
      return func.HttpResponse("HttpTrigger2 function processed a request!!!")
