@@ -1,0 +1,17 @@
+{
+  "extensions": {
+    "http": {
+      "dynamicThrottlesEnabled": false,
+      "enableChunkedRequestBinding": false,
+      "maxConcurrentRequests": -1,
+      "maxOutstandingRequests": -1,
+      "routePrefix": "api"
+    }
+  },
+  "concurrency": {
+    "dynamicConcurrencyEnabled": true,
+    "maximumFunctionConcurrency": 500,
+    "cpuThreshold": 0.8,
+    "snapshotPersistenceEnabled": true
+  }
+}
