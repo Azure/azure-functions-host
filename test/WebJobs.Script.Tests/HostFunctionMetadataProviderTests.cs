@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void ReadFunctionMetadata_For_WorkerIndexingFormat_App()
+        public void ReadFunctionMetadata_For_WorkerIndexingFormatApp_Fails()
         {
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "PythonWorkerIndexing");
             _scriptApplicationHostOptions.ScriptPath = functionsPath;
