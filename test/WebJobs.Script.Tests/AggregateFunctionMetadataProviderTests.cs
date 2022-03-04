@@ -23,15 +23,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public class AggregateFunctionMetadataProviderTests
     {
-        private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
+        private readonly TestLogger _logger;
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
         private AggregateFunctionMetadataProvider _aggregateFunctionMetadataProvider;
+        private Mock<IFunctionInvocationDispatcher> _mockRpcFunctionInvocationDispatcher;
+        private Mock<IFunctionMetadataProvider> _mockFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
+            _logger = new TestLogger("AggregateFunctionMetadataProviderTests");
+            _mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
+            _mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
         }
 
         [Fact]
@@ -147,70 +152,55 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
-        public void GetFunctionMetadataAsync_MixedApp()
+        public void ValidateFunctionAppFormat_InputMixedApp()
         {
-            var logger = new TestLogger("AggregateFunctionMetadataProviderTests");
+            _logger.ClearLogMessages();
             string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
-            AggregateFunctionMetadataProvider.ValidateAppFormat(scriptPath, logger);
-            var traces = logger.GetLogMessages();
+            AggregateFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, _logger);
+            var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
             Assert.True(functionLoadLogs.Any());
         }
 
         [Fact]
-        public void GetFunctionMetadataAsync_MixedApp2()
+        public void GetFunctionMetadataAsync_InputMixedApp()
         {
-            TestLogger logger = new TestLogger("AggregateFunctionMetadataProviderTests");
-            var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
-            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>(); // { function };
+            // Arrange
+            _logger.ClearLogMessages();
+
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>();
             var functionMetadataCollection = new List<FunctionMetadata>();
             functionMetadataCollection.Add(GetTestFunctionMetadata());
 
-            Mock<IFunctionInvocationDispatcher> mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
-            mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
-            mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default));
-            // mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default));
-
-            Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
-            var configs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
-            var env = SystemEnvironment.Instance;
-            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
-            foreach (var config in configs)
-            {
-                config.Description.WorkerIndexing = "true";
-            }
-
-            mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(configs, env, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
-
-            var log = _loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>();
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
             var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
             scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
+            var environment = SystemEnvironment.Instance;
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
+
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
+
             _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(
-                logger,
-                mockRpcFunctionInvocationDispatcher.Object,
-                mockFunctionMetadataProvider.Object,
+                _logger,
+                _mockRpcFunctionInvocationDispatcher.Object,
+                _mockFunctionMetadataProvider.Object,
                 scripthostoptions);
 
-            var abc = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(configs, env, false).GetAwaiter().GetResult();
+            // Act
+            var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
 
-            var traces = logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
-            Assert.False(functionLoadLogs.Any());
+            // Assert
+            string expectedLog = "Detected mixed function app. All functions may not be indexed.";
+            var traces = _logger.GetLogMessages();
+            Assert.False(traces.Where(m => string.Equals(m.FormattedMessage, expectedLog)).Any());
 
-            Task.Delay(61000).Wait();
-            traces = logger.GetLogMessages();
-            functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
-            Assert.True(functionLoadLogs.Any());
-        }
-
-        private static RawFunctionMetadata GetTestRawFunctionMetadata(bool useDefaultMetadataIndexing)
-        {
-            return new RawFunctionMetadata()
-            {
-                // UseDefaultMetadataIndexing = useDefaultMetadataIndexing
-            };
+            Task.Delay(TimeSpan.FromSeconds(65)).Wait();
+            traces = _logger.GetLogMessages();
+            Assert.True(traces.Where(m => string.Equals(m.FormattedMessage, expectedLog)).Any());
         }
 
         private static FunctionMetadata GetTestFunctionMetadata(string name = "testFunction")

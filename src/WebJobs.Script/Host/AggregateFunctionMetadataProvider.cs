@@ -74,7 +74,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         await _dispatcher.FinishInitialization(functions);
                     }
 
-                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateAppFormat(_applicationHostOptions.CurrentValue.ScriptPath, _logger));
+                    // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_applicationHostOptions.CurrentValue.ScriptPath, _logger));
                 }
                 if (!workerIndexing || IsDefaultIndexingRequired(rawFunctions))
                 {
@@ -88,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _functions;
         }
 
-        internal static void ValidateAppFormat(string scriptPath, ILogger logger, IFileSystem fileSystem = null)
+        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
             bool mixedApp = false;
