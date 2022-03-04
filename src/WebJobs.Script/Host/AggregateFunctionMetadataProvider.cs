@@ -64,7 +64,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     if (IsDefaultIndexingRequired(rawFunctions))
                     {
-                        // If worker denies indexing then falling back to the host for Indexing
                         _logger.LogDebug("Fallback to host indexing as worker denied indexing");
                         functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
                     }
