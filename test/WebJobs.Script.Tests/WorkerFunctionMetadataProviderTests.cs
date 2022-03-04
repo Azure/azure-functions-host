@@ -19,14 +19,14 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
-    public class AggregateFunctionMetadataProviderTests
+    public class WorkerFunctionMetadataProviderTests
     {
         private readonly ILoggerFactory _loggerFactory = MockNullLoggerFactory.CreateLoggerFactory();
         private TestMetricsLogger _testMetricsLogger;
         private ScriptApplicationHostOptions _scriptApplicationHostOptions;
         private AggregateFunctionMetadataProvider _aggregateFunctionMetadataProvider;
 
-        public AggregateFunctionMetadataProviderTests()
+        public WorkerFunctionMetadataProviderTests()
         {
             _testMetricsLogger = new TestMetricsLogger();
             _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetFunctionMetadataAsync_WorkerIndexing_HostFallback()
         {
-            TestLogger logger = new TestLogger("AggregateFunctionMetadataProviderTests");
+            TestLogger logger = new TestLogger("WorkerFunctionMetadataProviderTests");
 
             var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
             IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetFunctionMetadataAsync_WorkerIndexing_NoHostFallback()
         {
-            TestLogger logger = new TestLogger("AggregateFunctionMetadataProviderTests");
+            TestLogger logger = new TestLogger("WorkerFunctionMetadataProviderTests");
 
             var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
             IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
@@ -201,13 +201,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var configs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             var env = SystemEnvironment.Instance;
             env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
-            /*
-            env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
-            foreach (var config in configs)
-            {
-                config.Description.WorkerIndexing = "true";
-            }
-            */
 
             Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
             mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(configs, env, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
@@ -227,12 +220,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public void GetFunctionMetadataAsync_WorkerIndexing_NoHostFallback_Fails()
         {
-            TestLogger logger = new TestLogger("AggregateFunctionMetadataProviderTests");
+            TestLogger logger = new TestLogger("WorkerFunctionMetadataProviderTests");
 
-            // var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: false);
             IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>();
             var functionMetadataCollection = new List<FunctionMetadata>();
-            // functionMetadataCollection.Add(GetTestFunctionMetadata());
 
             Mock<IFunctionInvocationDispatcher> mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
