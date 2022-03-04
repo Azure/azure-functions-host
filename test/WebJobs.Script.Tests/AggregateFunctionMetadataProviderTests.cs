@@ -162,14 +162,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             TestLogger logger = new TestLogger("AggregateFunctionMetadataProviderTests");
             var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
-            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>(); // { function };
             var functionMetadataCollection = new List<FunctionMetadata>();
             functionMetadataCollection.Add(GetTestFunctionMetadata());
 
             Mock<IFunctionInvocationDispatcher> mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
             mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default));
-            mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default));
+            // mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default));
 
             Mock<IFunctionMetadataProvider> mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
             var configs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
@@ -184,12 +184,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(configs, env, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
             var log = _loggerFactory.CreateLogger<AggregateFunctionMetadataProvider>();
+            var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
+            scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
             _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(
                 logger,
                 mockRpcFunctionInvocationDispatcher.Object,
                 mockFunctionMetadataProvider.Object,
-                TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions));
+                scripthostoptions);
 
             var abc = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(configs, env, false).GetAwaiter().GetResult();
 
@@ -197,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
             Assert.False(functionLoadLogs.Any());
 
-            Task.Delay(1000).Wait();
+            Task.Delay(61000).Wait();
             traces = logger.GetLogMessages();
             functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
             Assert.True(functionLoadLogs.Any());
