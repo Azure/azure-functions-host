@@ -362,6 +362,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 Assert.Equal(1, testRepository.FunctionSecrets.Count);
                 var functionSecrets = (FunctionSecrets)testRepository.FunctionSecrets[testFunctionName];
                 string defaultKeyValue = functionSecrets.Keys.Where(p => p.Name == "default").Single().Value;
+                SecretGeneratorTests.ValidateSecret(defaultKeyValue, SecretGenerator.FunctionKeySeed);
                 Assert.True(tasks.Select(p => p.Result).All(t => t["default"] == defaultKeyValue));
             }
         }
@@ -385,8 +386,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 // verify all calls return the same result
                 var masterKey = tasks.First().Result.MasterKey;
+                var functionKey = tasks.First().Result.FunctionKeys.First();
                 Assert.True(tasks.Select(p => p.Result).All(q => q.MasterKey == masterKey));
+                Assert.True(tasks.Select(p => p.Result).All(q => q.FunctionKeys.First().Value == functionKey.Value));
+
+                // verify generated master and function keys are valid
+                tasks.Select(p => p.Result).All(q => ValidateHostSecrets(q));
             }
+        }
+
+        private bool ValidateHostSecrets(HostSecretsInfo hostSecrets)
+        {
+            // Here and elsewhere we elide the '!' character which is prepended to every
+            // generated secret value, as a clue that actual encryption is simulated in
+            // the test case.
+            string normalizedKey = NormalizeKey(hostSecrets.MasterKey);
+            SecretGeneratorTests.ValidateSecret(normalizedKey, SecretGenerator.MasterKeySeed);
+
+            // Create host secrets if missing knob does not allocate a system
+            // key. The system key creation/validation test is done in the
+            // DefaultScriptWebHookProvider tests.
+            Assert.True(hostSecrets.SystemKeys.Count == 0);
+
+            foreach (string key in hostSecrets.FunctionKeys.Values)
+            {
+                normalizedKey = NormalizeKey(key);
+                SecretGeneratorTests.ValidateSecret(normalizedKey, SecretGenerator.FunctionKeySeed);
+            }
+
+            return true;
+        }
+
+        private string NormalizeKey(string key)
+        {
+            // Elide the '!' appended to secrets which are simulated as encrypted.
+            return key.StartsWith("!") ? key.Substring(1) : key;
         }
 
         [Fact]
