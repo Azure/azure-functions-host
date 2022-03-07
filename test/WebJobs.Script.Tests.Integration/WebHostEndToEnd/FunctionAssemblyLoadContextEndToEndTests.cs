@@ -41,34 +41,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         [Fact]
-        public async Task NativeDependency_Quirks()
-        {
-            // Test a specific bug that hit on v2 with earlier versions of the VS SDK, only 
-            // when publishing
-
-            await RunTest(async () =>
-            {
-                var config = TestHelpers.GetTestConfiguration();
-                var connStr = config.GetConnectionString("CosmosDB");
-                string cosmosKey = "ConnectionStrings__CosmosDB";
-
-                var envVars = new Dictionary<string, string>
-                {
-                    { cosmosKey, connStr }
-                };
-
-                _launcher = new HostProcessLauncher("NativeDependencyOldSdk", envVars, usePublishPath: true, "netcoreapp2.2");
-                await _launcher.StartHostAsync();
-
-                var client = _launcher.HttpClient;
-                var response = await client.GetAsync($"api/NativeDependencyOldSdk");
-
-                // The function does all the validation internally.
-                Assert.True(HttpStatusCode.OK == response.StatusCode, $"Test failed with {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
-            });
-        }
-
-        [Fact]
         public async Task NativeDependency_NoRuntimes()
         {
             // Test that we load the correct native assembly when built against a rid, which removed
