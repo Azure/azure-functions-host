@@ -315,6 +315,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData("run.csx")]
         [InlineData("run.py")]
         [InlineData("index.js")]
+        [InlineData("index.cjs")]
+        [InlineData("index.mjs")]
         [InlineData("test.dll")]
         public void ScriptFile_Emtpy_Returns_True(string scriptFile)
         {
