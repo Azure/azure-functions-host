@@ -62,6 +62,12 @@ jobs:
       packageType: 'sdk'
       version: '3.1.x'
       performMultiLevelLookup: true
+  - task: UseDotNet@2
+    displayName: 'Install .NET Core 2.1 runtime'
+    inputs:
+      packageType: runtime
+      version: 2.1.x
+      performMultiLevelLookup: true
   - task: PowerShell@2
     displayName: "Build artifacts"
     inputs:
@@ -424,6 +430,12 @@ jobs:
       packageType: 'sdk'
       version: '3.1.x'
       performMultiLevelLookup: true
+  - task: UseDotNet@2
+    displayName: 'Install .NET Core 2.1 runtime (tests)'
+    inputs:
+      packageType: runtime
+      version: 2.1.x
+      performMultiLevelLookup: true      
   - task: UseNode@1
     inputs:
       version: '10.x'
