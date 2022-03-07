@@ -70,7 +70,7 @@
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.13" />
+    <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.14" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.33-11908" />
