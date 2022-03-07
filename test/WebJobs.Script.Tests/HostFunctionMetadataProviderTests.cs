@@ -242,7 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
-
+            
             string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(scriptFileProperty, @"c:\functions", fileSystem);
             Assert.Equal(expectedScriptFilePath, scriptFile);
         }
