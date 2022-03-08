@@ -241,6 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script
                         fileSystem.Path.GetFileNameWithoutExtension(p).ToLowerInvariant() == "run" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.js" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.mjs" ||
+                        fileSystem.Path.GetFileName(p).ToLowerInvariant() == "index.cjs" ||
                         fileSystem.Path.GetFileName(p).ToLowerInvariant() == "__init__.py");
                 }
             }

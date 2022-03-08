@@ -217,12 +217,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { @"c:\functions\run.js", new MockFileData(string.Empty) },
                 { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { @"c:\functions\index.mjs", new MockFileData(string.Empty) },
+                { @"c:\functions\index.cjs", new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
             string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\run.js", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_IndexJsTrumpsMjsAndCjs()
+        {
+            var files = new Dictionary<string, MockFileData>
+            {
+                { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { @"c:\functions\index.mjs", new MockFileData(string.Empty) },
+                { @"c:\functions\index.cjs", new MockFileData(string.Empty) }
+            };
+            var fileSystem = new MockFileSystem(files);
+
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem);
+            Assert.Equal(@"c:\functions\index.js", scriptFile);
         }
 
         [Theory]
