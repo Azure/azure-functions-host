@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [TypeFilter(typeof(EnableDebugModeFilter))]
         public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider, [FromServices] IServiceProvider serviceProvider = null)
         {
+            // When making changes to HostStatus, ensure that you update the HostStatus class in Antares as well: https://msazure.visualstudio.com/One/_git/AAPT-Antares-Websites?path=/src/Hosting/AdministrationService/Microsoft.Web.Hosting.Administration.Api/WebEntities/Kudu/HostStatus.cs
             var status = new HostStatus
             {
                 State = scriptHostManager.State.ToString(),
