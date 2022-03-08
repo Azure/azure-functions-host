@@ -1379,6 +1379,10 @@
       "resolutionPolicy": "minorMatchOrLower"
     },
     {
+      "name": "Microsoft.Security.Utilities",
+      "resolutionPolicy": "private"
+    },
+    {
       "name": "System.ValueTuple",
       "resolutionPolicy": "minorMatchOrLower"
     },

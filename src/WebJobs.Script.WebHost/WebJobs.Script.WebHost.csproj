@@ -79,6 +79,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging" Version="4.0.2" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.Extensions.Logging.ApplicationInsights" Version="2.20.0" />
+    <PackageReference Include="Microsoft.Security.Utilities" Version="1.3.0" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.2.3" />
     <PackageReference Include="protobuf-net" Version="3.0.0" />
     <!-- The System.Interactive.Async assembly is required to be deployed. See https://github.com/Azure/azure-functions-host/issues/6203 -->
