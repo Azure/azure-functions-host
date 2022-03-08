@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
             AggregateFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, _logger);
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
+            var functionLoadLogs = traces.Where(m => m.FormattedMessage.Contains("Detected mixed function app. Some functions may not be indexed"));
             Assert.True(functionLoadLogs.Any());
         }
 
@@ -296,13 +296,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
 
             // Assert
-            string expectedLog = "Detected mixed function app. All functions may not be indexed.";
+            string expectedLog = "Detected mixed function app. Some functions may not be indexed";
             var traces = _logger.GetLogMessages();
-            Assert.False(traces.Where(m => string.Equals(m.FormattedMessage, expectedLog)).Any());
+            Assert.False(traces.Where(m => m.FormattedMessage.Contains(expectedLog)).Any());
 
             Task.Delay(TimeSpan.FromSeconds(65)).Wait();
             traces = _logger.GetLogMessages();
-            Assert.True(traces.Where(m => string.Equals(m.FormattedMessage, expectedLog)).Any());
+            Assert.True(traces.Where(m => m.FormattedMessage.Contains(expectedLog)).Any());
         }
 
         private static RawFunctionMetadata GetTestRawFunctionMetadata(bool useDefaultMetadataIndexing)

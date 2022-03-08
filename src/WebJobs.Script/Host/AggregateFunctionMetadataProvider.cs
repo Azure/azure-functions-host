@@ -97,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
             bool mixedApp = false;
+            string legacyFormatFunctions = null;
 
             if (fileSystem.Directory.Exists(scriptPath))
             {
@@ -106,13 +107,14 @@ namespace Microsoft.Azure.WebJobs.Script
                     if (Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
                     {
                         mixedApp = true;
-                        break;
+                        var functionName = functionDirectory.Split('\\').Last();
+                        legacyFormatFunctions = legacyFormatFunctions != null ? legacyFormatFunctions + ", " + functionName : functionName;
                     }
                 }
 
                 if (mixedApp)
                 {
-                    logger.Log(LogLevel.Information, "Detected mixed function app. All functions may not be indexed.");
+                    logger.Log(LogLevel.Information, $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}");
                 }
             }
         }
