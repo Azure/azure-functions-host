@@ -67,20 +67,24 @@ namespace Microsoft.Azure.WebJobs.Script
                     // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
 
-                    if (!IsNullOrEmpty(rawFunctions))
+                    if (IsDefaultIndexingRequired(rawFunctions))
+                    {
+                        _logger.LogDebug("Fallback to host indexing as worker denied indexing");
+                        functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+                    }
+                    else if (!IsNullOrEmpty(rawFunctions))
                     {
                         functions = ValidateMetadata(rawFunctions);
-                        // set up invocation buffers and send load requests
-                        await _dispatcher.FinishInitialization(functions);
                     }
+
+                    // set up invocation buffers and send load requests
+                    await _dispatcher.FinishInitialization(functions);
 
                     // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
                     _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_applicationHostOptions.CurrentValue.ScriptPath, _logger));
                 }
-                if (!workerIndexing || IsDefaultIndexingRequired(rawFunctions))
+                else
                 {
-                    // If worker denies indexing then falling back to the host for Indexing
-                    _logger.LogDebug("Fallback to host indexing as worker denied indexing");
                     functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
                 }
             }

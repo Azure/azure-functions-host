@@ -590,6 +590,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     });
                 }
             }
+            else
+            {
+                functions.Add(new RawFunctionMetadata()
+                {
+                    UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
+                });
+            }
+
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);
         }

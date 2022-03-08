@@ -39,6 +39,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ReadFunctionMetadata_For_WorkerIndexingFormatApp_Fails()
+        {
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "PythonWorkerIndexing");
+            _scriptApplicationHostOptions.ScriptPath = functionsPath;
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
+        }
+
+        [Fact]
         public void ReadFunctionMetadata_With_Retry_Succeeds()
         {
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "noderetry");

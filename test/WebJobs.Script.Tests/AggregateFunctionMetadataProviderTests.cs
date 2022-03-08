@@ -14,9 +14,9 @@ using Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
@@ -152,6 +152,71 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void GetFunctionMetadataAsync_WorkerIndexing_HostFallback()
+        {
+            // Arrange
+            _logger.ClearLogMessages();
+
+            var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
+            var functionMetadataCollection = new List<FunctionMetadata>();
+            functionMetadataCollection.Add(GetTestFunctionMetadata());
+
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
+
+            var environment = SystemEnvironment.Instance;
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
+
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object);
+
+            // Act
+            var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
+
+            // Assert
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Fallback to host indexing as worker denied indexing"));
+            Assert.True(functionLoadLogs.Any());
+        }
+
+        [Fact]
+        public void GetFunctionMetadataAsync_HostIndexing()
+        {
+            // Arrange
+            _logger.ClearLogMessages();
+
+            var function = GetTestRawFunctionMetadata(useDefaultMetadataIndexing: true);
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>() { function };
+            var functionMetadataCollection = new List<FunctionMetadata>();
+            functionMetadataCollection.Add(GetTestFunctionMetadata());
+
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            var environment = SystemEnvironment.Instance;
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object);
+
+            //Act
+            var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
+
+            // Assert
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Fallback to host indexing as worker denied indexing"));
+            Assert.False(functionLoadLogs.Any());
+        }
+
+        [Fact]
         public void ValidateFunctionAppFormat_InputMixedApp()
         {
             _logger.ClearLogMessages();
@@ -160,6 +225,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Detected mixed function app. All functions may not be indexed."));
             Assert.True(functionLoadLogs.Any());
+        }
+
+        [Fact]
+        public void GetFunctionMetadataAsync_WorkerIndexing_NoHostFallback()
+        {
+            // Arrange
+            _logger.ClearLogMessages();
+
+            IEnumerable<RawFunctionMetadata> rawFunctionMetadataCollection = new List<RawFunctionMetadata>();
+            var functionMetadataCollection = new List<FunctionMetadata>();
+
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
+
+            var environment = SystemEnvironment.Instance;
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
+            environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, "EnableWorkerIndexing");
+            workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
+
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
+            _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
+            _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
+
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object);
+
+            // Act
+            var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
+
+            // Assert
+            var traces = _logger.GetLogMessages();
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Fallback to host indexing as worker denied indexing"));
+            Assert.False(functionLoadLogs.Any());
+            Assert.True(functions.Count() == 0);
         }
 
         [Fact]
@@ -201,6 +300,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Task.Delay(TimeSpan.FromSeconds(65)).Wait();
             traces = _logger.GetLogMessages();
             Assert.True(traces.Where(m => string.Equals(m.FormattedMessage, expectedLog)).Any());
+        }
+
+        private static FunctionMetadata GetTestFunctionMetadata(string name = "testFunction")
+        {
+            return new FunctionMetadata()
+            {
+                Name = name,
+                Language = "node"
+            };
+        }
+
+        private static RawFunctionMetadata GetTestRawFunctionMetadata(bool useDefaultMetadataIndexing)
+        {
+            return new RawFunctionMetadata()
+            {
+                UseDefaultMetadataIndexing = useDefaultMetadataIndexing
+            };
         }
 
         private static FunctionMetadata GetTestFunctionMetadata(string name = "testFunction")
