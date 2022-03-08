@@ -25,20 +25,20 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly Dictionary<string, ICollection<string>> _functionErrors = new Dictionary<string, ICollection<string>>();
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
-        private readonly IOptionsMonitor<ScriptApplicationHostOptions> _applicationHostOptions;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IOptions<ScriptJobHostOptions> _scriptOptions;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
             ILogger logger,
             IFunctionInvocationDispatcher invocationDispatcher,
             IFunctionMetadataProvider hostFunctionMetadataProvider,
-            IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions)
+            IOptions<ScriptJobHostOptions> scriptOptions)
         {
             _logger = logger;
             _dispatcher = invocationDispatcher;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
-            _applicationHostOptions = applicationHostOptions;
+            _scriptOptions = scriptOptions;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     await _dispatcher.FinishInitialization(functions);
 
                     // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_applicationHostOptions.CurrentValue.ScriptPath, _logger));
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger));
                 }
                 else
                 {

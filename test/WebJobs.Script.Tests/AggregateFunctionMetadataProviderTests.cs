@@ -15,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.WebJobs.Script.Tests;
 using Moq;
 using Xunit;
@@ -24,16 +25,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class AggregateFunctionMetadataProviderTests
     {
         private readonly TestLogger _logger;
-        private TestMetricsLogger _testMetricsLogger;
-        private ScriptApplicationHostOptions _scriptApplicationHostOptions;
         private AggregateFunctionMetadataProvider _aggregateFunctionMetadataProvider;
         private Mock<IFunctionInvocationDispatcher> _mockRpcFunctionInvocationDispatcher;
         private Mock<IFunctionMetadataProvider> _mockFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProviderTests()
         {
-            _testMetricsLogger = new TestMetricsLogger();
-            _scriptApplicationHostOptions = new ScriptApplicationHostOptions();
             _logger = new TestLogger("AggregateFunctionMetadataProviderTests");
             _mockRpcFunctionInvocationDispatcher = new Mock<IFunctionInvocationDispatcher>();
             _mockFunctionMetadataProvider = new Mock<IFunctionMetadataProvider>();
@@ -164,8 +161,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
-            var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            var scriptjobhostoptions = new ScriptJobHostOptions();
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
@@ -176,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
             _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
-            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, scripthostoptions);
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, new OptionsWrapper<ScriptJobHostOptions>(scriptjobhostoptions));
 
             // Act
             var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
@@ -201,15 +198,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
-            var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            var scriptjobhostoptions = new ScriptJobHostOptions();
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
             _mockRpcFunctionInvocationDispatcher.Setup(m => m.InitializeAsync(functionMetadataCollection, default)).Returns(Task.FromResult(0));
             _mockRpcFunctionInvocationDispatcher.Setup(m => m.GetWorkerMetadata()).Returns(Task.FromResult(rawFunctionMetadataCollection));
             _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
             _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
-            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, scripthostoptions);
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, new OptionsWrapper<ScriptJobHostOptions>(scriptjobhostoptions));
 
             //Act
             var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
@@ -242,8 +239,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
-            var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            var scriptjobhostoptions = new ScriptJobHostOptions();
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
@@ -255,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _mockRpcFunctionInvocationDispatcher.Setup(m => m.FinishInitialization(functionMetadataCollection, default)).Returns(Task.FromResult(0));
             _mockFunctionMetadataProvider.Setup(m => m.GetFunctionMetadataAsync(workerConfigs, environment, false)).Returns(Task.FromResult(functionMetadataCollection.ToImmutableArray()));
 
-            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, scripthostoptions);
+            _aggregateFunctionMetadataProvider = new AggregateFunctionMetadataProvider(_logger, _mockRpcFunctionInvocationDispatcher.Object, _mockFunctionMetadataProvider.Object, new OptionsWrapper<ScriptJobHostOptions>(scriptjobhostoptions));
 
             // Act
             var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
@@ -279,8 +276,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var workerConfigs = TestHelpers.GetTestWorkerConfigs().ToImmutableArray();
             workerConfigs.ToList().ForEach(config => config.Description.WorkerIndexing = "true");
-            var scripthostoptions = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
-            scripthostoptions.CurrentValue.ScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
+            var scriptjobhostoptions = new ScriptJobHostOptions();
+            scriptjobhostoptions.RootScriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
 
             var environment = SystemEnvironment.Instance;
             environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime, "node");
@@ -293,7 +290,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 _logger,
                 _mockRpcFunctionInvocationDispatcher.Object,
                 _mockFunctionMetadataProvider.Object,
-                scripthostoptions);
+                new OptionsWrapper<ScriptJobHostOptions>(scriptjobhostoptions));
 
             // Act
             var functions = _aggregateFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, false).GetAwaiter().GetResult();
