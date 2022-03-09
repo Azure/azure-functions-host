@@ -217,7 +217,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+            _workerRuntime = _workerRuntime ?? Utility.GetWorkerRuntime(functions, _environment);
+
             if (string.IsNullOrEmpty(_workerRuntime) || _workerRuntime.Equals(RpcWorkerConstants.DotNetLanguageWorkerName, StringComparison.InvariantCultureIgnoreCase))
             {
                 // Shutdown any placeholder channels for empty function apps or dotnet function apps.
@@ -434,16 +435,26 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            if (string.Equals(_workerRuntime, workerError.Language))
+            try
             {
-                _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
-                AddOrUpdateErrorBucket(workerError);
-                await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
+                if (string.Equals(_workerRuntime, workerError.Language))
+                {
+                    _logger.LogDebug("Handling WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                    AddOrUpdateErrorBucket(workerError);
+                    await DisposeAndRestartWorkerChannel(workerError.Language, workerError.WorkerId, workerError.Exception);
+                }
+                else
+                {
+                    _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
+                    _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                }
             }
-            else
+            catch (TaskCanceledException)
             {
-                _logger.LogDebug("Received WorkerErrorEvent for runtime:{runtime}, workerId:{workerId}", workerError.Language, workerError.WorkerId);
-                _logger.LogDebug("WorkerErrorEvent runtime:{runtime} does not match current runtime:{currentRuntime}. Failed with: {exception}", workerError.Language, _workerRuntime, workerError.Exception);
+                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore
+                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead
+                // It's possible we want to catch *all* exceptions and log or ignore here, but taking the minimal change first
+                // For example if we capture and log, we're left in a worker-less state with a working Host runtime - is that desired? Will it self recover elsewhere?
             }
         }
 
@@ -454,8 +465,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
-            await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
+            try
+            {
+                _logger.LogDebug("Handling WorkerRestartEvent for runtime:{runtime}, workerId:{workerId}", workerRestart.Language, workerRestart.WorkerId);
+                await DisposeAndRestartWorkerChannel(workerRestart.Language, workerRestart.WorkerId);
+            }
+            catch (TaskCanceledException)
+            {
+                // Specifically in the "we were torn down while trying to restart" case, we want to catch here and ignore
+                // If we don't catch the exception from an async void method, we'll end up tearing down the entire runtime instead
+                // It's possible we want to catch *all* exceptions and log or ignore here, but taking the minimal change first
+                // For example if we capture and log, we're left in a worker-less state with a working Host runtime - is that desired? Will it self recover elsewhere?
+            }
         }
 
         public async Task StartWorkerChannel()
