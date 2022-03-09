@@ -63,6 +63,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testWorkerConfig.CountOptions.EnvironmentReloadTimeout = TimeSpan.FromSeconds(5);
 
             _mockrpcWorkerProcess.Setup(m => m.StartProcessAsync()).Returns(Task.CompletedTask);
+            _mockrpcWorkerProcess.Setup(m => m.Id).Returns(910);
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
@@ -397,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _workerChannel.SendFunctionEnvironmentReloadRequest();
             _testFunctionRpcService.PublishFunctionEnvironmentReloadResponseEvent();
             var traces = _logger.GetLogMessages();
-            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest"));
+            var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '910'"));
             Assert.True(functionLoadLogs.Count() == 1);
         }
 
