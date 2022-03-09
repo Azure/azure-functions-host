@@ -65,6 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [TypeFilter(typeof(EnableDebugModeFilter))]
         public async Task<IActionResult> GetHostStatus([FromServices] IScriptHostManager scriptHostManager, [FromServices] IHostIdProvider hostIdProvider, [FromServices] IServiceProvider serviceProvider = null)
         {
+            // When making changes to HostStatus, ensure that you update the HostStatus class in AAPT-Antares-Websites repo as well.
             var status = new HostStatus
             {
                 State = scriptHostManager.State.ToString(),
