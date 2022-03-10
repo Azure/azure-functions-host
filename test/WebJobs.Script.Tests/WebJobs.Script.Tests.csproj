@@ -106,7 +106,37 @@
     <None Update="Description\DotNet\TestFiles\PackageReferences\ProjectWithMismatchedLock\MismatchedProjectDependencies\project.assets.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Managment\Payloads\ExpectedConcurrencyPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Managment\Payloads\ExpectedHostJsonPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Managment\Payloads\ExpectedHttpExtensionsPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Microsoft.Azure.WebJobs.Script.WebHost.deps.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestBasicBindings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestBasicConcurrency.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestDefaultConcurrency.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestIrregularNamingBindings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestMultipleBindings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestWihtoutExtensionsAttributeBindings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestFixture\HostOptionsProviderTests\TestWihtoutIOptionsFormatter.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Workers\Rpc\Resources\functions.png">
