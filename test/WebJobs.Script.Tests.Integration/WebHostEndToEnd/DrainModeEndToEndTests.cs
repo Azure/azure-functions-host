@@ -64,13 +64,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     response = await SamplesTestHelpers.InvokeDrain(this);
                     Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
                     return true;
-                }, 20000);
+                }, 10000);
 
             });
 
             // Call function with cancellation token handler
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger-Cancellation");
-            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
     }
 
