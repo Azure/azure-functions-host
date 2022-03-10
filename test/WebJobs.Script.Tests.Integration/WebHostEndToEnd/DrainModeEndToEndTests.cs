@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     response = await SamplesTestHelpers.InvokeDrain(this);
                     Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
                     return true;
-                }, 10000);
+                }, 20000);
 
             });
 
