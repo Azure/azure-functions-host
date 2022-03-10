@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -24,16 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IOptions<ScriptJobHostOptions> _scriptOptions;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
             ILogger logger,
             IFunctionInvocationDispatcher invocationDispatcher,
-            IFunctionMetadataProvider hostFunctionMetadataProvider)
+            IFunctionMetadataProvider hostFunctionMetadataProvider,
+            IOptions<ScriptJobHostOptions> scriptOptions)
         {
             _logger = logger;
             _dispatcher = invocationDispatcher;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
+            _scriptOptions = scriptOptions;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -74,6 +79,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
                     // set up invocation buffers and send load requests
                     await _dispatcher.FinishInitialization(functions);
+
+                    // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger));
                 }
                 else
                 {
@@ -83,6 +91,32 @@ namespace Microsoft.Azure.WebJobs.Script
             _functions = functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             return _functions;
+        }
+
+        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IFileSystem fileSystem = null)
+        {
+            fileSystem = fileSystem ?? FileUtility.Instance;
+            bool mixedApp = false;
+            string legacyFormatFunctions = null;
+
+            if (fileSystem.Directory.Exists(scriptPath))
+            {
+                var functionDirectories = fileSystem.Directory.EnumerateDirectories(scriptPath).ToImmutableArray();
+                foreach (var functionDirectory in functionDirectories)
+                {
+                    if (Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
+                    {
+                        mixedApp = true;
+                        var functionName = functionDirectory.Split('\\').Last();
+                        legacyFormatFunctions = legacyFormatFunctions != null ? legacyFormatFunctions + ", " + functionName : functionName;
+                    }
+                }
+
+                if (mixedApp)
+                {
+                    logger.Log(LogLevel.Information, $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}");
+                }
+            }
         }
 
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)
