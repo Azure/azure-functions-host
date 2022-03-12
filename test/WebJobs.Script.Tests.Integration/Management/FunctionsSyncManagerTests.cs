@@ -368,7 +368,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
 
                 string hash = string.Empty;
                 var downloadResponse = await hashBlob.DownloadAsync();
@@ -434,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
                 bool hashBlobExists = await hashBlob.ExistsAsync();
                 Assert.False(hashBlobExists);
 
