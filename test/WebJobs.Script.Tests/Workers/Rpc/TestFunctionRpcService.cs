@@ -232,9 +232,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
 
             overallResponse.Result = new StatusResult()
-                {
-                    Status = overallStatus == true ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure
-                };
+            {
+                Status = overallStatus == true ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure
+            };
 
             StreamingMessage responseMessage = new StreamingMessage()
             {
