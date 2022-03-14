@@ -550,7 +550,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
 
+            if (functionMetadataResponse.Result.IsFailure(out Exception metadataResponseEx))
+            {
+                _workerChannelLogger?.LogError(metadataResponseEx, "Worker failed to index functions");
+            }
+
             var functions = new List<RawFunctionMetadata>();
+            var functionsCount = 0;
 
             if (functionMetadataResponse.UseDefaultMetadataIndexing == false)
             {
@@ -564,6 +570,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         _workerChannelLogger.LogError($"Worker failed to index function {metadata.FunctionId}");
                         _metadataRequestErrors[metadata.FunctionId] = metadataRequestEx;
+                    }
+                    else
+                    {
+                        functionsCount++;
                     }
 
                     var functionMetadata = new FunctionMetadata()
@@ -589,6 +599,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
                     });
                 }
+                _workerChannelLogger.LogInformation($"Functions indexed by the worker: {functionsCount}");
             }
             else
             {
