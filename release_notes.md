@@ -9,3 +9,4 @@
 **Release sprint:** Sprint 118
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Afeature+is%3Aclosed) ]
 - Update App Service Authentication/Authorization on Linux Consumption from 1.4.13 to 1.4.14 [Release Note](https://github.com/Azure/app-service-announcements/issues/358)
+- Update App Service Authentication/Authorization on Linux Consumption from 1.4.14 to 1.4.15 [Release Note](https://github.com/Azure/app-service-announcements/issues/360)
