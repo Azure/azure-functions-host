@@ -353,11 +353,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             WorkerConcurrencyManager concurrancyManager = new WorkerConcurrencyManager(functionInvocationDispatcherFactory.Object, testEnvironment, Options.Create(options), conf.Object, _applicationLifetime, _loggerFactory);
             concurrancyManager.ActivationTimerInterval = TimeSpan.FromMilliseconds(100);
             await concurrancyManager.StartAsync(CancellationToken.None);
-            await Task.Delay(1000);
-            Assert.Single(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring was started by activation timer.")));
+            await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().SingleOrDefault(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring was started by activation timer.")) != null, timeout: 1000, pollingInterval: 100);
             conf.Setup(x => x.FunctionsWorkerDynamicConcurrencyEnabled).Returns(false);
-            await Task.Delay(1000);
-            Assert.Single(_loggerProvider.GetAllLogMessages().Where(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.")));
+            await TestHelpers.Await(() => _loggerProvider.GetAllLogMessages().SingleOrDefault(x => x.FormattedMessage.StartsWith("Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.")) != null, timeout: 1000, pollingInterval: 100);
         }
     }
 }

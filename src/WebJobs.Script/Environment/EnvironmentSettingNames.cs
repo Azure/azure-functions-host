@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
-        public const string FunctionsRuntimeConfigFilePath = "FUNCTIONS_RUNTIME_CONFIG_FILE_PATH";
+        public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";

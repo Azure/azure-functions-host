@@ -75,8 +75,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         [Theory]
         [InlineData("", "", false)]
         [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp,flag2=value2", "", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,app2,flag2=value2", "app1", true)]
-        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,app2,flag2=value2", "app3", false)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=stamp app1,flag2=value2", "", true)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 stamp,flag2=value2", "", true)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1,flag2=value2", "app1", true)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app1", true)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app2", true)]
+        [InlineData("flag1=value1,FUNCTIONS_WORKER_DYNAMIC_CONCURRENCY_ENABLED=app1 app2,flag2=value2", "app3", false)]
         public void FunctionsWorkerDynamicConcurrencyEnabled_ReturnsExpected(string config, string siteName, bool isEnabled)
         {
             TestEnvironment environment = new TestEnvironment();

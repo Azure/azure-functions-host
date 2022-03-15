@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private System.Timers.Timer _activationTimer;
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
-        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
+        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(1);
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(

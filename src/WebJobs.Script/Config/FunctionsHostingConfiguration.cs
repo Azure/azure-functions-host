@@ -18,14 +18,14 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         private readonly ILogger _logger;
         private readonly string _configFilePath;
 
-        private DateTime _configTTL = DateTime.UtcNow.AddMinutes(10); // next sync will be in 10 minutes
+        private DateTime _configTTL;
         private Dictionary<string, string> _configs;
 
         public FunctionsHostingConfiguration(IEnvironment environment, ILoggerFactory loggerFactory)
         {
             _environment = environment;
             _logger = loggerFactory.CreateLogger<FunctionsHostingConfiguration>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-            _configFilePath = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsRuntimeConfigFilePath);
+            _configFilePath = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionsPlatformConfigFilePath);
             if (string.IsNullOrEmpty(_configFilePath))
             {
                 _configFilePath = Environment.ExpandEnvironmentVariables(Path.Combine("%ProgramFiles(x86)%", "SiteExtensions", "kudu", "ScmHostingConfigurations.txt"));
@@ -48,11 +48,11 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             get
             {
-                // Worker concurrecy feature can be enabled for whole stamp or for individual apps.
+                // Worker concurrecy feature can be enabled per a stamp or an app.
                 string value = GetValue(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
                 if (!string.IsNullOrEmpty(value))
                 {
-                    var values = value.Split(";").Select(x => x.ToLower());
+                    var values = value.Split(" ").Select(x => x.ToLower());
                     string siteName = _environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName);
                     return values.Contains("stamp") || values.Contains(siteName);
                 }
@@ -67,18 +67,21 @@ namespace Microsoft.Azure.WebJobs.Script.Config
             {
                 lock (_configFilePath)
                 {
-                    _configTTL = DateTime.UtcNow.Add(_updateInterval);
+                    if (configs == null || DateTime.UtcNow > _configTTL)
+                    {
+                        _configTTL = DateTime.UtcNow.Add(_updateInterval);
 
-                    if (FileUtility.FileExists(_configFilePath))
-                    {
-                        var settings = FileUtility.ReadAllText(_configFilePath);
-                        configs = Parse(settings);
-                        _configs = configs;
-                        _logger.LogInformation($"Updaiting FunctionsHostingConfigurations '{settings}'");
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("FunctionsHostingConfigurations does not exists");
+                        if (FileUtility.FileExists(_configFilePath))
+                        {
+                            var settings = FileUtility.ReadAllText(_configFilePath);
+                            configs = Parse(settings);
+                            _configs = configs;
+                            _logger.LogInformation($"Updaiting FunctionsHostingConfigurations '{settings}'");
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("FunctionsHostingConfigurations does not exists");
+                        }
                     }
                 }
             }
