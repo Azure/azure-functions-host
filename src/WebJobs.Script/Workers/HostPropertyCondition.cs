@@ -4,7 +4,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.Logging;
@@ -22,7 +21,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
-            Type = ConditionType.HostProperty;
             Name = name;
             Expression = expression;
             Validate();
@@ -30,15 +28,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public enum ConditionHostPropertyName
         {
-            [EnumMember(Value = "sku")]
             Sku,
-            [EnumMember(Value = "platform")]
             Platform,
-            [EnumMember(Value = "hostVersion")]
             HostVersion
         }
-
-        public ConditionType Type { get; }
 
         public string Name { get; set; }
 
@@ -77,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
             }
 
-            if (!Enum.GetNames(typeof(ConditionHostPropertyName)).Contains(Name))
+            if (!Enum.GetNames(typeof(ConditionHostPropertyName)).Any(x => x.ToLower().Contains(Name)))
             {
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be a valid host property name.");
             }

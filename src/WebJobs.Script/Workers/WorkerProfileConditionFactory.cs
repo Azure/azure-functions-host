@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -19,17 +20,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
         }
 
-        public IWorkerProfileCondition CreateWorkerProfileCondition(string type, string name, string expression)
+        public IWorkerProfileCondition CreateWorkerProfileCondition(IDictionary<string, object> properties)
         {
-            Enum.TryParse(type, out ConditionType conditionType);
-            switch (conditionType)
+            switch (properties[WorkerConstants.WorkerDescriptionProfileConditionType])
             {
-                case ConditionType.HostProperty:
-                    return new HostPropertyCondition(_logger, _systemRuntimeInformation, _environment, name, expression);
-                case ConditionType.Environment:
-                    return new EnvironmentCondition(_logger, _systemRuntimeInformation, _environment, name, expression);
+                case "hostProperty":
+                    return new HostPropertyCondition(_logger, _systemRuntimeInformation, _environment, (string)properties["name"], (string)properties["expression"]);
+                case "environment":
+                    return new EnvironmentCondition(_logger, _systemRuntimeInformation, _environment, (string)properties["name"], (string)properties["expression"]);
                 default:
-                    throw new ArgumentException(nameof(type));
+                    throw new ArgumentException(nameof(WorkerConstants.WorkerDescriptionProfileConditionType));
             }
         }
     }

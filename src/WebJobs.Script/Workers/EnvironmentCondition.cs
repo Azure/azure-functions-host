@@ -19,13 +19,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
-            Type = ConditionType.Environment;
             Name = name;
             Expression = expression;
             Validate();
         }
-
-        public ConditionType Type { get; }
 
         public string Name { get; set; }
 

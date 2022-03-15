@@ -29,6 +29,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         // Profiles
         public const string WorkerDescriptionProfiles = "profiles";
+        public const string WorkerDescriptionProfileName = "name";
+        public const string WorkerDescriptionProfileConditions = "conditions";
+        public const string WorkerDescriptionProfileConditionType = "type";
         public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
         // Logs
