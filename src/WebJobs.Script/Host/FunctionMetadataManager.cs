@@ -196,6 +196,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void LoadCustomProviderFunctions(List<FunctionMetadata> functionMetadataList)
         {
+            _logger.FunctionMetadataProviderParsingFunctions();
+
             // We always want to get the most updated function providers in case this list was changed.
             IEnumerable<IFunctionProvider> functionProviders = _serviceProvider?.GetService<IEnumerable<IFunctionProvider>>();
 
@@ -217,6 +219,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
             // This is used to make sure no duplicates are registered
             var distinctFunctionNames = new HashSet<string>(functionMetadataList.Select(m => m.Name));
+
+            _logger.FunctionMetadataProviderFunctionFound(functionMetadataListArray.Length);
 
             foreach (var metadataArray in functionMetadataListArray)
             {
