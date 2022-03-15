@@ -196,8 +196,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void LoadCustomProviderFunctions(List<FunctionMetadata> functionMetadataList)
         {
-            _logger.FunctionMetadataProviderParsingFunctions();
-
             // We always want to get the most updated function providers in case this list was changed.
             IEnumerable<IFunctionProvider> functionProviders = _serviceProvider?.GetService<IEnumerable<IFunctionProvider>>();
 
@@ -209,6 +207,8 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void AddMetadataFromCustomProviders(IEnumerable<IFunctionProvider> functionProviders, List<FunctionMetadata> functionMetadataList)
         {
+            _logger.FunctionMetadataProviderParsingFunctions();
+
             var functionProviderTasks = new List<Task<ImmutableArray<FunctionMetadata>>>();
             foreach (var functionProvider in functionProviders)
             {
