@@ -133,9 +133,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 string eventName = _bindingMetricEventNames.GetOrAdd(binding, (existing) =>
                 {
-                    return binding.IsTrigger ?
-                        string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type) :
-                        string.Format(MetricEventNames.FunctionBindingTypeDirectionFormat, binding.Type, binding.Direction);
+                    return string.Format(MetricEventNames.FunctionBindingTypeFormat, binding.Type);
                 });
                 _metrics.LogEvent(eventName, metadata.Name);
             }
