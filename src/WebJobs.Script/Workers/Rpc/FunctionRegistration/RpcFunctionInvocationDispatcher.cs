@@ -233,6 +233,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 // Only throw if workerConfig is null AND some functions have been found.
                 // With .NET out-of-proc, worker config comes from functions.
+
+                var allLanguageNamesFromWorkerConfigs = string.Join(",", _workerConfigs.Select(c => c.Description.Language));
+                _logger.LogDebug($"Languages present in WorkerConfig: {allLanguageNamesFromWorkerConfigs}");
+
                 throw new InvalidOperationException($"WorkerConfig for runtime: {_workerRuntime} not found");
             }
 
