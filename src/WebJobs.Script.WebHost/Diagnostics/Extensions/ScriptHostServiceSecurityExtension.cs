@@ -14,22 +14,22 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             LoggerMessage.Define<string, string>(
                 LogLevel.Error,
                 new EventId(600, nameof(BlobStorageSecretRepoError)),
-                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' connection string is valid.");
+                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' connection string is valid. {exception}.");
 
         private static readonly Action<ILogger, string, string, Exception> _blobStorageSecretSasRepoError =
             LoggerMessage.Define<string, string>(
                 LogLevel.Error,
                 new EventId(601, nameof(BlobStorageSecretSasRepoError)),
-                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' SAS URL has Read, Write, and List permissions.");
+                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' SAS URL has Read, Write, and List permissions. {exception}");
 
-        public static void BlobStorageSecretRepoError(this ILogger logger, string operation, string appSettingName)
+        public static void BlobStorageSecretRepoError(this ILogger logger, string operation, string appSettingName, Exception exception)
         {
-            _blobStorageSecretRepoError(logger, operation, appSettingName, null);
+            _blobStorageSecretRepoError(logger, operation, appSettingName, exception);
         }
 
-        public static void BlobStorageSecretSasRepoError(this ILogger logger, string operation, string appSettingName)
+        public static void BlobStorageSecretSasRepoError(this ILogger logger, string operation, string appSettingName, Exception exception)
         {
-            _blobStorageSecretSasRepoError(logger, operation, appSettingName, null);
+            _blobStorageSecretSasRepoError(logger, operation, appSettingName, exception);
         }
     }
 }

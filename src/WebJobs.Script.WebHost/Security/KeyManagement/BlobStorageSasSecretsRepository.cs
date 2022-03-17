@@ -26,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             return new BlobContainerClient(new Uri(containerSasUri));
         }
 
-        protected override void LogErrorMessage(string operation)
+        protected override void LogErrorMessage(string operation, Exception exception)
         {
-            Logger?.BlobStorageSecretSasRepoError(operation, EnvironmentSettingNames.AzureWebJobsSecretStorageSas);
+            Logger?.BlobStorageSecretSasRepoError(operation, EnvironmentSettingNames.AzureWebJobsSecretStorageSas, exception);
         }
     }
 }
