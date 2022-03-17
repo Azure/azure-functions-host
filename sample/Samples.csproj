@@ -2,4 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="CSharpBenchmark\HttpHtmlParserAnonNew\function.proj" />
+    <None Include="CSharpBenchmark\HttpHtmlParserAnon\function.proj" />
+  </ItemGroup>
 </Project>
