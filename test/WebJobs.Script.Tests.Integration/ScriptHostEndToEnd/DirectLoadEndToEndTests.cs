@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var error = errorLogs[0];
             var invocationException = (FunctionInvocationException)error.Exception;
             Assert.Equal("Exception while executing function: Function1", invocationException.Message);
-            Assert.Equal("TestFunctions.Function1.Run", invocationException.MethodName);
+            Assert.Equal("TestFunctions.Functions.Run", invocationException.MethodName);
             Assert.Equal("Function1", error.Scope[ScopeKeys.FunctionName]);
             Assert.Equal(LogCategories.CreateFunctionCategory("Function1"), error.Category);
         }
