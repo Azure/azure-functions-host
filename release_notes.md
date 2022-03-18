@@ -9,3 +9,4 @@
 - Updated Node.js Worker Version to [2.1.3](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v2.1.3)
 - Update App Service Authentication/Authorization on Linux Consumption from 1.4.13 to 1.4.14 [Release Note](https://github.com/Azure/app-service-announcements/issues/358)
 - Update App Service Authentication/Authorization on Linux Consumption from 1.4.14 to 1.4.15 [Release Note](https://github.com/Azure/app-service-announcements/issues/360)
+- Update PowerShell 6 Worker to 3.0.1761 [Release Note](https://github.com/Azure/azure-functions-powershell-worker/releases/tag/v3.0.1761)
