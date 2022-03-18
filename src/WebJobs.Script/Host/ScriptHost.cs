@@ -500,7 +500,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Type functionWrapperType = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, Functions);
 
             // configure the Type locator
-            var types = new List<Type>
+            var types = new HashSet<Type>
             {
                 functionWrapperType
             };
