@@ -14,5 +14,5 @@
     ],
     "disabled": false,
     "scriptFile": "..\\..\\..\\TestFunctions.dll",
-    "entryPoint": "TestFunctions.Functions.Run"
+    "entryPoint": "TestFunctions.Functions.Function2"
 }
