@@ -5,6 +5,7 @@
 -->
 - Add admin/host/config API (#7394)
 - Updated Java Worker Version to [2.2.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.2.2-SNAPSHOT)
+- Updated Node.js Worker Version to [3.2.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.2.0)
 
 **Release sprint:** Sprint 118
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Afeature+is%3Aclosed) ]
