@@ -27,5 +27,11 @@ namespace Microsoft.Azure.Functions.Analyzers
                 messageFormat: "Reuse HttpClient instances to avoid holding more connections than necessary. See helplink for more information.",
                 category: Constants.DiagnosticsCategories.Reliability,
                 severity: DiagnosticSeverity.Warning);
+
+        public static DiagnosticDescriptor IllegalFunctionName { get; }
+            = Create(id: "AZF0003", title: "Illegal Function name",
+                messageFormat: "Function name can't be '{0}'",
+                category: Constants.DiagnosticsCategories.WebJobs,
+                severity: DiagnosticSeverity.Warning);  // TODO: Error?
     }
 }

@@ -14,6 +14,7 @@ namespace Microsoft.Azure.Functions.Analyzers
         {
             public const string Reliability = "Reliability";
             public const string Usage = "Usage";
+            public const string WebJobs = "WebJobs";    // TODO: Too vague?
         }
     }
 }
