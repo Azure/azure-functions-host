@@ -31,6 +31,7 @@
           "Microsoft.Security.Utilities": "1.3.0",
           "Microsoft.SourceLink.GitHub": "1.0.0",
           "StyleCop.Analyzers": "1.1.0-beta004",
+          "System.IdentityModel.Tokens.Jwt": "6.15.1",
           "System.Net.NameResolution": "4.3.0"
         },
         "runtime": {
@@ -522,36 +523,36 @@
           "System.Text.Encodings.Web": "6.0.0"
         }
       },
-      "Microsoft.Azure.AppService.Middleware.Functions/1.4.10": {
+      "Microsoft.Azure.AppService.Middleware.Functions/1.4.14": {
         "dependencies": {
-          "Microsoft.Azure.AppService.Middleware.NetCore": "1.4.10"
+          "Microsoft.Azure.AppService.Middleware.NetCore": "1.4.14"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.Functions.dll": {
-            "assemblyVersion": "1.4.10.0",
-            "fileVersion": "1.4.10.0"
+            "assemblyVersion": "1.4.14.0",
+            "fileVersion": "1.4.14.0"
           }
         }
       },
-      "Microsoft.Azure.AppService.Middleware.NetCore/1.4.10": {
+      "Microsoft.Azure.AppService.Middleware.NetCore/1.4.14": {
         "dependencies": {
           "Microsoft.AspNetCore.Http.Abstractions": "2.2.0",
           "Microsoft.Extensions.Caching.Memory": "2.2.0",
           "Microsoft.Extensions.Configuration": "6.0.0",
           "Microsoft.Extensions.Logging": "6.0.0",
           "Newtonsoft.Json": "13.0.1",
-          "System.IdentityModel.Tokens.Jwt": "6.10.0",
+          "System.IdentityModel.Tokens.Jwt": "6.15.1",
           "System.Security.Cryptography.X509Certificates": "4.3.1",
           "System.Text.Encodings.Web": "6.0.0"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.Modules.dll": {
-            "assemblyVersion": "1.4.10.0",
-            "fileVersion": "1.4.10.0"
+            "assemblyVersion": "1.4.14.0",
+            "fileVersion": "1.4.14.0"
           },
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.NetCore.dll": {
-            "assemblyVersion": "1.4.10.0",
-            "fileVersion": "1.4.10.0"
+            "assemblyVersion": "1.4.14.0",
+            "fileVersion": "1.4.14.0"
           },
           "lib/netstandard2.0/Microsoft.Azure.AppService.Middleware.dll": {
             "assemblyVersion": "1.0.0.0",
@@ -781,7 +782,7 @@
         "dependencies": {
           "Microsoft.AspNetCore.DataProtection": "2.0.0",
           "Microsoft.Extensions.DependencyInjection": "6.0.0",
-          "System.IdentityModel.Tokens.Jwt": "6.10.0"
+          "System.IdentityModel.Tokens.Jwt": "6.15.1"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.Azure.WebSites.DataProtection.dll": {
@@ -1241,14 +1242,14 @@
           }
         }
       },
-      "Microsoft.IdentityModel.JsonWebTokens/6.10.0": {
+      "Microsoft.IdentityModel.JsonWebTokens/6.15.1": {
         "dependencies": {
           "Microsoft.IdentityModel.Tokens": "6.15.1"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.IdentityModel.JsonWebTokens.dll": {
-            "assemblyVersion": "6.10.0.0",
-            "fileVersion": "6.10.0.20330"
+            "assemblyVersion": "6.15.1.0",
+            "fileVersion": "6.15.1.30119"
           }
         }
       },
@@ -1275,7 +1276,7 @@
       "Microsoft.IdentityModel.Protocols.OpenIdConnect/6.10.0": {
         "dependencies": {
           "Microsoft.IdentityModel.Protocols": "6.10.0",
-          "System.IdentityModel.Tokens.Jwt": "6.10.0"
+          "System.IdentityModel.Tokens.Jwt": "6.15.1"
         },
         "runtime": {
           "lib/netstandard2.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll": {
@@ -1858,15 +1859,15 @@
           "System.Runtime.InteropServices": "4.3.0"
         }
       },
-      "System.IdentityModel.Tokens.Jwt/6.10.0": {
+      "System.IdentityModel.Tokens.Jwt/6.15.1": {
         "dependencies": {
-          "Microsoft.IdentityModel.JsonWebTokens": "6.10.0",
+          "Microsoft.IdentityModel.JsonWebTokens": "6.15.1",
           "Microsoft.IdentityModel.Tokens": "6.15.1"
         },
         "runtime": {
           "lib/netstandard2.0/System.IdentityModel.Tokens.Jwt.dll": {
-            "assemblyVersion": "6.10.0.0",
-            "fileVersion": "6.10.0.20330"
+            "assemblyVersion": "6.15.1.0",
+            "fileVersion": "6.15.1.30119"
           }
         }
       },
@@ -2931,19 +2932,19 @@
       "path": "microsoft.aspnetcore.webutilities/2.2.0",
       "hashPath": "microsoft.aspnetcore.webutilities.2.2.0.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware.Functions/1.4.10": {
+    "Microsoft.Azure.AppService.Middleware.Functions/1.4.14": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-xv7NsrZ3mfSY81QjxsCVhYgoKk4Km+76eILSzFmuclPblbSJoYz2hExfrcNFxEYC+ugvh5W4ilX3yPbZ3pZ0Hw==",
-      "path": "microsoft.azure.appservice.middleware.functions/1.4.10",
-      "hashPath": "microsoft.azure.appservice.middleware.functions.1.4.10.nupkg.sha512"
+      "sha512": "sha512-3JkPyn+G7TnMGSoVsrdhzlutmryPrUm6l13diFU2NEKVABZEAZ0AsX5ZM5+tKedrf5AVVMMWrwQ6ZkP0+Cif8Q==",
+      "path": "microsoft.azure.appservice.middleware.functions/1.4.14",
+      "hashPath": "microsoft.azure.appservice.middleware.functions.1.4.14.nupkg.sha512"
     },
-    "Microsoft.Azure.AppService.Middleware.NetCore/1.4.10": {
+    "Microsoft.Azure.AppService.Middleware.NetCore/1.4.14": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-w0U0UJGSUyvxNFQAyua3TR03kbg+1uuWsjeETg57lIspTqvmnNUSidPQDavxk8h6ra+TpYDp3P3pghsoHgAA5Q==",
-      "path": "microsoft.azure.appservice.middleware.netcore/1.4.10",
-      "hashPath": "microsoft.azure.appservice.middleware.netcore.1.4.10.nupkg.sha512"
+      "sha512": "sha512-ebaYF3fqbALTACP5eAxn7mwaASZmAbI1pBYt0ShQUF81tfhfKGZYjJfKqss0EFZp3nnXJG8fcvF3RoSZ8vqxsg==",
+      "path": "microsoft.azure.appservice.middleware.netcore/1.4.14",
+      "hashPath": "microsoft.azure.appservice.middleware.netcore.1.4.14.nupkg.sha512"
     },
     "Microsoft.Azure.Cosmos.Table/1.0.8": {
       "type": "package",
@@ -3344,12 +3345,12 @@
       "path": "microsoft.identity.client.extensions.msal/2.18.4",
       "hashPath": "microsoft.identity.client.extensions.msal.2.18.4.nupkg.sha512"
     },
-    "Microsoft.IdentityModel.JsonWebTokens/6.10.0": {
+    "Microsoft.IdentityModel.JsonWebTokens/6.15.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-0qjS31rN1MQTc46tAYbzmMTSRfdV5ndZxSjYxIGqKSidd4wpNJfNII/pdhU5Fx8olarQoKL9lqqYw4yNOIwT0Q==",
-      "path": "microsoft.identitymodel.jsonwebtokens/6.10.0",
-      "hashPath": "microsoft.identitymodel.jsonwebtokens.6.10.0.nupkg.sha512"
+      "sha512": "sha512-X5K/Pt02agb1V+khh5u7Q8hg02IVTshxV5owpR7UdQ9zfs0+A6qzca0F9jyv3o8SlOjEFHBabs+5cp7Noofzvg==",
+      "path": "microsoft.identitymodel.jsonwebtokens/6.15.1",
+      "hashPath": "microsoft.identitymodel.jsonwebtokens.6.15.1.nupkg.sha512"
     },
     "Microsoft.IdentityModel.Logging/6.15.1": {
       "type": "package",
@@ -3827,12 +3828,12 @@
       "path": "system.globalization.extensions/4.3.0",
       "hashPath": "system.globalization.extensions.4.3.0.nupkg.sha512"
     },
-    "System.IdentityModel.Tokens.Jwt/6.10.0": {
+    "System.IdentityModel.Tokens.Jwt/6.15.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-C+Q5ORsFycRkRuvy/Xd0Pv5xVpmWSAvQYZAGs7VQogmkqlLhvfZXTgBIlHqC3cxkstSoLJAYx6xZB7foQ2y5eg==",
-      "path": "system.identitymodel.tokens.jwt/6.10.0",
-      "hashPath": "system.identitymodel.tokens.jwt.6.10.0.nupkg.sha512"
+      "sha512": "sha512-q3ZLyWmpX4+jW4XITf7Axd+9sC6w2NrQaKcQQT9A8waoknHgaNwSeookpUmPMQDqS0afT9Lh0JYub196vzuzbA==",
+      "path": "system.identitymodel.tokens.jwt/6.15.1",
+      "hashPath": "system.identitymodel.tokens.jwt.6.15.1.nupkg.sha512"
     },
     "System.IO/4.3.0": {
       "type": "package",
