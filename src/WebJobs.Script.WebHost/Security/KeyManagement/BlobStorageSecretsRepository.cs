@@ -90,7 +90,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
-
             catch (Exception ex)
             {
                 LogErrorMessage("read", ex);
