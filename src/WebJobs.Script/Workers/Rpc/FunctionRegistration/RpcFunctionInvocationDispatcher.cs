@@ -192,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogDebug(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
+                        _logger.LogError(ex, $"Failed to start a new language worker for runtime: {_workerRuntime}.");
                     }
                 }
 
