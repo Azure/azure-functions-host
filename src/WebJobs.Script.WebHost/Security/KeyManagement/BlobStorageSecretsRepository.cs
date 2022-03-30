@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         protected virtual void LogErrorMessage(string operation, Exception exception)
         {
-            Logger?.BlobStorageSecretRepoError(operation, EnvironmentSettingNames.AzureWebJobsSecretStorage, exception);
+            Logger?.BlobStorageSecretRepoError(operation, exception);
         }
     }
 }
