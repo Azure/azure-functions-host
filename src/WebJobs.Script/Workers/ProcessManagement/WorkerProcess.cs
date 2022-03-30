@@ -114,7 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
-                    // TODO: redesign how we log errors so it's not based on the string contents
+                    // TODO: redesign how we log errors so it's not based on the string contents (GH issue #8273)
                     if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
                         (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
                         (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1) ||
