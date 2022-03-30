@@ -13,13 +13,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics.Extensions
             LoggerMessage.Define<string, string>(
                 LogLevel.Error,
                 new EventId(600, nameof(BlobStorageSecretRepoError)),
-                "There was an error performing a {operation} operation on the Blob Storage Secret Repository.");
+                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' connection string is valid.");
 
         private static readonly Action<ILogger, string, string, Exception> _blobStorageSecretSasRepoError =
             LoggerMessage.Define<string, string>(
                 LogLevel.Error,
                 new EventId(601, nameof(BlobStorageSecretSasRepoError)),
-                "There was an error performing a {operation} operation on the Blob Storage Secret Repository.");
+                "There was an error performing a {operation} operation on the Blob Storage Secret Repository. Please ensure the '{appSettingName}' SAS URL has Read, Write, and List permissions.");
 
         public static void BlobStorageSecretRepoError(this ILogger logger, string operation, string appSettingName, Exception exception)
         {
