@@ -31,9 +31,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly SemaphoreSlim _startWorkerProcessLock = new SemaphoreSlim(1, 1);
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
 
         private IScriptEventManager _eventManager;
-        private IEnumerable<RpcWorkerConfig> _workerConfigs;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
         private IJobHostRpcWorkerChannelManager _jobHostLanguageWorkerChannelManager;
         private IDisposable _workerErrorSubscription;
@@ -214,6 +214,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (placeholderModeEnabled)
             {
+                _maxProcessCount = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime).Count();
                 return;
             }
 
@@ -233,7 +234,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 // Only throw if workerConfig is null AND some functions have been found.
                 // With .NET out-of-proc, worker config comes from functions.
-
                 var allLanguageNamesFromWorkerConfigs = string.Join(",", _workerConfigs.Select(c => c.Description.Language));
                 _logger.LogDebug($"Languages present in WorkerConfig: {allLanguageNamesFromWorkerConfigs}");
 
@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if ((functions == null || functions.Count() == 0) && !_workerIndexing)
             {
                 // do not initialize function dispatcher if there are no functions, unless the worker is indexing
-                _logger.LogDebug("RpcFunctionInvocationDispatcher received no functions");
+                _logger.LogDebug($"{nameof(RpcFunctionInvocationDispatcher)} received no functions");
                 return;
             }
 
