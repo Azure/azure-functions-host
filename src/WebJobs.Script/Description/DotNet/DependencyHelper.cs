@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using Microsoft.Azure.WebJobs.Script.ExtensionRequirements;
 using Microsoft.Extensions.DependencyModel;
 using Newtonsoft.Json.Linq;
-using static Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment;
 
 namespace Microsoft.Azure.WebJobs.Script.Description
 {
@@ -17,6 +16,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private const string AssemblyNamePrefix = "assembly:";
         private static readonly Lazy<Dictionary<string, string[]>> _ridGraph = new Lazy<Dictionary<string, string[]>>(BuildRuntimesGraph);
+        private static string _runtimeIdentifier;
 
         private static Dictionary<string, string[]> BuildRuntimesGraph()
         {
@@ -204,5 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
             return isSharedAssembly;
         }
+
+        private static string GetRuntimeIdentifier() => _runtimeIdentifier ??= AppContext.GetData("RUNTIME_IDENTIFIER") as string ?? "unknown";
     }
 }
