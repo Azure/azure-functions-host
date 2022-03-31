@@ -76,6 +76,7 @@ namespace Microsoft.Azure.WebJobs.Script
         private ScriptSettingsManager _settingsManager;
         private ILogger _logger = null;
         private string _workerRuntime;
+        private string _additionalWorkerRuntime;
         private IList<IDisposable> _eventSubscriptions = new List<IDisposable>();
         private IFunctionInvocationDispatcher _functionDispatcher;
 
@@ -139,6 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script
             _hostLogPath = Path.Combine(ScriptOptions.RootLogPath, "Host");
 
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _additionalWorkerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.AdditonalFunctionWorkerRuntimeSettingName);
             _languageWorkerOptions = languageWorkerOptions;
 
             _loggerFactory = loggerFactory;
@@ -285,6 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 HostInitializing?.Invoke(this, EventArgs.Empty);
 
                 _workerRuntime = _workerRuntime ?? _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                _additionalWorkerRuntime = _additionalWorkerRuntime ?? _environment.GetEnvironmentVariable(RpcWorkerConstants.AdditonalFunctionWorkerRuntimeSettingName);
 
                 // get worker config information and check to see if worker should index or not
                 var workerConfigs = _languageWorkerOptions.Value.WorkerConfigs;
@@ -550,6 +553,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
 
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
+
+                _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _additionalWorkerRuntime, ScriptOptions, _bindingProviders,
                     _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
             }
 

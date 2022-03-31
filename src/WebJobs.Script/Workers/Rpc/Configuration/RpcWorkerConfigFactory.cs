@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
+        private readonly string _additionalWorkerRuntime;
         private readonly IEnvironment _environment;
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
@@ -33,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
+            _additionalWorkerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.AdditonalFunctionWorkerRuntimeSettingName) ?? string.Empty;
             string assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.CodeBase).LocalPath);
             WorkersDirPath = GetDefaultWorkersDirectory(Directory.Exists);
             var workersDirectorySection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}");
@@ -182,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             // Validate
             if (workerProcessCount.ProcessCount <= 0)
             {
-                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessCount)}",  "ProcessCount must be greater than 0.");
+                throw new ArgumentOutOfRangeException($"{nameof(workerProcessCount.ProcessCount)}", "ProcessCount must be greater than 0.");
             }
             if (workerProcessCount.ProcessCount > workerProcessCount.MaxProcessCount)
             {
@@ -214,6 +216,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
+        // nasoni; This method filters worker config read based on the worker runtime app setting. update it to watch for addional app settings or configuration.
         internal bool ShouldAddWorkerConfig(string workerDescriptionLanguage)
         {
             if (_environment.IsPlaceholderModeEnabled())
@@ -224,11 +227,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
                 _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {_workerRuntime}");
-                if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
+
+                // Load more than one worker profile
+                if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase) ||
+                    _additionalWorkerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
-                // After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+                //After specialization only create worker provider for the language set by FUNCTIONS_WORKER_RUNTIME env variable
+
                 _logger.LogInformation($"{RpcWorkerConstants.FunctionWorkerRuntimeSettingName} set to {_workerRuntime}. Skipping WorkerConfig for language:{workerDescriptionLanguage}");
                 return false;
             }

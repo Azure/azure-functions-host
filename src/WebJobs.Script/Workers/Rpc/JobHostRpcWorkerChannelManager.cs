@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -13,19 +14,35 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     {
         private readonly ILogger _logger;
         private ConcurrentDictionary<string, IRpcWorkerChannel> _channels = new ConcurrentDictionary<string, IRpcWorkerChannel>();
+        private ConcurrentDictionary<string, HashSet<string>> _channelLanguage = new ConcurrentDictionary<string, HashSet<string>>();
 
         public JobHostRpcWorkerChannelManager(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<JobHostRpcWorkerChannelManager>();
         }
 
-        public void AddChannel(IRpcWorkerChannel channel)
+        public void AddChannel(IRpcWorkerChannel channel, string language)
         {
             _channels.TryAdd(channel.Id, channel);
+
+            if (_channelLanguage.TryGetValue(language, out HashSet<string> list))
+            {
+                list.Add(channel.Id);
+            }
+            else
+            {
+                _channelLanguage.TryAdd(language, new HashSet<string>()
+                {
+                    {
+                        channel.Id
+                    }
+                });
+            }
         }
 
         public Task<bool> ShutdownChannelIfExistsAsync(string channelId, Exception workerException)
         {
+            _channelLanguage.Clear();
             if (_channels.TryRemove(channelId, out IRpcWorkerChannel removedChannel))
             {
                 _logger.LogDebug("Disposing JobHost language worker channel with id:{workerId}", removedChannel.Id);
@@ -48,9 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public IEnumerable<IRpcWorkerChannel> GetChannels()
+        public IEnumerable<IRpcWorkerChannel> GetChannels(string language)
         {
-            return _channels.Values;
+            _channelLanguage.TryGetValue(language, out HashSet<string> list);
+            return _channels.Where(channel => list.Contains(channel.Key)).Select(channel => channel.Value);
         }
     }
 }
