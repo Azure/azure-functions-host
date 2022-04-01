@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 
@@ -76,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Config
                             var settings = FileUtility.ReadAllText(_configFilePath);
                             configs = Parse(settings);
                             _configs = configs;
-                            _logger.LogInformation($"Updaiting FunctionsHostingConfigurations '{settings}'");
+                            _logger.LogDebug($"Updaiting FunctionsHostingConfigurations '{settings}'");
                         }
                         else
                         {

@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
@@ -32,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private System.Timers.Timer _activationTimer;
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
-        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(1);
+        private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(
@@ -66,14 +67,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 // the feature applies only to "node","powershell","python"
                 workerRuntime = workerRuntime.ToLower();
                 if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
-                    || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
-                    || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+                || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
+                || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
                 {
                     _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
 
                     if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
                     {
                         _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
+                        return Task.CompletedTask;
+                    }
+                    if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName)))
+                    {
                         return Task.CompletedTask;
                     }
                     if (_environment.IsWorkerDynamicConcurrencyEnabled())
@@ -151,14 +156,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     // if the feature was activated by FunctionsHostingConfiguration and then disabled - shutdown the host
                     _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
+                    _functionInvocationDispatcher.ShutdownAsync();
                     _applicationLifetime.StopApplication();
                     return;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Best effort
-                _logger.LogError(ex, "Error on activation worker concurrency monitoring");
                 // return and do not start the activation timmer again
                 return;
             }
