@@ -7,6 +7,7 @@
 - Updated Java Worker Version to [2.2.2-SNAPSHOT](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.2.2-SNAPSHOT)
 - Added support for no storage account scenarios (#8083)
 - Updated Node.js Worker Version to [3.2.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.2.0)
+- Added filter to show only contextual logs from App Insights in "Code + Test" experience on the portal.
 
 **Release sprint:** Sprint 118
 [ [bugs](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Abug+is%3Aclosed) | [features](https://github.com/Azure/azure-functions-host/issues?q=is%3Aissue+milestone%3A%22Functions+Sprint+118%22+label%3Afeature+is%3Aclosed) ]

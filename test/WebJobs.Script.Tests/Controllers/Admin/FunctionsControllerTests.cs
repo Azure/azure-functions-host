@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -92,6 +93,65 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             await TestHelpers.Await(() => functionInvoked, timeout: 3000, pollingInterval: 100);
 
             Assert.True(functionInvoked);
+        }
+
+        [Fact]
+        public async Task Invoke_CallsFunctionSession()
+        {
+            var testFunctions = new Collection<FunctionDescriptor>();
+            string testFunctionName = "TestFunction";
+            string triggerParameterName = "testTrigger";
+            string testInput = Guid.NewGuid().ToString();
+            string sessionId = Guid.NewGuid().ToString();
+            bool baggageAdded = false;
+
+            var scriptHostMock = new Mock<IScriptJobHost>();
+            scriptHostMock.Setup(p => p.CallAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, object>>(), CancellationToken.None))
+            .Callback<string, IDictionary<string, object>, CancellationToken>((name, args, token) =>
+            {
+                if (string.Equals(Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey), sessionId, StringComparison.OrdinalIgnoreCase))
+                {
+                    baggageAdded = true;
+                }
+            })
+            .Returns(Task.CompletedTask);
+
+            scriptHostMock.Setup(p => p.Functions).Returns(testFunctions);
+            Collection<ParameterDescriptor> parameters = new Collection<ParameterDescriptor>
+            {
+                new ParameterDescriptor("context", typeof(ExecutionContext)),
+                new ParameterDescriptor("log", typeof(TraceWriter)),
+                new ParameterDescriptor(triggerParameterName, typeof(string))
+                {
+                    IsTrigger = true
+                }
+            };
+            testFunctions.Add(new FunctionDescriptor(testFunctionName, null, null, parameters, null, null, null));
+
+            FunctionInvocation invocation = new FunctionInvocation
+            {
+                Input = testInput
+            };
+
+            var scriptPath = Path.GetTempPath();
+            var applicationHostOptions = new ScriptApplicationHostOptions();
+            applicationHostOptions.ScriptPath = scriptPath;
+            var optionsWrapper = new OptionsWrapper<ScriptApplicationHostOptions>(applicationHostOptions);
+            var functionsManagerMock = new Mock<IWebFunctionsManager>();
+            var mockRouter = new Mock<IWebJobsRouter>();
+            var testController = new FunctionsController(functionsManagerMock.Object, mockRouter.Object, new LoggerFactory(), optionsWrapper);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers.Add(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+            testController.ControllerContext.HttpContext = httpContext;
+
+            //Test Code
+            IActionResult response = testController.Invoke(testFunctionName, invocation, scriptHostMock.Object);
+            Assert.IsType<AcceptedResult>(response);
+
+            // The call is fire-and-forget, so watch for functionInvoked to be set.
+            await TestHelpers.Await(() => baggageAdded, timeout: 3000, pollingInterval: 100);
+
+            Assert.True(baggageAdded);
         }
 
         private static FunctionsController SetUpFunctionsController(string testFunctionName, bool isFileSystemReadOnly, bool functionCreatedSuccess = true)
