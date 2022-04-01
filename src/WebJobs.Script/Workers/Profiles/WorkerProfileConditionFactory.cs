@@ -24,10 +24,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             switch (properties[WorkerConstants.WorkerDescriptionProfileConditionType])
             {
-                case "hostProperty":
-                    return new HostPropertyCondition(_logger, _systemRuntimeInformation, _environment, (string)properties["name"], (string)properties["expression"]);
-                case "environment":
-                    return new EnvironmentCondition(_logger, _systemRuntimeInformation, _environment, (string)properties["name"], (string)properties["expression"]);
+                case WorkerConstants.WorkerDescriptionProfileHostPropertyCondition:
+                    return new HostPropertyCondition(_logger, _systemRuntimeInformation, (string)properties["name"], (string)properties["expression"]);
+                case WorkerConstants.WorkerDescriptionProfileEnvironmentCondition:
+                    return new EnvironmentCondition(_logger, _environment, (string)properties["name"], (string)properties["expression"]);
                 default:
                     throw new ArgumentException(nameof(WorkerConstants.WorkerDescriptionProfileConditionType));
             }

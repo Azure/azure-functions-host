@@ -11,14 +11,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     public class EnvironmentCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
-        private readonly ISystemRuntimeInformation _systemRuntimeInformation;
         private readonly IEnvironment _environment;
 
-        public EnvironmentCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, IEnvironment environment, string name, string expression)
+        public EnvironmentCondition(ILogger logger, IEnvironment environment, string name, string expression)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
             Name = name;
             Expression = expression;
             Validate();
@@ -35,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 return false;
             }
+            _logger.LogDebug($"Evaluating EnvironmentCondition with value: {value} and expression {Expression}");
             return Regex.IsMatch(value, Expression);
         }
 

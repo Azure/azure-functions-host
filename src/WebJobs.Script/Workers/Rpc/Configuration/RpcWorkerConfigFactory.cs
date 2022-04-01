@@ -154,6 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             Description = workerDescription,
                             Arguments = arguments,
                             CountOptions = workerProcessCount,
+                            Profiles = workerDescriptionProfiles,
                         };
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
@@ -169,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JObject workerConfig)
         {
-            JArray profiles = workerConfig.GetValue(RpcWorkerConstants.WorkerDescriptionProfiles) as JArray;
+            JArray profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles) as JArray;
             if (profiles != null)
             {
                 var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);

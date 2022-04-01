@@ -14,12 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
-        private readonly IEnvironment _environment;
 
-        public HostPropertyCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, IEnvironment environment, string name, string expression)
+        public HostPropertyCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, string name, string expression)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
             Name = name;
             Expression = expression;
@@ -60,6 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 return false;
             }
+            _logger.LogDebug($"Evaluating HostPropertyCondition with value: {value} and expression {Expression}");
             return Regex.IsMatch(value, Expression);
         }
 
@@ -72,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             if (!Enum.GetNames(typeof(ConditionHostPropertyName)).Any(x => x.ToLower().Contains(Name)))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be a valid host property name.");
+               throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
             }
 
             if (string.IsNullOrEmpty(Expression))

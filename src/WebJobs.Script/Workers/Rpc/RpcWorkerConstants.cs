@@ -34,9 +34,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string ArchitecturePlaceholder = "{architecture}";
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
 
-        // Profiles
-        public const string WorkerDescriptionProfiles = "profiles";
-
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 

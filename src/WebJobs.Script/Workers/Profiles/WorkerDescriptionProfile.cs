@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -14,6 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             Name = name;
             Conditions = conditions;
             ProfileDescription = profileDescription;
+            ProfileLoaded = false;
             Validate();
         }
 
@@ -31,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// Gets or sets the worker description for the profile
         /// </summary>
         public RpcWorkerDescription ProfileDescription { get; set; }
+
+        public bool ProfileLoaded { get; set; }
 
         public void Validate()
         {
@@ -67,13 +71,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public RpcWorkerDescription ApplyProfile(RpcWorkerDescription defaultWorkerDescription)
         {
-            defaultWorkerDescription.Arguments = ProfileDescription.Arguments?.Count > 0 ? ProfileDescription.Arguments : defaultWorkerDescription.Arguments;
-            defaultWorkerDescription.DefaultExecutablePath = string.IsNullOrEmpty(ProfileDescription.DefaultExecutablePath) ? defaultWorkerDescription.DefaultExecutablePath : ProfileDescription.DefaultExecutablePath;
-            defaultWorkerDescription.DefaultWorkerPath = string.IsNullOrEmpty(ProfileDescription.DefaultWorkerPath) ? defaultWorkerDescription.DefaultWorkerPath : ProfileDescription.DefaultWorkerPath;
-            defaultWorkerDescription.Extensions = ProfileDescription.Extensions?.Count > 0 ? ProfileDescription.Extensions : defaultWorkerDescription.Extensions;
-            defaultWorkerDescription.Language = string.IsNullOrEmpty(ProfileDescription.Language) ? defaultWorkerDescription.Language : ProfileDescription.Language;
-            defaultWorkerDescription.WorkerDirectory = string.IsNullOrEmpty(ProfileDescription.WorkerDirectory) ? defaultWorkerDescription.WorkerDirectory : ProfileDescription.WorkerDirectory;
+            ProfileLoaded = true;
+            defaultWorkerDescription.Arguments = UseProfileOrDefault(ProfileDescription.Arguments, defaultWorkerDescription.Arguments);
+            defaultWorkerDescription.DefaultExecutablePath = UseProfileOrDefault(ProfileDescription.DefaultExecutablePath, defaultWorkerDescription.DefaultExecutablePath);
+            defaultWorkerDescription.DefaultWorkerPath = UseProfileOrDefault(ProfileDescription.DefaultWorkerPath, defaultWorkerDescription.DefaultWorkerPath);
+            defaultWorkerDescription.Extensions = UseProfileOrDefault(ProfileDescription.Extensions, defaultWorkerDescription.Extensions) as List<string>;
+            defaultWorkerDescription.Language = UseProfileOrDefault(ProfileDescription.Language, defaultWorkerDescription.Language);
+            defaultWorkerDescription.WorkerDirectory = UseProfileOrDefault(ProfileDescription.WorkerDirectory, defaultWorkerDescription.WorkerDirectory);
             return defaultWorkerDescription;
+        }
+
+        private string UseProfileOrDefault(string profileParameter, string defaultParameter)
+        {
+            return string.IsNullOrEmpty(profileParameter) ? defaultParameter : profileParameter;
+        }
+
+        private IList<string> UseProfileOrDefault(IList<string> profileParameter, IList<string> defaultParameter)
+        {
+            return profileParameter.Count > 0 ? profileParameter : defaultParameter;
         }
     }
 }
