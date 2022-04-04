@@ -150,6 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     // if the feature is not active and FunctionsHostingConfiguration has the flag
                     Activate();
+                    _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
                     _logger.LogDebug($"Dynamic worker concurrency monitoring was started by activation timer.");
                 }
                 else if (_timer != null && !_functionsHostingConfigurations.FunctionsWorkerDynamicConcurrencyEnabled)
