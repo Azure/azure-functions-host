@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -30,18 +31,76 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private ILogger _logger;
         private string _workerId;
         private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
+        private ChannelWriter<InboundGrpcEvent> _inboundWriter;
 
         public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
             _eventManager = eventManager;
             _logger = logger;
             _workerId = workerId;
-            _outboundEventSubscriptions.Add(workerId, _eventManager.OfType<OutboundGrpcEvent>()
-                        .Where(evt => evt.WorkerId == workerId)
-                        .Subscribe(evt =>
-                        {
-                            _logger.LogInformation(expectedLogMsg);
-                        }));
+            if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            {
+                _ = ListenAsync(outbound.Reader, expectedLogMsg);
+                _inboundWriter = inbound.Writer;
+            }
+        }
+
+        private async Task ListenAsync(ChannelReader<OutboundGrpcEvent> source, string expectedLogMsg)
+        {
+            await Task.Yield(); // free up caller
+            try
+            {
+                while (await source.WaitToReadAsync())
+                {
+                    while (source.TryRead(out var evt))
+                    {
+                        _logger.LogDebug("[service] received {0}, {1}", evt.WorkerId, evt.MessageType);
+                        _logger.LogInformation(expectedLogMsg);
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private ValueTask WriteAsync(StreamingMessage message)
+            => _inboundWriter is null ? default
+            : _inboundWriter.WriteAsync(new InboundGrpcEvent(_workerId, message));
+
+        private void Write(StreamingMessage message)
+        {
+            if (_inboundWriter is null)
+            {
+                _logger.LogDebug("[service] no writer for {0}, {1}", _workerId, message.ContentCase);
+                return;
+            }
+            var evt = new InboundGrpcEvent(_workerId, message);
+            _logger.LogDebug("[service] sending {0}, {1}", evt.WorkerId, evt.MessageType);
+            if (_inboundWriter.TryWrite(evt))
+            {
+                return;
+            }
+            var vt = _inboundWriter.WriteAsync(evt);
+            if (vt.IsCompleted)
+            {
+                vt.GetAwaiter().GetResult();
+            }
+            else
+            {
+                _ = ObserveEventually(vt);
+            }
+            static async Task ObserveEventually(ValueTask valueTask)
+            {
+                try
+                {
+                    await valueTask;
+                }
+                catch
+                {
+                    // log somewhere?
+                }
+            }
         }
 
         public void PublishFunctionLoadResponseEvent(string functionId)
@@ -59,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponse = functionLoadResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishFunctionLoadResponsesEvent(List<string> functionIds, StatusResult statusResult)
@@ -81,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionLoadResponseCollection = functionLoadResponseCollection
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishFunctionEnvironmentReloadResponseEvent()
@@ -91,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionEnvironmentReloadResponse = relaodEnvResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null)
@@ -116,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerInitResponse = initResponse
             };
 
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
@@ -133,7 +192,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 WorkerInitResponse = initResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishSystemLogEvent(RpcLog.Types.Level inputLevel)
@@ -149,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 RpcLog = rpcLog
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, logMessage));
+            Write(logMessage);
         }
 
         public static FunctionEnvironmentReloadResponse GetTestFunctionEnvReloadResponse()
@@ -180,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 InvocationResponse = invocationResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishStartStreamEvent(string workerId)
@@ -197,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 StartStream = startStream
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
 
         public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
@@ -232,7 +291,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 FunctionMetadataResponse = overallResponse
             };
-            _eventManager.Publish(new InboundGrpcEvent(_workerId, responseMessage));
+            Write(responseMessage);
         }
     }
 }

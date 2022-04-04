@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Logging;
@@ -25,7 +26,7 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json.Linq;
+
 using static Microsoft.Azure.WebJobs.Script.Grpc.Messages.RpcLog.Types;
 using FunctionMetadata = Microsoft.Azure.WebJobs.Script.Description.FunctionMetadata;
 using MsgType = Microsoft.Azure.WebJobs.Script.Grpc.Messages.StreamingMessage.ContentOneofCase;
@@ -43,6 +44,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly List<TimeSpan> _workerStatusLatencyHistory = new List<TimeSpan>();
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly WaitCallback _processInbound;
+        private readonly object _syncLock = new object();
+        private readonly Dictionary<MsgType, Queue<PendingItem>> _pendingActions = new ();
+        private readonly ChannelWriter<OutboundGrpcEvent> _outbound;
+        private readonly ChannelReader<InboundGrpcEvent> _inbound;
 
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
@@ -55,10 +61,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private ConcurrentDictionary<string, ScriptInvocationContext> _executingInvocations = new ConcurrentDictionary<string, ScriptInvocationContext>();
         private IDictionary<string, BufferBlock<ScriptInvocationContext>> _functionInputBuffers = new ConcurrentDictionary<string, BufferBlock<ScriptInvocationContext>>();
         private ConcurrentDictionary<string, TaskCompletionSource<bool>> _workerStatusRequests = new ConcurrentDictionary<string, TaskCompletionSource<bool>>();
-        private IObservable<InboundGrpcEvent> _inboundWorkerEvents;
         private List<IDisposable> _inputLinks = new List<IDisposable>();
         private List<IDisposable> _eventSubscriptions = new List<IDisposable>();
-        private IDisposable _startSubscription;
         private IDisposable _startLatencyMetric;
         private IEnumerable<FunctionMetadata> _functions;
         private GrpcCapabilities _workerCapabilities;
@@ -71,7 +75,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
         private bool _isSharedMemoryDataTransferEnabled;
 
-        private object _syncLock = new object();
         private System.Timers.Timer _timer;
 
         internal GrpcWorkerChannel(
@@ -99,30 +102,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
+            _processInbound = state => ProcessItem((InboundGrpcEvent)state);
 
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
-            _inboundWorkerEvents = _eventManager.OfType<InboundGrpcEvent>()
-                .Where(msg => msg.WorkerId == _workerId);
-
-            _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && !msg.IsLogOfCategory(RpcLogCategory.System))
-                .Subscribe(Log));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents
-                .Where(msg => msg.IsMessageOfType(MsgType.RpcLog) && msg.IsLogOfCategory(RpcLogCategory.System))
-                .Subscribe(SystemLog));
+            if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
+            {
+                _outbound = outbound.Writer;
+                _inbound = inbound.Reader;
+                _ = ProcessInbound();
+            }
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
                 .Where(msg => _workerConfig.Description.Extensions.Contains(Path.GetExtension(msg.FileChangeArguments.FullPath)))
                 .Throttle(TimeSpan.FromMilliseconds(300)) // debounce
                 .Subscribe(msg => _eventManager.Publish(new HostRestartEvent())));
-
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.InvocationResponse)
-                .Subscribe(async (msg) => await InvokeResponse(msg.Message.InvocationResponse)));
-
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerStatusResponse)
-                .Subscribe((msg) => ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse));
 
             _startLatencyMetric = metricsLogger?.LatencyEvent(string.Format(MetricEventNames.WorkerInitializeLatency, workerConfig.Description.Language, attemptCount));
 
@@ -137,6 +131,128 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal RpcWorkerConfig Config => _workerConfig;
 
+        private void ProcessItem(InboundGrpcEvent msg)
+        {
+            // note this is a QUWI entry-point
+            try
+            {
+                switch (msg.MessageType)
+                {
+                    case MsgType.RpcLog:
+                        switch (msg.Message.RpcLog.LogCategory)
+                        {
+                            case RpcLogCategory.System:
+                                SystemLog(msg);
+                                break;
+                            default:
+                                Log(msg);
+                                break;
+                        }
+                        break;
+                    case MsgType.WorkerStatusResponse:
+                        ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse);
+                        break;
+                    case MsgType.InvocationResponse:
+                        _ = InvokeResponse(msg.Message.InvocationResponse);
+                        break;
+                    default:
+                        OnNext(msg);
+                        break;
+                }
+            }
+            catch
+            {
+                // TODO: log?
+            }
+        }
+
+        private void OnNext(InboundGrpcEvent message)
+        {
+            Queue<PendingItem> queue;
+            lock (_pendingActions)
+            {
+                if (!_pendingActions.TryGetValue(message.MessageType, out queue))
+                {
+                    return; // nothing to do
+                }
+            }
+            PendingItem next;
+            lock (queue)
+            {
+                do
+                {
+                    if (!queue.TryDequeue(out next))
+                    {
+                        return; // nothing to do
+                    }
+                }
+                while (next.IsComplete);
+            }
+            next.SetResult(message);
+        }
+
+        private void OnNext(MsgType messageType, TimeSpan timeout, int count, Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
+        {
+            Queue<PendingItem> queue;
+            lock (_pendingActions)
+            {
+                if (!_pendingActions.TryGetValue(messageType, out queue))
+                {
+                    queue = new Queue<PendingItem>();
+                    _pendingActions.Add(messageType, queue);
+                }
+            }
+
+            lock (queue)
+            {
+                // while we have the lock, discard any dead items (to prevent unbounded growth on stall)
+                while (queue.TryPeek(out var next) && next.IsComplete)
+                {
+                    queue.Dequeue();
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    var newItem = i == count - 1 && timeout != TimeSpan.Zero
+                        ? new PendingItem(callback, faultHandler, timeout)
+                        : new PendingItem(callback, faultHandler);
+                    queue.Enqueue(newItem);
+                }
+            }
+        }
+
+        private async Task ProcessInbound()
+        {
+            try
+            {
+                await Task.Yield(); // free up the caller
+                bool debug = _workerChannelLogger.IsEnabled(LogLevel.Debug);
+                if (debug)
+                {
+                    _workerChannelLogger.LogDebug("[channel] processing reader loop for worker {0}:", _workerId);
+                }
+                while (await _inbound.WaitToReadAsync())
+                {
+                    while (_inbound.TryRead(out var msg))
+                    {
+                        if (debug)
+                        {
+                            _workerChannelLogger.LogDebug("[channel] received {0}: {1}", msg.WorkerId, msg.MessageType);
+                        }
+                        ThreadPool.QueueUserWorkItem(_processInbound, msg);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _workerChannelLogger.LogError(ex, "Error processing inbound messages");
+            }
+            finally
+            {
+                // we're not listening any more! shut down the channels
+                _eventManager.RemoveGrpcChannels(_workerId);
+            }
+        }
+
         public bool IsChannelReadyForInvocations()
         {
             return !_disposing && !_disposed && _state.HasFlag(RpcWorkerChannelState.InvocationBuffersInitialized | RpcWorkerChannelState.Initialized);
@@ -144,10 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
-                .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
+            OnNext(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
@@ -174,7 +287,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var tcs = new TaskCompletionSource<bool>();
                 if (_workerStatusRequests.TryAdd(message.RequestId, tcs))
                 {
-                    SendStreamingMessage(message);
+                    await SendStreamingMessageAsync(message);
                     await tcs.Task;
                     var elapsed = sw.GetElapsedTime();
                     workerStatus.Latency = elapsed;
@@ -195,10 +308,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void SendWorkerInitRequest(GrpcEvent startEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
-                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
-                .Take(1)
-                .Subscribe(WorkerInitResponse, HandleWorkerInitError);
+            OnNext(MsgType.WorkerInitResponse, _workerConfig.CountOptions.InitializationTimeout, 1, WorkerInitResponse, HandleWorkerInitError);
 
             WorkerInitRequest initRequest = GetWorkerInitRequest();
 
@@ -216,6 +326,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 // can be used.
                 initRequest.Capabilities.Add(RpcWorkerConstants.FunctionDataCache, "true");
             }
+
+            // advertise that we support multiple streams, and hint at a number; with this flag, we allow
+            // clients to connect multiple back-hauls *with the same workerid*, and rely on the internal
+            // plumbing to make sure we don't process everything N times
+            initRequest.Capabilities.Add(RpcWorkerConstants.MultiStream, "10"); // TODO: make this configurable
 
             SendStreamingMessage(new StreamingMessage
             {
@@ -287,26 +402,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (_functions != null)
             {
+                var count = _functions.Count();
                 if (functionTimeout.HasValue)
                 {
                     _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(_functions.Count())
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
 
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(_functions.Count())
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
+                    OnNext(MsgType.FunctionLoadResponse, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
+                    OnNext(MsgType.FunctionLoadResponseCollection, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
                 }
                 else
                 {
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponse)
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
-
-                    _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
-                        .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
+                    OnNext(MsgType.FunctionLoadResponse, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
+                    OnNext(MsgType.FunctionLoadResponseCollection, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
                 }
 
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
@@ -362,11 +469,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
 
-            _eventSubscriptions
-                .Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionEnvironmentReloadResponse)
-                .Timeout(_workerConfig.CountOptions.EnvironmentReloadTimeout)
-                .Take(1)
-                .Subscribe((msg) => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError));
+            OnNext(MsgType.FunctionEnvironmentReloadResponse, _workerConfig.CountOptions.EnvironmentReloadTimeout, 1,
+                msg => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError);
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
 
@@ -507,7 +611,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
-                    SendStreamingMessage(new StreamingMessage
+                    await SendStreamingMessageAsync(new StreamingMessage
                     {
                         InvocationRequest = invocationRequest
                     });
@@ -527,10 +631,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionMetadataResponse)
-                        .Timeout(_functionLoadTimeout)
-                        .Take(1)
-                        .Subscribe((msg) => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError));
+            OnNext(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+                msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 
             _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
 
@@ -840,9 +942,46 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _eventManager.Publish(new WorkerErrorEvent(_runtime, Id, exc));
         }
 
+        private ValueTask SendStreamingMessageAsync(StreamingMessage msg)
+        {
+            if (_outbound is null)
+            {
+                return default;
+            }
+            var evt = new OutboundGrpcEvent(_workerId, msg);
+            return _outbound.TryWrite(evt) ? default : _outbound.WriteAsync(evt);
+        }
+
         private void SendStreamingMessage(StreamingMessage msg)
         {
-            _eventManager.Publish(new OutboundGrpcEvent(_workerId, msg));
+            if (_outbound is null)
+            {
+                return;
+            }
+            var evt = new OutboundGrpcEvent(_workerId, msg);
+            if (!_outbound.TryWrite(evt))
+            {
+                var pending = _outbound.WriteAsync(evt);
+                if (pending.IsCompleted)
+                {
+                    pending.GetAwaiter().GetResult(); // ensure observed, for IVTS reasons
+                }
+                else
+                {
+                    _ = ObserveEventually(pending);
+                }
+            }
+            static async Task ObserveEventually(ValueTask valueTask)
+            {
+                try
+                {
+                    await valueTask;
+                }
+                catch
+                {
+                    // log somewhere?
+                }
+            }
         }
 
         internal void ReceiveWorkerStatusResponse(string requestId, WorkerStatusResponse response)
@@ -860,7 +999,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 if (disposing)
                 {
                     _startLatencyMetric?.Dispose();
-                    _startSubscription?.Dispose();
                     _workerInitTask?.TrySetCanceled();
                     _timer?.Dispose();
 
@@ -876,6 +1014,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         sub.Dispose();
                     }
+
+                    // shut down the channels
+                    _eventManager.RemoveGrpcChannels(_workerId);
                 }
                 _disposed = true;
             }
@@ -1013,6 +1154,76 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     samples.RemoveAt(0);
                 }
                 samples.Add(sample);
+            }
+        }
+
+        private sealed class PendingItem
+        {
+            private readonly Action<InboundGrpcEvent> _callback;
+            private readonly Action<Exception> _faultHandler;
+            private CancellationTokenRegistration _ctr;
+            private int _state;
+
+            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
+            {
+                _callback = callback;
+                _faultHandler = faultHandler;
+            }
+
+            public PendingItem(Action<InboundGrpcEvent> callback, Action<Exception> faultHandler, TimeSpan timeout)
+                : this(callback, faultHandler)
+            {
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(timeout);
+                _ctr = cts.Token.Register(static state => ((PendingItem)state).OnTimeout(), this);
+            }
+
+            public bool IsComplete => Volatile.Read(ref _state) != 0;
+
+            private bool MakeComplete() => Interlocked.CompareExchange(ref _state, 1, 0) == 0;
+
+            public void SetResult(InboundGrpcEvent message)
+            {
+                _ctr.Dispose();
+                _ctr = default;
+                if (MakeComplete() && _callback != null)
+                {
+                    try
+                    {
+                        _callback.Invoke(message);
+                    }
+                    catch (Exception fault)
+                    {
+                        try
+                        {
+                            _faultHandler?.Invoke(fault);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+            }
+
+            private void OnTimeout()
+            {
+                if (MakeComplete() && _faultHandler != null)
+                {
+                    try
+                    {
+                        throw new TimeoutException();
+                    }
+                    catch (Exception timeout)
+                    {
+                        try
+                        {
+                            _faultHandler(timeout);
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
             }
         }
     }

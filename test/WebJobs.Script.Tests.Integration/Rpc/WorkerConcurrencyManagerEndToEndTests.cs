@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Eventing;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -73,6 +74,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             }
 
             public void Dispose() => ((IDisposable)_scriptEventManager).Dispose();
+
+            public bool TryAddWorkerState<T>(string workerId, T state)
+                => _scriptEventManager.TryAddWorkerState(workerId, state);
+
+            public bool TryGetWorkerState<T>(string workerId, out T state)
+                => _scriptEventManager.TryGetWorkerState(workerId, out state);
+
+            public bool TryRemoveWorkerState<T>(string workerId, out T state)
+                => _scriptEventManager.TryRemoveWorkerState(workerId, out state);
         }
     }
 }
