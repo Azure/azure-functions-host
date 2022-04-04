@@ -90,9 +90,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                LogErrorMessage("read");
+                LogErrorMessage("read", ex);
                 throw;
             }
 
@@ -108,9 +108,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                LogErrorMessage("write");
+                LogErrorMessage("write", ex);
                 throw;
             }
 
@@ -129,9 +129,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 await WriteToBlobAsync(blobPath, ScriptSecretSerializer.SerializeSecrets(secrets));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                LogErrorMessage("write");
+                LogErrorMessage("write", ex);
                 throw;
             }
         }
@@ -156,9 +156,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     blobList.Add(item.Name);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                LogErrorMessage("list");
+                LogErrorMessage("list", ex);
                 throw;
             }
             return blobList.ToArray();
@@ -180,9 +180,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
         }
 
-        protected virtual void LogErrorMessage(string operation)
+        protected virtual void LogErrorMessage(string operation, Exception exception)
         {
-            Logger?.BlobStorageSecretRepoError(operation, "AzureWebJobsStorage");
+            Logger?.BlobStorageSecretRepoError(operation, exception);
         }
     }
 }

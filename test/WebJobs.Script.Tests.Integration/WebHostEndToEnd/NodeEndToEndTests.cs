@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             {
                 userLogs = Fixture.Host.GetScriptHostLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
                 consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
-                return userLogs.Count == 10 && consoleLog != null;
+                return userLogs.Count == 11 && consoleLog != null;
             }, userMessageCallback: Fixture.Host.GetLog);
 
             // verify use of context.log to log complex objects

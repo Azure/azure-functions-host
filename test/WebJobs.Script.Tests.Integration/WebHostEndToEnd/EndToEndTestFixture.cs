@@ -35,8 +35,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         private string _functionsWorkerRuntime;
         private int _workerProcessCount;
         private string _functionsWorkerRuntimeVersion;
+        private bool _addTestSettings;
 
-        protected EndToEndTestFixture(string rootPath, string testId, string functionsWorkerRuntime, int workerProcessesCount = 1, string functionsWorkerRuntimeVersion = null)
+        protected EndToEndTestFixture(string rootPath, string testId, 
+            string functionsWorkerRuntime, 
+            int workerProcessesCount = 1, 
+            string functionsWorkerRuntimeVersion = null,
+            bool addTestSettings = true)
         {
             FixtureId = testId;
 
@@ -44,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _functionsWorkerRuntime = functionsWorkerRuntime;
             _workerProcessCount = workerProcessesCount;
             _functionsWorkerRuntimeVersion = functionsWorkerRuntimeVersion;
+            _addTestSettings = addTestSettings;
         }
 
         public CloudBlobContainer TestInputContainer { get; private set; }
@@ -126,7 +132,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             FunctionsSyncManagerMock = new Mock<IFunctionsSyncManager>(MockBehavior.Strict);
             FunctionsSyncManagerMock.Setup(p => p.TrySyncTriggersAsync(It.IsAny<bool>())).ReturnsAsync(new SyncTriggersResult { Success = true });
 
-            Host = new TestFunctionHost(_copiedRootPath, logPath,
+            Host = new TestFunctionHost(_copiedRootPath, logPath, addTestSettings: _addTestSettings,
                 configureScriptHostWebJobsBuilder: webJobsBuilder =>
                 {
                     ConfigureScriptHost(webJobsBuilder);
@@ -135,23 +141,35 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IFunctionsSyncManager>(_ => FunctionsSyncManagerMock.Object);
                     s.AddSingleton<IMetricsLogger>(_ => MetricsLogger);
+                    ConfigureScriptHost(s);
+                },
+                configureScriptHostAppConfiguration: configBuilder =>
+                {
+                    ConfigureScriptHost(configBuilder);
                 },
                 configureWebHostServices: s =>
                 {
                     s.AddSingleton<IEventGenerator>(_ => EventGenerator);
                     ConfigureWebHost(s);
+                },
+                configureWebHostAppConfiguration: configBuilder =>
+                {
+                    ConfigureWebHost(configBuilder);
                 });
 
             string connectionString = Host.JobHostServices.GetService<IConfiguration>().GetWebJobsConnectionString(ConnectionStringNames.Storage);
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
 
-            QueueClient = storageAccount.CreateCloudQueueClient();
-            BlobClient = storageAccount.CreateCloudBlobClient();
+                QueueClient = storageAccount.CreateCloudQueueClient();
+                BlobClient = storageAccount.CreateCloudBlobClient();
 
-            TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
-            TableClient = tableStorageAccount.CreateCloudTableClient();
+                TableStorageAccount tableStorageAccount = TableStorageAccount.Parse(connectionString);
+                TableClient = tableStorageAccount.CreateCloudTableClient();
 
-            await CreateTestStorageEntities();
+                await CreateTestStorageEntities();
+            }
 
             MasterKey = await Host.GetMasterKeyAsync();
         }
@@ -160,7 +178,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
         }
 
+        public virtual void ConfigureScriptHost(IServiceCollection services)
+        {
+        }
+
+        public virtual void ConfigureScriptHost(IConfigurationBuilder configBuilder)
+        {
+        }
+
         public virtual void ConfigureWebHost(IServiceCollection services)
+        {
+        }
+
+        public virtual void ConfigureWebHost(IConfigurationBuilder configBuilder)
         {
         }
 
