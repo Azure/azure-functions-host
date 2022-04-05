@@ -57,6 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public GrpcWorkerChannelTests(ITestOutputHelper testOutput)
         {
+            _eventManager.AddGrpcChannels(_workerId);
             _testOutput = testOutput;
             _logger = new TestLogger("FunctionDispatcherTests");
             _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
@@ -92,7 +93,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 HasParentScope = true
             };
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
+        }
 
+        private void CreateDefaultWorkerChannel()
+        {
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
                _eventManager,
@@ -130,6 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_ThrowsTaskCanceledException_IfDisposed()
         {
+            CreateDefaultWorkerChannel();
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
             _workerChannel.Dispose();
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
@@ -143,6 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_Invoked_SetupFunctionBuffers_Verify_ReadyForInvocation()
         {
+            CreateDefaultWorkerChannel();
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
             _testFunctionRpcService.PublishStartStreamEvent(_workerId);
             _testFunctionRpcService.PublishWorkerInitResponseEvent();
@@ -156,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task DisposingChannel_NotReadyForInvocation()
         {
+            CreateDefaultWorkerChannel();
             try
             {
                 var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
@@ -178,6 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SetupFunctionBuffers_Verify_ReadyForInvocation_Returns_False()
         {
+            CreateDefaultWorkerChannel();
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             Assert.False(_workerChannel.IsChannelReadyForInvocations());
@@ -186,6 +194,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_TimesOut()
         {
+            CreateDefaultWorkerChannel();
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
             await Assert.ThrowsAsync<TimeoutException>(async () => await initTask);
         }
@@ -193,6 +202,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendEnvironmentReloadRequest_Generates_ExpectedMetrics()
         {
+            CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
             Task waitForMetricsTask = Task.Factory.StartNew(() =>
             {
@@ -208,6 +218,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task StartWorkerProcessAsync_WorkerProcess_Throws()
         {
+            // note: uses custom worker channel
             Mock<IWorkerProcess> mockrpcWorkerProcessThatThrows = new Mock<IWorkerProcess>();
             mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
@@ -230,6 +241,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendWorkerInitRequest_PublishesOutboundEvent()
         {
+            CreateDefaultWorkerChannel();
             StartStream startStream = new StartStream()
             {
                 WorkerId = _workerId
@@ -249,6 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void WorkerInitRequest_Expected()
         {
+            CreateDefaultWorkerChannel();
             WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
             Assert.NotNull(initRequest.WorkerDirectory);
             Assert.NotNull(initRequest.FunctionAppDirectory);
@@ -261,6 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
         {
+            CreateDefaultWorkerChannel();
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             StartStream startStream = new StartStream()
             {
@@ -286,6 +300,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [InlineData(RpcLog.Types.Level.Trace, RpcLog.Types.Level.Information)]
         public async Task SendSystemLogMessage_PublishesSystemLogMessage(RpcLog.Types.Level levelToTest, RpcLog.Types.Level expectedLogLevel)
         {
+            CreateDefaultWorkerChannel();
             _testFunctionRpcService.PublishSystemLogEvent(levelToTest);
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
@@ -295,6 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_PublishesOutboundEvent()
         {
+            CreateDefaultWorkerChannel();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             await Task.Delay(500);
@@ -305,6 +321,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_IsInExecutingInvocation()
         {
+            CreateDefaultWorkerChannel();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
             Assert.True(_workerChannel.IsExecutingInvocation(scriptInvocationContext.ExecutionContext.InvocationId.ToString()));
@@ -317,6 +334,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendInvocationRequest_InputsTransferredOverSharedMemory()
         {
+            CreateDefaultWorkerChannel();
             EnableSharedMemoryDataTransfer();
 
             // Send invocation which will be using RpcSharedMemory for the inputs
@@ -330,6 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task Drain_Verify()
         {
+            // note: uses custom worker channel
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
@@ -365,6 +384,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task InFlight_Functions_FailedWithException()
         {
+            CreateDefaultWorkerChannel();
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), resultSource);
             await _workerChannel.SendInvocationRequest(scriptInvocationContext);
@@ -379,6 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendLoadRequests_PublishesOutboundEvents()
         {
+            CreateDefaultWorkerChannel();
             _metricsLogger.ClearCollections();
             _workerChannel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
@@ -392,6 +413,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendLoadRequestCollection_PublishesOutboundEvents()
         {
+            CreateDefaultWorkerChannel();
             StartStream startStream = new StartStream()
             {
                 WorkerId = _workerId
@@ -419,6 +441,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendLoadRequests_PublishesOutboundEvents_OrdersDisabled()
         {
+            CreateDefaultWorkerChannel();
             var funcName = "ADisabledFunc";
             var functions = GetTestFunctionsList_WithDisabled("node", funcName);
 
@@ -442,6 +465,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendLoadRequests_DoesNotTimeout_FunctionTimeoutNotSet()
         {
+            CreateDefaultWorkerChannel();
             var funcName = "ADisabledFunc";
             var functions = GetTestFunctionsList_WithDisabled("node", funcName);
             _workerChannel.SetupFunctionInvocationBuffers(functions);
@@ -456,6 +480,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendSendFunctionEnvironmentReloadRequest_PublishesOutboundEvents()
         {
+            CreateDefaultWorkerChannel();
             try
             {
                 Environment.SetEnvironmentVariable("TestNull", null);
@@ -482,6 +507,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendSendFunctionEnvironmentReloadRequest_ThrowsTimeout()
         {
+            CreateDefaultWorkerChannel();
             var reloadTask = _workerChannel.SendFunctionEnvironmentReloadRequest();
             await Assert.ThrowsAsync<TimeoutException>(async () => await reloadTask);
         }
@@ -489,6 +515,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SendFunctionEnvironmentReloadRequest_SanitizedEnvironmentVariables()
         {
+            CreateDefaultWorkerChannel();
             var environmentVariables = new Dictionary<string, string>()
             {
                 { "TestNull", null },
@@ -508,6 +535,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SendFunctionEnvironmentReloadRequest_WithDirectory()
         {
+            CreateDefaultWorkerChannel();
             var environmentVariables = new Dictionary<string, string>()
             {
                 { "TestValid", "TestValue" }
@@ -521,6 +549,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_InvocationResponse()
         {
+            CreateDefaultWorkerChannel();
             _testFunctionRpcService.PublishInvocationResponseEvent();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
@@ -530,6 +559,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_FunctionLoadResponse()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(5));
@@ -545,6 +575,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Failed_FunctionLoadResponses()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
@@ -563,6 +594,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_FunctionLoadResponses()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
@@ -582,6 +614,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Successful_FunctionMetadataResponse()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -595,6 +628,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_True()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -608,6 +642,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Successful_FunctionMetadataResponse_UseDefaultMetadataIndexing_False()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -621,6 +656,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_True_HostIndexing()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -634,6 +670,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Failed_UseDefaultMetadataIndexing_False_WorkerIndexing()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -647,6 +684,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task ReceivesInboundEvent_Failed_FunctionMetadataResponse()
         {
+            CreateDefaultWorkerChannel();
             var functionMetadata = GetTestFunctionsList("python");
             var functions = _workerChannel.GetFunctionMetadata();
             var functionId = "id123";
@@ -660,6 +698,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void FunctionLoadRequest_IsExpected()
         {
+            CreateDefaultWorkerChannel();
             FunctionMetadata metadata = new FunctionMetadata()
             {
                 Language = "node",
@@ -678,6 +717,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SharedMemoryDataTransferSetting_VerifyEnabled()
         {
+            CreateDefaultWorkerChannel();
             EnableSharedMemoryDataTransfer();
             await Task.Delay(500);
             Assert.True(_workerChannel.IsSharedMemoryDataTransferEnabled());
@@ -689,6 +729,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SharedMemoryDataTransferSetting_VerifyDisabled()
         {
+            CreateDefaultWorkerChannel();
             Assert.False(_workerChannel.IsSharedMemoryDataTransferEnabled());
         }
 
@@ -699,6 +740,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SharedMemoryDataTransferSetting_VerifyDisabledIfWorkerCapabilityAbsent()
         {
+            CreateDefaultWorkerChannel();
             // Enable shared memory data transfer in the environment
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerSharedMemoryDataTransferEnabledSettingName, "1");
 
@@ -727,6 +769,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void SharedMemoryDataTransferSetting_VerifyDisabledIfEnvironmentVariableAbsent()
         {
+            CreateDefaultWorkerChannel();
             // Enable shared memory data transfer capability in the worker
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
@@ -754,6 +797,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task GetLatencies_StartsTimer_WhenDynamicConcurrencyEnabled()
         {
+            // note: uses custom worker channel
             RpcWorkerConfig config = new RpcWorkerConfig()
             {
                 Description = new RpcWorkerDescription()
@@ -792,6 +836,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task GetLatencies_DoesNot_StartTimer_WhenDynamicConcurrencyDisabled()
         {
+            // note: uses custom worker channels
             RpcWorkerConfig config = new RpcWorkerConfig()
             {
                 Description = new RpcWorkerDescription()

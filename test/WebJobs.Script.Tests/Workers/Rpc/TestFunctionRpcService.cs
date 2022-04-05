@@ -84,21 +84,28 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var vt = _inboundWriter.WriteAsync(evt);
             if (vt.IsCompleted)
             {
-                vt.GetAwaiter().GetResult();
+                try
+                {
+                    vt.GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                }
             }
             else
             {
-                _ = ObserveEventually(vt);
+                _ = ObserveEventually(vt, _logger);
             }
-            static async Task ObserveEventually(ValueTask valueTask)
+            static async Task ObserveEventually(ValueTask valueTask, ILogger logger)
             {
                 try
                 {
                     await valueTask;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // log somewhere?
+                    logger.LogError(ex.Message);
                 }
             }
         }

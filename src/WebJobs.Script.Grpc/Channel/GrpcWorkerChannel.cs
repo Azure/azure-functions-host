@@ -964,7 +964,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 var pending = _outbound.WriteAsync(evt);
                 if (pending.IsCompleted)
                 {
-                    pending.GetAwaiter().GetResult(); // ensure observed, for IVTS reasons
+                    try
+                    {
+                        pending.GetAwaiter().GetResult(); // ensure observed, for IVTS reasons
+                    }
+                    catch
+                    {
+                        // suppress failure
+                    }
                 }
                 else
                 {
@@ -979,7 +986,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 catch
                 {
-                    // log somewhere?
+                    // nowehere to log
                 }
             }
         }
