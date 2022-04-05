@@ -137,10 +137,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
                         {
                             // Current activity is null due to SuppressFlow. Start a new activity and set baggage so that it's included in the custom dimensions.
                             Activity activity = new Activity($"{nameof(FunctionsController)}.Invoke");
-                            activity?.Start();
-                            activity?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
-                            await scriptHost.CallAsync(function.Name, arguments);
-                            activity?.Stop();
+                            try
+                            {
+                                activity?.Start();
+                                activity?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+                                await scriptHost.CallAsync(function.Name, arguments);
+                            }
+                            finally
+                            {
+                                activity?.Stop();
+                            }
                         }
                         else
                         {
