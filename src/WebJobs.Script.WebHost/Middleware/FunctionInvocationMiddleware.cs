@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
-                // LiveLogs sessoin id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
+                // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
                 string sessionId = context.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
                 if (!string.IsNullOrWhiteSpace(sessionId))
                 {

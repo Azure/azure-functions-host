@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
-            // LiveLogs sessoin id is used to show only contextual logs in the "Code + Test" experience.
+            // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience.
             string sessionId = this.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
 
             using (System.Threading.ExecutionContext.SuppressFlow())
