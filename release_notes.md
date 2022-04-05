@@ -7,7 +7,6 @@
 - Added support for no storage account scenarios (#8083)
 - Updated Node.js Worker Version to [3.2.0](https://github.com/Azure/azure-functions-nodejs-worker/releases/tag/v3.2.0)
 - Added filter to show only contextual logs from App Insights in "Code + Test" experience on the portal.
-=======
 - Read FuncitonsHostingConfigurations to enable worker concurrency feature (#8125)
 
 **Release sprint:** Sprint 118
