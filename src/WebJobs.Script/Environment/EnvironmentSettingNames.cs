@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Dynamic;
+
 namespace Microsoft.Azure.WebJobs.Script
 {
     public static class EnvironmentSettingNames
@@ -21,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureWebsiteAppCountersName = "WEBSITE_COUNTERS_APP";
         public const string AzureWebJobsSecretStorageType = "AzureWebJobsSecretStorageType";
         public const string AzureWebJobsSecretStorageSas = "AzureWebJobsSecretStorageSas";
+        public const string AzureWebJobsSecretStorage = "AzureWebJobsStorage";
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
@@ -61,6 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureMonitorCategories = "WEBSITE_FUNCTIONS_AZUREMONITOR_CATEGORIES";
         public const string FunctionsRequestBodySizeLimit = "FUNCTIONS_REQUEST_BODY_SIZE_LIMIT";
         public const string FunctionsHostIdCheckLevel = "FUNCTIONS_HOSTID_CHECK_LEVEL";
+        public const string FunctionsPlatformConfigFilePath = "FUNCTIONS_PLATFORM_CONFIG_FILE_PATH";
 
         //Function in Kubernetes
         public const string PodNamespace = "POD_NAMESPACE";
