@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 _outbound = outbound.Writer;
                 _inbound = inbound.Reader;
-                _ = ProcessInbound();
+                // note: we don't start the read loop until StartWorkerProcessAsync is called
             }
 
             _eventSubscriptions.Add(_eventManager.OfType<FileEvent>()
@@ -261,6 +261,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
             OnNext(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
+            // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
+            _ = ProcessInbound();
 
             _workerChannelLogger.LogDebug("Initiating Worker Process start up");
             await _rpcWorkerProcess.StartProcessAsync();
@@ -371,7 +373,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
-                _workerInitTask.SetResult(false);
+                _workerInitTask.TrySetResult(false);
                 return;
             }
             _state = _state | RpcWorkerChannelState.Initialized;
@@ -384,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 ScriptHost.IsFunctionDataCacheEnabled = false;
             }
 
-            _workerInitTask.SetResult(true);
+            _workerInitTask.TrySetResult(true);
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
@@ -924,7 +926,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void PublishWorkerErrorEvent(Exception exc)
         {
-            _workerInitTask.SetException(exc);
+            _workerInitTask.TrySetException(exc);
             if (_disposing || _disposed)
             {
                 return;

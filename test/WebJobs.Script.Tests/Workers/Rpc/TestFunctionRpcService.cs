@@ -2,26 +2,16 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
-using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Eventing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
-using Microsoft.Azure.WebJobs.Script.Workers;
-using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Azure.WebJobs.Script.Workers.SharedMemoryDataTransfer;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using Moq;
-using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
@@ -32,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private string _workerId;
         private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
         private ChannelWriter<InboundGrpcEvent> _inboundWriter;
+        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action> _handlers = new ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action>();
 
         public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
@@ -42,6 +33,41 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             {
                 _ = ListenAsync(outbound.Reader, expectedLogMsg);
                 _inboundWriter = inbound.Writer;
+
+                PublishStartStreamEvent(); // simulate the start-stream immediately
+            }
+        }
+
+        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action callback)
+            => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
+
+        public void AutoReply(StreamingMessage.ContentOneofCase messageType)
+        {
+            // apply standard default responses
+            Action callback = messageType switch
+            {
+                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => PublishFunctionEnvironmentReloadResponseEvent,
+                _ => null,
+            };
+            if (callback is not null)
+            {
+                OnMessage(messageType, callback);
+            }
+        }
+
+        private void OnMessage(StreamingMessage.ContentOneofCase messageType)
+        {
+            if (_handlers.TryRemove(messageType, out var action))
+            {
+                try
+                {
+                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, messageType, action?.Method?.Name);
+                    action?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.Message);
+                }
             }
         }
 
@@ -56,6 +82,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     {
                         _logger.LogDebug("[service] received {0}, {1}", evt.WorkerId, evt.MessageType);
                         _logger.LogInformation(expectedLogMsg);
+
+                        OnMessage(evt.MessageType);
                     }
                 }
             }
@@ -150,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishFunctionEnvironmentReloadResponseEvent()
+        private void PublishFunctionEnvironmentReloadResponseEvent()
         {
             FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
             StreamingMessage responseMessage = new StreamingMessage()
@@ -185,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
+        private void PublishWorkerInitResponseEventWithSharedMemoryDataTransferCapability()
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -249,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishStartStreamEvent(string workerId)
+        private void PublishStartStreamEvent()
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -257,7 +285,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             StartStream startStream = new StartStream()
             {
-                WorkerId = workerId
+                WorkerId = _workerId
             };
             StreamingMessage responseMessage = new StreamingMessage()
             {
@@ -266,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
+        public void PublishWorkerMetadataResponse(string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
         {
             StatusResult statusResult = new StatusResult();
             if (successful)
