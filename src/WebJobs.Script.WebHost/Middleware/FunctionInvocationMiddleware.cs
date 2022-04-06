@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,6 +43,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var functionExecution = context.Features.Get<IFunctionExecutionFeature>();
             if (functionExecution != null && !context.Response.HasStarted)
             {
+                // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience. The id is included in the custom dimension.
+                string sessionId = context.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
+                if (!string.IsNullOrWhiteSpace(sessionId))
+                {
+                    Activity.Current?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+                }
                 IActionResult result = await GetResultAsync(context, functionExecution);
                 ActionContext actionContext = new ActionContext(context, context.GetRouteData(), new ActionDescriptor());
                 await result.ExecuteResultAsync(actionContext);
