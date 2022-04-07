@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
+            _workerConcurrencyOptions.Value.CheckInterval = TimeSpan.FromSeconds(1);
 
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
