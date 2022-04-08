@@ -104,6 +104,21 @@
     <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
     <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Update="Management\Payload\DurableHasHubNameAndOrchestrationConfigPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Management\Payload\DurableHasStorageAndActivityConfigPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Management\Payload\DurableMsSQLProviderPayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Management\Payload\EmptyDurablePayload.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
    
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />

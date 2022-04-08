@@ -143,12 +143,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _functionsSyncManager = new FunctionsSyncManager(configuration, hostIdProviderMock.Object, optionsMonitor, loggerFactory.CreateLogger<FunctionsSyncManager>(), httpClient, _secretManagerProviderMock.Object, _mockWebHostEnvironment.Object, _mockEnvironment.Object, _hostNameProvider, functionMetadataManager, azureStorageProvider);
         }
 
-        private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub)
+        private string GetExpectedSyncTriggersPayload(string postedConnection = DefaultTestConnection, string postedTaskHub = DefaultTestTaskHub, string durableVersion = "V2")
         {
             string taskHubSegment = postedTaskHub != null ? $",\"taskHubName\":\"{postedTaskHub}\"" : "";
+            string storageProviderSegment = postedConnection != null && durableVersion == "V2" ? $",\"storageProvider\":{{\"connectionStringName\":\"DurableConnection\"}}" : "";
             return "[{\"authLevel\":\"anonymous\",\"type\":\"httpTrigger\",\"direction\":\"in\",\"name\":\"req\",\"functionName\":\"function1\"}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function2\"{taskHubSegment}}}," +
-                $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}}}]";
+                $"{{\"name\":\"myQueueItem\",\"type\":\"orchestrationTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function2\"{taskHubSegment}{storageProviderSegment}}}," +
+                $"{{\"name\":\"myQueueItem\",\"type\":\"activityTrigger\",\"direction\":\"in\",\"queueName\":\"myqueue-items\",\"connection\":\"{postedConnection}\",\"functionName\":\"function3\"{taskHubSegment}{storageProviderSegment}}}]";
         }
 
         private void ResetMockFileSystem(string hostJsonContent = null, string extensionsJsonContent = null)
@@ -235,18 +236,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
                 if (cacheEnabled)
                 {
-                    VerifyResultWithCacheOn();
+                    VerifyResultWithCacheOn(durableVersion: "V1");
                 }
                 else
                 {
-                    VerifyResultWithCacheOff();
+                    VerifyResultWithCacheOff(durableVersion: "V1");
                 }
             }
         }
 
-        private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue")
+        private void VerifyResultWithCacheOn(string connection = DefaultTestConnection, string expectedTaskHub = "TestHubValue", string durableVersion = "V2")
         {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub);
+            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(postedConnection: connection, postedTaskHub: expectedTaskHub, durableVersion);
             // verify triggers
             var result = JObject.Parse(_contentBuilder.ToString());
             var triggers = result["triggers"];
@@ -286,9 +287,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             Assert.False(triggersLog.Contains("secrets"));
         }
 
-        private void VerifyResultWithCacheOff()
+        private void VerifyResultWithCacheOff(string durableVersion)
         {
-            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload();
+            string expectedSyncTriggersPayload = GetExpectedSyncTriggersPayload(durableVersion: durableVersion);
             var triggers = JArray.Parse(_contentBuilder.ToString());
             Assert.Equal(expectedSyncTriggersPayload, triggers.ToString(Formatting.None));
 
@@ -363,7 +364,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
 
                 string hash = string.Empty;
                 var downloadResponse = await hashBlob.DownloadAsync();
@@ -429,7 +430,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.Equal(1, _mockHttpHandler.RequestCount);
                 var result = JObject.Parse(_contentBuilder.ToString());
                 var triggers = result["triggers"];
-                Assert.Equal(GetExpectedSyncTriggersPayload(), triggers.ToString(Formatting.None));
+                Assert.Equal(GetExpectedSyncTriggersPayload(durableVersion: "V1"), triggers.ToString(Formatting.None));
                 bool hashBlobExists = await hashBlob.ExistsAsync();
                 Assert.False(hashBlobExists);
 
@@ -488,7 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(expectedTaskHub: null, connection: null);
+                VerifyResultWithCacheOn(expectedTaskHub: null, connection: null, durableVersion: "V1");
             }
         }
 
@@ -567,7 +568,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 Assert.True(syncResult.Success, "SyncTriggers should return success true");
                 Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
 
-                VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection");
+                VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection", durableVersion: "V1");
             }
         }
 
@@ -601,6 +602,92 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 VerifyResultWithCacheOn(expectedTaskHub: "DurableTask", connection: "DurableConnection");
             }
         }
+
+        [Theory]
+        [InlineData("DurableMsSQLProviderPayload", "DurableMsSQLProviderPayload")]
+        [InlineData("DurableAdditionalPayload", "DurableMsSQLProviderPayload")] // Payload trimed to the minimum payload
+        [InlineData("DurableHasHubNameAndOrchestrationConfig", "DurableHasHubNameAndOrchestrationConfigPayload")]
+        [InlineData("DurableHasStorageAndActivityConfig", "DurableHasStorageAndActivityConfigPayload")]
+        [InlineData("Empty", "EmptyDurablePayload")]
+        public async Task TrySyncTriggers_DurableV2ExtensionJson_StorageProviderPosted(string scenarioName, string expectedPayload)
+        {
+            _mockEnvironment.Setup(p => p.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)).Returns("TestHubValue");
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var durableConfig = GetDurableConfig(scenarioName);
+
+                var hostConfig = GetHostConfig(durableConfig, useBundles: false);
+
+                // See what happens when extension.json is not present but bundles are used.
+                SetupDurableExtension(hostConfig.ToString(), durableExtensionJsonVersion: "2.0.0.0");
+
+                // Act
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync();
+
+                // Assert
+                Assert.True(syncResult.Success, "SyncTriggers should return success true");
+                Assert.True(string.IsNullOrEmpty(syncResult.Error), "Error should be null or empty");
+
+                //Verify Result
+                var result = JObject.Parse(_contentBuilder.ToString());
+                var triggers = result["triggers"];
+                var triggersString = triggers.ToString();
+                Assert.Equal(GetPayloadFromFile($"{expectedPayload}.json"), triggers.ToString());
+            }
+        }
+
+        private JObject GetDurableConfig(string scenarioName)
+        {
+            var durableConfig = new JObject();
+            durableConfig["hubName"] = "DurableTask";
+
+            var azureStorageConfig = new JObject();
+            azureStorageConfig["type"] = "mssql";
+            azureStorageConfig["connectionStringName"] = "SQLDB_Connection";
+            azureStorageConfig["taskEventLockTimeout"] = "00:02:00";
+            azureStorageConfig["createDatabaseIfNotExists"] = true;
+            durableConfig["storageProvider"] = azureStorageConfig;
+            durableConfig["maxConcurrentActivityFunctions"] = 12;
+            durableConfig["maxConcurrentOrchestratorFunctions"] = 10;
+
+            switch (scenarioName)
+            {
+                case "DurableMsSQLProviderPayload":
+                    return durableConfig;
+                case "DurableAdditionalPayload":
+                    // These additional parameters are exptected to be ignored.
+                    durableConfig["extendedSessionsEnabled"] = true;
+                    durableConfig["extendedSessionIdleTimeoutInSeconds"] = 30;
+                    return durableConfig;
+                case "DurableHasHubNameAndOrchestrationConfig":
+                    durableConfig = new JObject();
+                    durableConfig["hubName"] = "DurableTask";
+                    durableConfig["maxConcurrentOrchestratorFunctions"] = 10;
+                    return durableConfig;
+                case "DurableHasStorageAndActivityConfig":
+                    durableConfig = new JObject();
+                    azureStorageConfig = new JObject();
+                    azureStorageConfig["type"] = "mssql";
+                    azureStorageConfig["connectionStringName"] = "SQLDB_Connection";
+                    azureStorageConfig["taskEventLockTimeout"] = "00:02:00";
+                    azureStorageConfig["createDatabaseIfNotExists"] = true;
+                    durableConfig["storageProvider"] = azureStorageConfig;
+                    durableConfig["maxConcurrentActivityFunctions"] = 12;
+                    return durableConfig;
+                case "Empty":
+                    return new JObject();
+                default: return new JObject();
+            }
+
+        }
+
+
+        private string GetPayloadFromFile(string fileName)
+        {
+            var fullPath = Path.Combine("Management", "Payload", fileName);
+            return File.ReadAllText(fullPath);
+        }
+
 
         [Fact]
         public async Task UpdateHashAsync_Succeeds()
