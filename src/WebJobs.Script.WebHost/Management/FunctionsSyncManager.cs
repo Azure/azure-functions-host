@@ -35,6 +35,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
         private const string DurableTaskV1StorageConnectionName = "azureStorageConnectionStringName";
         private const string DurableTaskV2StorageOptions = "storageProvider";
         private const string DurableTaskV2StorageConnectionName = "connectionStringName";
+        private const string DurableTaskV2MaxConcurrentActivityFunctions = "maxConcurrentActivityFunctions";
+        private const string DurableTaskV2MaxConcurrentOrchestratorFunctions = "maxConcurrentOrchestratorFunctions";
         private const string DurableTask = "durableTask";
 
         // 45 alphanumeric characters gives us a buffer in our table/queue/blob container names.
@@ -477,6 +479,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     trigger[Connection] = durableTaskConfig.Connection;
                 }
+
+                if (durableTaskConfig.StorageProvider != null)
+                {
+                    trigger[DurableTaskV2StorageOptions] = durableTaskConfig.StorageProvider;
+                }
+
+                if (durableTaskConfig.MaxConcurrentOrchestratorFunctions != 0)
+                {
+                    trigger[DurableTaskV2MaxConcurrentOrchestratorFunctions] = durableTaskConfig.MaxConcurrentOrchestratorFunctions;
+                }
+
+                if (durableTaskConfig.MaxConcurrentActivityFunctions != 0)
+                {
+                    trigger[DurableTaskV2MaxConcurrentActivityFunctions] = durableTaskConfig.MaxConcurrentActivityFunctions;
+                }
             }
             return trigger;
         }
@@ -591,6 +608,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                     {
                         config.Connection = nameValue.ToString();
                     }
+
+                    config.StorageProvider = storageOptions;
+                }
+
+                if (durableHostConfig.TryGetValue(DurableTaskV2MaxConcurrentOrchestratorFunctions, StringComparison.OrdinalIgnoreCase, out JToken maxConcurrentOrchestratorFunctions) && maxConcurrentOrchestratorFunctions != null)
+                {
+                    config.MaxConcurrentOrchestratorFunctions = int.Parse(maxConcurrentOrchestratorFunctions.ToString());
+                }
+
+                if (durableHostConfig.TryGetValue(DurableTaskV2MaxConcurrentActivityFunctions, StringComparison.OrdinalIgnoreCase, out JToken maxConcurrentActivityFunctions) && maxConcurrentActivityFunctions != null)
+                {
+                    config.MaxConcurrentActivityFunctions = int.Parse(maxConcurrentActivityFunctions.ToString());
                 }
             }
 
@@ -717,9 +746,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
             public string Connection { get; set; }
 
+            public JToken StorageProvider { get; set; }
+
+            public int MaxConcurrentActivityFunctions { get; set; }
+
+            public int MaxConcurrentOrchestratorFunctions { get; set; }
+
             public bool HasValues()
             {
-                return this.HubName != null || this.Connection != null;
+                return this.HubName != null || this.Connection != null || this.StorageProvider != null || this.MaxConcurrentOrchestratorFunctions != 0 || this.MaxConcurrentOrchestratorFunctions != 0;
             }
         }
     }

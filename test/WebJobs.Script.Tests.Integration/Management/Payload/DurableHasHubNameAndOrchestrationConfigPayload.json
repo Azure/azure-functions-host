@@ -1,0 +1,29 @@
+[
+  {
+    "authLevel": "anonymous",
+    "type": "httpTrigger",
+    "direction": "in",
+    "name": "req",
+    "functionName": "function1"
+  },
+  {
+    "name": "myQueueItem",
+    "type": "orchestrationTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "",
+    "functionName": "function2",
+    "taskHubName": "DurableTask",
+    "maxConcurrentOrchestratorFunctions": 10
+  },
+  {
+    "name": "myQueueItem",
+    "type": "activityTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "",
+    "functionName": "function3",
+    "taskHubName": "DurableTask",
+    "maxConcurrentOrchestratorFunctions": 10
+  }
+]
