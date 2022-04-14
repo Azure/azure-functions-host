@@ -141,6 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             WorkerPath = workerDescription.DefaultWorkerPath
                         };
                         arguments.ExecutableArguments.AddRange(workerDescription.Arguments);
+                        arguments.WorkerArguments.AddRange(workerDescription.WorkerArguments);
                         var rpcWorkerConfig = new RpcWorkerConfig()
                         {
                             Description = workerDescription,
