@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -15,12 +14,11 @@ using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.Web.DataProtection;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Script.ExtensionBundle;
+using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Authentication;
 using Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
@@ -34,7 +32,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.WebJobs.Script.Tests;
 using Newtonsoft.Json.Linq;
 using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
@@ -62,10 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
            Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
            Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
            Action<ILoggingBuilder> configureScriptHostLogging = null,
-           Action<IServiceCollection> configureScriptHostServices = null,
-           Action<IConfigurationBuilder> configureWebHostAppConfiguration = null)
+           Action<IServiceCollection> configureScriptHostServices = null)
             : this(scriptPath, Path.Combine(Path.GetTempPath(), @"Functions"), configureWebHostServices, configureScriptHostWebJobsBuilder,
-                  configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices, configureWebHostAppConfiguration)
+                  configureScriptHostAppConfiguration, configureScriptHostLogging, configureScriptHostServices)
         {
         }
 
@@ -74,9 +70,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Action<IWebJobsBuilder> configureScriptHostWebJobsBuilder = null,
             Action<IConfigurationBuilder> configureScriptHostAppConfiguration = null,
             Action<ILoggingBuilder> configureScriptHostLogging = null,
-            Action<IServiceCollection> configureScriptHostServices = null,
-            Action<IConfigurationBuilder> configureWebHostAppConfiguration = null,
-            bool addTestSettings = true)
+            Action<IServiceCollection> configureScriptHostServices = null)
         {
             _appRoot = scriptPath;
 
@@ -129,10 +123,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 })
                 .ConfigureScriptHostAppConfiguration(scriptHostConfigurationBuilder =>
                 {
-                    if (addTestSettings)
-                    {
-                        scriptHostConfigurationBuilder.AddTestSettings();
-                    }
+                    scriptHostConfigurationBuilder.AddTestSettings();
                     configureScriptHostAppConfiguration?.Invoke(scriptHostConfigurationBuilder);
                 })
                 .ConfigureScriptHostLogging(scriptHostLoggingBuilder =>
@@ -155,11 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     }
 
                     config.Add(new ScriptEnvironmentVariablesConfigurationSource());
-                    if (addTestSettings)
-                    {
-                        config.AddTestSettings();
-                    }
-                    configureWebHostAppConfiguration?.Invoke(config);
+                    config.AddTestSettings();
                 })
                 .UseStartup<TestStartup>();
 
@@ -195,9 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public ScriptJobHostOptions ScriptOptions => JobHostServices.GetService<IOptions<ScriptJobHostOptions>>().Value;
 
-        public ISecretManagerProvider SecretManagerProvider => _testServer.Host.Services.GetService<ISecretManagerProvider>();
-
-        public ISecretManager SecretManager => SecretManagerProvider.Current;
+        public ISecretManager SecretManager => _testServer.Host.Services.GetService<ISecretManagerProvider>().Current;
 
         public string LogPath => _hostOptions.LogPath;
 
@@ -207,11 +192,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task<string> GetMasterKeyAsync()
         {
-            if (!SecretManagerProvider.SecretsEnabled)
-            {
-                return null;
-            }
-
             HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
             return secrets.MasterKey;
         }
@@ -365,42 +345,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
         public async Task<HostStatus> GetHostStatusAsync()
         {
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, "admin/host/status");
-
-            if (SecretManagerProvider.SecretsEnabled)
-            {
-                // use admin key
-                HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
-                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, secrets.MasterKey);
-            }
-            else
-            {
-                // use admin jwt token
-                string token = GenerateAdminJwtToken();
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
-            
-            HttpResponseMessage response = await HttpClient.SendAsync(request);
+            HostSecretsInfo secrets = await SecretManager.GetHostSecretsAsync();
+            string uri = $"admin/host/status?code={secrets.MasterKey}";
+            HttpResponseMessage response = await HttpClient.GetAsync(uri);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsAsync<HostStatus>();
-        }
-
-        public string GenerateAdminJwtToken()
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            string defaultKey = Util.GetDefaultKeyValue();
-            var key = Encoding.ASCII.GetBytes(defaultKey);
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Audience = string.Format(ScriptConstants.AdminJwtValidAudienceFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Issuer = string.Format(ScriptConstants.AdminJwtValidIssuerFormat, Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteName)),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            string tokenHeaderValue = tokenHandler.WriteToken(token);
-
-            return tokenHeaderValue;
         }
 
         public void Dispose()
