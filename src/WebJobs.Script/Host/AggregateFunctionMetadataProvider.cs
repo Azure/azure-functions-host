@@ -115,11 +115,10 @@ namespace Microsoft.Azure.WebJobs.Script
                 if (mixedApp)
                 {
                     string logMessage = $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}";
-                    string environmentName = environment.GetEnvironmentVariable(EnvironmentSettingNames.EnvironmentNameKey);
 
-                    if (string.Equals(environmentName, "Development", StringComparison.OrdinalIgnoreCase))
+                    if (environment.IsDevelopment())
                     {
-                        logger.Log(LogLevel.Warning, logMessage);
+                        logger.Log(LogLevel.Warning, logMessage + " Refer to the documentation to filter warning - https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2");
                     }
                     else
                     {

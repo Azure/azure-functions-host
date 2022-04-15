@@ -468,6 +468,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariableOrDefault(FunctionWorkerRuntime, string.Empty);
         }
 
+        public static bool IsDevelopment(this IEnvironment environment)
+        {
+            return string.Equals(environment.GetEnvironmentVariable(EnvironmentNameKey), "Development", StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>
         /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
         /// </summary>
