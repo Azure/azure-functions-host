@@ -253,5 +253,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resultEx3 = Assert.Throws<ArgumentOutOfRangeException>(() => rpcWorkerConfigFactory.GetWorkerProcessCount(workerConfig));
             Assert.Contains("The TimeSpan must not be negative", resultEx3.Message);
         }
+
+        [Fact]
+        public void AddProvider_AddsExecutableAndWorkerArgumentsToRpcWorkerConfigs()
+        {
+            var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder();
+            var config = configBuilder.Build();
+            var testLogger = new TestLogger("test");
+            var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
+            var workerConfigs = configFactory.GetConfigs();
+            foreach (var resultConfig in workerConfigs)
+            {
+                Assert.NotNull(resultConfig.Arguments);
+                Assert.NotNull(resultConfig.Arguments.ExecutableArguments);
+                Assert.NotNull(resultConfig.Arguments.WorkerArguments);
+            }
+        }
     }
 }
