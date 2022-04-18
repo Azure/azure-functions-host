@@ -214,6 +214,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 ((List<string>)workerDescription.Arguments).AddRange(Regex.Split(argumentsSection.Value, @"\s+"));
             }
+
+            var workerArgumentsSection = languageSection.GetSection($"{WorkerConstants.WorkerDescriptionWorkerArguments}");
+            if (workerArgumentsSection.Value != null)
+            {
+                ((List<string>)workerDescription.WorkerArguments).AddRange(Regex.Split(workerArgumentsSection.Value, @"\s+"));
+            }
         }
 
         internal bool ShouldAddWorkerConfig(string workerDescriptionLanguage)

@@ -25,6 +25,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string WorkerDescription = "description";
         public const string ProcessCount = "processOptions";
         public const string WorkerDescriptionArguments = "arguments";
+        public const string WorkerDescriptionWorkerArguments = "workerArguments";
         public const string WorkerDescriptionDefaultRuntimeVersion = "defaultRuntimeVersion";
 
         // Profiles
