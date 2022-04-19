@@ -104,7 +104,7 @@ function CleanOutput([string] $rootPath) {
     Remove-Item -Recurse -Force "$rootPath\workers\python" -ErrorAction SilentlyContinue
 
     Write-Host "  Removing non-win32 node grpc binaries"
-    Get-ChildItem "$rootPath\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
+    Get-ChildItem "$rootPath\workers\node\dist\src\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
     Foreach-Object {
         if (-Not ($_.FullName -Match "win32")) {
             Remove-Item -Recurse -Force $_.FullName
