@@ -298,6 +298,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     string runtimeStack = _workerRuntime;
 
+                    // Note Sid: Here is where workerConfig functions are getting loaded
                     if (!string.IsNullOrEmpty(runtimeStack))
                     {
                         // Appending the runtime version is currently only enabled for linux consumption. This will be eventually enabled for
@@ -498,6 +499,7 @@ namespace Microsoft.Azure.WebJobs.Script
             // generate Type level attributes
             var typeAttributes = CreateTypeAttributes(ScriptOptions);
 
+            // TODO Sid: This is where function is getting generated, this is where something is failing
             string generatingMsg = string.Format(CultureInfo.InvariantCulture, "Generating {0} job function(s)", Functions.Count);
             _logger?.LogInformation(generatingMsg);
 
@@ -744,6 +746,7 @@ namespace Microsoft.Azure.WebJobs.Script
 
         internal async Task<Collection<FunctionDescriptor>> GetFunctionDescriptorsAsync(IEnumerable<FunctionMetadata> functions, IEnumerable<FunctionDescriptorProvider> descriptorProviders, CancellationToken cancellationToken)
         {
+            // TODO Sid: Here is where functions are filtered for being consumed by worker
             Collection<FunctionDescriptor> functionDescriptors = new Collection<FunctionDescriptor>();
             if (!cancellationToken.IsCancellationRequested)
             {

@@ -263,6 +263,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal void AddOrUpdateWorkerChannels(string initializedRuntime, IRpcWorkerChannel initializedLanguageWorkerChannel)
         {
+            // TODO Sid: Adding Worker Runtime Channel here
             _logger.LogDebug("Adding webhost language worker channel for runtime: {language}. workerId:{id}", initializedRuntime, initializedLanguageWorkerChannel.Id);
             _workerChannels.AddOrUpdate(initializedRuntime,
                     (runtime) =>

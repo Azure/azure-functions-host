@@ -224,7 +224,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (!string.IsNullOrEmpty(_workerRuntime))
             {
                 _logger.LogDebug($"EnvironmentVariable {RpcWorkerConstants.FunctionWorkerRuntimeSettingName}: {_workerRuntime}");
-                if (_workerRuntime.Equals(workerDescriptionLanguage, StringComparison.OrdinalIgnoreCase))
+                if (_workerRuntime.Contains(workerDescriptionLanguage))
                 {
                     return true;
                 }

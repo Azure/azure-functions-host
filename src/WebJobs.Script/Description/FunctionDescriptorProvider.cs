@@ -34,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
 
         public virtual async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
+            // TODO Sid: This is where FunctionDescriptor is being made. If this fails function is not added
             if (functionMetadata == null)
             {
                 throw new InvalidOperationException("functionMetadata");
