@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
-                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode}", new Exception(exceptionMessage));
+                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode} (0x{Process.ExitCode.ToString("X")})", new Exception(exceptionMessage));
                     processExitEx.ExitCode = Process.ExitCode;
                     processExitEx.Pid = Process.Id;
                     HandleWorkerProcessExitError(processExitEx);
