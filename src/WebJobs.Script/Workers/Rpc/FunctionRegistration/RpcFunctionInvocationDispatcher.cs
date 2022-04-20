@@ -105,8 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
 
-        internal Task<int> MaxProcessCount => _maxProcessCount.Value;
-
         private async Task<int> GetMaxProcessCount()
         {
             if (_maxProcessCount.IsValueCreated)
@@ -186,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             Task.Run(async () =>
             {
-                for (var count = startIndex; count < (await MaxProcessCount)
+                for (var count = startIndex; count < (await _maxProcessCount.Value)
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
                     if (_environment.IsWorkerDynamicConcurrencyEnabled() && count > 0)
@@ -266,7 +264,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
             _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
             _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
-            ErrorEventsThreshold = 3 * (await MaxProcessCount);
+            ErrorEventsThreshold = 3 * (await _maxProcessCount.Value);
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
@@ -438,7 +436,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
 
-            int workerCount = await MaxProcessCount;
+            int workerCount = await _maxProcessCount.Value;
             if (initializedWorkers.Count() > workerCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {workerCount}");
