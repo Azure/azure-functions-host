@@ -29,6 +29,7 @@ using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.StorageProvider;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -295,6 +296,10 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
+                services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
+
+                services.AddSingleton<IWorkerProfileConditionProvider, WorkerProfileConditionProvider>();
+
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
@@ -346,6 +351,8 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
+            services.AddSingleton<IWorkerProfileConditionProvider, WorkerProfileConditionProvider>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
