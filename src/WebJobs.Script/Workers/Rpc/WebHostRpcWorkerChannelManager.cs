@@ -141,6 +141,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     return false;
                 }
 
+                // If a profile evaluates to true and was not previously loaded,  restart worker process
+                RpcWorkerConfig workerConfig = _lanuageworkerOptions.CurrentValue.WorkerConfigs.First(c => c.Description.Language == workerRuntime);
+                if (workerConfig != null && workerConfig.Profiles != null)
+                {
+                    foreach (var profile in workerConfig.Profiles)
+                    {
+                        if (profile.EvaluateConditions() && !profile.ProfileLoaded)
+                        {
+                            return false;
+                        }
+                    }
+                }
                 // Special case: node and PowerShell apps must be read-only to use the placeholder mode channel
                 // Also cannot use placeholder worker that is targeting ~3 but has backwards compatibility with V2 enabled
                 // TODO: Remove special casing when resolving https://github.com/Azure/azure-functions-host/issues/4534

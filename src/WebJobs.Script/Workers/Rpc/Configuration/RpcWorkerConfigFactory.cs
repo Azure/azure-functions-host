@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -118,6 +119,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
                     workerDescription.WorkerDirectory = workerDir;
 
+                    //Read the profiles from worker description and load the profile for which the conditions match
+                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(workerConfig);
+                    if (workerDescriptionProfiles.Count > 0)
+                    {
+                        workerDescription = LoadWorkerDescriptionFromProfiles(workerDescriptionProfiles, workerDescription);
+                    }
+
                     // Check if any appsettings are provided for that langauge
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
@@ -146,6 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             Description = workerDescription,
                             Arguments = arguments,
                             CountOptions = workerProcessCount,
+                            Profiles = workerDescriptionProfiles,
                         };
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
@@ -157,6 +166,51 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
                 }
             }
+        }
+
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JObject workerConfig)
+        {
+            JArray profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles) as JArray;
+            if (profiles != null)
+            {
+                var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
+                var workerProfileConditionFactory = new WorkerProfileConditionFactory(_logger, _systemRuntimeInformation, _environment);
+                try
+                {
+                    foreach (JObject profile in profiles)
+                    {
+                        var conditions = profile.GetValue(WorkerConstants.WorkerDescriptionProfileConditions) as JArray;
+                        var profileConditions = new List<IWorkerProfileCondition>(conditions.Count);
+
+                        foreach (JObject condition in conditions)
+                        {
+                            var properties = JsonConvert.DeserializeObject<Dictionary<string, object>>(condition.ToString());
+                            IWorkerProfileCondition workerProfileCondition = workerProfileConditionFactory.CreateWorkerProfileCondition(properties);
+                            profileConditions.Add(workerProfileCondition);
+                        }
+                        descriptionProfiles.Add(new WorkerDescriptionProfile((string)profile[WorkerConstants.WorkerDescriptionProfileName], profileConditions, profile.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>()));
+                    }
+                }
+                catch
+                {
+                    throw new FormatException("Failed to parse profiles in worker config.");
+                }
+                return descriptionProfiles;
+            }
+            return new List<WorkerDescriptionProfile>(0);
+        }
+
+        private RpcWorkerDescription LoadWorkerDescriptionFromProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, RpcWorkerDescription defaultWorkerDescription)
+        {
+            foreach (var profile in workerDescriptionProfiles)
+            {
+                if (profile.EvaluateConditions())
+                {
+                    _logger?.LogInformation($"Worker initialized with {profile.Name} profile from worker config.");
+                    return profile.ApplyProfile(defaultWorkerDescription);
+                }
+            }
+            return defaultWorkerDescription;
         }
 
         internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
