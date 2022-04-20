@@ -32,6 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
+        private readonly Lazy<Task<int>> _maxProcessCount;
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -39,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private IDisposable _workerErrorSubscription;
         private IDisposable _workerRestartSubscription;
         private ScriptJobHostOptions _scriptOptions;
-        private int _maxProcessCount;
         private IRpcFunctionInvocationDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool _disposed = false;
         private bool _disposing = false;
@@ -91,6 +91,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
+
+            _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
@@ -101,9 +103,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
-        internal int MaxProcessCount => _maxProcessCount;
-
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
+
+        internal Task<int> MaxProcessCount => _maxProcessCount.Value;
+
+        private async Task<int> GetMaxProcessCount()
+        {
+            if (_maxProcessCount.IsValueCreated)
+            {
+                return await _maxProcessCount.Value;
+            }
+
+            if (_environment.IsPlaceholderModeEnabled())
+            {
+                return (await GetAllWorkerChannelsAsync()).ToArray().Count();
+            }
+
+            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+            return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
+        }
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync()
         {
@@ -168,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             Task.Run(async () =>
             {
-                for (var count = startIndex; count < MaxProcessCount
+                for (var count = startIndex; count < (await MaxProcessCount)
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
                     if (_environment.IsWorkerDynamicConcurrencyEnabled() && count > 0)
@@ -212,7 +230,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (placeholderModeEnabled)
             {
-                _maxProcessCount = (await GetAllWorkerChannelsAsync()).ToArray().Count();
                 return;
             }
 
@@ -246,11 +263,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             _functions = functions ?? new List<FunctionMetadata>();
-            _maxProcessCount = workerConfig.CountOptions.ProcessCount;
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
             _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
             _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
-            ErrorEventsThreshold = 3 * MaxProcessCount;
+            ErrorEventsThreshold = 3 * (await MaxProcessCount);
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
@@ -421,14 +437,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
-<<<<<<< HEAD
-            int workerCount = _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : _maxProcessCount;
+
+            int workerCount = await MaxProcessCount;
             if (initializedWorkers.Count() > workerCount)
-=======
-            if (initializedWorkers.Count() > MaxProcessCount)
->>>>>>> 28c3425d2... use GetAllWorkerChannelsAsync to get count
             {
-                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {MaxProcessCount}");
+                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {workerCount}");
             }
 
             return initializedWorkers;
