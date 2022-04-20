@@ -37,17 +37,31 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _processingTask = ProcessLogs();
+            try
+            {
+                _processingTask = ProcessLogs();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting worker console log service. Handling error and continuing.");
+            }
             return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _cts.Cancel();
-
-            if (_processingTask != null)
+            try
             {
-                await _processingTask;
+                _cts.Cancel();
+
+                if (_processingTask != null)
+                {
+                    await _processingTask;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping worker console log service. Handling error and continuing.");
             }
         }
 

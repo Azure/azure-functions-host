@@ -49,16 +49,30 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            // create a onetime invocation timer
-            _syncTimer = new Timer(OnSyncTimerTick, cancellationToken, DueTime, Timeout.Infinite);
+            try
+            {
+                // create a onetime invocation timer
+                _syncTimer = new Timer(OnSyncTimerTick, cancellationToken, DueTime, Timeout.Infinite);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+            }
 
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // cancel the timer if it has been started
-            _syncTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            try
+            {
+                // cancel the timer if it has been started
+                _syncTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+            }
 
             return Task.CompletedTask;
         }

@@ -30,28 +30,35 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            IDictionary<string, IEnumerable<string>> invalidValues = _validator.Validate(_originalConfig);
-
-            if (invalidValues.Any())
+            try
             {
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine("The Functions scale controller may not scale the following functions correctly because some configuration values were modified in an external startup class.");
+                IDictionary<string, IEnumerable<string>> invalidValues = _validator.Validate(_originalConfig);
 
-                foreach (KeyValuePair<string, IEnumerable<string>> invalidValueMap in invalidValues)
+                if (invalidValues.Any())
                 {
-                    sb.AppendLine($"  Function '{invalidValueMap.Key}' uses the modified key(s): {string.Join(", ", invalidValueMap.Value)}");
-                }
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine("The Functions scale controller may not scale the following functions correctly because some configuration values were modified in an external startup class.");
 
-                if (_environment.IsCoreTools())
-                {
-                    // We don't know where this will be deployed, so it may not matter,
-                    // but log this as a warning during development.
-                    _logger.LogWarning(sb.ToString());
+                    foreach (KeyValuePair<string, IEnumerable<string>> invalidValueMap in invalidValues)
+                    {
+                        sb.AppendLine($"  Function '{invalidValueMap.Key}' uses the modified key(s): {string.Join(", ", invalidValueMap.Value)}");
+                    }
+
+                    if (_environment.IsCoreTools())
+                    {
+                        // We don't know where this will be deployed, so it may not matter,
+                        // but log this as a warning during development.
+                        _logger.LogWarning(sb.ToString());
+                    }
+                    else
+                    {
+                        throw new HostInitializationException(sb.ToString());
+                    }
                 }
-                else
-                {
-                    throw new HostInitializationException(sb.ToString());
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Host Initialization Service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;

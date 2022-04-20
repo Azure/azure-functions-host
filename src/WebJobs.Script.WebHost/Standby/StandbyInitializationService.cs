@@ -19,7 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            return _standbyManager.InitializeAsync();
+            try
+            {
+                return _standbyManager.InitializeAsync();
+            }
+            catch (Exception)
+            {
+                // logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                return Task.CompletedTask;
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)

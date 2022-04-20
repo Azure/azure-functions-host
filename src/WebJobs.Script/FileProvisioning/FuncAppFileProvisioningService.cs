@@ -1,6 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
@@ -27,13 +28,20 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            if (!_options.CurrentValue.IsFileSystemReadOnly)
+            try
             {
-                var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName));
-                if (funcAppFileProvisioner != null)
+                if (!_options.CurrentValue.IsFileSystemReadOnly)
                 {
-                    await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);
+                    var funcAppFileProvisioner = _funcAppFileProvisionerFactory.CreatFileProvisioner(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName));
+                    if (funcAppFileProvisioner != null)
+                    {
+                        await funcAppFileProvisioner.ProvisionFiles(_options.CurrentValue.ScriptPath);
+                    }
                 }
+            }
+            catch (Exception)
+            {
+                // _logger.LogError(ex, "Error starting Host Initialization Service. Handling error and continuing.");
             }
         }
 

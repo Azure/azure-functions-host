@@ -33,13 +33,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Initializing LinuxContainerInitializationService.");
-            _cancellationToken = cancellationToken;
-
-            // The service should be registered in Linux Consumption only, but do additional check here.
-            if (_environment.IsLinuxConsumption())
+            try
             {
-                await ApplyStartContextIfPresent();
+                _logger.LogInformation("Initializing LinuxContainerInitializationService.");
+                _cancellationToken = cancellationToken;
+
+                // The service should be registered in Linux Consumption only, but do additional check here.
+                if (_environment.IsLinuxConsumption())
+                {
+                    await ApplyStartContextIfPresent();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
             }
         }
 

@@ -61,53 +61,66 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            if (!string.IsNullOrEmpty(workerRuntime))
+            try
             {
-                // the feature applies only to "node","powershell","python"
-                workerRuntime = workerRuntime.ToLower();
-                if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
-                || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
-                || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+                string workerRuntime = _environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
+                if (!string.IsNullOrEmpty(workerRuntime))
                 {
-                    _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
+                    // the feature applies only to "node","powershell","python"
+                    workerRuntime = workerRuntime.ToLower();
+                    if (workerRuntime == RpcWorkerConstants.NodeLanguageWorkerName
+                    || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
+                    || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
+                    {
+                        _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
 
-                    if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
-                    {
-                        _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
-                        return Task.CompletedTask;
-                    }
-                    if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName)))
-                    {
-                        return Task.CompletedTask;
-                    }
-                    if (_environment.IsWorkerDynamicConcurrencyEnabled())
-                    {
-                        Activate();
-                    }
-                    else
-                    {
-                        // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
-                        _activationTimer = new System.Timers.Timer()
+                        if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
                         {
-                            AutoReset = false,
-                            Interval = _activationTimerInterval.TotalMilliseconds
-                        };
-                        _activationTimer.Elapsed += OnActivationTimer;
-                        _activationTimer.Start();
+                            _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
+                            return Task.CompletedTask;
+                        }
+                        if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName)))
+                        {
+                            return Task.CompletedTask;
+                        }
+                        if (_environment.IsWorkerDynamicConcurrencyEnabled())
+                        {
+                            Activate();
+                        }
+                        else
+                        {
+                            // The worker concurreny feature can be activated once FunctionsHostingConfigurations is updated
+                            _activationTimer = new System.Timers.Timer()
+                            {
+                                AutoReset = false,
+                                Interval = _activationTimerInterval.TotalMilliseconds
+                            };
+                            _activationTimer.Elapsed += OnActivationTimer;
+                            _activationTimer.Start();
+                        }
                     }
                 }
             }
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting dynamic worker concurrency monitoring. Handling error and continuing.");
+            }
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            if (_timer != null)
+            try
             {
-                _logger.LogDebug("Stopping dynamic worker concurrency monitoring.");
-                _timer.Stop();
+                if (_timer != null)
+                {
+                    _logger.LogDebug("Stopping dynamic worker concurrency monitoring.");
+                    _timer.Stop();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping dynamic worker concurrency monitoring. Handling error and continuing.");
             }
             return Task.CompletedTask;
         }
