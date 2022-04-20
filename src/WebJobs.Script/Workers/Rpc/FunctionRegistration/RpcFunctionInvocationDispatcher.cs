@@ -86,10 +86,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerIndexing = Utility.CanWorkerIndex(_workerConfigs, _environment);
             State = FunctionInvocationDispatcherState.Default;
 
-            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
-               .Subscribe(WorkerError);
-            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
-               .Subscribe(WorkerRestart);
+            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(WorkerError);
+            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>().Subscribe(WorkerRestart);
 
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
@@ -131,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private void SetFunctionDispatcherStateToInitializedAndLog()
         {
             State = FunctionInvocationDispatcherState.Initialized;
-            // Do not change this log message. Vs Code relies on this to figure out when to attach debuger to the worker process.
+            // Do not change this log message. Vs Code relies on this to figure out when to attach debugger to the worker process.
             _logger.LogInformation("Worker process started and initialized.");
         }
 
@@ -170,7 +168,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             Task.Run(async () =>
             {
-                for (var count = startIndex; count < _maxProcessCount
+                for (var count = startIndex; count < MaxProcessCount
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
                     if (_environment.IsWorkerDynamicConcurrencyEnabled() && count > 0)
@@ -214,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
             if (placeholderModeEnabled)
             {
-                _maxProcessCount = _webHostLanguageWorkerChannelManager.GetChannels(_workerRuntime).Count();
+                _maxProcessCount = (await GetAllWorkerChannelsAsync()).ToArray().Count();
                 return;
             }
 
@@ -252,7 +250,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
             _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
             _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
-            ErrorEventsThreshold = 3 * _maxProcessCount;
+            ErrorEventsThreshold = 3 * MaxProcessCount;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs))
             {
@@ -423,10 +421,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync();
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
+<<<<<<< HEAD
             int workerCount = _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : _maxProcessCount;
             if (initializedWorkers.Count() > workerCount)
+=======
+            if (initializedWorkers.Count() > MaxProcessCount)
+>>>>>>> 28c3425d2... use GetAllWorkerChannelsAsync to get count
             {
-                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
+                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {MaxProcessCount}");
             }
 
             return initializedWorkers;
