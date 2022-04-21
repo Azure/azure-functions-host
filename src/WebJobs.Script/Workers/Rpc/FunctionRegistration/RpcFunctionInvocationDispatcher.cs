@@ -107,18 +107,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task<int> GetMaxProcessCount()
         {
-            if (_maxProcessCount.IsValueCreated)
+            if (_workerConfigs != null
+                && _environment != null
+                && _workerConcurrencyOptions != null
+                && !string.IsNullOrEmpty(_workerRuntime))
             {
-                return await _maxProcessCount.Value;
+                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+                return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
             }
 
-            if (_environment.IsPlaceholderModeEnabled())
-            {
-                return (await GetAllWorkerChannelsAsync()).ToArray().Count();
-            }
-
-            var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-            return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
+            return (await GetAllWorkerChannelsAsync()).ToArray().Count();
         }
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync()
