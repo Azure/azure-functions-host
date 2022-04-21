@@ -66,7 +66,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             var logger = _loggerFactory.GetOrCreate(FunctionsExecutionEventsCategory);
             string currentUtcTime = DateTime.UtcNow.ToString();
-            WriteEvent(logger, $"{currentUtcTime}");
+            string log = string.Join(",", executionId, siteName, concurrency.ToString(), functionName, invocationId, executionStage, executionTimeSpan.ToString(), success.ToString(), currentUtcTime);
+            WriteEvent(logger, log);
         }
 
         private static void WriteEvent(LinuxAppServiceFileLogger logger, string evt)
