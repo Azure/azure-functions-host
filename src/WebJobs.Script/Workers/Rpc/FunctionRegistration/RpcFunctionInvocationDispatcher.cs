@@ -113,7 +113,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 && !string.IsNullOrEmpty(_workerRuntime))
             {
                 var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
-                return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
+                if (workerConfig != null)
+                {
+                    return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
+                }
             }
 
             return (await GetAllWorkerChannelsAsync()).ToArray().Count();
