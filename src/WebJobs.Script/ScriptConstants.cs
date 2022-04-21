@@ -109,6 +109,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
+        public const string FeatureFlagEnableUserException = "EnableUserException";
 
         public const string AdminJwtValidAudienceFormat = "https://{0}.azurewebsites.net/azurefunctions";
         public const string AdminJwtValidIssuerFormat = "https://{0}.scm.azurewebsites.net";

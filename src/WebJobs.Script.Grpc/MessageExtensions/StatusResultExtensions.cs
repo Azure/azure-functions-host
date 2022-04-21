@@ -3,6 +3,8 @@
 
 using System;
 using System.Threading.Tasks;
+using Grpc.Core;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 
 namespace Microsoft.Azure.WebJobs.Script.Grpc
@@ -27,12 +29,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static bool IsSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs)
+        public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs)
         {
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
-                    tcs.SetException(GetRpcException(status));
+                    var rpcException = GetRpcException(status);
+                    // TODO - once add protobuf, remove below
+                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableUserException))
+                    {
+                        rpcException.IsUserException = true;
+                    }
+                    tcs.SetException(rpcException);
                     return false;
 
                 case StatusResult.Types.Status.Cancelled:
@@ -50,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var status = statusResult?.Status.ToString();
             if (ex != null)
             {
-                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace);
+                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace); // TODO - once add protobuf, add typeName & isUserException
             }
             return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);
         }

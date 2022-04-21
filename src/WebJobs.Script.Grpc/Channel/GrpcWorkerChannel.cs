@@ -631,7 +631,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("InvocationResponse received for invocation id: '{invocationId}'", invokeResponse.InvocationId);
 
             if (_executingInvocations.TryRemove(invokeResponse.InvocationId, out ScriptInvocationContext context)
-                && invokeResponse.Result.IsSuccess(context.ResultSource))
+                && invokeResponse.Result.IsInvocationSuccess(context.ResultSource))
             {
                 try
                 {
