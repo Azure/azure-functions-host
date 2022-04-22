@@ -4,6 +4,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -20,7 +21,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Mock<IFunctionInvocationDispatcherFactory> mockFunctionDispatcherFactory = new Mock<IFunctionInvocationDispatcherFactory>();
             mockFunctionDispatcherFactory.Setup(functionDispatcherFactory => functionDispatcherFactory.GetFunctionDispatcher()).Returns(mockFunctionDispatcher.Object);
 
-            var functionDispatcherShutdownManager = new FunctionInvocationDispatcherShutdownManager(mockFunctionDispatcherFactory.Object);
+            var logger = new LoggerFactory().CreateLogger<IFunctionInvocationDispatcherFactory>();
+            var functionDispatcherShutdownManager = new FunctionInvocationDispatcherShutdownManager(mockFunctionDispatcherFactory.Object, logger);
             await functionDispatcherShutdownManager.StopAsync(CancellationToken.None);
             mockFunctionDispatcher.Verify(functionDispatcher => functionDispatcher.ShutdownAsync(), Times.Once);
         }
