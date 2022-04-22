@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -20,17 +21,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
+        private readonly IWorkerProfileConditionManager _profileConditionManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
-        public RpcWorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
+        public RpcWorkerConfigFactory(IConfiguration config,
+                                      ILogger logger,
+                                      ISystemRuntimeInformation systemRuntimeInfo,
+                                      IWorkerProfileConditionManager profileConditionManager,
+                                      IEnvironment environment,
+                                      IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
+            _profileConditionManager = profileConditionManager ?? throw new ArgumentNullException(nameof(profileConditionManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
@@ -170,33 +178,39 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JObject workerConfig)
         {
-            JArray profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles) as JArray;
-            if (profiles != null)
+            var profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles).ToObject<IList<WorkerProfileDescriptor>>();
+
+            if (profiles != null && profiles.Count > 0)
             {
                 var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
-                var workerProfileConditionFactory = new WorkerProfileConditionFactory(_logger, _systemRuntimeInformation, _environment);
                 try
                 {
-                    foreach (JObject profile in profiles)
+                    foreach (var profile in profiles)
                     {
-                        var conditions = profile.GetValue(WorkerConstants.WorkerDescriptionProfileConditions) as JArray;
-                        var profileConditions = new List<IWorkerProfileCondition>(conditions.Count);
+                        var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
 
-                        foreach (JObject condition in conditions)
+                        foreach (var descriptor in profile.Conditions)
                         {
-                            var properties = JsonConvert.DeserializeObject<Dictionary<string, object>>(condition.ToString());
-                            IWorkerProfileCondition workerProfileCondition = workerProfileConditionFactory.CreateWorkerProfileCondition(properties);
-                            profileConditions.Add(workerProfileCondition);
+                            if (!_profileConditionManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
+                            {
+                                // TODO: Handle this failure here... this should likely translate into an initialization error as we don't
+                                // want to run the worker if we can't evaluate the profile conditions
+                            }
+
+                            profileConditions.Add(condition);
                         }
-                        descriptionProfiles.Add(new WorkerDescriptionProfile((string)profile[WorkerConstants.WorkerDescriptionProfileName], profileConditions, profile.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>()));
+
+                        descriptionProfiles.Add(new (profile.Name, profileConditions, profile.Description));
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     throw new FormatException("Failed to parse profiles in worker config.");
                 }
+
                 return descriptionProfiles;
             }
+
             return new List<WorkerDescriptionProfile>(0);
         }
 

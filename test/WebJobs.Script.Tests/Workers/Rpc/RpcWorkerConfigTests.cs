@@ -24,13 +24,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static string customRootPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguagePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         private static string testLanguage = "testLanguage";
-
         private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
         private readonly TestEnvironment _testEnvironment;
+        private readonly WorkerProfileConditionManager _profileConditionManager;
 
         public RpcWorkerConfigTests()
         {
             _testEnvironment = new TestEnvironment();
+
+            var systemConditionProvider = new SystemConditionProvider(new TestLogger<SystemConditionProvider>(), _testSysRuntimeInfo, _testEnvironment);
+            _profileConditionManager = new WorkerProfileConditionManager(new TestLogger<WorkerProfileConditionManager>(), new[] { systemConditionProvider });
         }
 
         public static IEnumerable<object[]> InvalidWorkerDescriptions
@@ -630,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger);
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _profileConditionManager, _testEnvironment, testMetricsLogger);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>

@@ -4,6 +4,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
@@ -12,19 +13,29 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
+        private readonly string _name;
+        private readonly string _expression;
+        private Regex _regex;
 
-        public EnvironmentCondition(ILogger logger, IEnvironment environment, string name, string expression)
+        internal EnvironmentCondition(ILogger logger, IEnvironment environment, WorkerProfileConditionDescriptor descriptor)
         {
+            if (descriptor is null)
+            {
+                throw new ArgumentNullException(nameof(descriptor));
+            }
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            Name = name;
-            Expression = expression;
+
+            descriptor.Properties.TryGetValue("name", out _name);
+            descriptor.Properties.TryGetValue("expression", out _expression);
+
             Validate();
         }
 
-        public string Name { get; set; }
+        public string Name => _name;
 
-        public string Expression { get; set; }
+        public string Expression => _expression;
 
         public bool Evaluate()
         {
@@ -33,8 +44,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 return false;
             }
+
             _logger.LogDebug($"Evaluating EnvironmentCondition with value: {value} and expression {Expression}");
-            return Regex.IsMatch(value, Expression);
+
+            return _regex.IsMatch(value);
         }
 
         public void Validate()
@@ -51,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             try
             {
-                new Regex(Expression);
+                _regex = new Regex(Expression);
             }
             catch
             {

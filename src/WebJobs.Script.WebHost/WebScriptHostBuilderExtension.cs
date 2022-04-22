@@ -152,6 +152,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     services.AddSingleton<IFileMonitoringService, FileMonitoringService>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
 
+                    // Worker/OOP services
+
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });
 

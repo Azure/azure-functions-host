@@ -6,21 +6,32 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    public class HostPropertyCondition : IWorkerProfileCondition
+    internal class HostPropertyCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
+        private readonly string _name;
+        private readonly string _expression;
+        private Regex _regex;
 
-        public HostPropertyCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, string name, string expression)
+        public HostPropertyCondition(ILogger logger, ISystemRuntimeInformation systemRuntimeInformation, WorkerProfileConditionDescriptor descriptor)
         {
+            if (descriptor is null)
+            {
+                throw new ArgumentNullException(nameof(descriptor));
+            }
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
-            Name = name;
-            Expression = expression;
+
+            descriptor.Properties.TryGetValue("name", out _name);
+            descriptor.Properties.TryGetValue("expression", out _expression);
+
             Validate();
         }
 
@@ -31,9 +42,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             HostVersion
         }
 
-        public string Name { get; set; }
+        public string Name => _name;
 
-        public string Expression { get; set; }
+        public string Expression => _expression;
 
         public bool Evaluate()
         {
@@ -58,8 +69,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 return false;
             }
+
             _logger.LogDebug($"Evaluating HostPropertyCondition with value: {value} and expression {Expression}");
-            return Regex.IsMatch(value, Expression);
+
+            return _regex.IsMatch(value);
         }
 
         public void Validate()
@@ -81,7 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
             try
             {
-               new Regex(Expression);
+                _regex = new Regex(Expression);
             }
             catch
             {
