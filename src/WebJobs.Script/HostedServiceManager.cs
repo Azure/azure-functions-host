@@ -6,16 +6,19 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script
 {
     internal class HostedServiceManager : IHostedService
     {
         private readonly IEnumerable<IManagedHostedService> _managedHostedServices;
+        private readonly ILogger _logger;
 
-        public HostedServiceManager(IEnumerable<IManagedHostedService> managedHostedServices)
+        public HostedServiceManager(IEnumerable<IManagedHostedService> managedHostedServices, ILogger logger)
         {
             _managedHostedServices = managedHostedServices;
+            _logger = logger;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -31,9 +34,9 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     await managedHostedService.OuterStopAsync(cancellationToken);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // _logger.LogError(ex, "Error starting Host Initialization Service. Handling error and continuing.");
+                    _logger.LogError(ex, "Error stopping HostedServiceManager Service. Handling error and continuing.");
                 }
             }
         }

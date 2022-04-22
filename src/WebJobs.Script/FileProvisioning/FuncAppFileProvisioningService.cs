@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
@@ -14,16 +15,19 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
     {
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _options;
         private readonly IEnvironment _environment;
+        private readonly ILogger _logger;
         private readonly IFuncAppFileProvisionerFactory _funcAppFileProvisionerFactory;
 
         public FuncAppFileProvisioningService(
             IEnvironment environment,
             IOptionsMonitor<ScriptApplicationHostOptions> options,
-            IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory)
+            IFuncAppFileProvisionerFactory funcAppFileProvisionerFactory,
+            ILogger logger)
         {
             _environment = environment;
             _options = options;
             _funcAppFileProvisionerFactory = funcAppFileProvisionerFactory;
+            _logger = logger;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -39,9 +43,9 @@ namespace Microsoft.Azure.WebJobs.Script.FileProvisioning
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // _logger.LogError(ex, "Error starting Host Initialization Service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting FuncAppFileProvisioning Service. Handling error and continuing.");
             }
         }
 

@@ -5,16 +5,19 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
 {
     public class StandbyInitializationService : IHostedService
     {
         private readonly IStandbyManager _standbyManager;
+        private readonly ILogger _logger;
 
-        public StandbyInitializationService(IStandbyManager standbyManager)
+        public StandbyInitializationService(IStandbyManager standbyManager, ILogger logger)
         {
             _standbyManager = standbyManager ?? throw new ArgumentNullException(nameof(standbyManager));
+            _logger = logger;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -23,9 +26,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             {
                 return _standbyManager.InitializeAsync();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting StandbyInitialization service. Handling error and continuing.");
                 return Task.CompletedTask;
             }
         }
