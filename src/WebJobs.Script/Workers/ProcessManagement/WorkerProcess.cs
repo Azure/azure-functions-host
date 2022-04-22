@@ -114,9 +114,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
+                    // TODO: redesign how we log errors so it's not based on the string contents (GH issue #8273)
                     if ((msg.IndexOf("error", StringComparison.OrdinalIgnoreCase) > -1) ||
                         (msg.IndexOf("fail", StringComparison.OrdinalIgnoreCase) > -1) ||
-                        (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1))
+                        (msg.IndexOf("severe", StringComparison.OrdinalIgnoreCase) > -1) ||
+                        (msg.IndexOf("unhandled exception", StringComparison.OrdinalIgnoreCase) > -1))
                     {
                         LogError(msg);
                     }
@@ -156,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
                 else
                 {
-                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode}\n {exceptionMessage}");
+                    var processExitEx = new WorkerProcessExitException($"{Process.StartInfo.FileName} exited with code {Process.ExitCode}", new Exception(exceptionMessage));
                     processExitEx.ExitCode = Process.ExitCode;
                     processExitEx.Pid = Process.Id;
                     HandleWorkerProcessExitError(processExitEx);

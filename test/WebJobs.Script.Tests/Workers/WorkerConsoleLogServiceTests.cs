@@ -26,14 +26,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public async Task WorkerConsoleLogService_ConsoleLogs_LogLevel_Expected(bool useStdErrForErroLogsOnly)
+        public async Task WorkerConsoleLogService_ConsoleLogs_LogLevel_Expected(bool useStdErrForErrorLogsOnly)
         {
+            // Arrange
             _workerConsoleLogSource = new WorkerConsoleLogSource();
             _eventManager = new ScriptEventManager();
             _processRegistry = new EmptyProcessRegistry();
             _workerConsoleLogService = new WorkerConsoleLogService(_testUserLogger, _workerConsoleLogSource);
             _serviceProviderMock = new Mock<IServiceProvider>(MockBehavior.Strict);
-            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErroLogsOnly);
+
+            WorkerProcess workerProcess = new TestWorkerProcess(_eventManager, _processRegistry, _testSystemLogger, _workerConsoleLogSource, null, _serviceProviderMock.Object, useStdErrForErrorLogsOnly);
             workerProcess.ParseErrorMessageAndLog("Test Message No keyword");
             workerProcess.ParseErrorMessageAndLog("Test Error Message");
             workerProcess.ParseErrorMessageAndLog("Test Warning Message");
@@ -41,17 +43,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Error Message]");
             workerProcess.ParseErrorMessageAndLog("LanguageWorkerConsoleLog[Test Worker Warning Message]");
 
+            // Act
             _ = _workerConsoleLogService.ProcessLogs().ContinueWith(t => { });
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var userLogs = _testUserLogger.GetLogMessages();
             var systemLogs = _testSystemLogger.GetLogMessages();
+
+            // Assert
             Assert.True(userLogs.Count == 3);
             Assert.True(systemLogs.Count == 3);
+
             VerifyLogLevel(userLogs, "Test Error Message", LogLevel.Error);
             VerifyLogLevel(systemLogs, "[Test Worker Error Message]", LogLevel.Error);
             VerifyLogLevel(userLogs, "Test Warning Message", LogLevel.Warning);
             VerifyLogLevel(systemLogs, "[Test Worker Warning Message]", LogLevel.Warning);
-            if (useStdErrForErroLogsOnly)
+
+            if (useStdErrForErrorLogsOnly)
             {
                 VerifyLogLevel(userLogs, "Test Message No keyword", LogLevel.Error);
                 VerifyLogLevel(systemLogs, "[Test Worker Message No keyword]", LogLevel.Error);
