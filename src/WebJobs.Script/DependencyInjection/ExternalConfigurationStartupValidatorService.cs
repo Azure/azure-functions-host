@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.DependencyInjection
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Host Initialization Service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting ConfigurationStartupValidator Service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;

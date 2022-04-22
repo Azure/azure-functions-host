@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting LinuxContainerActivityPublisher service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error stopping LinuxContainerActivityPublisher service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;

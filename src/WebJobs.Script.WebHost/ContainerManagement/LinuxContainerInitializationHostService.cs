@@ -46,7 +46,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting LinuxContainerInitializationService. Handling error and continuing.");
             }
         }
 

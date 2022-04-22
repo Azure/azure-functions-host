@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
         private Task _analysisTask;
         private bool _disposed;
         private bool _analysisScheduled;
-        private ILogger logger;
+        private ILogger _logger;
 
         public AssemblyAnalysisService(IEnvironment environment, WebJobsScriptHostService scriptHost, ILoggerFactory loggerFactory, IOptionsMonitor<StandbyOptions> standbyOptionsMonitor)
         {
@@ -34,8 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
             _scriptHost = scriptHost;
             _loggerFactory = loggerFactory;
             _standbyOptionsMonitor = standbyOptionsMonitor;
-
-            logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
+            _logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -62,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -76,14 +75,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
 
                 if (_analysisTask != null && !_analysisTask.IsCompleted)
                 {
-                    logger.LogDebug("Assembly analysis service stopped before analysis completion. Waiting for cancellation.");
+                    _logger.LogDebug("Assembly analysis service stopped before analysis completion. Waiting for cancellation.");
 
                     return _analysisTask;
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error stopping Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error stopping Assembly analysis service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -115,7 +114,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
                 return;
             }
 
-            var logger = _loggerFactory.CreateLogger<AssemblyAnalysisService>();
             var assemblies = new HashSet<Assembly>();
             var hasUnoptimizedAssemblies = false;
 
@@ -132,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
                     if (!IsReadyToRunOptimized(type.Assembly))
                     {
                         hasUnoptimizedAssemblies = true;
-                        logger.Log(LogLevel.Debug, "Detected unoptimized function assemblies.");
+                        _logger.Log(LogLevel.Debug, "Detected unoptimized function assemblies.");
 
                         break;
                     }
@@ -143,7 +141,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
 
             if (!hasUnoptimizedAssemblies)
             {
-                logger.Log(LogLevel.Debug, "All function assemblies optimized.");
+                _logger.Log(LogLevel.Debug, "All function assemblies optimized.");
             }
         }
 

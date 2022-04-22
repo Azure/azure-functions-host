@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error starting Functions Sync service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error stopping Functions Sync service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;

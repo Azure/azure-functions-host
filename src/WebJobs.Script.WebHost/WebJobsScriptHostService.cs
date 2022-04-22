@@ -451,7 +451,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error starting Assembly analysis service. Handling error and continuing.");
+                _logger.LogError(ex, "Error stopping ScriptHost service. Handling error and continuing.");
             }
         }
 
