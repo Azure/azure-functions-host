@@ -298,8 +298,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             // Assert
             var webHostCount = functionDispatcher.WebHostLanguageWorkerChannelManager.GetChannels(RpcWorkerConstants.JavaLanguageWorkerName).Count();
             var jobHostCount = functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count();
+            var maxProcessCount = functionDispatcher._maxProcessCount;
             Assert.Equal(expectedWebHostProcessCount, webHostCount);
             Assert.Equal(expectedJobHostProcessCount, jobHostCount);
+            Assert.Equal(expectedWebHostProcessCount, maxProcessCount);
         }
 
         [Fact]

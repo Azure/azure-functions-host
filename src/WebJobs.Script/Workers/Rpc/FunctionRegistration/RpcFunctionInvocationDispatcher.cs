@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
-        private readonly Lazy<Task<int>> _maxProcessCount;
+        internal readonly Lazy<Task<int>> _maxProcessCount;
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
