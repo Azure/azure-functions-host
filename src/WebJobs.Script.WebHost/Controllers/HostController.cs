@@ -111,28 +111,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager)
         {
-            _logger.LogDebug("Received request for draining host");
-
-            if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
+            try
             {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable);
-            }
+                _logger.LogDebug("Received request to drain the host");
 
-            await _drainModeSemaphore.WaitAsync();
+                if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
+                {
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
+                }
 
-            // Stop call to some listeners gets stuck, not waiting for the stop call to complete
-            _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
-                                .ContinueWith(
-                                    antecedent =>
-                                    {
-                                        if (antecedent.Status == TaskStatus.Faulted)
+                await _drainModeSemaphore.WaitAsync();
+
+                // Stop call to some listeners gets stuck, not waiting for the stop call to complete
+                _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
+                                    .ContinueWith(
+                                        antecedent =>
                                         {
-                                            _logger.LogError(antecedent.Exception, "Something went wrong enabling drain mode");
-                                        }
-
-                                        _drainModeSemaphore.Release();
-                                    });
-            return Accepted();
+                                            if (antecedent.Status == TaskStatus.Faulted)
+                                            {
+                                                _logger.LogError(antecedent.Exception, "Something went wrong invoking drain mode");
+                                            }
+                                        });
+                return Accepted();
+            }
+            finally
+            {
+                _drainModeSemaphore.Release();
+            }
         }
 
         [HttpGet]
