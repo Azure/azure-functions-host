@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
-            _environment = environment;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _applicationLifetime = applicationLifetime;
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions.CurrentValue.WorkerConfigs;
+            _workerConfigs = languageWorkerOptions?.CurrentValue?.WorkerConfigs ?? throw new ArgumentNullException(nameof(languageWorkerOptions));
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
@@ -107,10 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private async Task<int> GetMaxProcessCount()
         {
-            if (_workerConfigs != null
-                && _environment != null
-                && _workerConcurrencyOptions != null
-                && !string.IsNullOrEmpty(_workerRuntime))
+            if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
                 var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
                 if (workerConfig != null)
