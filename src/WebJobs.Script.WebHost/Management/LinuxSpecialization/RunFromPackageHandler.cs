@@ -51,8 +51,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
-                // download zip and extract
-                var filePath = await _packageDownloadHandler.Download(pkgContext);
+                string filePath;
+                if (!pkgContext.IsRunFromLocalPackage())
+                {
+                    // download zip
+                    filePath = await _packageDownloadHandler.Download(pkgContext);
+                }
+                else
+                {
+                    if (!azureFilesMounted)
+                    {
+                        _logger.LogInformation($"{nameof(ApplyBlobPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
+                    }
+
+                    filePath = CopyPackageFile();
+                }
+
+                // extract zip
                 await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
 
                 string bundlePath = Path.Combine(targetPath, "worker-bundle");
@@ -73,6 +88,50 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
                 return false;
             }
+        }
+
+        private string CopyPackageFile()
+        {
+            var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+            var packageFolderPath = Path.Combine(home, "deployments", "data", "SitePackages");
+
+            if (Directory.Exists(packageFolderPath))
+            {
+                throw new Exception($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
+            }
+
+            var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
+            if (!File.Exists(packageNameTxtPath))
+            {
+                throw new Exception($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
+            }
+
+            var packageFileName = File.ReadAllText(packageNameTxtPath);
+
+            if (string.IsNullOrEmpty(packageFileName))
+            {
+                throw new Exception($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
+            }
+
+            var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
+            if (!File.Exists(packageFilePath))
+            {
+                throw new Exception($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
+            }
+
+            var packageFileInfo = new FileInfo(packageFilePath);
+            if (packageFileInfo.Length == 0)
+            {
+                throw new Exception($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
+            }
+
+            var tmpPath = Path.GetTempPath();
+            var fileName = Path.GetFileName(packageFileName);
+            var filePath = Path.Combine(tmpPath, fileName);
+
+            File.Copy(packageFilePath, filePath, true);
+
+            return filePath;
         }
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
