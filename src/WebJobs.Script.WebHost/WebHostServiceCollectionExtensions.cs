@@ -170,13 +170,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // All other IHostedService injections need to go before this.
             services.AddSingleton<IHostedService, HostedServiceManager>();
 
-            services.AddSingleton<IHostedService>(p =>
-            {
-                var logger = p.GetService<ILogger<HostedServiceManager>>();
-                var managedHostedServices = p.GetService<IEnumerable<IManagedHostedService>>();
-                return new HostedServiceManager(managedHostedServices, logger);
-            });
-
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
             services.ConfigureOptions<StandbyOptionsSetup>();

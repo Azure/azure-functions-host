@@ -14,6 +14,7 @@ using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -93,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
+                       services.Replace(new ServiceDescriptor(typeof(ILogger), new TestLogger("TestLogger")));
 
                        services.SkipDependencyValidation();
                    });
