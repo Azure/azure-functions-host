@@ -51,7 +51,6 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
                 {
                     options.FileLoggingMode = fileLoggingMode.Value;
                 }
-                Utility.ValidateRetryOptions(options.Retry);
             }
 
             // FunctionTimeout

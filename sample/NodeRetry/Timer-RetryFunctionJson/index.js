@@ -1,22 +1,19 @@
 ﻿var errorString = 'An error occurred';
-var maxRetries = 2;
+var maxRetries = 4;
 
-module.exports = async function (context, req) {
+module.exports = async function (context, timer) {
     var retryContext = context.executionContext.retryContext;
 
     if (retryContext.maxRetryCount != maxRetries || (retryContext.retryCount > 0 && !retryContext.exception.message.includes(errorString))) {
-        debugger;
-        context.res = {
-            status: 500
-        };
+        console.log('Unexpected error');
+        throw 'Unexpected error';
     } else {
         context.log('JavaScript HTTP trigger function processed a request. retryCount: ' + retryContext.retryCount);
 
         if (retryContext.retryCount < maxRetries) {
-            throw new Error(errorString);
+            console.log(errorString);
+            throw errorString;
         }
-        context.res = {
-            body: 'retryCount: ' + retryContext.retryCount
-        };
+        console.log('Execution completed');
     }
 }
