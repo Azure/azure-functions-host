@@ -15,7 +15,6 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Host.Storage;
 using Microsoft.Azure.WebJobs.Logging;
@@ -24,9 +23,7 @@ using Microsoft.Azure.WebJobs.Script.Configuration;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Grpc;
 using Microsoft.Azure.WebJobs.Script.WebHost;
-using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
-using Microsoft.Diagnostics.JitTrace;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -243,6 +240,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var specializedContext = FunctionAssemblyLoadContext.Shared;
 
                 Assert.NotSame(placeholderContext, specializedContext);
+            }
+        }
+
+        [Fact]
+        public async Task Specialization_ResetsSecretManagerRepository()
+        {
+            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+
+            using (var testServer = new TestServer(builder))
+            {
+                var client = testServer.CreateClient();
+
+                var response = await client.GetAsync("api/warmup");
+                response.EnsureSuccessStatusCode();
+
+                var provider = testServer.Host.Services.GetService<ISecretManagerProvider>();
+                var secretsEnabled = provider.SecretsEnabled;
+
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
+                _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
+
+                response = await client.GetAsync("api/functionexecutioncontext");
+                response.EnsureSuccessStatusCode();
             }
         }
 
