@@ -34,6 +34,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return (IsScmRunFromPackage() && ScmRunFromPackageBlobExists(options, logger)) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
         }
 
+        public bool IsRunFromLocalPackage()
+        {
+            return Url == "1";
+        }
+
         private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
         {
             var blobExists = options.IsScmRunFromPackage;

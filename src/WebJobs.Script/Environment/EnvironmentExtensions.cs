@@ -471,10 +471,22 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
         /// </summary>
-        public static bool SupportsAzureFileShareMount(this IEnvironment environment)
+        public static bool SupportsAzureFileShareMount(this IEnvironment environment, string runFromPackageValue)
         {
             return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
-                StringComparison.OrdinalIgnoreCase);
+                StringComparison.OrdinalIgnoreCase) || (environment.IsPersistentStorageEnabled() && runFromPackageValue == "1");
+        }
+
+        public static bool IsPersistentStorageEnabled(this IEnvironment environment)
+        {
+            var persistentStorageEnabled = environment.GetEnvironmentVariable("ENABLE_KUDU_PERSISTENT_STORAGE");
+            if (!string.IsNullOrWhiteSpace(persistentStorageEnabled))
+            {
+                return string.Equals("1", persistentStorageEnabled, StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals("true", persistentStorageEnabled, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
         }
 
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)

@@ -239,7 +239,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
                 workerRuntime = workerRuntime.ToUpperInvariant();
             }
             environment.SetEnvironmentVariable(FunctionWorkerRuntime, workerRuntime);
-            Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount());
+            Assert.Equal(supportsAzureFileShareMount, environment.SupportsAzureFileShareMount("0"));
         }
 
         [Theory]
