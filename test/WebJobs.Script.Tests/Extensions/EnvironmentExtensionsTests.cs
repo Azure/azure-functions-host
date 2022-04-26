@@ -215,19 +215,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
         }
 
         [Theory]
-        [InlineData("Development", true)]
-        [InlineData("development", true)]
-        [InlineData("Production", false)]
-        [InlineData(null, false)]
-        [InlineData("", false)]
-        public void IsDevelopment_Returns_ExpectedResult(string environmentNameKey, bool expected)
-        {
-            var environment = new TestEnvironment();
-            environment.SetEnvironmentVariable(EnvironmentNameKey, environmentNameKey);
-            Assert.Equal(expected, environment.IsDevelopment());
-        }
-
-        [Theory]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, true, false, true)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, true, true)]
         [InlineData(RpcWorkerConstants.PowerShellLanguageWorkerName, false, false, true)]
