@@ -46,7 +46,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             _secretsEnabledLazy = new Lazy<bool>(GetSecretsEnabled);
 
             // When these options change (due to specialization), we need to reset the secret manager.
-            options.OnChange(_ => ResetSecretManager());
+            options.OnChange(_ =>
+            {
+                Console.WriteLine("#nasoni DefaultSecretManagerProvider option on change called for specialization");
+                ResetSecretManager();
+            });
 
             _azureBlobStorageProvider = azureBlobStorageProvider ?? throw new ArgumentNullException(nameof(azureBlobStorageProvider));
         }
@@ -55,7 +59,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         {
             get
             {
-                if (_secretManagerLazy.IsValueCreated)
+                bool valueCreated = _secretManagerLazy.IsValueCreated;
+                Console.WriteLine($"#nasoni DefaultSecretManagerProvider _secretManagerLazy.IsValueCreated: {valueCreated}");
+                if (valueCreated)
                 {
                     return true;
                 }
@@ -71,7 +77,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             Interlocked.Exchange(ref _secretManagerLazy, new Lazy<ISecretManager>(Create));
         }
 
-        private ISecretManager Create() => new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        private ISecretManager Create()
+        {
+            Console.WriteLine("#nasoni Secret Manager create called");
+            return new SecretManager(CreateSecretsRepository(), _loggerFactory.CreateLogger<SecretManager>(), _metricsLogger, _hostNameProvider, _startupContextProvider);
+        }
 
         internal ISecretsRepository CreateSecretsRepository()
         {
