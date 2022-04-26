@@ -1,7 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections;
+using System.Collections.Generic;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
@@ -165,8 +168,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
             // Order is important.
             // All other IHostedService injections need to go before this.
-            services.AddSingleton<IHostedService>(s => s.GetRequiredService<HostedServiceManager>());
             services.AddSingleton<IHostedService, HostedServiceManager>();
+
+            services.AddSingleton<IHostedService>(p =>
+            {
+                var logger = p.GetService<ILogger<HostedServiceManager>>();
+                var managedHostedServices = p.GetService<IEnumerable<IManagedHostedService>>();
+                return new HostedServiceManager(managedHostedServices, logger);
+            });
 
             // Configuration
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
