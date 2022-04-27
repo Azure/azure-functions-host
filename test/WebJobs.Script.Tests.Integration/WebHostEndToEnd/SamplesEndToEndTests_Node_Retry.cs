@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
@@ -26,23 +27,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         }
 
         [Fact]
-        public async Task HttpTrigger_RetryFunctionJson_Get_Succeeds()
+        public async Task Timer_RetryFunctionJson_WorksAsExpected()
         {
-            var response = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger-RetryFunctionJson");
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("retryCount: 4", body);
+            await TestHelpers.Await(() =>
+            {
+                var scriptLogs = _fixture.Host.GetScriptHostLogMessages();
+                int attemptsCount = scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Waiting for `00:00:01` before retrying function execution. Next attempt:")).Count();
+                bool isSuccessful = scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Executed 'Functions.Timer-RetryFunctionJson' (Succeeded")).Count() == 1;
+                return attemptsCount == 4 && isSuccessful;
+            }, 10000, 1000);
         }
 
         [Fact]
-        public async Task HttpTrigger_RetryHostJson_Get_Succeeds()
+        public async Task HttpTrigger_Retry_LogWarning()
         {
-            var response = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger-RetryHostJson");
+            var response = await SamplesTestHelpers.InvokeHttpTrigger(_fixture, "HttpTrigger-RetryWarning");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string body = await response.Content.ReadAsStringAsync();
-            Assert.Equal("text/plain", response.Content.Headers.ContentType.MediaType);
-            Assert.Equal("retryCount: 2", body);
+            await TestHelpers.Await(() =>
+            {
+                var scriptLogs = _fixture.Host.GetScriptHostLogMessages();
+                return scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Retries are not supported for function 'Functions.HttpTrigger-RetryWarning'.")).Count() == 1;
+            }, 10000, 1000);
         }
 
         public class TestFixture : EndToEndTestFixture

@@ -46,7 +46,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.PerfCounterCollector" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.33-11908" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.33-11924" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0">
@@ -60,7 +60,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7" Version="3.0.1845" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.31" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.4-10859" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.5-10872" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.2-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />    
     <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
