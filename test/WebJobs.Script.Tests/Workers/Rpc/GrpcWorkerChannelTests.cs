@@ -590,6 +590,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
+        public void ReceivesInboundEvent_Failed_OverallFunctionMetadataResponse()
+        {
+            var functions = _workerChannel.GetFunctionMetadata();
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index functions")));
+        }
+
+        [Fact]
         public void FunctionLoadRequest_IsExpected()
         {
             FunctionMetadata metadata = new FunctionMetadata()

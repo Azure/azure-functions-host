@@ -545,10 +545,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
+        // parse metadata response into RawFunctionMetadata objects for AggregateFunctionMetadataProvider to further parse and validate
         internal void ProcessFunctionMetadataResponses(FunctionMetadataResponse functionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
+
+            if (functionMetadataResponse.Result.IsFailure(out Exception metadataResponseEx))
+            {
+                _workerChannelLogger?.LogError(metadataResponseEx, "Worker failed to index functions");
+            }
 
             var functions = new List<RawFunctionMetadata>();
 
