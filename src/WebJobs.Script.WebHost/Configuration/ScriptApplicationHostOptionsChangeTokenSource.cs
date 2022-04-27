@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     return;
                 }
 
+                // This should only ever happen once, on specialization, so null everything out
+                // when this fires.
                 var tokenSource = Interlocked.Exchange(ref _cancellationTokenSource, null);
 
                 if (tokenSource != null &&
@@ -45,10 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 
         public string Name { get; }
 
-        public void Dispose()
-        {
-            _standbyOptionsOnChangeSubscription?.Dispose();
-        }
+        public void Dispose() => _standbyOptionsOnChangeSubscription?.Dispose();
 
         public IChangeToken GetChangeToken() => _changeToken;
     }

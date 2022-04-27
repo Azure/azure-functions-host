@@ -246,7 +246,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [Fact]
         public async Task Specialization_ResetsSecretManagerRepository()
         {
-            var builder = CreateStandbyHostBuilder("FunctionExecutionContext");
+            var builder = CreateStandbyHostBuilder("FunctionExecutionContext")
+                .ConfigureLogging(logging =>
+                {
+                    logging.AddFilter<TestLoggerProvider>(null, LogLevel.Debug);
+                });
 
             using (var testServer = new TestServer(builder))
             {
@@ -256,13 +260,31 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 response.EnsureSuccessStatusCode();
 
                 var provider = testServer.Host.Services.GetService<ISecretManagerProvider>();
-                var secretsEnabled = provider.SecretsEnabled;
+                _ = provider.SecretsEnabled;
+                _ = provider.SecretsEnabled;
+                _ = provider.SecretsEnabled;
+
+                // Should only be evaluated once due to the Lazy
+                var messages = _loggerProvider.GetAllLogMessages().Select(p => p.EventId.Name);
+                Assert.Single(messages, "GetSecretsEnabled");
 
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
+                // Force specialization
                 response = await client.GetAsync("api/functionexecutioncontext");
                 response.EnsureSuccessStatusCode();
+
+                _ = provider.SecretsEnabled;
+                _ = provider.SecretsEnabled;
+                _ = provider.SecretsEnabled;
+
+                messages = _loggerProvider.GetAllLogMessages().Select(p => p.EventId.Name);
+
+                // Should be re-evaluated one more time after reset
+                Assert.Equal(2, messages.Where(p => p == "GetSecretsEnabled").Count());
+
+                Assert.Single(messages, "ResetSecretManager");
             }
         }
 
