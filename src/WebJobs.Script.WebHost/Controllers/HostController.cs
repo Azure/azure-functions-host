@@ -42,7 +42,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         private readonly IScriptHostManager _scriptHostManager;
         private readonly IFunctionsSyncManager _functionsSyncManager;
         private readonly HostPerformanceManager _performanceManager;
-        private static readonly SemaphoreSlim _drainModeSemaphore = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim _drainSemaphore = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim _resumeSemaphore = new SemaphoreSlim(1, 1);
 
         public HostController(IOptions<ScriptApplicationHostOptions> applicationHostOptions,
             ILoggerFactory loggerFactory,
@@ -111,33 +112,28 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         [Authorize(Policy = PolicyNames.AdminAuthLevelOrInternal)]
         public async Task<IActionResult> Drain([FromServices] IScriptHostManager scriptHostManager)
         {
-            try
+            _logger.LogDebug("Received request to drain the host");
+
+            if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
             {
-                _logger.LogDebug("Received request to drain the host");
+                return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            }
 
-                if (!Utility.TryGetHostService(scriptHostManager, out IDrainModeManager drainModeManager))
-                {
-                    return StatusCode(StatusCodes.Status503ServiceUnavailable);
-                }
+            await _drainSemaphore.WaitAsync();
 
-                await _drainModeSemaphore.WaitAsync();
-
-                // Stop call to some listeners gets stuck, not waiting for the stop call to complete
-                _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
-                                    .ContinueWith(
-                                        antecedent =>
+            // Stop call to some listeners gets stuck, not waiting for the stop call to complete
+            _ = drainModeManager.EnableDrainModeAsync(CancellationToken.None)
+                                .ContinueWith(
+                                    antecedent =>
+                                    {
+                                        if (antecedent.Status == TaskStatus.Faulted)
                                         {
-                                            if (antecedent.Status == TaskStatus.Faulted)
-                                            {
-                                                _logger.LogError(antecedent.Exception, "Something went wrong invoking drain mode");
-                                            }
-                                        });
-                return Accepted();
-            }
-            finally
-            {
-                _drainModeSemaphore.Release();
-            }
+                                            _logger.LogError(antecedent.Exception, "Something went wrong invoking drain mode");
+                                        }
+
+                                        _drainSemaphore.Release();
+                                    });
+            return Accepted();
         }
 
         [HttpGet]
@@ -179,7 +175,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
         {
             try
             {
-                await _drainModeSemaphore.WaitAsync();
+                await _resumeSemaphore.WaitAsync();
 
                 ScriptHostState currentState = scriptHostManager.State;
 
@@ -205,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             }
             finally
             {
-                _drainModeSemaphore.Release();
+                _resumeSemaphore.Release();
             }
         }
 
