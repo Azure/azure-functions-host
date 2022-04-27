@@ -61,17 +61,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(2, functionMetadatas.Length);
 
-            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
+            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("Timer-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
             var retry = functionMetadataWithRetry.FirstOrDefault().Retry;
             Assert.NotNull(retry);
             Assert.Equal(RetryStrategy.FixedDelay, retry.Strategy);
             Assert.Equal(4, retry.MaxRetryCount);
-            Assert.Equal(TimeSpan.Parse("00:00:03"), retry.DelayInterval);
-
-            var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
-            Assert.Single(functionMetadataWithRetry);
-            Assert.Null(functionMetadata.FirstOrDefault().Retry);
+            Assert.Equal(TimeSpan.Parse("00:00:01"), retry.DelayInterval);
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)

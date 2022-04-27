@@ -6,10 +6,5 @@
       "defaultExecutablePath": "node",
       "arguments": [ "server.js" ]
     }
-  },
-  "retry": {
-    "strategy": "fixedDelay",
-    "maxRetryCount": 2,
-    "delayInterval": "00:00:00"
   }
 }
