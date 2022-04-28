@@ -37,7 +37,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
                 var logger = _loggerFactory.GetOrCreate(FunctionsLogsCategory);
-                WriteEvent(logger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+                for (int i = 0; i < 100; i++)
+                    {
+                        WriteEvent(logger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
+                    }
             }
         }
 
