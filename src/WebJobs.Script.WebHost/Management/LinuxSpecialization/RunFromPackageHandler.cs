@@ -61,10 +61,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 {
                     if (!azureFilesMounted)
                     {
-                        _logger.LogInformation($"{nameof(ApplyBlobPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
+                        _logger.LogWarning($"{nameof(ApplyBlobPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
                     }
 
                     filePath = CopyPackageFile();
+
+                    if (string.IsNullOrEmpty(filePath))
+                    {
+                        return false;
+                    }
                 }
 
                 // extract zip
@@ -97,32 +102,37 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             if (Directory.Exists(packageFolderPath))
             {
-                throw new Exception($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
+                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
+                return string.Empty;
             }
 
             var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
             if (!File.Exists(packageNameTxtPath))
             {
-                throw new Exception($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
+                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
+                return string.Empty;
             }
 
             var packageFileName = File.ReadAllText(packageNameTxtPath);
 
             if (string.IsNullOrEmpty(packageFileName))
             {
-                throw new Exception($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
+                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
+                return string.Empty;
             }
 
             var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
             if (!File.Exists(packageFilePath))
             {
-                throw new Exception($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
+                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
+                return string.Empty;
             }
 
             var packageFileInfo = new FileInfo(packageFilePath);
             if (packageFileInfo.Length == 0)
             {
-                throw new Exception($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
+                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
+                return string.Empty;
             }
 
             var tmpPath = Path.GetTempPath();
@@ -130,6 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             var filePath = Path.Combine(tmpPath, fileName);
 
             File.Copy(packageFilePath, filePath, true);
+
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successfull. {packageFileName} was copied to {filePath}.");
 
             return filePath;
         }
