@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _hostManager;
         private readonly ILogger _logger;
+        private string _assemblyLocalPath;
 
         public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger)
         {
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _environment = environment;
             _hostManager = hostManager;
             _logger = logger;
+            _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath);
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -40,17 +43,58 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
                 }
 
+                ReadRuntimeAssemblyFiles();
+
                 await WarmUp(httpContext.Request);
             }
 
             await _next.Invoke(httpContext);
         }
 
+        internal void ReadRuntimeAssemblyFiles()
+        {
+            try
+            {
+                string[] allFiles = Directory.GetFiles(_assemblyLocalPath, "*.dll", SearchOption.TopDirectoryOnly);
+                foreach (string file in allFiles)
+                {
+                    // Read file content to avoid disk reads during specialization. This is only to page-in bytes.
+                    ReadFileInChunks(file);
+                }
+                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), $"Number of files read: {allFiles.Count()}.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), ex, "Reading ReadRuntimeAssemblyFiles failed");
+            }
+        }
+
+        private void ReadFileInChunks(string file)
+        {
+            try
+            {
+                // Read File content in 4K chunks
+                const int MAX_BUFFER = 4 * 1024;
+                byte[] chunk = new byte[MAX_BUFFER];
+                int bytesRead;
+                using (FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                {
+                    while ((bytesRead = fileStream.Read(chunk, 0, MAX_BUFFER)) != 0)
+                    {
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(new EventId(100, nameof(ReadFileInChunks)), ex, $"Reading file '{file}' failed");
+            }
+        }
+
         private void PreJitPrepare(string jitTraceFileName)
         {
             // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
             var path = Path.Combine(
-                Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.CodeBase).LocalPath),
+                _assemblyLocalPath,
                 WarmUpConstants.PreJitFolderName, jitTraceFileName);
 
             var file = new FileInfo(path);
