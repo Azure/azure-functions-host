@@ -132,6 +132,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Note: we must be sure to default any null values to empty string
             // otherwise the ETW event will fail to be persisted (silently)
             string summary = formattedMessage ?? string.Empty;
+
+            if (!string.IsNullOrEmpty(summary) && summary.StartsWith(ScriptConstants.AppInsightsLogPrefix))
+            {
+                _eventGenerator.LogAppInsightDistributeTracingEvent(logLevel, summary);
+                return;
+            }
+
             string eventName = !string.IsNullOrEmpty(eventId.Name) ? eventId.Name : stateEventName ?? string.Empty;
             string activityId = stateActivityId ?? string.Empty;
             var options = _appServiceOptions;

@@ -142,5 +142,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 slotName: SystemEnvironment.Instance.GetSlotName() ?? string.Empty,
                 eventTimestamp: DateTime.UtcNow);
         }
+
+        public override void LogAppInsightDistributeTracingEvent(LogLevel level, string summary)
+        {
+            _writeEvent(summary);
+        }
     }
 }

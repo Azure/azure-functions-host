@@ -106,5 +106,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             Console.WriteLine(evt);
         }
+
+        public override void LogAppInsightDistributeTracingEvent(LogLevel level, string summary)
+        {
+        }
     }
 }

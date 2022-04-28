@@ -21,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string HstsMiddlewareRequestDelegate = "MS_HstsMiddlewareRequestDelegate";
         public const string CorsMiddlewareRequestDelegate = "MS_CorsMiddlewareRequestDelegate";
         public const string EasyAuthMiddlewareRequestDelegate = "MS_EasyAuthMiddlewareRequestDelegate";
+        public const string AppInsightsLogPrefix = "MS_APPLICATION_INSIGHTS_LOGS";
 
         public const string LegacyPlaceholderTemplateSiteName = "FunctionsPlaceholderTemplateSite";
 

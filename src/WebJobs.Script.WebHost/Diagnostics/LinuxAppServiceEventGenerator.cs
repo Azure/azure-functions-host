@@ -89,5 +89,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             // Pipe the unhandled exception to stdout as part of docker logs.
             Console.WriteLine($"Unhandled exception on {DateTime.UtcNow}: {e?.ToString()}");
         }
+
+        public override void LogAppInsightDistributeTracingEvent(LogLevel level, string summary)
+        {
+        }
     }
 }

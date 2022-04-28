@@ -85,5 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public abstract void LogAzureMonitorDiagnosticLogEvent(LogLevel level, string resourceId, string operationName,
             string category, string regionName, string properties);
+
+        public abstract void LogAppInsightDistributeTracingEvent(LogLevel level, string summary);
     }
 }

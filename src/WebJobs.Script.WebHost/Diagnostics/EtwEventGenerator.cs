@@ -87,5 +87,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                     break;
             }
         }
+
+        public void LogAppInsightDistributeTracingEvent(LogLevel level, string summary)
+        {
+        }
     }
 }
