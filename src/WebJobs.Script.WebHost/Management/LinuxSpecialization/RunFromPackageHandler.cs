@@ -51,14 +51,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
+                // khkh: temp condition.
+                _logger.LogInformation($"azureFilesMounted Status: {azureFilesMounted}");
+                if (azureFilesMounted)
+                {
+                    var thepath = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.LocalSitePackages,
+                        EnvironmentSettingNames.DefaultLocalSitePackagesPath);
+                    _logger.LogInformation($"LocalSitePackes Path: {thepath}");
+
+                    var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
+                    _logger.LogInformation($"Home Path: {home}");
+
+                    var potentialPackageFolderPath = Path.Combine(home, "data", "SitePackages");
+                    _logger.LogInformation($"Potential PackageFolderPath: {potentialPackageFolderPath}");
+                }
+
                 string filePath;
+
                 if (!pkgContext.IsRunFromLocalPackage())
                 {
+                    _logger.LogInformation($"{nameof(ApplyBlobPackageContext)}: Going to download package file.");
                     // download zip
                     filePath = await _packageDownloadHandler.Download(pkgContext);
                 }
                 else
                 {
+                    _logger.LogInformation($"{nameof(ApplyBlobPackageContext)}: Going to copy package file.");
                     if (!azureFilesMounted)
                     {
                         _logger.LogWarning($"{nameof(ApplyBlobPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
@@ -98,9 +116,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private string CopyPackageFile()
         {
             var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-            var packageFolderPath = Path.Combine(home, "deployments", "data", "SitePackages");
+            var packageFolderPath = Path.Combine(home, "data", "SitePackages");
 
-            if (Directory.Exists(packageFolderPath))
+            if (!Directory.Exists(packageFolderPath))
             {
                 _logger.LogWarning($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
                 return string.Empty;
