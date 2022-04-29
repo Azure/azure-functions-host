@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 var logger = _loggerFactory.GetOrCreate(FunctionsLogsCategory);
                 if (!eventName.Contains("Complete"))
                 {
-                    for (int i = 0; i < 100; i++)
+                    for (int i = 0; i < 10000; i++)
                     {
                         WriteEvent(logger, $"{(int)ToEventLevel(level)},{subscriptionId},{hostName},{appName},{functionName},{eventName},{source},{NormalizeString(details)},{NormalizeString(summary)},{hostVersion},{formattedEventTimestamp},{exceptionType},{NormalizeString(exceptionMessage)},{functionInvocationId},{hostInstanceId},{activityId}");
                     }
