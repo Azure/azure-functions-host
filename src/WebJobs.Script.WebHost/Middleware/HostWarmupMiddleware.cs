@@ -56,37 +56,40 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             try
             {
                 string[] allFiles = Directory.GetFiles(_assemblyLocalPath, "*.dll", SearchOption.TopDirectoryOnly);
+                // Read File content in 4K chunks
+                int maxBuffer = 4 * 1024;
+                byte[] chunk = new byte[maxBuffer];
+                Random random = new Random();
                 foreach (string file in allFiles)
                 {
                     // Read file content to avoid disk reads during specialization. This is only to page-in bytes.
-                    ReadFileInChunks(file);
+                    ReadFileInChunks(file, chunk, maxBuffer, random);
                 }
-                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), $"Number of files read: {allFiles.Count()}.");
+                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), "Number of files read: '{allFilesCount}'. AssemblyLocalPath: '{assemblyLocalPath}' ", allFiles.Count(), _assemblyLocalPath);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), ex, "Reading ReadRuntimeAssemblyFiles failed");
+                _logger.LogError(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), ex, "Reading ReadRuntimeAssemblyFiles failed. AssemblyLocalPath: '{assemblyLocalPath}'", _assemblyLocalPath);
             }
         }
 
-        private void ReadFileInChunks(string file)
+        private void ReadFileInChunks(string file, byte[] chunk, int maxBuffer, Random random)
         {
             try
             {
-                // Read File content in 4K chunks
-                const int MAX_BUFFER = 4 * 1024;
-                byte[] chunk = new byte[MAX_BUFFER];
-                int bytesRead;
                 using (FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
                 {
-                    while ((bytesRead = fileStream.Read(chunk, 0, MAX_BUFFER)) != 0)
+                    int bytesRead;
+                    while ((bytesRead = fileStream.Read(chunk, 0, maxBuffer)) != 0)
                     {
+                        // Read one random byte for every 4K bytes - 4K is default OS page size. This will help avoid disk read during specialization
+                        var randomByte = Convert.ToInt32(chunk[random.Next(0, bytesRead - 1)]);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(new EventId(100, nameof(ReadFileInChunks)), ex, $"Reading file '{file}' failed");
+                _logger.LogError(new EventId(100, nameof(ReadFileInChunks)), ex, "Reading file '{file}' failed. AssemblyLocalPath: '{assemblyLocalPath}'", file, _assemblyLocalPath);
             }
         }
 
