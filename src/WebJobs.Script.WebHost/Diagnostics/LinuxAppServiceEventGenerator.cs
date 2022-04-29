@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             using (FunctionsSystemLogsEventSource.SetActivityId(activityId))
             {
                 var logger = _loggerFactory.GetOrCreate(FunctionsLogsCategory);
-                if (!eventName.Contains("Complete")) 
+                if (!eventName.Contains("Complete"))
                 {
                     for (int i = 0; i < 100; i++)
                     {
