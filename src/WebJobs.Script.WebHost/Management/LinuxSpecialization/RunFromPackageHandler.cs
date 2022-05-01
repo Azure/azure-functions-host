@@ -166,15 +166,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
         {
+            _logger.LogInformation($"{nameof(UnpackPackage)}: filepath {filePath}, script path {scriptPath}, localSitePackagePath {localSitePackagesPath}.");
+
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
             CodePackageType packageType;
             using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
             {
                 packageType = GetPackageType(filePath, pkgContext);
+                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
             }
 
             if (packageType == CodePackageType.Squashfs)
             {
+                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype is Squashfs.");
                 // default to mount for squashfs images
                 if (_environment.IsMountDisabled())
                 {
@@ -195,20 +199,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             else if (packageType == CodePackageType.Zip)
             {
+                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype is zip.");
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
+                    _logger.LogInformation($"{nameof(UnpackPackage)}: Calling MountFuse on zip.");
                     await _meshServiceClient.MountFuse(MeshServiceClient.ZipOperation, filePath, scriptPath);
+                    _logger.LogInformation($"{nameof(UnpackPackage)}: MountFuse completed on zip ");
                 }
                 else
                 {
                     if (useLocalSitePackages)
                     {
+                        _logger.LogInformation($"{nameof(UnpackPackage)}: Unziping {filePath} to localSitepackage at {localSitePackagesPath}");
                         _unZipHandler.UnzipPackage(filePath, localSitePackagesPath);
+                        _logger.LogInformation($"{nameof(UnpackPackage)}: Calling CreateBindMount on zip.");
                         await CreateBindMount(localSitePackagesPath, scriptPath);
+                        _logger.LogInformation($"{nameof(UnpackPackage)}: CreateBindMount completed on zip ");
                     }
                     else
                     {
+                        _logger.LogInformation($"{nameof(UnpackPackage)}: Unziping {filePath}");
                         _unZipHandler.UnzipPackage(filePath, scriptPath);
                     }
                 }
