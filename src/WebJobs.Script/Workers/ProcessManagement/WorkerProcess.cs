@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
-        public void Dispose()
+        private void Dispose()
         {
             Disposing = true;
             // best effort process disposal
@@ -216,9 +216,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (!Process.HasExited)
                     {
-                        Process.Kill();
                         if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
+                            Process.Kill();
                             _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
                         }
                     }
@@ -275,6 +275,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                     _processMonitor = null;
                 }
             }
+        }
+
+        public Task StopProcessAsync()
+        {
+            _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} Stopped");
+            Dispose();
+            return Task.CompletedTask;
         }
     }
 }

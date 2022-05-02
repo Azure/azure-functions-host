@@ -155,6 +155,19 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             await _workerInitTask.Task;
         }
 
+        public async Task StopWorkerProcessAsync(CancellationToken cancellationToken)
+        {
+            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
+                .Take(1)
+                .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
+
+            _workerChannelLogger.LogDebug("Terminating Worker Process");
+            await _rpcWorkerProcess.StopProcessAsync();
+            _state = _state | RpcWorkerChannelState.Default;
+            await _workerInitTask.Task;
+        }
+
         public async Task<WorkerStatus> GetWorkerStatusAsync()
         {
             var workerStatus = new WorkerStatus();
@@ -192,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(GrpcEvent startEvent)
+        internal void SendWorkerInitRequest(GrpcEvent initEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)
@@ -270,6 +283,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.SetResult(true);
+        }
+
+        internal void SendWorkerTerminateRequest()
+        {
+            _workerChannelLogger.LogDebug("Sending worker process termination message.");
+            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerTerminate)
+                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
+                .Take(1)
+                .Subscribe(WorkerInitResponse, HandleWorkerInitError);
+
+            WorkerTerminate initRequest = new WorkerTerminate();
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerTerminate = initRequest
+            });
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)

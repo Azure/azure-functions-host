@@ -13,5 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         Task<WorkerStatus> GetWorkerStatusAsync();
 
         Task StartWorkerProcessAsync(CancellationToken cancellationToken = default);
+
+        Task StopWorkerProcessAsync(CancellationToken cancellationToken = default);
     }
 }
