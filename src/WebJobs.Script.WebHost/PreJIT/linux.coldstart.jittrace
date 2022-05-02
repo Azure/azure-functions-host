@@ -3223,8 +3223,6 @@
 [S.P.CoreLib]System.Threading.SemaphoreSlim.Dispose(bool)~System.Threading.SemaphoreSlim,System.Private.CoreLib~1~0~Dispose
 [S.P.CoreLib]System.Threading.SemaphoreSlim.Wait(int32)~System.Threading.SemaphoreSlim,System.Private.CoreLib~1~0~Wait
 [S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.RunOrScheduleAction(Action,bool)~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~2~0~RunOrScheduleAction
-[S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.System.Threading.IThreadPoolWorkItem.Execute()~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~0~0~System.Threading.IThreadPoolWorkItem.Execute
-[S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.UnsafeScheduleAction(Action,Task)~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~2~0~UnsafeScheduleAction
 [S.P.CoreLib]System.Threading.Tasks.ContinuationTaskFromResultTask`1<System.__Canon>.InnerInvoke()~System.Threading.Tasks.ContinuationTaskFromResultTask`1[[System.__Canon,System.Private.CoreLib]],System.Private.CoreLib~0~0~InnerInvoke
 [S.P.CoreLib]System.Threading.Tasks.Task.ContinueWith<__Canon>(Func`2<Task,__Canon>)~System.Threading.Tasks.Task,System.Private.CoreLib~1~1:System.__Canon,System.Private.CoreLib~ContinueWith
 [S.P.CoreLib]System.Threading.Tasks.Task.Delay(int32)~System.Threading.Tasks.Task,System.Private.CoreLib~1~0~Delay
@@ -6886,3 +6884,9 @@ uint16.TryFormat(Span`1<char>,int32&,ReadOnlySpan`1<char>,IFormatProvider)~Syste
 [System.Linq]System.Linq.Enumerable.GroupBy<__Canon,__Canon>(IEnumerable`1<__Canon>,Func`2<__Canon,__Canon>,IEqualityComparer`1<__Canon>)~System.Linq.Enumerable,System.Linq~3~2:System.__Canon,System.Private.CoreLib:System.__Canon,System.Private.CoreLib~GroupBy
 [System.Text.RegularExpressions]System.Text.RegularExpressions.Group.get_Success()~System.Text.RegularExpressions.Group,System.Text.RegularExpressions~0~0~get_Success
 [System.Text.RegularExpressions]System.Text.RegularExpressions.GroupCollection.get_Item(string)~System.Text.RegularExpressions.GroupCollection,System.Text.RegularExpressions~1~0~get_Item
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.Host.Loggers.FunctionInstanceLogger.LogFunctionCompleted(FunctionCompletedMessage)~Microsoft.Azure.WebJobs.Host.Loggers.FunctionInstanceLogger,Microsoft.Azure.WebJobs.Host~1~0~LogFunctionCompleted
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.Host.Loggers.FunctionInstanceLogger.LogFunctionStarted(FunctionStartedMessage)~Microsoft.Azure.WebJobs.Host.Loggers.FunctionInstanceLogger,Microsoft.Azure.WebJobs.Host~1~0~LogFunctionStarted
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<>c__DisplayClass31_0.<CallAsyncCore>b__0()~Microsoft.Azure.WebJobs.JobHost+<>c__DisplayClass31_0,Microsoft.Azure.WebJobs.Host~0~0~<CallAsyncCore>b__0
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<CallAsyncCore>d__31.MoveNext()~Microsoft.Azure.WebJobs.JobHost+<CallAsyncCore>d__31,Microsoft.Azure.WebJobs.Host~0~0~MoveNext
+[Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25.MoveNext()~Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25,Microsoft.Azure.WebJobs.Host~0~0~MoveNext
+[S.P.CoreLib]System.Runtime.CompilerServices.CompilerGeneratedAttribute..ctor()~System.Runtime.CompilerServices.CompilerGeneratedAttribute,System.Private.CoreLib~0~0~.ctor
