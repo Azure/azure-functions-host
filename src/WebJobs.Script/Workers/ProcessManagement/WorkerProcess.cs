@@ -204,7 +204,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
-        private void Dispose()
+        public void Dispose()
         {
             Disposing = true;
             // best effort process disposal
