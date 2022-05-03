@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
                 if (shouldSyncTriggers)
                 {
-                    var (success, error) = await SetTriggersAsync(payload.Content);
+                    var (success, error) = await SetTriggersAsync(payload.Content, isBackgroundSync);
                     if (success && newHash != null)
                     {
                         await UpdateHashAsync(hashBlobClient, newHash);
@@ -680,7 +680,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
 
         // This function will call POST https://{app}.azurewebsites.net/operation/settriggers with the content
         // of triggers. It'll verify app ownership using a SWT token valid for 5 minutes. It should be plenty.
-        private async Task<(bool, string)> SetTriggersAsync(string content)
+        private async Task<(bool, string)> SetTriggersAsync(string content, bool isBackgroundSync)
         {
             var token = SimpleWebTokenHelper.CreateToken(DateTime.UtcNow.AddMinutes(5));
 
@@ -702,6 +702,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, requestId);
                 request.Headers.Add("User-Agent", ScriptConstants.FunctionsUserAgent);
                 request.Headers.Add(ScriptConstants.SiteTokenHeaderName, token);
+
+                if (isBackgroundSync)
+                {
+                    request.Headers.Add(ScriptConstants.BackgroundSyncHeader, "true");
+                }
+
                 request.Content = new StringContent(content, Encoding.UTF8, "application/json");
 
                 if (_environment.IsKubernetesManagedHosting())

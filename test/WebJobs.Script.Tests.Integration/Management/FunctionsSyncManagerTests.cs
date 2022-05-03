@@ -415,6 +415,32 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             }
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task TrySyncTriggers_BackgroundSync_Contains_Header(bool isBackgroundSync)
+        {
+            using (var env = new TestScopedEnvironmentVariable(_vars))
+            {
+                var hashBlob = await _functionsSyncManager.GetHashBlobAsync();
+                if (hashBlob != null)
+                {
+                    await hashBlob.DeleteIfExistsAsync();
+                }
+
+                var syncResult = await _functionsSyncManager.TrySyncTriggersAsync(isBackgroundSync: isBackgroundSync);
+                Assert.True(syncResult.Success);
+                Assert.Null(syncResult.Error);
+                if (isBackgroundSync)
+                {
+                    Assert.Equal("true", _mockHttpHandler.LastRequest.Headers.GetValues(ScriptConstants.BackgroundSyncHeader).FirstOrDefault());
+                } else
+                {
+                    Assert.False(_mockHttpHandler.LastRequest.Headers.Contains(ScriptConstants.BackgroundSyncHeader));
+                }
+            }
+        }
+
         [Fact]
         public async Task TrySyncTriggers_BackgroundSync_SetTriggersFailure_HashNotUpdated()
         {
