@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
-        internal readonly Lazy<Task<int>> _maxProcessCount;
+        private readonly Lazy<Task<int>> _maxProcessCount;
 
         private IScriptEventManager _eventManager;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
@@ -95,6 +95,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
         }
 
+        internal Task<int> MaxProcessCount => _maxProcessCount.Value;
+
         public FunctionInvocationDispatcherState State { get; private set; }
 
         public int ErrorEventsThreshold { get; private set; }
@@ -109,14 +111,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
-                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
+                                                 .FirstOrDefault();
                 if (workerConfig != null)
                 {
                     return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
                 }
             }
 
-            return (await GetAllWorkerChannelsAsync()).ToArray().Count();
+            return (await GetAllWorkerChannelsAsync()).Count();
         }
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync()
