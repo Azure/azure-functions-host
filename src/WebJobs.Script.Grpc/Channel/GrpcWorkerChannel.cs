@@ -157,6 +157,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StopWorkerProcessAsync(CancellationToken cancellationToken)
         {
+            /*
+             * Send WorkerTerminate GRPC message
+             * Get success response from Worker
+             * Timeout after Grace period if no Success response from worker
+             */
+
             _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
                 .Take(1)

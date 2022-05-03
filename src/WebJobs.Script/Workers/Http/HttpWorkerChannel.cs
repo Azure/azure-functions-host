@@ -120,11 +120,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _workerChannelLogger.LogDebug($"[HostMonitor] Worker status request took {elapsed.TotalMilliseconds}ms");
             return workerStatus;
         }
-
-        public async Task StopWorkerProcessAsync(CancellationToken cancellationToken = default)
-        {
-            _workerChannelLogger.LogDebug("Terminating Worker Process");
-            await Task.CompletedTask;
-        }
     }
 }
