@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             await _workerInitTask.Task;
         }
 
-        public async Task StopWorkerProcessAsync(CancellationToken cancellationToken)
+        public async Task StopWorkerProcessAsync()
         {
             /*
              * Send WorkerTerminate GRPC message
@@ -905,6 +905,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
+            StopWorkerProcessAsync().GetAwaiter().GetResult();
             _disposing = true;
             Dispose(true);
         }

@@ -31,6 +31,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         bool TryFailExecutions(Exception workerException);
 
-        Task StopWorkerProcessAsync(CancellationToken cancellationToken = default);
+        Task StopWorkerProcessAsync();
     }
 }

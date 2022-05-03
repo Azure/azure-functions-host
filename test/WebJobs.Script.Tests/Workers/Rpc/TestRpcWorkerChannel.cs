@@ -160,7 +160,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             return null;
         }
 
-        public Task StopWorkerProcessAsync(CancellationToken cancellationToken = default)
+        public Task StopWorkerProcessAsync()
         {
             throw new NotImplementedException();
         }
