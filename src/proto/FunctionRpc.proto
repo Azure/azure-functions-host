@@ -559,7 +559,7 @@ message RpcException {
 
   // Worker specifies whether exception is a user exception, 
   // for purpose of application insights logging. 
-  optional bool is_end_user_exception = 5;
+  optional bool is_user_exception = 5;
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
