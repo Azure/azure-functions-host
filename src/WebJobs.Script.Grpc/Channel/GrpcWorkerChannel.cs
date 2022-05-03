@@ -163,8 +163,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
             _workerChannelLogger.LogDebug("Terminating Worker Process");
-            await _rpcWorkerProcess.StopProcessAsync();
-            _state = _state | RpcWorkerChannelState.Default;
+            // await _rpcWorkerProcess.StopProcessAsync();
+            // _state = _state | RpcWorkerChannelState.Default;
             await _workerInitTask.Task;
         }
 
@@ -205,7 +205,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         // send capabilities to worker, wait for WorkerInitResponse
-        internal void SendWorkerInitRequest(GrpcEvent initEvent)
+        internal void SendWorkerInitRequest(GrpcEvent startEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
             _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerInitResponse)

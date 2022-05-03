@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public async Task StopWorkerProcessAsync(CancellationToken cancellationToken = default)
         {
             _workerChannelLogger.LogDebug("Terminating Worker Process");
-            await _workerProcess.StopProcessAsync();
+            await Task.CompletedTask;
         }
     }
 }

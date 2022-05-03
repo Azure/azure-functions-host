@@ -276,12 +276,5 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
             }
         }
-
-        public Task StopProcessAsync()
-        {
-            _workerProcessLogger?.LogDebug($"{Process.StartInfo.FileName} process with Id={Process.Id} Stopped");
-            Dispose();
-            return Task.CompletedTask;
-        }
     }
 }
