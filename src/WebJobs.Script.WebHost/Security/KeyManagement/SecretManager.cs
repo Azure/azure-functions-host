@@ -330,9 +330,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return secrets;
             }, secretsFactory).ContinueWith(t =>
             {
-                if (t.IsFaulted && t.Exception.InnerException is KeyVaultErrorException)
+                if (t.IsFaulted)
                 {
-                    result = OperationResult.Forbidden;
+                    _logger.LogError("Error adding or updating secrets", t.Exception.InnerException);
+
+                    result = OperationResult.Error;
+
+                    if (t.Exception.InnerException is KeyVaultErrorException)
+                    {
+                        result = OperationResult.Forbidden;
+                    }
                 }
             });
 
