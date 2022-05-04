@@ -81,12 +81,26 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 .UseStartup<Startup>();
         }
 
+        internal static void LogVersions(object state)
+        {
+            Console.WriteLine($"HOST_VERSION : {Environment.GetEnvironmentVariable("HOST_VERSION")}");
+            Console.WriteLine($"FUNCTIONS_EXTENSION_VERSION : {Environment.GetEnvironmentVariable("FUNCTIONS_EXTENSION_VERSION")}");
+            Console.WriteLine($"FRAMEWORK : {Environment.GetEnvironmentVariable("FRAMEWORK")}");
+            Console.WriteLine($"FRAMEWORK_VERSION : {Environment.GetEnvironmentVariable("FRAMEWORK_VERSION")}");
+        }
+
         /// <summary>
         /// Perform any process level initialization that needs to happen BEFORE
         /// the WebHost is initialized.
         /// </summary>
         private static void InitializeProcess()
         {
+            Timer tTimer = null;
+            tTimer = new Timer(
+                        new TimerCallback(LogVersions),
+                        null,
+                        5000,
+                        5000);
             if (SystemEnvironment.Instance.IsLinuxConsumption())
             {
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
