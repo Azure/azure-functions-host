@@ -170,11 +170,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
             CodePackageType packageType;
-            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
-            {
-                packageType = GetPackageType(filePath, pkgContext);
-                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
-            }
+
+            _logger.LogInformation($"{nameof(UnpackPackage)}: Going to get packagetype.");
+            packageType = GetPackageType(filePath, pkgContext);
+            _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
+            //using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
+            //{
+            //    _logger.LogInformation($"{nameof(UnpackPackage)}: Going to get packagetype.");
+            //    packageType = GetPackageType(filePath, pkgContext);
+            //    _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
+            //}
 
             if (packageType == CodePackageType.Squashfs)
             {
