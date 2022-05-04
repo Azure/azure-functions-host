@@ -305,9 +305,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     {
                         _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
                             .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
-
-                        SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
                     }
+
+                    SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
                 }
                 else
                 {
