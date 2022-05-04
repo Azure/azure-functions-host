@@ -105,8 +105,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
-        internal int MaxProcessCount => _maxProcessCount;
-
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
 
         private async Task<int> GetMaxProcessCount()
