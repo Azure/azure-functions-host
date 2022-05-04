@@ -493,6 +493,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ReceivesInboundEvent_Failed_FunctionLoadResponses()
         {
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
@@ -509,6 +528,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public void ReceivesInboundEvent_FunctionLoadResponses()
         {
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
             var functionMetadatas = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
             _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
