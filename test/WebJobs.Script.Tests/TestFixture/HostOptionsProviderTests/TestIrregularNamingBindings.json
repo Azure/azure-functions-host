@@ -1,0 +1,15 @@
+{
+  "extensions": {
+    "eventHubs": {
+      "config1": "test1",
+      "config2": "test2",
+      "config3": "default"
+    }
+  },
+  "concurrency": {
+    "dynamicConcurrencyEnabled": false,
+    "maximumFunctionConcurrency": 500,
+    "cpuThreshold": 0.8,
+    "snapshotPersistenceEnabled": true
+  }
+}

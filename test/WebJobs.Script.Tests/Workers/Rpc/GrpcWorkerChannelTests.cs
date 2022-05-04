@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
+            _workerConcurrencyOptions.Value.CheckInterval = TimeSpan.FromSeconds(1);
 
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -225,8 +226,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             WorkerInitRequest initRequest = _workerChannel.GetWorkerInitRequest();
             Assert.NotNull(initRequest.WorkerDirectory);
+            Assert.NotNull(initRequest.FunctionAppDirectory);
             Assert.NotNull(initRequest.HostVersion);
             Assert.Equal("testDir", initRequest.WorkerDirectory);
+            Assert.Equal(_scriptRootPath, initRequest.FunctionAppDirectory);
             Assert.Equal(ScriptHost.Version, initRequest.HostVersion);
         }
 
@@ -584,6 +587,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", functionId, functionMetadata, false);
             var traces = _logger.GetLogMessages();
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+        }
+
+        [Fact]
+        public void ReceivesInboundEvent_Failed_OverallFunctionMetadataResponse()
+        {
+            var functions = _workerChannel.GetFunctionMetadata();
+            _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index functions")));
         }
 
         [Fact]

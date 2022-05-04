@@ -7,6 +7,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
 using Newtonsoft.Json;
@@ -43,6 +45,53 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 Assert.Equal(testContext.Metadata[key], expected.Metadata[key]);
             }
+        }
+
+        [Fact]
+        public void TestSetRetryContext_NoRetry()
+        {
+            ScriptInvocationContext scriptInvocationContext = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+            };
+
+            HttpScriptInvocationContext testContext = new HttpScriptInvocationContext()
+            {
+                Data = new Dictionary<string, object>(),
+                Metadata = new Dictionary<string, object>()
+            };
+
+            ScriptInvocationContextExtensions.SetRetryContext(scriptInvocationContext, testContext);
+
+            Assert.Empty(testContext.Metadata);
+        }
+
+        [Fact]
+        public void TestSetRetryContext_Retry()
+        {
+            ScriptInvocationContext context = new ScriptInvocationContext()
+            {
+                ExecutionContext = new ExecutionContext()
+                {
+                    RetryContext = new Host.RetryContext()
+                    {
+                        RetryCount = 1,
+                        MaxRetryCount = 2,
+                        Exception = new Exception("test")
+                    }
+                }
+            };
+            HttpScriptInvocationContext testContext = new HttpScriptInvocationContext()
+            {
+                Data = new Dictionary<string, object>(),
+                Metadata = new Dictionary<string, object>()
+            };
+            ScriptInvocationContextExtensions.SetRetryContext(context, testContext);
+            var retryContext = (RetryContext)testContext.Metadata["RetryContext"];
+            Assert.NotNull(retryContext);
+            Assert.Equal(retryContext.RetryCount, context.ExecutionContext.RetryContext.RetryCount);
+            Assert.Equal(retryContext.MaxRetryCount, context.ExecutionContext.RetryContext.MaxRetryCount);
+            Assert.NotNull(retryContext.Exception);
         }
     }
 }

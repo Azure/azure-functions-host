@@ -39,6 +39,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         [Fact]
+        public void ReadFunctionMetadata_For_WorkerIndexingFormatApp_Fails()
+        {
+            string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "PythonWorkerIndexing");
+            _scriptApplicationHostOptions.ScriptPath = functionsPath;
+            var optionsMonitor = TestHelpers.CreateOptionsMonitor(_scriptApplicationHostOptions);
+            var metadataProvider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, _testMetricsLogger);
+            var workerConfigs = TestHelpers.GetTestWorkerConfigs();
+            Assert.Equal(0, metadataProvider.GetFunctionMetadataAsync(workerConfigs, SystemEnvironment.Instance, false).Result.Length);
+        }
+
+        [Fact]
         public void ReadFunctionMetadata_With_Retry_Succeeds()
         {
             string functionsPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "noderetry");
@@ -50,17 +61,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Equal(2, functionMetadatas.Length);
 
-            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
+            var functionMetadataWithRetry = functionMetadatas.Where(f => f.Name.Contains("Timer-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
             Assert.Single(functionMetadataWithRetry);
             var retry = functionMetadataWithRetry.FirstOrDefault().Retry;
             Assert.NotNull(retry);
             Assert.Equal(RetryStrategy.FixedDelay, retry.Strategy);
             Assert.Equal(4, retry.MaxRetryCount);
-            Assert.Equal(TimeSpan.Parse("00:00:03"), retry.DelayInterval);
-
-            var functionMetadata = functionMetadatas.Where(f => !f.Name.Contains("HttpTrigger-RetryFunctionJson", StringComparison.OrdinalIgnoreCase));
-            Assert.Single(functionMetadataWithRetry);
-            Assert.Null(functionMetadata.FirstOrDefault().Retry);
+            Assert.Equal(TimeSpan.Parse("00:00:01"), retry.DelayInterval);
         }
 
         private bool AreRequiredMetricsEmitted(TestMetricsLogger metricsLogger)
@@ -206,12 +213,29 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { @"c:\functions\run.js", new MockFileData(string.Empty) },
                 { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { @"c:\functions\index.mjs", new MockFileData(string.Empty) },
+                { @"c:\functions\index.cjs", new MockFileData(string.Empty) },
                 { @"c:\functions\test.txt", new MockFileData(string.Empty) }
             };
             var fileSystem = new MockFileSystem(files);
 
             string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem);
             Assert.Equal(@"c:\functions\run.js", scriptFile);
+        }
+
+        [Fact]
+        public void DeterminePrimaryScriptFile_MultipleFiles_IndexJsTrumpsMjsAndCjs()
+        {
+            var files = new Dictionary<string, MockFileData>
+            {
+                { @"c:\functions\index.js", new MockFileData(string.Empty) },
+                { @"c:\functions\index.mjs", new MockFileData(string.Empty) },
+                { @"c:\functions\index.cjs", new MockFileData(string.Empty) }
+            };
+            var fileSystem = new MockFileSystem(files);
+
+            string scriptFile = HostFunctionMetadataProvider.DeterminePrimaryScriptFile(string.Empty, @"c:\functions", fileSystem);
+            Assert.Equal(@"c:\functions\index.js", scriptFile);
         }
 
         [Theory]

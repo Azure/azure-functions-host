@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
@@ -14,6 +15,7 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script
@@ -24,16 +26,19 @@ namespace Microsoft.Azure.WebJobs.Script
         private readonly ILogger _logger;
         private readonly IFunctionInvocationDispatcher _dispatcher;
         private ImmutableArray<FunctionMetadata> _functions;
+        private IOptions<ScriptJobHostOptions> _scriptOptions;
         private IFunctionMetadataProvider _hostFunctionMetadataProvider;
 
         public AggregateFunctionMetadataProvider(
-            ILogger<AggregateFunctionMetadataProvider> logger,
+            ILogger logger,
             IFunctionInvocationDispatcher invocationDispatcher,
-            IFunctionMetadataProvider hostFunctionMetadataProvider)
+            IFunctionMetadataProvider hostFunctionMetadataProvider,
+            IOptions<ScriptJobHostOptions> scriptOptions)
         {
             _logger = logger;
             _dispatcher = invocationDispatcher;
             _hostFunctionMetadataProvider = hostFunctionMetadataProvider;
+            _scriptOptions = scriptOptions;
         }
 
         public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors
@@ -62,23 +67,65 @@ namespace Microsoft.Azure.WebJobs.Script
                     // get function metadata from worker, then validate it
                     rawFunctions = await _dispatcher.GetWorkerMetadata();
 
-                    if (!IsNullOrEmpty(rawFunctions))
+                    if (IsDefaultIndexingRequired(rawFunctions))
+                    {
+                        _logger.LogDebug("Fallback to host indexing as worker denied indexing");
+                        functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
+                    }
+                    else if (!IsNullOrEmpty(rawFunctions))
                     {
                         functions = ValidateMetadata(rawFunctions);
-                        // set up invocation buffers and send load requests
-                        await _dispatcher.FinishInitialization(functions);
                     }
+
+                    // set up invocation buffers and send load requests
+                    await _dispatcher.FinishInitialization(functions);
+
+                    // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, environment));
                 }
-                if (!workerIndexing || IsDefaultIndexingRequired(rawFunctions))
+                else
                 {
-                    // If worker denies indexing then falling back to the host for Indexing
-                    _logger.LogDebug("Fallback to host indexing as worker denied indexing");
                     functions = await _hostFunctionMetadataProvider.GetFunctionMetadataAsync(workerConfigs, environment, forceRefresh);
                 }
             }
             _functions = functions.ToImmutableArray();
             _logger.FunctionMetadataProviderFunctionFound(_functions.IsDefault ? 0 : _functions.Count());
             return _functions;
+        }
+
+        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
+        {
+            fileSystem = fileSystem ?? FileUtility.Instance;
+            bool mixedApp = false;
+            string legacyFormatFunctions = null;
+
+            if (fileSystem.Directory.Exists(scriptPath))
+            {
+                var functionDirectories = fileSystem.Directory.EnumerateDirectories(scriptPath).ToImmutableArray();
+                foreach (var functionDirectory in functionDirectories)
+                {
+                    if (Utility.TryReadFunctionConfig(functionDirectory, out string json, fileSystem))
+                    {
+                        mixedApp = true;
+                        var functionName = functionDirectory.Split('\\').Last();
+                        legacyFormatFunctions = legacyFormatFunctions != null ? legacyFormatFunctions + ", " + functionName : functionName;
+                    }
+                }
+
+                if (mixedApp)
+                {
+                    string logMessage = $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}";
+
+                    if (environment.IsCoreTools())
+                    {
+                        logger.Log(LogLevel.Warning, logMessage + " Refer to the documentation to filter warning - https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2");
+                    }
+                    else
+                    {
+                        logger.Log(LogLevel.Information, logMessage);
+                    }
+                }
+            }
         }
 
         internal IEnumerable<FunctionMetadata> ValidateMetadata(IEnumerable<RawFunctionMetadata> functions)

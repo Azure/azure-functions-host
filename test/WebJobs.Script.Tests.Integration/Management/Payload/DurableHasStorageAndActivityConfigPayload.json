@@ -1,0 +1,41 @@
+[
+  {
+    "authLevel": "anonymous",
+    "type": "httpTrigger",
+    "direction": "in",
+    "name": "req",
+    "functionName": "function1"
+  },
+  {
+    "name": "myQueueItem",
+    "type": "orchestrationTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "SQLDB_Connection",
+    "functionName": "function2",
+    "taskHubName": "TestHubValue",
+    "storageProvider": {
+      "type": "mssql",
+      "connectionStringName": "SQLDB_Connection",
+      "taskEventLockTimeout": "00:02:00",
+      "createDatabaseIfNotExists": true
+    },
+    "maxConcurrentActivityFunctions": 12
+  },
+  {
+    "name": "myQueueItem",
+    "type": "activityTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "SQLDB_Connection",
+    "functionName": "function3",
+    "taskHubName": "TestHubValue",
+    "storageProvider": {
+      "type": "mssql",
+      "connectionStringName": "SQLDB_Connection",
+      "taskEventLockTimeout": "00:02:00",
+      "createDatabaseIfNotExists": true
+    },
+    "maxConcurrentActivityFunctions": 12
+  }
+]

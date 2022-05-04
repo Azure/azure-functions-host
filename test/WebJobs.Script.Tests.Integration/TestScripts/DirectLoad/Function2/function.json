@@ -1,0 +1,18 @@
+﻿{
+    "generatedBy": "Microsoft.NET.Sdk.Functions-1.0.13",
+    "configurationSource": "attributes",
+    "bindings": [
+        {
+            "type": "httpTrigger",
+            "methods": [
+                "get",
+                "post"
+            ],
+            "authLevel": "function",
+            "name": "req"
+        }
+    ],
+    "disabled": false,
+    "scriptFile": "..\\..\\..\\TestFunctions.dll",
+    "entryPoint": "TestFunctions.Functions.Function2"
+}

@@ -228,7 +228,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return new WorkerInitRequest()
             {
                 HostVersion = ScriptHost.Version,
-                WorkerDirectory = _workerConfig.Description.WorkerDirectory
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
         }
 
@@ -544,10 +545,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
+        // parse metadata response into RawFunctionMetadata objects for AggregateFunctionMetadataProvider to further parse and validate
         internal void ProcessFunctionMetadataResponses(FunctionMetadataResponse functionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
+
+            if (functionMetadataResponse.Result.IsFailure(out Exception metadataResponseEx))
+            {
+                _workerChannelLogger?.LogError(metadataResponseEx, "Worker failed to index functions");
+            }
 
             var functions = new List<RawFunctionMetadata>();
 
@@ -589,6 +595,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     });
                 }
             }
+            else
+            {
+                functions.Add(new RawFunctionMetadata()
+                {
+                    UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
+                });
+            }
+
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);
         }

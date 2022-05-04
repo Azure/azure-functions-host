@@ -401,16 +401,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 var timeoutBuilder = CustomAttributeBuilderUtility.GetTimeoutCustomAttributeBuilder(scriptConfig.FunctionTimeout.Value);
                 customAttributes.Add(timeoutBuilder);
             }
-            // apply retry settings for function execution
-            if (scriptConfig.Retry != null)
-            {
-                // apply the retry settings from host.json
-                var retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(scriptConfig.Retry);
-                if (retryCustomAttributeBuilder != null)
-                {
-                    customAttributes.Add(retryCustomAttributeBuilder);
-                }
-            }
 
             return customAttributes;
         }
@@ -500,7 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script
             Type functionWrapperType = FunctionGenerator.Generate(HostAssemblyName, typeName, typeAttributes, Functions);
 
             // configure the Type locator
-            var types = new List<Type>
+            var types = new HashSet<Type>
             {
                 functionWrapperType
             };
@@ -962,8 +952,17 @@ namespace Microsoft.Azure.WebJobs.Script
             _logger.ScriptHostStarted((long)_stopwatch.GetElapsedTime().TotalMilliseconds);
         }
 
+        protected override async Task StopAsyncCore(CancellationToken cancellationToken)
+        {
+            _logger.StoppingScriptHost(ScriptOptions.InstanceId);
+            await base.StopAsyncCore(cancellationToken);
+            _logger.StoppedScriptHost(ScriptOptions.InstanceId);
+        }
+
         protected override void Dispose(bool disposing)
         {
+            _logger.DisposingScriptHost(ScriptOptions.InstanceId);
+
             if (disposing)
             {
                 foreach (var subscription in _eventSubscriptions)
@@ -990,6 +989,8 @@ namespace Microsoft.Azure.WebJobs.Script
             // dispose base last to ensure that errors there don't
             // cause us to not dispose ourselves
             base.Dispose(disposing);
+
+            _logger.DisposedScriptHost(ScriptOptions.InstanceId);
         }
     }
 }

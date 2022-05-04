@@ -113,6 +113,9 @@ message WorkerInitRequest {
 
   // Full path of worker.config.json location
   string worker_directory = 4;
+
+  // base directory for function app
+  string function_app_directory = 5;
 }
 
 // Worker responds with the result of initializing itself

@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 throw new ArgumentNullException(nameof(httpWorkerProcessExitException));
             }
             // The subscriber of WorkerErrorEvent is expected to Dispose() the errored channel
-            _workerProcessLogger.LogDebug(httpWorkerProcessExitException, $"Language Worker Process exited. Pid={httpWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
+            _workerProcessLogger.LogError(httpWorkerProcessExitException, $"Language Worker Process exited. Pid={httpWorkerProcessExitException.Pid}.", _workerProcessArguments.ExecutablePath);
             _eventManager.Publish(new HttpWorkerErrorEvent(_workerId, httpWorkerProcessExitException));
         }
 

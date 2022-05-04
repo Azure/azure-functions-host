@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Description;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.WebHost.Security;
 using HttpHandler = Microsoft.Azure.WebJobs.IAsyncConverter<System.Net.Http.HttpRequestMessage, System.Net.Http.HttpResponseMessage>;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost
@@ -73,11 +74,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             ISecretManager secretManager = _secretManagerProvider.Current;
             var hostSecrets = await secretManager.GetHostSecretsAsync();
             string keyName = GetKeyName(extensionName);
-            string keyValue = null;
+            string keyValue;
             if (!hostSecrets.SystemKeys.TryGetValue(keyName, out keyValue))
             {
                 // if the requested secret doesn't exist, create it on demand
-                keyValue = SecretManager.GenerateSecret();
+                keyValue = SecretGenerator.GenerateSystemKeyValue();
                 await secretManager.AddOrUpdateFunctionSecretAsync(keyName, keyValue, HostKeyScopes.SystemKeys, ScriptSecretsType.Host);
             }
 

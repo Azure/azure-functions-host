@@ -94,6 +94,30 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
            new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
            "Adding Function descriptor provider for HttpWorker.");
 
+        private static readonly Action<ILogger, string, Exception> _stoppingScriptHost =
+            LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(415, nameof(StoppingScriptHost)),
+            "Stopping ScriptHost instance '{hostInstanceId}'.");
+
+        private static readonly Action<ILogger, string, Exception> _stoppedScriptHost =
+          LoggerMessage.Define<string>(
+          LogLevel.Debug,
+          new EventId(416, nameof(StoppedScriptHost)),
+          "Stopped ScriptHost instance '{hostInstanceId}'.");
+
+        private static readonly Action<ILogger, string, Exception> _disposingScriptHost =
+          LoggerMessage.Define<string>(
+          LogLevel.Debug,
+          new EventId(417, nameof(DisposingScriptHost)),
+          "Disposing ScriptHost instance '{hostInstanceId}'.");
+
+        private static readonly Action<ILogger, string, Exception> _disposedScriptHost =
+          LoggerMessage.Define<string>(
+          LogLevel.Debug,
+          new EventId(418, nameof(DisposedScriptHost)),
+          "Disposed ScriptHost instance '{hostInstanceId}'.");
+
         public static void HostIdIsSet(this ILogger logger)
         {
             _hostIdIsSet(logger, null);
@@ -170,6 +194,26 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
         public static void ScriptHostStarted(this ILogger logger, long ms)
         {
             _scriptHostStarted(logger, ms, null);
+        }
+
+        public static void StoppingScriptHost(this ILogger logger, string hostInstanceId)
+        {
+            _stoppingScriptHost(logger, hostInstanceId, null);
+        }
+
+        public static void StoppedScriptHost(this ILogger logger, string hostInstanceId)
+        {
+            _stoppedScriptHost(logger, hostInstanceId, null);
+        }
+
+        public static void DisposingScriptHost(this ILogger logger, string hostInstanceId)
+        {
+            _disposingScriptHost(logger, hostInstanceId, null);
+        }
+
+        public static void DisposedScriptHost(this ILogger logger, string hostInstanceId)
+        {
+            _disposedScriptHost(logger, hostInstanceId, null);
         }
     }
 }

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script
     /// An exception that indicates that a service was used on a disposed host.
     /// </summary>
     [Serializable]
-    public class HostDisposedException : Exception
+    public class HostDisposedException : ObjectDisposedException
     {
         // For this exception, we want a full stack trace to pinpoint the method
         // that is trying to use a disposed host.
