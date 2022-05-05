@@ -336,13 +336,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     result = OperationResult.Error;
 
-                    if (t.Exception.InnerException is RequestFailedException)
+                    var exception = t.Exception.InnerException as RequestFailedException;
+
+                    if (exception?.Status == (int)HttpStatusCode.Forbidden)
                     {
-                        var exception = t.Exception.InnerException as RequestFailedException;
-                        if (exception.Status == (int)HttpStatusCode.Forbidden)
-                        {
-                            result = OperationResult.Forbidden;
-                        }
+                        result = OperationResult.Forbidden;
                     }
                 }
 
