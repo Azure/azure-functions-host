@@ -555,48 +555,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public async Task ReceivesInboundEvent_Failed_FunctionLoadResponses()
-        {
-            await CreateDefaultWorkerChannel();
-            var functionMetadatas = GetTestFunctionsList("node");
-            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
-
-            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionLoadRequest,
-                () => _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
-                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
-                            new StatusResult() { Status = StatusResult.Types.Status.Failure }));
-            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
-
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "FunctionInvocationBuffer TestFunctionId1");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "FunctionInvocationBuffer TestFunctionId2");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with function id: 'TestFunctionId1'.")), "failed to load TestFunctionId1");
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with function id: 'TestFunctionId2'.")), "failed to load TestFunctionId2");
-        }
-
-        [Fact]
-        public async Task ReceivesInboundEvent_FunctionLoadResponses()
-        {
-            await CreateDefaultWorkerChannel();
-            var functionMetadatas = GetTestFunctionsList("node");
-            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
-            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
-            _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
-                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
-                            new StatusResult() { Status = StatusResult.Types.Status.Success });
-            await Task.Delay(500);
-            var traces = _logger.GetLogMessages();
-            ShowOutput(traces);
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Received FunctionLoadResponseCollection with number of functions: '{0}'.", functionMetadatas.ToList().Count))));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.")));
-            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js2' with functionId: 'TestFunctionId2'.")));
-        }
-
-        [Fact]
         public async Task ReceivesInboundEvent_Successful_FunctionMetadataResponse()
         {
             await CreateDefaultWorkerChannel();
