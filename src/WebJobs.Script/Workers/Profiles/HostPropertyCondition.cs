@@ -29,8 +29,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInformation ?? throw new ArgumentNullException(nameof(systemRuntimeInformation));
 
-            descriptor.Properties.TryGetValue("name", out _name);
-            descriptor.Properties.TryGetValue("expression", out _expression);
+            descriptor.Properties.TryGetValue(WorkerConstants.WorkerDescriptionProfileConditionName, out _name);
+            descriptor.Properties.TryGetValue(WorkerConstants.WorkerDescriptionProfileConditionExpression, out _expression);
 
             Validate();
         }

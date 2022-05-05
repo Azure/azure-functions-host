@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             Name = name;
             Conditions = conditions;
             ProfileDescription = profileDescription;
-            ProfileLoaded = false;
+            ProfileId = Guid.NewGuid().ToString();
             Validate();
         }
 
@@ -34,7 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public RpcWorkerDescription ProfileDescription { get; set; }
 
-        public bool ProfileLoaded { get; set; }
+        public string ProfileId { get; }
 
         public void Validate()
         {
@@ -71,7 +71,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// </summary>
         public RpcWorkerDescription ApplyProfile(RpcWorkerDescription defaultWorkerDescription)
         {
-            ProfileLoaded = true;
             defaultWorkerDescription.Arguments = UseProfileOrDefault(ProfileDescription.Arguments, defaultWorkerDescription.Arguments);
             defaultWorkerDescription.DefaultExecutablePath = UseProfileOrDefault(ProfileDescription.DefaultExecutablePath, defaultWorkerDescription.DefaultExecutablePath);
             defaultWorkerDescription.DefaultWorkerPath = UseProfileOrDefault(ProfileDescription.DefaultWorkerPath, defaultWorkerDescription.DefaultWorkerPath);

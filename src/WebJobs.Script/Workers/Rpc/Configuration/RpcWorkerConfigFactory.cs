@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
-        private readonly IWorkerProfileConditionManager _profileConditionManager;
+        private readonly IWorkerProfileManager _profileManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
@@ -31,14 +31,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public RpcWorkerConfigFactory(IConfiguration config,
                                       ILogger logger,
                                       ISystemRuntimeInformation systemRuntimeInfo,
-                                      IWorkerProfileConditionManager profileConditionManager,
+                                      IWorkerProfileManager profileManager,
                                       IEnvironment environment,
                                       IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
-            _profileConditionManager = profileConditionManager ?? throw new ArgumentNullException(nameof(profileConditionManager));
+            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
@@ -131,7 +131,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(workerConfig);
                     if (workerDescriptionProfiles.Count > 0)
                     {
-                        workerDescription = LoadWorkerDescriptionFromProfiles(workerDescriptionProfiles, workerDescription);
+                        _profileManager.SaveWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                        _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
                     }
 
                     // Check if any appsettings are provided for that langauge
@@ -162,7 +163,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                             Description = workerDescription,
                             Arguments = arguments,
                             CountOptions = workerProcessCount,
-                            Profiles = workerDescriptionProfiles,
                         };
                         _workerDescriptionDictionary[workerDescription.Language] = rpcWorkerConfig;
                         ReadLanguageWorkerFile(arguments.WorkerPath);
@@ -180,51 +180,38 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             var profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles).ToObject<IList<WorkerProfileDescriptor>>();
 
-            if (profiles != null && profiles.Count > 0)
+            if (profiles == null || profiles.Count <= 0)
             {
-                var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
-                try
+                return new List<WorkerDescriptionProfile>(0);
+            }
+
+            var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
+            try
+            {
+                foreach (var profile in profiles)
                 {
-                    foreach (var profile in profiles)
+                    var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
+
+                    foreach (var descriptor in profile.Conditions)
                     {
-                        var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
-
-                        foreach (var descriptor in profile.Conditions)
+                        if (!_profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
                         {
-                            if (!_profileConditionManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
-                            {
-                                // TODO: Handle this failure here... this should likely translate into an initialization error as we don't
-                                // want to run the worker if we can't evaluate the profile conditions
-                            }
-
-                            profileConditions.Add(condition);
+                            // Failed to resolve condition. This profile will be disabled using a mock false condition
+                            _logger?.LogInformation($"Profile {profile.Name} is disabled. Cannout resolve the profile condition {descriptor.Type}");
+                            condition = new FalseCondition();
                         }
 
-                        descriptionProfiles.Add(new (profile.Name, profileConditions, profile.Description));
+                        profileConditions.Add(condition);
                     }
-                }
-                catch (Exception)
-                {
-                    throw new FormatException("Failed to parse profiles in worker config.");
-                }
 
-                return descriptionProfiles;
+                    descriptionProfiles.Add(new (profile.Name, profileConditions, profile.Description));
+                }
             }
-
-            return new List<WorkerDescriptionProfile>(0);
-        }
-
-        private RpcWorkerDescription LoadWorkerDescriptionFromProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, RpcWorkerDescription defaultWorkerDescription)
-        {
-            foreach (var profile in workerDescriptionProfiles)
+            catch (Exception)
             {
-                if (profile.EvaluateConditions())
-                {
-                    _logger?.LogInformation($"Worker initialized with {profile.Name} profile from worker config.");
-                    return profile.ApplyProfile(defaultWorkerDescription);
-                }
+                throw new FormatException("Failed to parse profiles in worker config.");
             }
-            return defaultWorkerDescription;
+            return descriptionProfiles;
         }
 
         internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)

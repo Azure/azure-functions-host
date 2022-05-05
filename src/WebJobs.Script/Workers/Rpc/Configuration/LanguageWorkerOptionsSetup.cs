@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private readonly IWorkerProfileConditionManager _profileConditionManager;
+        private readonly IWorkerProfileManager _profileConditionManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
-                                          IWorkerProfileConditionManager profileConditionManager,
+                                          IWorkerProfileManager profileConditionManager,
                                           IMetricsLogger metricsLogger)
         {
             if (loggerFactory is null)

@@ -22,6 +22,8 @@ using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Management;
 using Microsoft.Azure.WebJobs.Script.WebHost.Middleware;
 using Microsoft.Azure.WebJobs.Script.WebHost.Storage;
+using Microsoft.Azure.WebJobs.Script.Workers;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -151,8 +153,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     // Hosted services
                     services.AddSingleton<IFileMonitoringService, FileMonitoringService>();
                     services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, IFileMonitoringService>(p => p.GetService<IFileMonitoringService>()));
-
-                    // Worker/OOP services
 
                     ConfigureRegisteredBuilders(services, rootServiceProvider);
                 });

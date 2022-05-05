@@ -335,7 +335,7 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.AddSingleton<IWorkerProfileConditionManager, WorkerProfileConditionManager>();
+            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
             services.AddSingleton<IWorkerProfileConditionProvider, SystemConditionProvider>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();

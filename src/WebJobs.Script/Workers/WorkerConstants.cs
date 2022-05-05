@@ -34,6 +34,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string WorkerDescriptionProfileConditionType = "type";
         public const string WorkerDescriptionProfileEnvironmentCondition = "environment";
         public const string WorkerDescriptionProfileHostPropertyCondition = "hostProperty";
+        public const string WorkerDescriptionProfileConditionName = "name";
+        public const string WorkerDescriptionProfileConditionExpression = "expression";
         public const string WorkerDescriptionAppServiceEnvProfileName = "appServiceEnvironment";
 
         // Logs
