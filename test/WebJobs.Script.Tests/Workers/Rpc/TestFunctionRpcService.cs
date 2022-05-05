@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        private void PublishFunctionEnvironmentReloadResponseEvent()
+        public void PublishFunctionEnvironmentReloadResponseEvent()
         {
             FunctionEnvironmentReloadResponse relaodEnvResponse = GetTestFunctionEnvReloadResponse();
             StreamingMessage responseMessage = new StreamingMessage()
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishWorkerMetadataResponse(string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false)
+        public void PublishWorkerMetadataResponse(string workerId, string functionId, IEnumerable<FunctionMetadata> functionMetadata, bool successful, bool useDefaultMetadataIndexing = false, bool overallStatus = true)
         {
             StatusResult statusResult = new StatusResult();
             if (successful)
@@ -309,18 +309,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             FunctionMetadataResponse overallResponse = new FunctionMetadataResponse();
             overallResponse.UseDefaultMetadataIndexing = useDefaultMetadataIndexing;
 
-            foreach (FunctionMetadata response in functionMetadata)
+            if (functionMetadata != null)
             {
-                RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
+                foreach (FunctionMetadata response in functionMetadata)
                 {
-                    Name = response.Name,
-                    Language = response.Language,
-                    Status = statusResult,
-                    FunctionId = functionId
-                };
+                    RpcFunctionMetadata indexingResponse = new RpcFunctionMetadata()
+                    {
+                        Name = response.Name,
+                        Language = response.Language,
+                        Status = statusResult,
+                        FunctionId = functionId
+                    };
 
-                overallResponse.FunctionMetadataResults.Add(indexingResponse);
+                    overallResponse.FunctionMetadataResults.Add(indexingResponse);
+                }
             }
+
+            overallResponse.Result = new StatusResult()
+            {
+                Status = overallStatus == true ? StatusResult.Types.Status.Success : StatusResult.Types.Status.Failure
+            };
 
             StreamingMessage responseMessage = new StreamingMessage()
             {

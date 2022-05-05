@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         [Fact]
-        public async Task HttpTrigger_CustomHandlerRetry_Get_Succeeds()
+        public async Task HttpTrigger_Retry_LogWarning()
         {
             await InvokeHttpTrigger("HttpTrigger");
         }
@@ -40,8 +41,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            string responseContent = await response.Content.ReadAsStringAsync();
-            Assert.Equal(responseContent, "Retry Count:2 Max Retry Count:2");
+            await TestHelpers.Await(() =>
+            {
+                var scriptLogs = _fixture.Host.GetScriptHostLogMessages();
+                return scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Retries are not supported for function 'Functions.HttpTrigger'.")).Count() == 1;
+            }, 10000, 1000);
+        }
+
+        [Fact]
+        public async Task Timer_RetryFunctionJson_WorksAsExpected()
+        {
+            await TestHelpers.Await(() =>
+            {
+                var scriptLogs = _fixture.Host.GetScriptHostLogMessages();
+                int attemptsCount = scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Waiting for `00:00:01` before retrying function execution. Next attempt:")).Count();
+                bool isSuccessful = scriptLogs.Where(x => !string.IsNullOrEmpty(x.FormattedMessage) && x.FormattedMessage.Contains("Executed 'Functions.TimerTrigger' (Succeeded")).Count() == 1;
+                return attemptsCount == 4 && isSuccessful;
+            }, 10000, 1000);
         }
 
         public class TestFixture : EndToEndTestFixture

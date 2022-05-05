@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO.Abstractions;
 using System.IO.Compression;
 using System.Linq;
@@ -118,6 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             {
                 { inputParameter.Name, invocation.Input }
             };
+            // LiveLogs session id is used to show only contextual logs in the "Code + Test" experience.
+            string sessionId = this.Request?.Headers[ScriptConstants.LiveLogsSessionAIKey];
 
             using (System.Threading.ExecutionContext.SuppressFlow())
             {
@@ -130,7 +133,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
                     using (_logger.BeginScope(loggerScope))
                     {
-                        await scriptHost.CallAsync(function.Name, arguments);
+                        if (!string.IsNullOrWhiteSpace(sessionId))
+                        {
+                            // Current activity is null due to SuppressFlow. Start a new activity and set baggage so that it's included in the custom dimensions.
+                            Activity activity = new Activity($"{nameof(FunctionsController)}.Invoke");
+                            activity?.Start();
+                            activity?.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+                            try
+                            {
+                                await scriptHost.CallAsync(function.Name, arguments);
+                            }
+                            finally
+                            {
+                                activity?.Stop();
+                            }
+                        }
+                        else
+                        {
+                            await scriptHost.CallAsync(function.Name, arguments);
+                        }
                     }
                 });
             }

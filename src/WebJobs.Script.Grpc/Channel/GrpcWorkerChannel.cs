@@ -410,12 +410,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
 
                     OnNext(MsgType.FunctionLoadResponse, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
-                    OnNext(MsgType.FunctionLoadResponseCollection, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
                 }
                 else
                 {
                     OnNext(MsgType.FunctionLoadResponse, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
-                    OnNext(MsgType.FunctionLoadResponseCollection, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
                 }
 
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
@@ -576,16 +574,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _inputLinks.Add(disposableLink);
         }
 
-        internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
-        {
-            _workerChannelLogger.LogDebug("Received FunctionLoadResponseCollection with number of functions: '{count}'.", loadResponseCollection.FunctionLoadResponses.Count);
-
-            foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
-            {
-                LoadResponse(loadResponse);
-            }
-        }
-
         internal async Task SendInvocationRequest(ScriptInvocationContext context)
         {
             try
@@ -649,10 +637,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
+        // parse metadata response into RawFunctionMetadata objects for AggregateFunctionMetadataProvider to further parse and validate
         internal void ProcessFunctionMetadataResponses(FunctionMetadataResponse functionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
+
+            if (functionMetadataResponse.Result.IsFailure(out Exception metadataResponseEx))
+            {
+                _workerChannelLogger?.LogError(metadataResponseEx, "Worker failed to index functions");
+            }
 
             var functions = new List<RawFunctionMetadata>();
 

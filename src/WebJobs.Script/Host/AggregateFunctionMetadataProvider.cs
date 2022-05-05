@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script
                     await _dispatcher.FinishInitialization(functions);
 
                     // Validate if the app has functions in legacy format and add in logs to inform about the mixed app
-                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger));
+                    _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(t => ValidateFunctionAppFormat(_scriptOptions.Value.RootScriptPath, _logger, environment));
                 }
                 else
                 {
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Script
             return _functions;
         }
 
-        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IFileSystem fileSystem = null)
+        internal static void ValidateFunctionAppFormat(string scriptPath, ILogger logger, IEnvironment environment, IFileSystem fileSystem = null)
         {
             fileSystem = fileSystem ?? FileUtility.Instance;
             bool mixedApp = false;
@@ -114,7 +114,16 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 if (mixedApp)
                 {
-                    logger.Log(LogLevel.Information, $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}");
+                    string logMessage = $"Detected mixed function app. Some functions may not be indexed - {legacyFormatFunctions}";
+
+                    if (environment.IsCoreTools())
+                    {
+                        logger.Log(LogLevel.Warning, logMessage + " Refer to the documentation to filter warning - https://docs.microsoft.com/en-us/azure/azure-functions/configure-monitoring?tabs=v2");
+                    }
+                    else
+                    {
+                        logger.Log(LogLevel.Information, logMessage);
+                    }
                 }
             }
         }

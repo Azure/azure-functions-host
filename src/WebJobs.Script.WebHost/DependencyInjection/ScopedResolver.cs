@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using DryIoc;
-using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
@@ -53,11 +52,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             var resolver = scopedContext.With(r => rules.WithUnknownServiceResolvers(request =>
               {
                   return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType), setup: _rootScopeFactorySetup);
-              }));
+              })) as Container;
 
             var scope = new ServiceScope(resolver, scopedRoot);
 
-            scopedContext.UseInstance<IServiceProvider>(scope.ServiceProvider);
+            resolver.SetScopedProvider(scope.ServiceProvider);
 
             ChildScopes.TryAdd(scope, null);
 

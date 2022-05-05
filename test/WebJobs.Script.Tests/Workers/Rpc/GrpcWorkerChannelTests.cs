@@ -71,6 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment = new TestEnvironment();
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
+            _workerConcurrencyOptions.Value.CheckInterval = TimeSpan.FromSeconds(1);
 
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -602,7 +603,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadata = GetTestFunctionsList("python");
             var functionId = "id123";
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-               () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, true));
+               () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true));
             var functions = _workerChannel.GetFunctionMetadata();
 
             await Task.Delay(500);
@@ -618,7 +619,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadata = GetTestFunctionsList("python");
             var functionId = "id123";
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-                () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, true, useDefaultMetadataIndexing: true));
+                () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true, useDefaultMetadataIndexing: true));
             var functions = _workerChannel.GetFunctionMetadata();
 
             await Task.Delay(500);
@@ -634,7 +635,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadata = GetTestFunctionsList("python");
             var functionId = "id123";
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-                () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, true, useDefaultMetadataIndexing: false));
+                () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, true, useDefaultMetadataIndexing: false));
             var functions = _workerChannel.GetFunctionMetadata();
 
             await Task.Delay(500);
@@ -650,7 +651,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadata = GetTestFunctionsList("python");
             var functionId = "id123";
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-               () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, false, useDefaultMetadataIndexing: true));
+               () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false, useDefaultMetadataIndexing: true));
             var functions = _workerChannel.GetFunctionMetadata();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
@@ -665,7 +666,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionMetadata = GetTestFunctionsList("python");
             var functionId = "id123";
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-               () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, false, useDefaultMetadataIndexing: false));
+               () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false, useDefaultMetadataIndexing: false));
             var functions = _workerChannel.GetFunctionMetadata();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
@@ -680,12 +681,24 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var functionId = "id123";
             var functionMetadata = GetTestFunctionsList("python");
             _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
-               () => _testFunctionRpcService.PublishWorkerMetadataResponse(functionId, functionMetadata, false));
+               () => _testFunctionRpcService.PublishWorkerMetadataResponse(_workerId, functionId, functionMetadata, false));
             var functions = _workerChannel.GetFunctionMetadata();
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index function {functionId}")));
+        }
+
+        [Fact]
+        public async Task ReceivesInboundEvent_Failed_OverallFunctionMetadataResponse()
+        {
+            await CreateDefaultWorkerChannel();
+            _testFunctionRpcService.OnMessage(StreamingMessage.ContentOneofCase.FunctionsMetadataRequest,
+                    () => _testFunctionRpcService.PublishWorkerMetadataResponse("TestFunctionId1", null, null, false, false, false));
+            var functions = _workerChannel.GetFunctionMetadata();
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, $"Worker failed to index functions")));
         }
 
         [Fact]
