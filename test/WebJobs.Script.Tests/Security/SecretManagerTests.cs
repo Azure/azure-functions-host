@@ -6,9 +6,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -522,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public async Task AddOrUpdateFunctionSecret_Handles_Error()
+        public async Task AddOrUpdateFunctionSecret_Handles_InternalSeverError()
         {
             using (var directory = new TempDirectory())
             {
@@ -530,7 +532,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 KeyOperationResult result;
 
-                ISecretsRepository repository = new TestSecretsRepository(false, true);
+                ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.InternalServerError);
                 using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
@@ -538,6 +540,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
                 var logs = _loggerProvider.GetAllLogMessages();
                 Assert.Equal(OperationResult.Error, result.Result);
+                Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Error adding or updating secrets", StringComparison.OrdinalIgnoreCase)));
+            }
+        }
+
+        [Fact]
+        public async Task AddOrUpdateFunctionSecret_Handles_RequestForbiddenError()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                KeyOperationResult result;
+
+                ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.Forbidden);
+                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
+                {
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                }
+
+                var logs = _loggerProvider.GetAllLogMessages();
+                Assert.Equal(OperationResult.Forbidden, result.Result);
                 Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Error adding or updating secrets", StringComparison.OrdinalIgnoreCase)));
             }
         }
@@ -1260,16 +1283,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             private Random _rand = new Random();
             private bool _enforceSerialWrites = false;
             private bool _forceWriteErrors = false;
+            private HttpStatusCode _httpstaus;
 
             public TestSecretsRepository(bool enforceSerialWrites)
             {
                 _enforceSerialWrites = enforceSerialWrites;
             }
 
-            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors)
+            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors, HttpStatusCode httpstaus = HttpStatusCode.InternalServerError)
                 : this(enforceSerialWrites)
             {
                 _forceWriteErrors = forceWriteErrors;
+                _httpstaus = httpstaus;
             }
 
             public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
@@ -1312,7 +1337,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 if (_forceWriteErrors)
                 {
-                    throw new Exception();
+                    throw new RequestFailedException((int)_httpstaus, "Error");
                 }
 
                 if (_enforceSerialWrites && _writeCount > 1)

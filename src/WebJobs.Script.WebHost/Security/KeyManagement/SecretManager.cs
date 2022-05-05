@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -337,7 +338,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
                     if (t.Exception.InnerException is RequestFailedException)
                     {
-                        result = OperationResult.Forbidden;
+                        var exception = t.Exception.InnerException as RequestFailedException;
+                        if (exception.Status == (int)HttpStatusCode.Forbidden)
+                        {
+                            result = OperationResult.Forbidden;
+                        }
                     }
                 }
 
