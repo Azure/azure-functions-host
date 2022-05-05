@@ -329,10 +329,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 return secrets;
             }, secretsFactory).ContinueWith(t =>
             {
-                if (t.IsFaulted && t.Exception.InnerException is RequestFailedException)
+                if (t.IsFaulted)
                 {
-                    result = OperationResult.Forbidden;
+                    _logger.LogError("Error adding or updating secrets", t.Exception.InnerException);
+
+                    result = OperationResult.Error;
+
+                    if (t.Exception.InnerException is RequestFailedException)
+                    {
+                        result = OperationResult.Forbidden;
+                    }
                 }
+
+                return result;
             });
 
             return new KeyOperationResult(secret, result);

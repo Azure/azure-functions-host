@@ -522,6 +522,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
+        public async Task AddOrUpdateFunctionSecret_Handles_Error()
+        {
+            using (var directory = new TempDirectory())
+            {
+                CreateTestSecrets(directory.Path);
+
+                KeyOperationResult result;
+
+                ISecretsRepository repository = new TestSecretsRepository(false, true);
+                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
+                {
+                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                }
+
+                var logs = _loggerProvider.GetAllLogMessages();
+                Assert.Equal(OperationResult.Error, result.Result);
+                Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Error adding or updating secrets", StringComparison.OrdinalIgnoreCase)));
+            }
+        }
+
+        [Fact]
         public async Task AddOrUpdateFunctionSecret_ClearsCache_WhenFunctionSecretAdded()
         {
             using (var directory = new TempDirectory())
@@ -1158,7 +1179,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             return mockValueConverterFactory;
         }
 
-        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true)
+        private SecretManager CreateSecretManager(string secretsPath, ILogger logger = null, IMetricsLogger metricsLogger = null, IKeyValueConverterFactory keyConverterFactory = null, bool createHostSecretsIfMissing = false, bool simulateWriteConversion = true, bool setStaleValue = true, ISecretsRepository secretsRepository = null)
         {
             logger = logger ?? _logger;
             metricsLogger = metricsLogger ?? new TestMetricsLogger();
@@ -1169,7 +1190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 keyConverterFactory = mockValueConverterFactory.Object;
             }
 
-            ISecretsRepository repository = new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
+            ISecretsRepository repository = secretsRepository ?? new FileSystemSecretsRepository(secretsPath, logger, _testEnvironment);
             var secretManager = new SecretManager(repository, keyConverterFactory, logger, metricsLogger, _hostNameProvider, _startupContextProvider);
 
             if (createHostSecretsIfMissing)
@@ -1238,10 +1259,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             private int _writeCount = 0;
             private Random _rand = new Random();
             private bool _enforceSerialWrites = false;
+            private bool _forceWriteErrors = false;
 
             public TestSecretsRepository(bool enforceSerialWrites)
             {
                 _enforceSerialWrites = enforceSerialWrites;
+            }
+
+            public TestSecretsRepository(bool enforceSerialWrites, bool forceWriteErrors)
+                : this(enforceSerialWrites)
+            {
+                _forceWriteErrors = forceWriteErrors;
             }
 
             public event EventHandler<SecretsChangedEventArgs> SecretsChanged;
@@ -1282,6 +1310,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
 
             public async Task WriteAsync(ScriptSecretsType type, string functionName, ScriptSecrets secrets)
             {
+                if (_forceWriteErrors)
+                {
+                    throw new Exception();
+                }
+
                 if (_enforceSerialWrites && _writeCount > 1)
                 {
                     throw new Exception("Concurrent writes detected!");
