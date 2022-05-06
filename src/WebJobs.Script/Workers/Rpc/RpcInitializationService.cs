@@ -59,8 +59,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogDebug("Shuttingdown Rpc Channels Manager");
-            await _webHostRpcWorkerChannelManager.ShutdownChannelsAsync();
+            try
+            {
+                _logger.LogDebug("Shuttingdown Rpc Channels Manager");
+                await _webHostRpcWorkerChannelManager.ShutdownChannelsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping Rpc Initialization Service. Handling error and continuing.");
+            }
         }
 
         public async Task OuterStopAsync(CancellationToken cancellationToken)

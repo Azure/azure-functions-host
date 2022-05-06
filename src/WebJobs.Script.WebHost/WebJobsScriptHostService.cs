@@ -426,26 +426,33 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _startupLoopTokenSource?.Cancel();
-
-            State = ScriptHostState.Stopping;
-            _logger.Stopping();
-
-            var currentHost = ActiveHost;
-            ActiveHost = null;
-            Task stopTask = Orphan(currentHost, cancellationToken);
-            Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
-
-            if (result != stopTask)
+            try
             {
-                _logger.DidNotShutDown();
-            }
-            else
-            {
-                _logger.ShutDownCompleted();
-            }
+                _startupLoopTokenSource?.Cancel();
 
-            State = ScriptHostState.Stopped;
+                State = ScriptHostState.Stopping;
+                _logger.Stopping();
+
+                var currentHost = ActiveHost;
+                ActiveHost = null;
+                Task stopTask = Orphan(currentHost, cancellationToken);
+                Task result = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(10), cancellationToken));
+
+                if (result != stopTask)
+                {
+                    _logger.DidNotShutDown();
+                }
+                else
+                {
+                    _logger.ShutDownCompleted();
+                }
+
+                State = ScriptHostState.Stopped;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping ScriptHost service. Handling error and continuing.");
+            }
         }
 
         public async Task RestartHostAsync(CancellationToken cancellationToken)

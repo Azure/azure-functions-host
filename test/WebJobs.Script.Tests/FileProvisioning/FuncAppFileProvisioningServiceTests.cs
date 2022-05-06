@@ -43,7 +43,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
             _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteZipDeployment, "1");
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory);
+            var logger = new LoggerFactory().CreateLogger<FuncAppFileProvisioningService>();
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory, logger);
             await funcAppFileProvisioningService.StartAsync(_cancellationTokenSource.Token);
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "requirements.psd1")));
             Assert.True(!File.Exists(Path.Combine(_scriptRootPath, "profile.ps1")));
@@ -57,7 +58,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.FileAugmentation
             File.Delete(Path.Combine(_scriptRootPath, "requirements.psd1"));
             File.Delete(Path.Combine(_scriptRootPath, "profile.ps1"));
             _environment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
-            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory);
+            var logger = new LoggerFactory().CreateLogger<FuncAppFileProvisioningService>();
+            var funcAppFileProvisioningService = new FuncAppFileProvisioningService(_environment, _optionsMonitor, _funcAppFileProvisionerFactory, logger);
             await funcAppFileProvisioningService.StartAsync(_cancellationTokenSource.Token);
             if (string.Equals(workerRuntime, "powershell", StringComparison.InvariantCultureIgnoreCase))
             {

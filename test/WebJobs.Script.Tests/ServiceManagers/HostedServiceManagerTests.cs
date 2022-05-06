@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -22,7 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ServiceManagers
         {
             mockRpcServer = new Mock<IRpcServer>();
             managedHostedServices = new List<IManagedHostedService> { new RandomHostedService(mockRpcServer.Object) };
-            hostedServiceManager = new HostedServiceManager(managedHostedServices);
+            var logger = new LoggerFactory().CreateLogger<HostedServiceManager>();
+            hostedServiceManager = new HostedServiceManager(managedHostedServices, logger);
         }
 
         [Fact]

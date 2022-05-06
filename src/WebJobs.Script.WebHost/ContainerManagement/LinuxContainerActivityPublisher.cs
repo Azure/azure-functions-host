@@ -75,16 +75,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Initializing {nameof(LinuxContainerActivityPublisher)}");
+            try
+            {
+                _logger.LogInformation($"Initializing {nameof(LinuxContainerActivityPublisher)}");
 
-            if (_standbyOptions.CurrentValue.InStandbyMode)
-            {
-                _logger.LogInformation($"Registering {nameof(_standbyOptionsOnChangeSubscription)}");
-                _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+                if (_standbyOptions.CurrentValue.InStandbyMode)
+                {
+                    _logger.LogInformation($"Registering {nameof(_standbyOptionsOnChangeSubscription)}");
+                    _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => OnStandbyOptionsChange());
+                }
+                else
+                {
+                    Start();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Start();
+                _logger.LogError(ex, "Error starting LinuxContainerActivityPublisher service. Handling error and continuing.");
             }
 
             return Task.CompletedTask;
@@ -92,10 +99,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.ContainerManagement
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation($"Stopping {nameof(LinuxContainerActivityPublisher)}");
+            try
+            {
+                _logger.LogInformation($"Stopping {nameof(LinuxContainerActivityPublisher)}");
 
-            // stop the timer if it has been started
-            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+                // stop the timer if it has been started
+                _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping LinuxContainerActivityPublisher service. Handling error and continuing.");
+            }
 
             return Task.CompletedTask;
         }

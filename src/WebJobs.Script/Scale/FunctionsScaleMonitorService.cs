@@ -45,22 +45,34 @@ namespace Microsoft.Azure.WebJobs.Script.Scale
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            if (_environment.IsRuntimeScaleMonitoringEnabled())
+            try
             {
-                _logger.LogInformation("Runtime scale monitoring is enabled.");
+                if (_environment.IsRuntimeScaleMonitoringEnabled())
+                {
+                    _logger.LogInformation("Runtime scale monitoring is enabled.");
 
-                // start the timer by setting the due time
-                SetTimerInterval((int)_interval.TotalMilliseconds);
+                    // start the timer by setting the due time
+                    SetTimerInterval((int)_interval.TotalMilliseconds);
+                }
             }
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting Runtime scale monitoring Service. Handling error and continuing.");
+            }
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            // stop the timer if it has been started
-            _timer.Change(Timeout.Infinite, Timeout.Infinite);
-
+            try
+            {
+                // stop the timer if it has been started
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error stopping Runtime scale monitoring Service. Handling error and continuing.");
+            }
             return Task.CompletedTask;
         }
 

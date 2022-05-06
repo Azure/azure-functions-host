@@ -1,7 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections;
+using System.Collections.Generic;
 using System.IO.Abstractions;
+using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using Microsoft.AspNetCore.Authorization;
@@ -189,10 +192,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService>(p =>
             {
                 var standbyOptions = p.GetService<IOptionsMonitor<StandbyOptions>>();
+                var logger = p.GetService<ILogger<StandbyOptions>>();
                 if (standbyOptions.CurrentValue.InStandbyMode)
                 {
                     var standbyManager = p.GetService<IStandbyManager>();
-                    return new StandbyInitializationService(standbyManager);
+                    return new StandbyInitializationService(standbyManager, logger);
                 }
 
                 return NullHostedService.Instance;
