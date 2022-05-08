@@ -32,6 +32,6 @@ namespace Microsoft.Azure.Functions.Analyzers
             = Create(id: "AZF0003", title: "Illegal Function name",
                 messageFormat: "Function name can't be '{0}'",
                 category: Constants.DiagnosticsCategories.WebJobs,
-                severity: DiagnosticSeverity.Warning);  // TODO: Error?
+                severity: DiagnosticSeverity.Error);
     }
 }

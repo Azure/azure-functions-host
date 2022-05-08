@@ -77,13 +77,8 @@ namespace FunctionApp
 
             test.TestCode = testCode;
 
-            //test.ExpectedDiagnostics.Add(Verify.Diagnostic()
-            //    .WithSeverity(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
-            //    .WithSpan(12, 10, 12, 44)
-            //    .WithArguments("90-InvalidFunction"));
-
             test.ExpectedDiagnostics.Add(Verify.Diagnostic()
-                .WithSeverity(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+                .WithSeverity(Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
                 .WithSpan(12, 10, 12, 44)
                 .WithArguments("90-InvalidFunction"));
 
