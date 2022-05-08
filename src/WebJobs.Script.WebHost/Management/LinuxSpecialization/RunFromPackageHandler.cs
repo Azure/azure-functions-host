@@ -172,7 +172,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             CodePackageType packageType;
 
             _logger.LogInformation($"{nameof(UnpackPackage)}: Going to get packagetype.");
-            packageType = GetPackageType(filePath, pkgContext);
+            try
+            {
+                packageType = GetPackageType(filePath, pkgContext);
+            }
+            catch (Exception e)
+            {
+                _logger.LogInformation($"{nameof(UnpackPackage)}: Get packagetype threw excepton.");
+                _logger.LogInformation($"{nameof(UnpackPackage)}: Packagetype Exception {e}");
+                packageType = CodePackageType.Zip;
+            }
+
             _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
             //using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
             //{
@@ -233,10 +243,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
+            _logger.LogInformation($"In {nameof(GetPackageType)}");
             // cloud build always builds squashfs
             if (pkgContext.IsScmRunFromPackage())
             {
                 return CodePackageType.Squashfs;
+            }
+
+            if (pkgContext.IsRunFromLocalPackage())
+            {
+                return CodePackageType.Zip;
             }
 
             var uri = new Uri(pkgContext.Url);
