@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<bool> ApplyBlobPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
+        public async Task<bool> ApplyRunFromPackageContext(RunFromPackageContext pkgContext, string targetPath, bool azureFilesMounted, bool throwOnFailure = true)
         {
             try
             {
@@ -51,37 +51,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
-                // khkh: temp condition.
-                _logger.LogInformation($"azureFilesMounted Status: {azureFilesMounted}");
-                if (azureFilesMounted)
-                {
-                    var thepath = _environment.GetEnvironmentVariableOrDefault(EnvironmentSettingNames.LocalSitePackages,
-                        EnvironmentSettingNames.DefaultLocalSitePackagesPath);
-                    _logger.LogInformation($"LocalSitePackes Path: {thepath}");
-
-                    var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-                    _logger.LogInformation($"Home Path: {home}");
-
-                    var potentialPackageFolderPath = Path.Combine(home, "data", "SitePackages");
-                    _logger.LogInformation($"Potential PackageFolderPath: {potentialPackageFolderPath}");
-                }
-
                 string filePath;
 
                 if (!pkgContext.IsRunFromLocalPackage())
                 {
-                    _logger.LogInformation($"{nameof(ApplyBlobPackageContext)}: Going to download package file.");
+                    _logger.LogInformation($"{nameof(ApplyRunFromPackageContext)}: Going to download package file.");
                     // download zip
                     filePath = await _packageDownloadHandler.Download(pkgContext);
                 }
                 else
                 {
-                    _logger.LogInformation($"{nameof(ApplyBlobPackageContext)}: Going to copy package file.");
+                    _logger.LogInformation($"{nameof(ApplyRunFromPackageContext)}: Going to copy package file.");
                     if (!azureFilesMounted)
                     {
-                        _logger.LogWarning($"{nameof(ApplyBlobPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
+                        _logger.LogWarning($"{nameof(ApplyRunFromPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
                     }
 
+                    // copy zip
                     filePath = CopyPackageFile();
 
                     if (string.IsNullOrEmpty(filePath))
@@ -103,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             catch (Exception e)
             {
-                _logger.LogDebug(e, nameof(ApplyBlobPackageContext));
+                _logger.LogDebug(e, nameof(ApplyRunFromPackageContext));
                 if (throwOnFailure)
                 {
                     throw;
@@ -170,30 +156,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
             CodePackageType packageType;
-
-            _logger.LogInformation($"{nameof(UnpackPackage)}: Going to get packagetype.");
-            try
+            using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
             {
                 packageType = GetPackageType(filePath, pkgContext);
             }
-            catch (Exception e)
-            {
-                _logger.LogInformation($"{nameof(UnpackPackage)}: Get packagetype threw excepton.");
-                _logger.LogInformation($"{nameof(UnpackPackage)}: Packagetype Exception {e}");
-                packageType = CodePackageType.Zip;
-            }
-
-            _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
-            //using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
-            //{
-            //    _logger.LogInformation($"{nameof(UnpackPackage)}: Going to get packagetype.");
-            //    packageType = GetPackageType(filePath, pkgContext);
-            //    _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype. {packageType}.");
-            //}
 
             if (packageType == CodePackageType.Squashfs)
             {
-                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype is Squashfs.");
                 // default to mount for squashfs images
                 if (_environment.IsMountDisabled())
                 {
@@ -214,27 +183,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             else if (packageType == CodePackageType.Zip)
             {
-                _logger.LogInformation($"{nameof(UnpackPackage)}: packagetype is zip.");
                 // default to unzip for zip packages
                 if (_environment.IsMountEnabled())
                 {
-                    _logger.LogInformation($"{nameof(UnpackPackage)}: Calling MountFuse on zip.");
                     await _meshServiceClient.MountFuse(MeshServiceClient.ZipOperation, filePath, scriptPath);
-                    _logger.LogInformation($"{nameof(UnpackPackage)}: MountFuse completed on zip ");
                 }
                 else
                 {
                     if (useLocalSitePackages)
                     {
-                        _logger.LogInformation($"{nameof(UnpackPackage)}: Unziping {filePath} to localSitepackage at {localSitePackagesPath}");
                         _unZipHandler.UnzipPackage(filePath, localSitePackagesPath);
-                        _logger.LogInformation($"{nameof(UnpackPackage)}: Calling CreateBindMount on zip.");
                         await CreateBindMount(localSitePackagesPath, scriptPath);
-                        _logger.LogInformation($"{nameof(UnpackPackage)}: CreateBindMount completed on zip ");
                     }
                     else
                     {
-                        _logger.LogInformation($"{nameof(UnpackPackage)}: Unziping {filePath}");
                         _unZipHandler.UnzipPackage(filePath, scriptPath);
                     }
                 }
@@ -243,7 +205,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private CodePackageType GetPackageType(string filePath, RunFromPackageContext pkgContext)
         {
-            _logger.LogInformation($"In {nameof(GetPackageType)}");
             // cloud build always builds squashfs
             if (pkgContext.IsScmRunFromPackage())
             {

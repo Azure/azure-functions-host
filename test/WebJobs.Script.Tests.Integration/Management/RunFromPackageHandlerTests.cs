@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
                 url, DefaultPackageLength, isWarmUpRequest);
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -252,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
                 .Returns(Task.FromResult(true));
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
                 .Returns(Task.FromResult(true));
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -365,7 +365,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     b.UnzipPackage(It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath));
             }
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -400,11 +400,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 _packageDownloadHandler.Setup(h => h.Download(It.IsAny<RunFromPackageContext>()))
                     .Returns(Task.FromResult(string.Empty));
                 await Assert.ThrowsAsync<NullReferenceException>(async () =>
-                    await _runFromPackageHandler.ApplyBlobPackageContext(null, string.Empty, true, throwOnFailure));
+                    await _runFromPackageHandler.ApplyRunFromPackageContext(null, string.Empty, true, throwOnFailure));
             }
             else
             {
-                Assert.False(await _runFromPackageHandler.ApplyBlobPackageContext(null, string.Empty, true, throwOnFailure));
+                Assert.False(await _runFromPackageHandler.ApplyRunFromPackageContext(null, string.Empty, true, throwOnFailure));
             }
         }
 
@@ -455,7 +455,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                             StringComparison.OrdinalIgnoreCase)),
                     MetricEventNames.LinuxContainerSpecializationFileCommand)).Returns(("zip", string.Empty, 0));
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -521,7 +521,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.SquashFsOperation, It.Is<string>(s => url.EndsWith(Path.GetFileName(s))), TargetScriptPath))
                 .Returns(Task.FromResult(true));
 
-            var applyBlobContextResult = await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
+            var applyBlobContextResult = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath, azureFilesMounted, true);
             Assert.True(applyBlobContextResult);
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
@@ -585,7 +585,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await _runFromPackageHandler.ApplyBlobPackageContext(runFromPackageContext, TargetScriptPath,
+                await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, TargetScriptPath,
                     azureFilesMounted, true));
 
             handlerMock.Protected().Verify<Task<HttpResponseMessage>>("SendAsync", Times.Once(),
