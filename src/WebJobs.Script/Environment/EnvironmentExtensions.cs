@@ -474,7 +474,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool SupportsAzureFileShareMount(this IEnvironment environment, string runFromPackageValue)
         {
             return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
-                StringComparison.OrdinalIgnoreCase) || (environment.IsPersistentStorageEnabled() && runFromPackageValue == "1");
+                StringComparison.OrdinalIgnoreCase) || string.Equals(runFromPackageValue, "1", StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsPersistentStorageEnabled(this IEnvironment environment)
