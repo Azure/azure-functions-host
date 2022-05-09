@@ -524,7 +524,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         }
 
         [Fact]
-        public async Task AddOrUpdateFunctionSecret_Handles_InternalSeverError()
+        public async Task AddOrUpdateFunctionSecret_WhenStorageWriteError_ThrowsException()
         {
             using (var directory = new TempDirectory())
             {
@@ -535,33 +535,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.InternalServerError);
                 using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
                 {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                    try
+                    {
+                        result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
+                    }
+                    catch (RequestFailedException ex)
+                    {
+                        Assert.Equal(ex.Status, (int)HttpStatusCode.InternalServerError);
+                    }
                 }
-
-                var logs = _loggerProvider.GetAllLogMessages();
-                Assert.Equal(OperationResult.Error, result.Result);
-                Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Error adding or updating secrets", StringComparison.OrdinalIgnoreCase)));
-            }
-        }
-
-        [Fact]
-        public async Task AddOrUpdateFunctionSecret_Handles_RequestForbiddenError()
-        {
-            using (var directory = new TempDirectory())
-            {
-                CreateTestSecrets(directory.Path);
-
-                KeyOperationResult result;
-
-                ISecretsRepository repository = new TestSecretsRepository(false, true, HttpStatusCode.Forbidden);
-                using (var secretManager = CreateSecretManager(directory.Path, simulateWriteConversion: false, secretsRepository: repository))
-                {
-                    result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
-                }
-
-                var logs = _loggerProvider.GetAllLogMessages();
-                Assert.Equal(OperationResult.Forbidden, result.Result);
-                Assert.True(logs.Any(p => string.Equals(p.FormattedMessage, "Error adding or updating secrets", StringComparison.OrdinalIgnoreCase)));
             }
         }
 

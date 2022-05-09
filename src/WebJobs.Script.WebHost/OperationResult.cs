@@ -10,8 +10,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         Created,
         Updated,
         NotFound,
-        Conflict,
-        Forbidden,
-        Error
+        Conflict
     }
 }
