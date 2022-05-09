@@ -516,10 +516,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     result = await secretManager.AddOrUpdateFunctionSecretAsync("function-key-3", "9876", "TestFunction", ScriptSecretsType.Function);
                 }
-                catch (Exception ex)
+                catch (RequestFailedException ex)
                 {
-                    var x = ex;
-                    //Assert.Equal(ex.Status, (int)HttpStatusCode.InternalServerError);
+                    Assert.Equal(ex.Status, (int)HttpStatusCode.InternalServerError);
                 }
             }
         }
