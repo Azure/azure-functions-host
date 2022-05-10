@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -327,13 +328,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                 }
 
                 return secrets;
-            }, secretsFactory).ContinueWith(t =>
-            {
-                if (t.IsFaulted && t.Exception.InnerException is RequestFailedException)
-                {
-                    result = OperationResult.Forbidden;
-                }
-            });
+            }, secretsFactory);
 
             return new KeyOperationResult(secret, result);
         }
