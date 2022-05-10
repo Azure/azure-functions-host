@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 ErrorCode = errorCode,
                 HelpLink = helpLink,
-                LastTimeStamp = timestamp,
+                TimeStamp = timestamp,
                 Message = message,
                 LogLevel = level,
                 Details = exception?.ToFormattedString(),
