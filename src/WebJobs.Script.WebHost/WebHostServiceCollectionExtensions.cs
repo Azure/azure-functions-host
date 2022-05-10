@@ -163,7 +163,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
+
+            // ScriptApplicationHostOptions are special in that they need to be reset on specialization, but the reset
+            // must happen after the StandbyOptions have reset. For this reason, we have a special ChangeTokenSource that
+            // will reset the ScriptApplicationHostOptions only after StandbyOptions have been reset.
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
+
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
