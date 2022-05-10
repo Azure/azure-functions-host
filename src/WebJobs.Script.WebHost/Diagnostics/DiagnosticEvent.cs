@@ -17,11 +17,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         {
             RowKey = TableStorageHelpers.GetRowKey(timestamp);
             PartitionKey = $"{hostId}-{timestamp:yyyyMMdd}";
+            Timestamp = timestamp;
         }
 
         public int HitCount { get; set; }
-
-        public DateTimeOffset TimeStamp { get; set; }
 
         public string Message { get; set; }
 

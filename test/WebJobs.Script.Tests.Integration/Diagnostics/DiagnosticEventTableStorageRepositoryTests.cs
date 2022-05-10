@@ -231,7 +231,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             var dateTime = DateTime.UtcNow;
             var diagnosticEvent = new DiagnosticEvent("hostId", dateTime);
-            diagnosticEvent.TimeStamp = dateTime;
             var events = new ConcurrentDictionary<string, DiagnosticEvent>();
             events.TryAdd("EC123", diagnosticEvent);
             await repository.ExecuteBatchAsync(events, table);
