@@ -114,6 +114,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagEnableEnhancedScopes = "EnableEnhancedScopes";
         public const string FeatureFlagDisableDevInDebug = "DisableDevModeInDebug";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
+        public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagDisableAspNetCoreGrpc = "DisableAspNetCoreGrpc";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";

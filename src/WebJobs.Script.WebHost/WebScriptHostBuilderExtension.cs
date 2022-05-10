@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, AzureMonitorDiagnosticLoggerProvider>();
                     }
 
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDiagnosticEventLogging))
+                    if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagDisableDiagnosticEventLogging))
                     {
                         loggingBuilder.Services.AddSingleton<ILoggerProvider, DiagnosticEventLoggerProvider>();
                         loggingBuilder.Services.TryAddSingleton<IDiagnosticEventRepository, DiagnosticEventTableStorageRepository>();

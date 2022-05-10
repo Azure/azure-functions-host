@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public int HitCount { get; set; }
 
-        public DateTime LastTimeStamp { get; set; }
+        public DateTimeOffset TimeStamp { get; set; }
 
         public string Message { get; set; }
 

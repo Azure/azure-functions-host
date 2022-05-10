@@ -231,7 +231,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
 
             var dateTime = DateTime.UtcNow;
             var diagnosticEvent = new DiagnosticEvent("hostId", dateTime);
-            diagnosticEvent.LastTimeStamp = dateTime;
+            diagnosticEvent.TimeStamp = dateTime;
             var events = new ConcurrentDictionary<string, DiagnosticEvent>();
             events.TryAdd("EC123", diagnosticEvent);
             await repository.ExecuteBatchAsync(events, table);
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Diagnostics
                 {
                     batch.Add(TableOperation.Delete(entity));
 
-                    if (batch.Count == 100)
+                    if (batch.Count == 1)
                     {
                         var result = await table.ExecuteBatchAsync(batch);
                         batch = new TableBatchOperation();
