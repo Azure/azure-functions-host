@@ -55,7 +55,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
                 if (!pkgContext.IsRunFromLocalPackage())
                 {
-                    _logger.LogInformation($"{nameof(ApplyRunFromPackageContext)}: Going to download package file.");
                     // download zip
                     filePath = await _packageDownloadHandler.Download(pkgContext);
                 }
@@ -152,8 +151,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
         {
-            _logger.LogInformation($"{nameof(UnpackPackage)}: filepath {filePath}, script path {scriptPath}, localSitePackagePath {localSitePackagesPath}.");
-
             var useLocalSitePackages = !string.IsNullOrEmpty(localSitePackagesPath);
             CodePackageType packageType;
             using (_metricsLogger.LatencyEvent(MetricEventNames.LinuxContainerSpecializationGetPackageType))
