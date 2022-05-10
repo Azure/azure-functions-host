@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 _httpClient.Timeout = scriptHostOptions.Value.FunctionTimeout.Value.Add(TimeSpan.FromMinutes(1));
             }
         }
-         
+
         private static HttpClient CreateHttpClient(IOptions<HttpWorkerOptions> httpWorkerOptions)
         {
             HttpClientHandler handler = new ();
