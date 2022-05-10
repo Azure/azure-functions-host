@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             {
                 _events.Add(new DiagnosticEvent("hostid", timestamp)
                 {
-                    LastTimeStamp = timestamp,
+                    TimeStamp = timestamp,
                     ErrorCode = errorCode,
                     LogLevel = level,
                     Message = message,
