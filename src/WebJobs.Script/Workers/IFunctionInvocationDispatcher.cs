@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         int ErrorEventsThreshold { get; }
 
-        Task InvokeAsync(ScriptInvocationContext invocationContext, string language);
+        Task InvokeAsync(ScriptInvocationContext invocationContext);
 
         Task InitializeAsync(IEnumerable<FunctionMetadata> functions, CancellationToken cancellationToken = default);
 

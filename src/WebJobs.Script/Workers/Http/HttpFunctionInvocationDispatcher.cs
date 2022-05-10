@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             await InitializeHttpWorkerChannelAsync(0, cancellationToken);
         }
 
-        public Task InvokeAsync(ScriptInvocationContext invocationContext, string language)
+        public Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
             return _httpWorkerChannel.InvokeAsync(invocationContext);
         }

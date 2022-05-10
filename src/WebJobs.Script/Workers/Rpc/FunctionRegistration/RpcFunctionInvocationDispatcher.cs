@@ -395,8 +395,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        public async Task InvokeAsync(ScriptInvocationContext invocationContext, string language)
+        public async Task InvokeAsync(ScriptInvocationContext invocationContext)
         {
+            string language = invocationContext.FunctionMetadata.Language;
             // This could throw if no initialized workers are found. Shut down instance and retry.
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetInitializedWorkerChannelsAsync(language);
             var rpcWorkerChannel = _functionDispatcherLoadBalancer.GetLanguageWorkerChannel(workerChannels);
