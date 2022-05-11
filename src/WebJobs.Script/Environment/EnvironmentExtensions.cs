@@ -471,18 +471,6 @@ namespace Microsoft.Azure.WebJobs.Script
                 StringComparison.OrdinalIgnoreCase) || string.Equals(runFromPackageValue, "1", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static bool IsPersistentStorageEnabled(this IEnvironment environment)
-        {
-            var persistentStorageEnabled = environment.GetEnvironmentVariable("ENABLE_KUDU_PERSISTENT_STORAGE");
-            if (!string.IsNullOrWhiteSpace(persistentStorageEnabled))
-            {
-                return string.Equals("1", persistentStorageEnabled, StringComparison.OrdinalIgnoreCase) ||
-                       string.Equals("true", persistentStorageEnabled, StringComparison.OrdinalIgnoreCase);
-            }
-
-            return false;
-        }
-
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)
         {
             return environment.GetEnvironmentVariableOrDefault(HttpLeaderEndpoint, string.Empty);
