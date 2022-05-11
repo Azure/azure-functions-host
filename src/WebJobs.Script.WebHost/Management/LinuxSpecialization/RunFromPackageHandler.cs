@@ -22,18 +22,20 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly IBashCommandHandler _bashCommandHandler;
         private readonly IUnZipHandler _unZipHandler;
+        private readonly IPackageCopyHandler _packageCopyHandler;
         private readonly IPackageDownloadHandler _packageDownloadHandler;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<RunFromPackageHandler> _logger;
 
         public RunFromPackageHandler(IEnvironment environment, IMeshServiceClient meshServiceClient,
-            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
+            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageCopyHandler packageCopyHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
             _unZipHandler = unZipHandler ?? throw new ArgumentNullException(nameof(unZipHandler));
             _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
+            _packageCopyHandler = packageCopyHandler ?? throw new ArgumentNullException(nameof(packageCopyHandler));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -67,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                     }
 
                     // copy zip
-                    filePath = CopyPackageFile();
+                    filePath = _packageCopyHandler.CopyPackageFile();
 
                     if (string.IsNullOrEmpty(filePath))
                     {
@@ -96,57 +98,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
                 return false;
             }
-        }
-
-        private string CopyPackageFile()
-        {
-            var home = Environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath);
-            var packageFolderPath = Path.Combine(home, "data", "SitePackages");
-
-            if (!Directory.Exists(packageFolderPath))
-            {
-                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
-                return string.Empty;
-            }
-
-            var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
-            if (!File.Exists(packageNameTxtPath))
-            {
-                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
-                return string.Empty;
-            }
-
-            var packageFileName = File.ReadAllText(packageNameTxtPath);
-
-            if (string.IsNullOrEmpty(packageFileName))
-            {
-                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
-                return string.Empty;
-            }
-
-            var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
-            if (!File.Exists(packageFilePath))
-            {
-                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
-                return string.Empty;
-            }
-
-            var packageFileInfo = new FileInfo(packageFilePath);
-            if (packageFileInfo.Length == 0)
-            {
-                _logger.LogWarning($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
-                return string.Empty;
-            }
-
-            var tmpPath = Path.GetTempPath();
-            var fileName = Path.GetFileName(packageFileName);
-            var filePath = Path.Combine(tmpPath, fileName);
-
-            File.Copy(packageFilePath, filePath, true);
-
-            _logger.LogInformation($"{nameof(CopyPackageFile)} was successfull. {packageFileName} was copied to {filePath}.");
-
-            return filePath;
         }
 
         private async Task UnpackPackage(string filePath, string scriptPath, RunFromPackageContext pkgContext, string localSitePackagesPath)
