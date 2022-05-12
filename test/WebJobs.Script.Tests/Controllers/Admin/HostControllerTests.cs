@@ -242,6 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(2, 0, DrainModeState.InProgress)]
         [InlineData(0, 10, DrainModeState.InProgress)]
         [InlineData(5, 1, DrainModeState.InProgress)]
+        [InlineData(20, 30, DrainModeState.Disabled)]
         public void GetDrainStatus_HostRunning_ReturnsExpected(int outstandingRetries, int outstandingInvocations, DrainModeState expectedState)
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
