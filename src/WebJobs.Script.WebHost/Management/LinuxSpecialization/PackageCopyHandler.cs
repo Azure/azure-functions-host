@@ -10,9 +10,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 {
     public class PackageCopyHandler : IPackageCopyHandler
     {
-        private readonly ILogger<PackageDownloadHandler> _logger;
+        private readonly ILogger<PackageCopyHandler> _logger;
 
-        public PackageCopyHandler(ILogger<PackageDownloadHandler> logger)
+        public PackageCopyHandler(ILogger<PackageCopyHandler> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
