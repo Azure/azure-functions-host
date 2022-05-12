@@ -256,9 +256,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             serviceProviderMock.Setup(x => x.GetService(typeof(IFunctionActivityStatusProvider))).Returns(functionActivityStatusProvider.Object);
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(expectedState != DrainModeState.Disabled);
-
             var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
-            Assert.Equal(expectedState, (result.Value as DrainModeStatus).State);
+            var resultStatus = result.Value as DrainModeStatus;
+            Assert.Equal(expectedState, resultStatus.State);
+            Assert.Equal(outstandingRetries, resultStatus.OutstandingRetries);
+            Assert.Equal(outstandingInvocations, resultStatus.OutstandingInvocations);
         }
 
         [Fact]
