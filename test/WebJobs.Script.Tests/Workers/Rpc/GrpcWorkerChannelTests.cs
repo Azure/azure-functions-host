@@ -3,11 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -35,7 +38,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProcess> _mockrpcWorkerProcess = new Mock<IWorkerProcess>();
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\testdir";
-        private readonly IScriptEventManager _eventManager = new ScriptEventManager();
+
+        private readonly Mock<IScriptEventManager> _eventManager = new Mock<IScriptEventManager>();
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
         private readonly Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
@@ -51,12 +55,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly IFunctionDataCache _functionDataCache;
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IOptions<ScriptJobHostOptions> _scriptJobHostOptions;
         private GrpcWorkerChannel _workerChannel;
 
         public GrpcWorkerChannelTests()
         {
+            _eventManager.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
+
             _logger = new TestLogger("FunctionDispatcherTests");
-            _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
+            _testFunctionRpcService = new TestFunctionRpcService(_eventManager.Object, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
@@ -68,6 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(FunctionDataCacheConstants.FunctionDataCacheEnabledSettingName, "1");
             _workerConcurrencyOptions = Options.Create(new WorkerConcurrencyOptions());
             _workerConcurrencyOptions.Value.CheckInterval = TimeSpan.FromSeconds(1);
+            _scriptJobHostOptions = Options.Create(new ScriptJobHostOptions());
 
             ILogger<MemoryMappedFileAccessor> mmapAccessorLogger = NullLogger<MemoryMappedFileAccessor>.Instance;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -93,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager,
+               _eventManager.Object,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -103,7 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
         }
 
         public void Dispose()
@@ -189,7 +198,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager,
+               _eventManager.Object,
                _testWorkerConfig,
                mockrpcWorkerProcessThatThrows.Object,
                _logger,
@@ -199,7 +208,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -283,6 +293,39 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
         }
 
+        [Fact]
+        public async Task SendInvocationRequest_ValidateTraceContext()
+        {
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+
+            _eventManager.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
+                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 3)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_ValidateTraceContext_SessionId()
+        {
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
+            string sessionId = "sessionId1234";
+            Activity activity = new Activity("testActivity");
+            activity.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+            activity.Start();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
+            activity.Stop();
+            _eventManager.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
+                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes[ScriptConstants.LiveLogsSessionAIKey].Equals(sessionId)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 4)));
+        }
+
         /// <summary>
         /// Verify that <see cref="ScriptInvocationContext"/> with <see cref="RpcSharedMemory"/> input can be sent.
         /// </summary>
@@ -305,7 +348,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager,
+               _eventManager.Object,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -315,7 +358,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -672,7 +716,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager,
+               _eventManager.Object,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -682,7 +726,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -710,7 +755,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager,
+               _eventManager.Object,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -720,7 +765,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _hostOptionsMonitor,
                _sharedMemoryManager,
                _functionDataCache,
-               _workerConcurrencyOptions);
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
 
             // wait 10 seconds
             await Task.Delay(10000);
@@ -755,11 +801,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
+        private IEnumerable<FunctionMetadata> GetTestFunctionsListWithCategory()
+        {
+            var metadata1 = new FunctionMetadata()
+            {
+                Language = "java",
+                Name = "j1"
+            };
+            metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
+            metadata1.SetFunctionId("TestFunctionId1");
+            return new List<FunctionMetadata>()
+            {
+                metadata1
+            };
+        }
+
         private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
         {
             return new ScriptInvocationContext()
             {
-                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
+                FunctionMetadata = GetTestFunctionsListWithCategory().FirstOrDefault(),
                 ExecutionContext = new ExecutionContext()
                 {
                     InvocationId = invocationId,

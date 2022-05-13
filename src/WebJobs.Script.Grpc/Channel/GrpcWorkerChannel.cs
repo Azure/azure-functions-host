@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -43,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private readonly ISharedMemoryManager _sharedMemoryManager;
         private readonly List<TimeSpan> _workerStatusLatencyHistory = new List<TimeSpan>();
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
-
+        private readonly IOptions<ScriptJobHostOptions> _scriptJobHostOptions;
         private IDisposable _functionLoadRequestResponseEvent;
         private bool _disposed;
         private bool _disposing;
@@ -86,7 +88,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
             ISharedMemoryManager sharedMemoryManager,
             IFunctionDataCache functionDataCache,
-            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions)
+            IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
+            IOptions<ScriptJobHostOptions> scriptJobHostOptions)
         {
             _workerId = workerId;
             _eventManager = eventManager;
@@ -99,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _applicationHostOptions = applicationHostOptions;
             _sharedMemoryManager = sharedMemoryManager;
             _workerConcurrencyOptions = workerConcurrencyOptions;
-
+            _scriptJobHostOptions = scriptJobHostOptions;
             _workerCapabilities = new GrpcCapabilities(_workerChannelLogger);
 
             _inboundWorkerEvents = _eventManager.OfType<InboundGrpcEvent>()
@@ -487,6 +490,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         return;
                     }
                     var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -1000,6 +1004,23 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     samples.RemoveAt(0);
                 }
                 samples.Add(sample);
+            }
+        }
+
+        private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
+        {
+            // This is only applicable for AI agents running along side worker
+            if (_environment.IsApplicationInsightsAgentEnabled())
+            {
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptJobHostOptions.Value.InstanceId;
+                attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+
+                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionid))
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
+                }
             }
         }
     }

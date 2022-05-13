@@ -27,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AppInsightsInstrumentationKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
         public const string AppInsightsConnectionString = "APPLICATIONINSIGHTS_CONNECTION_STRING";
         public const string AppInsightsQuickPulseAuthApiKey = "APPINSIGHTS_QUICKPULSEAUTHAPIKEY";
+        public const string AppInsightsAgent = "APPLICATIONINSIGHTS_ENABLE_AGENT";
         public const string FunctionsExtensionVersion = "FUNCTIONS_EXTENSION_VERSION";
         public const string FunctionWorkerRuntime = "FUNCTIONS_WORKER_RUNTIME";
         public const string ContainerName = "CONTAINER_NAME";
@@ -116,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CorsAllowedOrigins = "CORS_ALLOWED_ORIGINS";
         public const string CorsSupportCredentials = "CORS_SUPPORT_CREDENTIALS";
 
-       // EasyAuth settings
+        // EasyAuth settings
         public const string EasyAuthClientId = "WEBSITE_AUTH_CLIENT_ID";
         public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
 

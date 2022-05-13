@@ -16,7 +16,8 @@ namespace Microsoft.Azure.WebJobs.Script
 {
     internal static class EnvironmentExtensions
     {
-        // For testing
+        private static bool? isApplicationInsightsAgentEnabled;
+
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -507,6 +508,22 @@ namespace Microsoft.Azure.WebJobs.Script
                 placeholderRuntimeSet.Add(workerRuntime);
             }
             return placeholderRuntimeSet;
+        }
+
+        public static bool IsApplicationInsightsAgentEnabled(this IEnvironment environment)
+        {
+            // cache the value of the environment variable
+            if (isApplicationInsightsAgentEnabled.HasValue)
+            {
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            else if (!environment.IsPlaceholderModeEnabled())
+            {
+                bool.TryParse(environment.GetEnvironmentVariable(AppInsightsAgent), out bool isEnabled);
+                isApplicationInsightsAgentEnabled = isEnabled;
+                return isApplicationInsightsAgentEnabled.Value;
+            }
+            return false;
         }
     }
 }
