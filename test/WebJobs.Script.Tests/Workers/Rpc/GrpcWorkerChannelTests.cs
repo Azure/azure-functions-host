@@ -372,7 +372,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
-            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "true" } });
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
             _metricsLogger.ClearCollections();
             IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
             _workerChannel.SetupFunctionInvocationBuffers(functionMetadata);
@@ -495,7 +495,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
-                { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "1" }
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
             };
 
             StartStream startStream = new StartStream()
@@ -530,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             IDictionary<string, string> capabilities = new Dictionary<string, string>()
             {
-                { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "1" }
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
             };
 
             StartStream startStream = new StartStream()

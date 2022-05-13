@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
 
                 // Check if the worker supports this feature
-                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.SupportsLoadResponseCollection));
                 if (capabilityEnabled)
                 {
                     if (functionTimeout.HasValue)
