@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -155,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             await _workerInitTask.Task;
         }
 
-        public async Task StopWorkerProcessAsync()
+        public Task StopWorkerProcessAsync()
         {
             /*
              * Send WorkerTerminate GRPC message
@@ -163,15 +164,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
              * Timeout after Grace period if no Success response from worker
              */
 
-            _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
+            // Check in capabilities if worker handles WorkerTerminate message
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
+            if (capabilityEnabled)
+            {
+                _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
                 .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
                 .Take(1)
                 .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
 
-            _workerChannelLogger.LogDebug("Terminating Worker Process");
-            // await _rpcWorkerProcess.StopProcessAsync();
-            // _state = _state | RpcWorkerChannelState.Default;
-            await _workerInitTask.Task;
+                _workerChannelLogger.LogDebug("Terminating Worker Process");
+
+                WorkerTerminate workerTerminateRequest = new WorkerTerminate()
+                {
+                    GracePeriod = new Duration(Duration.FromTimeSpan(new TimeSpan(0, 0, 1)))
+                };
+
+                // send a load request for the registered function
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerTerminate = workerTerminateRequest
+                });
+            }
+
+            return Task.CompletedTask;
         }
 
         public async Task<WorkerStatus> GetWorkerStatusAsync()
