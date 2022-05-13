@@ -297,6 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     if (functionTimeout.HasValue)
                     {
+                        _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
                         _eventSubscriptions.Add(_inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.FunctionLoadResponseCollection)
                         .Timeout(_functionLoadTimeout)
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError));
