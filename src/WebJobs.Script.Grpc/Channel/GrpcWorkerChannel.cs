@@ -156,40 +156,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             await _workerInitTask.Task;
         }
 
-        public Task StopWorkerProcessAsync()
-        {
-            /*
-             * Send WorkerTerminate GRPC message
-             * Get success response from Worker
-             * Timeout after Grace period if no Success response from worker
-             */
-
-            // Check in capabilities if worker handles WorkerTerminate message
-            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
-            if (capabilityEnabled)
-            {
-                _startSubscription = _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.StartStream)
-                .Timeout(_workerConfig.CountOptions.ProcessStartupTimeout)
-                .Take(1)
-                .Subscribe(SendWorkerInitRequest, HandleWorkerStartStreamError);
-
-                _workerChannelLogger.LogDebug("Terminating Worker Process");
-
-                WorkerTerminate workerTerminateRequest = new WorkerTerminate()
-                {
-                    GracePeriod = new Duration(Duration.FromTimeSpan(new TimeSpan(0, 0, 1)))
-                };
-
-                // send a load request for the registered function
-                SendStreamingMessage(new StreamingMessage
-                {
-                    WorkerTerminate = workerTerminateRequest
-                });
-            }
-
-            return Task.CompletedTask;
-        }
-
         public async Task<WorkerStatus> GetWorkerStatusAsync()
         {
             var workerStatus = new WorkerStatus();
@@ -305,22 +271,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.SetResult(true);
-        }
-
-        internal void SendWorkerTerminateRequest()
-        {
-            _workerChannelLogger.LogDebug("Sending worker process termination message.");
-            _inboundWorkerEvents.Where(msg => msg.MessageType == MsgType.WorkerTerminate)
-                .Timeout(_workerConfig.CountOptions.InitializationTimeout)
-                .Take(1)
-                .Subscribe(WorkerInitResponse, HandleWorkerInitError);
-
-            WorkerTerminate initRequest = new WorkerTerminate();
-
-            SendStreamingMessage(new StreamingMessage
-            {
-                WorkerTerminate = initRequest
-            });
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
@@ -921,9 +871,29 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
-            StopWorkerProcessAsync().GetAwaiter().GetResult();
+            StopWorkerProcessAsync();
             _disposing = true;
             Dispose(true);
+        }
+
+        public Task StopWorkerProcessAsync()
+        {
+            bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
+            if (capabilityEnabled)
+            {
+                WorkerTerminate workerTerminateRequest = new WorkerTerminate()
+                {
+                    GracePeriod = new Duration(Duration.FromTimeSpan(new TimeSpan(0, 0, 1)))
+                };
+
+                // send a load request for the registered function
+                SendStreamingMessage(new StreamingMessage
+                {
+                    WorkerTerminate = workerTerminateRequest
+                });
+            }
+
+            return Task.CompletedTask;
         }
 
         public async Task DrainInvocationsAsync()

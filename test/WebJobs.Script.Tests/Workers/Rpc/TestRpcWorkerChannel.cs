@@ -159,10 +159,5 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             return null;
         }
-
-        public Task StopWorkerProcessAsync()
-        {
-            throw new NotImplementedException();
-        }
     }
 }
