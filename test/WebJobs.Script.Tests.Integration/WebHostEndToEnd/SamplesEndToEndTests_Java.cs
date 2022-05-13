@@ -49,6 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesAfter.Count() > 0);
             // Verify number of java processes before and after restart are the same.
+            await Task.Delay(1000);
             Assert.Equal(javaProcessesBefore.Count(), javaProcessesAfter.Count());
             // Verify Java different java process is used after host restart
             var result = javaProcessesBefore.Where(pId1 => javaProcessesAfter.Any(pId2 => pId2 == pId1));
