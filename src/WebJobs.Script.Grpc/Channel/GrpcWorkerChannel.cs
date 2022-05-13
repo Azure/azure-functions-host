@@ -876,7 +876,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             Dispose(true);
         }
 
-        public Task StopWorkerProcessAsync()
+        public void StopWorkerProcessAsync()
         {
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
             if (capabilityEnabled)
@@ -886,14 +886,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     GracePeriod = new Duration(Duration.FromTimeSpan(new TimeSpan(0, 0, 1)))
                 };
 
-                // send a load request for the registered function
                 SendStreamingMessage(new StreamingMessage
                 {
                     WorkerTerminate = workerTerminateRequest
                 });
             }
-
-            return Task.CompletedTask;
         }
 
         public async Task DrainInvocationsAsync()
