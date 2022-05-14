@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,8 +37,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly Mock<IWorkerProcess> _mockrpcWorkerProcess = new Mock<IWorkerProcess>();
         private readonly string _workerId = "testWorkerId";
         private readonly string _scriptRootPath = "c:\testdir";
-
-        private readonly Mock<IScriptEventManager> _eventManager = new Mock<IScriptEventManager>();
+        private readonly IScriptEventManager _eventManager = new ScriptEventManager();
+        private readonly Mock<IScriptEventManager> _eventManagerMock = new Mock<IScriptEventManager>();
         private readonly TestMetricsLogger _metricsLogger = new TestMetricsLogger();
         private readonly Mock<IWorkerConsoleLogSource> _mockConsoleLogger = new Mock<IWorkerConsoleLogSource>();
         private readonly Mock<FunctionRpc.FunctionRpcBase> _mockFunctionRpcService = new Mock<FunctionRpc.FunctionRpcBase>();
@@ -57,13 +56,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
         private readonly IOptions<ScriptJobHostOptions> _scriptJobHostOptions;
         private GrpcWorkerChannel _workerChannel;
+        private GrpcWorkerChannel _workerChannelwithMockEventManager;
 
         public GrpcWorkerChannelTests()
         {
-            _eventManager.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
+            _eventManagerMock.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
 
             _logger = new TestLogger("FunctionDispatcherTests");
-            _testFunctionRpcService = new TestFunctionRpcService(_eventManager.Object, _workerId, _logger, _expectedLogMsg);
+            _testFunctionRpcService = new TestFunctionRpcService(_eventManager, _workerId, _logger, _expectedLogMsg);
             _testWorkerConfig = TestHelpers.GetTestWorkerConfigs().FirstOrDefault();
             _testWorkerConfig.CountOptions.ProcessStartupTimeout = TimeSpan.FromSeconds(5);
             _testWorkerConfig.CountOptions.InitializationTimeout = TimeSpan.FromSeconds(5);
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager.Object,
+               _eventManager,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -113,6 +113,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                _functionDataCache,
                _workerConcurrencyOptions,
                _scriptJobHostOptions);
+
+            _workerChannelwithMockEventManager = new GrpcWorkerChannel(
+               _workerId,
+               _eventManagerMock.Object,
+               _testWorkerConfig,
+               _mockrpcWorkerProcess.Object,
+               _logger,
+               _metricsLogger,
+               0,
+               _testEnvironment,
+               _hostOptionsMonitor,
+               _sharedMemoryManager,
+               _functionDataCache,
+               _workerConcurrencyOptions,
+               _scriptJobHostOptions);
+
+            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
         }
 
         public void Dispose()
@@ -198,7 +215,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager.Object,
+               _eventManager,
                _testWorkerConfig,
                mockrpcWorkerProcessThatThrows.Object,
                _logger,
@@ -293,39 +310,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.False(_workerChannel.IsExecutingInvocation(Guid.NewGuid().ToString()));
         }
 
-        [Fact]
-        public async Task SendInvocationRequest_ValidateTraceContext()
-        {
-            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-
-            _eventManager.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
-                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 3)));
-        }
-
-        [Fact]
-        public async Task SendInvocationRequest_ValidateTraceContext_SessionId()
-        {
-            _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
-            string sessionId = "sessionId1234";
-            Activity activity = new Activity("testActivity");
-            activity.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
-            activity.Start();
-            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
-            await _workerChannel.SendInvocationRequest(scriptInvocationContext);
-            activity.Stop();
-            _eventManager.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
-                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes[ScriptConstants.LiveLogsSessionAIKey].Equals(sessionId)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 4)));
-        }
-
         /// <summary>
         /// Verify that <see cref="ScriptInvocationContext"/> with <see cref="RpcSharedMemory"/> input can be sent.
         /// </summary>
@@ -348,7 +332,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager.Object,
+               _eventManager,
                _testWorkerConfig,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -716,7 +700,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager.Object,
+               _eventManager,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -755,7 +739,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
                _workerId,
-               _eventManager.Object,
+               _eventManager,
                config,
                _mockrpcWorkerProcess.Object,
                _logger,
@@ -785,7 +769,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
 
             metadata1.SetFunctionId("TestFunctionId1");
-
+            metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
             var metadata2 = new FunctionMetadata()
             {
                 Language = runtime,
@@ -793,7 +777,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
 
             metadata2.SetFunctionId("TestFunctionId2");
-
+            metadata2.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
             return new List<FunctionMetadata>()
             {
                 metadata1,
@@ -801,26 +785,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
         }
 
-        private IEnumerable<FunctionMetadata> GetTestFunctionsListWithCategory()
-        {
-            var metadata1 = new FunctionMetadata()
-            {
-                Language = "java",
-                Name = "j1"
-            };
-            metadata1.Properties.Add(LogConstants.CategoryNameKey, "testcat1");
-            metadata1.SetFunctionId("TestFunctionId1");
-            return new List<FunctionMetadata>()
-            {
-                metadata1
-            };
-        }
-
         private ScriptInvocationContext GetTestScriptInvocationContext(Guid invocationId, TaskCompletionSource<ScriptInvocationResult> resultSource)
         {
             return new ScriptInvocationContext()
             {
-                FunctionMetadata = GetTestFunctionsListWithCategory().FirstOrDefault(),
+                FunctionMetadata = GetTestFunctionsList("node").FirstOrDefault(),
                 ExecutionContext = new ExecutionContext()
                 {
                     InvocationId = invocationId,
@@ -919,6 +888,42 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
             _workerChannel.SendWorkerInitRequest(rpcEvent);
             _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_ValidateTraceContext()
+        {
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+
+            _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
+                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 3)));
+        }
+
+        [Fact]
+        public async Task SendInvocationRequest_ValidateTraceContext_SessionId()
+        {
+            string sessionId = "sessionId1234";
+            Activity activity = new Activity("testActivity");
+            activity.AddBaggage(ScriptConstants.LiveLogsSessionAIKey, sessionId);
+            activity.Start();
+            ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
+            await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
+            activity.Stop();
+            _eventManagerMock.Verify(p => p.Publish(It.Is<OutboundGrpcEvent>(grpcEvent => ValidateInvocationRequest(grpcEvent, sessionId))));
+        }
+
+        private bool ValidateInvocationRequest(OutboundGrpcEvent grpcEvent, string sessionId)
+        {
+            bool b = grpcEvent.Message.InvocationRequest.TraceContext.Attributes[ScriptConstants.LiveLogsSessionAIKey].Equals(sessionId)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
+                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 4;
+            return b;
         }
     }
 }
