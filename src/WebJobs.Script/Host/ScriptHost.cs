@@ -401,6 +401,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 var timeoutBuilder = CustomAttributeBuilderUtility.GetTimeoutCustomAttributeBuilder(scriptConfig.FunctionTimeout.Value);
                 customAttributes.Add(timeoutBuilder);
             }
+            // apply retry settings for function execution
+            if (scriptConfig.Retry != null)
+            {
+                // apply the retry settings from host.json
+                var retryCustomAttributeBuilder = CustomAttributeBuilderUtility.GetRetryCustomAttributeBuilder(scriptConfig.Retry);
+                if (retryCustomAttributeBuilder != null)
+                {
+                    customAttributes.Add(retryCustomAttributeBuilder);
+                }
+            }
 
             return customAttributes;
         }
