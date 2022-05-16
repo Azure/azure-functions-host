@@ -888,6 +888,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     GracePeriod = Duration.FromTimeSpan(gracePeriod)
                 };
 
+                _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInMilliseconds}.");
+
                 SendStreamingMessage(new StreamingMessage
                 {
                     WorkerTerminate = workerTerminateRequest
