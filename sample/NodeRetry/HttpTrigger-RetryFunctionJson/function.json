@@ -1,7 +1,6 @@
-{
+﻿{
   "bindings": [
     {
-      "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
@@ -15,5 +14,10 @@
       "direction": "out",
       "name": "res"
     }
-  ]
+  ],
+  "retry": {
+    "strategy": "fixedDelay",
+    "maxRetryCount": 4,
+    "delayInterval": "00:00:03"
+  }
 }
