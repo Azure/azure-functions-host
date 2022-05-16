@@ -193,7 +193,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             process.Start();
 
             _rpcWorkerProcess.Process = process;
-
             _rpcWorkerProcess.Dispose();
             var traces = _logger.GetLogMessages();
             var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms. Killing the process."));
