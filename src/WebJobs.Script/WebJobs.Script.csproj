@@ -59,7 +59,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.NodeJsWorker" Version="3.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.0" Version="4.0.1842" />
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7.2" Version="4.0.1847" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.0.0-beta.2-10871" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="5.0.0-beta.1" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.1.1" />
 	  <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Timers.Storage" Version="1.0.0-beta.1" />
 	  <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.3-preview" />
