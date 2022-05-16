@@ -109,6 +109,11 @@ namespace Microsoft.Azure.WebJobs.Script
         public bool IsSelfHost { get; set; }
 
         /// <summary>
+        /// Gets or sets retry options to use on function executions on function invocation failures.
+        /// </summary>
+        public RetryOptions Retry { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the filesystem is read-only.
         /// </summary>
         public bool IsFileSystemReadOnly { get; set; }
