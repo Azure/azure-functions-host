@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -635,6 +636,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(expectedProcessCount, functionDispatcher.JobHostLanguageWorkerChannelManager.GetChannels().Count());
         }
 
+        [Fact]
+        public async Task FunctionDispatcher_AdditionalAttributes()
+        {
+            int expectedProcessCount = 3;
+            RpcFunctionInvocationDispatcher functionDispatcher = GetTestFunctionDispatcher(expectedProcessCount, false, runtime: RpcWorkerConstants.JavaLanguageWorkerName, workerIndexing: true);
+
+            var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
+            await functionDispatcher.FinishInitialization(functions);
+            foreach (var item in functions)
+            {
+                Assert.Equal(item.Properties.Count, 2);
+                Assert.True(item.Properties.ContainsKey(LogConstants.CategoryNameKey) &&
+                    item.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey));
+            }
+        }
+
         [Theory]
         [InlineData("node", "node", false, true, true)]
         [InlineData("node", "node", true, false, true)]
@@ -719,6 +736,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _javaTestChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), "java", eventManager, _testLogger, false);
             var optionsMonitor = TestHelpers.CreateOptionsMonitor(workerConfigOptions);
 
+            testEnv.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
             return new RpcFunctionInvocationDispatcher(scriptOptions,
                 metricsLogger.Object,
                 testEnv,
