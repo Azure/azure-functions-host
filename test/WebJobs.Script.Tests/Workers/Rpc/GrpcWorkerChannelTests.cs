@@ -756,13 +756,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(Guid.NewGuid(), null);
             await _workerChannelwithMockEventManager.SendInvocationRequest(scriptInvocationContext);
-
-            _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
-                grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
-                && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 3)));
+            if (_testEnvironment.IsApplicationInsightsAgentEnabled())
+            {
+                _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
+                    grpcEvent => grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
+                    && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
+                    && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
+                    && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
+                    && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 3)));
+            }
+            else
+            {
+                _eventManagerMock.Verify(proxy => proxy.Publish(It.Is<OutboundGrpcEvent>(
+                    grpcEvent => !grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyProcessIdKey)
+                    && !grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey)
+                    && !grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey))));
+            }
         }
 
         [Fact]
@@ -780,11 +789,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         private bool ValidateInvocationRequest(OutboundGrpcEvent grpcEvent, string sessionId)
         {
-            bool b = grpcEvent.Message.InvocationRequest.TraceContext.Attributes[ScriptConstants.LiveLogsSessionAIKey].Equals(sessionId)
+            if (_testEnvironment.IsApplicationInsightsAgentEnabled())
+            {
+                return grpcEvent.Message.InvocationRequest.TraceContext.Attributes[ScriptConstants.LiveLogsSessionAIKey].Equals(sessionId)
                 && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey)
                 && grpcEvent.Message.InvocationRequest.TraceContext.Attributes[LogConstants.CategoryNameKey].Equals("testcat1")
                 && grpcEvent.Message.InvocationRequest.TraceContext.Attributes.Count == 4;
-            return b;
+            }
+            else
+            {
+                return !grpcEvent.Message.InvocationRequest.TraceContext.Attributes.ContainsKey(LogConstants.CategoryNameKey);
+            }
         }
 
         private IEnumerable<FunctionMetadata> GetTestFunctionsList(string runtime)

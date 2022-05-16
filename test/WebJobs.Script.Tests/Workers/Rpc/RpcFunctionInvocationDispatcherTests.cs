@@ -644,7 +644,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             var functions = GetTestFunctionsList(RpcWorkerConstants.JavaLanguageWorkerName);
             await functionDispatcher.FinishInitialization(functions);
-            Assert.Equal(functions.Count(), 2);
             foreach (var item in functions)
             {
                 Assert.Equal(item.Properties.Count, 2);
