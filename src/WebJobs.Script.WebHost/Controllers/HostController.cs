@@ -154,7 +154,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
 
                 DrainModeStatus status = new DrainModeStatus()
                 {
-                    State = state
+                    State = state,
+                    OutstandingInvocations = functionActivityStatus.OutstandingInvocations,
+                    OutstandingRetries = functionActivityStatus.OutstandingRetries
                 };
 
                 string message = $"Drain Status: {JsonConvert.SerializeObject(state, Formatting.Indented)}, Activity Status: {JsonConvert.SerializeObject(functionActivityStatus, Formatting.Indented)}";
