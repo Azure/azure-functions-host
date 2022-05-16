@@ -46,11 +46,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
             await HttpTrigger_Java_Get_Succeeds();
+            Thread.Sleep(TimeSpan.FromSeconds(10));
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesAfter.Count() > 0);
             // Verify number of java processes before and after restart are the same.
-            //await Task.Delay(10000);
-            Thread.Sleep(10000);
             Assert.Equal(javaProcessesBefore.Count(), javaProcessesAfter.Count());
             // Verify Java different java process is used after host restart
             var result = javaProcessesBefore.Where(pId1 => javaProcessesAfter.Any(pId2 => pId2 == pId1));
