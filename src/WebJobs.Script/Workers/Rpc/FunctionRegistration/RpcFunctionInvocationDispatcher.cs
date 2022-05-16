@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
@@ -314,6 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                 }
             }
+            AddLogUserCategory(functions);
         }
 
         // Gets metadata from worker
@@ -353,6 +355,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
                 SetFunctionDispatcherStateToInitializedAndLog();
             }
+            AddLogUserCategory(functions);
         }
 
         public async Task<IDictionary<string, WorkerStatus>> GetWorkerStatusesAsync()
@@ -654,6 +657,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 }
             }
             return false;
+        }
+
+        private void AddLogUserCategory(IEnumerable<FunctionMetadata> functions)
+        {
+            // Add category, this is only needed for workers running AI agent
+            if (_environment.IsApplicationInsightsAgentEnabled())
+            {
+                foreach (FunctionMetadata metadata in functions)
+                {
+                    metadata.Properties[LogConstants.CategoryNameKey] = LogCategories.CreateFunctionUserCategory(metadata.Name);
+                    metadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey] = _scriptOptions.InstanceId;
+                }
+            }
         }
     }
 }

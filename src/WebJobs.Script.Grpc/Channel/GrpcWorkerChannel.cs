@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -487,6 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         return;
                     }
                     var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -1000,6 +1003,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     samples.RemoveAt(0);
                 }
                 samples.Add(sample);
+            }
+        }
+
+        private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
+        {
+            // This is only applicable for AI agents running along side worker
+            if (_environment.IsApplicationInsightsAgentEnabled())
+            {
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                if (context.FunctionMetadata.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey))
+                {
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(context.FunctionMetadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey]);
+                }
+                if (context.FunctionMetadata.Properties.ContainsKey(LogConstants.CategoryNameKey))
+                {
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+                }
+                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionid))
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
+                }
             }
         }
     }

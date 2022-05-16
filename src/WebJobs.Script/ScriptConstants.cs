@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
         public const string LogPropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
         public const string LogPropertyHostInstanceIdKey = "HostInstanceId";
+        public const string LogPropertyProcessIdKey = "ProcessId";
         public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
