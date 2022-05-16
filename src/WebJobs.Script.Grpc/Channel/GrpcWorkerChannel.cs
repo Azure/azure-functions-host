@@ -881,9 +881,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
             if (capabilityEnabled)
             {
+                var gracePeriod = TimeSpan.FromMilliseconds((double)WorkerConstants.ProcessExitTimeoutInMilliseconds);
+
                 WorkerTerminate workerTerminateRequest = new WorkerTerminate()
                 {
-                    GracePeriod = new Duration(Duration.FromTimeSpan(new TimeSpan(0, 0, 1)))
+                    GracePeriod = Duration.FromTimeSpan(gracePeriod)
                 };
 
                 SendStreamingMessage(new StreamingMessage

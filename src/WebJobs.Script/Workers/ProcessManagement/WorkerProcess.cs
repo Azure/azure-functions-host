@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly int processExitTimeoutInMilliseconds = 1000;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDisposable _eventSubscription;
 
@@ -216,10 +215,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (!Process.HasExited)
                     {
-                        if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
+                        if (!Process.WaitForExit(WorkerConstants.ProcessExitTimeoutInMilliseconds))
                         {
                             Process.Kill();
-                            _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
+                            _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {WorkerConstants.ProcessExitTimeoutInMilliseconds} ms");
                         }
                     }
                     Process.Dispose();
