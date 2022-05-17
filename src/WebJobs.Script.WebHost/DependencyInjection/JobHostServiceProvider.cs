@@ -65,7 +65,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             var container = new Container(r => rules, preferInterpretation: preferInterpretation);
 
             container.Populate(descriptors);
-            container.UseInstance<IServiceProvider>(this);
+
+            // If a scoped IServiceProvider is present, use it.
+            container.RegisterDelegate<IServiceProvider>(r => (r as Container).ScopedServiceProvider ?? this);
+
             container.UseInstance<IServiceScopeFactory>(this);
             container.UseInstance<JobHostServiceProvider>(this);
 
