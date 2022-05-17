@@ -15,10 +15,10 @@
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
-    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>    
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
-    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings> 
-  </PropertyGroup>  
+    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
+  </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -68,13 +68,13 @@
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.15" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Azure.Storage.File" Version="11.1.7" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.33-11924" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.34-11937" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="5.0.0-beta.1" />
     <PackageReference Include="Microsoft.Azure.WebSites.DataProtection" Version="2.1.91-alpha" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="$(IdentityDependencyVersion)" />

@@ -47,8 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             var hostNameProvider = new HostNameProvider(environment);
             var azureBlobStorageProvider = TestHelpers.GetAzureBlobStorageProvider(config);
 
-            _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, config,
-                new TestEnvironment(), NullLoggerFactory.Instance, new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), azureBlobStorageProvider);
+            _provider = new DefaultSecretManagerProvider(optionsMonitor, mockIdProvider.Object, new TestEnvironment(), NullLoggerFactory.Instance,
+                new TestMetricsLogger(), hostNameProvider, new StartupContextProvider(environment, loggerFactory.CreateLogger<StartupContextProvider>()), azureBlobStorageProvider);
         }
 
         [Fact]

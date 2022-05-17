@@ -5,7 +5,6 @@ using System;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Configuration;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
@@ -108,10 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configuration = builder.Build();
 
             var standbyOptions = new TestOptionsMonitor<StandbyOptions>(new StandbyOptions { InStandbyMode = inStandbyMode });
-            var mockCache = new Mock<IOptionsMonitorCache<ScriptApplicationHostOptions>>();
             var mockServiceProvider = new Mock<IServiceProvider>();
             var mockEnvironment = environment ?? new TestEnvironment();
-            var setup = new TestScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockCache.Object, mockServiceProvider.Object, mockEnvironment)
+            var setup = new TestScriptApplicationHostOptionsSetup(configuration, standbyOptions, mockServiceProvider.Object, mockEnvironment)
             {
                 BlobExistsReturnValue = blobExists
             };
@@ -121,8 +119,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
         private class TestScriptApplicationHostOptionsSetup : ScriptApplicationHostOptionsSetup
         {
-            public TestScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions, IOptionsMonitorCache<ScriptApplicationHostOptions> cache,
-                IServiceProvider serviceProvider, IEnvironment environment) : base(configuration, standbyOptions, cache, serviceProvider, environment) { }
+            public TestScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
+                IServiceProvider serviceProvider, IEnvironment environment) : base(configuration, standbyOptions, serviceProvider, environment) { }
 
             public bool BlobExistsReturnValue { get; set; }
 
