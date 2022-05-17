@@ -15,10 +15,10 @@
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishReadyToRunUseCrossgen2>true</PublishReadyToRunUseCrossgen2>
-    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>    
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
     <PublishReadyToRunEmitSymbols>true</PublishReadyToRunEmitSymbols>
-    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings> 
-  </PropertyGroup>  
+    <PublishReadyToRunShowWarnings>true</PublishReadyToRunShowWarnings>
+  </PropertyGroup>
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -68,7 +68,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="6.0.0" />
     <PackageReference Include="Microsoft.Azure.AppService.Middleware.Functions" Version="1.4.15" />
