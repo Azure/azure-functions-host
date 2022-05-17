@@ -39,118 +39,127 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.DependencyInjection
         [Fact]
         public void JobHostServiceProvider_TransientInScope()
         {
-            RunScopedResolutionTest(ServiceLifetime.Transient);
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableEnhancedScopes))
+            {
+                RunScopedResolutionTest(ServiceLifetime.Transient);
 
-            // These IServiceProviders are all disposed when exiting the scope, so these all throw.
-            Assert.Throws<ObjectDisposedException>(() => _defaultConstructor.DoSomething());
-            Assert.Throws<ObjectDisposedException>(() => _defaultFactory.DoSomething());
+                // These IServiceProviders are all disposed when exiting the scope, so these all throw.
+                Assert.Throws<ObjectDisposedException>(() => _defaultConstructor.DoSomething());
+                Assert.Throws<ObjectDisposedException>(() => _defaultFactory.DoSomething());
 
-            Assert.Throws<ContainerException>(() => _jobHostConstructor.DoSomething());
-            Assert.Throws<ContainerException>(() => _jobHostFactory.DoSomething());
+                Assert.Throws<ContainerException>(() => _jobHostConstructor.DoSomething());
+                Assert.Throws<ContainerException>(() => _jobHostFactory.DoSomething());
+            }
         }
 
         [Fact]
         public void JobHostServiceProvider_ScopedInScope()
         {
-            RunScopedResolutionTest(ServiceLifetime.Scoped);
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableEnhancedScopes))
+            {
+                RunScopedResolutionTest(ServiceLifetime.Scoped);
 
-            // These IServiceProviders are all disposed when exiting the scope, so these all throw.
-            Assert.Throws<ObjectDisposedException>(() => _defaultConstructor.DoSomething());
-            Assert.Throws<ObjectDisposedException>(() => _defaultFactory.DoSomething());
+                // These IServiceProviders are all disposed when exiting the scope, so these all throw.
+                Assert.Throws<ObjectDisposedException>(() => _defaultConstructor.DoSomething());
+                Assert.Throws<ObjectDisposedException>(() => _defaultFactory.DoSomething());
 
-            Assert.Throws<ContainerException>(() => _jobHostConstructor.DoSomething());
-            Assert.Throws<ContainerException>(() => _jobHostFactory.DoSomething());
+                Assert.Throws<ContainerException>(() => _jobHostConstructor.DoSomething());
+                Assert.Throws<ContainerException>(() => _jobHostFactory.DoSomething());
+            }
         }
 
         [Fact]
         public void JobHostServiceProvider_SingletonAndScoped()
         {
-            // Build JobHostServiceProvider
-            var rootServices = new ServiceCollection();
-            var rootContainer = rootServices.BuildServiceProvider();
-            IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
-            var jobHostServices = new ServiceCollection();
-
-            jobHostServices.AddSingleton<SingletonConstructor>();
-            jobHostServices.AddSingleton<SingletonFactory>(p => new SingletonFactory(p));
-
-            jobHostServices.AddScoped<ScopedConstructor>();
-            jobHostServices.AddScoped<ScopedFactory>(p => new ScopedFactory(p));
-
-            IServiceProvider jobHostProvider = new JobHostServiceProvider(jobHostServices, rootContainer, rootScopeFactory);
-
-            // Resolve some root services
-            SingletonConstructor rootSingletonConstructor = jobHostProvider.GetService<SingletonConstructor>();
-            SingletonFactory rootSingletonFactory = jobHostProvider.GetService<SingletonFactory>();
-            ScopedConstructor rootScopedConstructor = jobHostProvider.GetService<ScopedConstructor>();
-            ScopedFactory rootScopedFactory = jobHostProvider.GetService<ScopedFactory>();
-
-            // Resolve some child scope services
-            SingletonConstructor childSingletonConstructor1;
-            SingletonFactory childSingletonFactory1;
-            ScopedConstructor childScopedConstructor1;
-            ScopedFactory childScopedFactory1;
-
-            using (var scope = jobHostProvider.CreateScope())
+            using (new TestScopedEnvironmentVariable(EnvironmentSettingNames.AzureWebJobsFeatureFlags, ScriptConstants.FeatureFlagEnableEnhancedScopes))
             {
-                childSingletonConstructor1 = scope.ServiceProvider.GetService<SingletonConstructor>();
-                childSingletonFactory1 = scope.ServiceProvider.GetService<SingletonFactory>();
+                // Build JobHostServiceProvider
+                var rootServices = new ServiceCollection();
+                var rootContainer = rootServices.BuildServiceProvider();
+                IServiceScopeFactory rootScopeFactory = rootContainer.GetRequiredService<IServiceScopeFactory>();
+                var jobHostServices = new ServiceCollection();
 
-                childScopedConstructor1 = scope.ServiceProvider.GetService<ScopedConstructor>();
-                childScopedFactory1 = scope.ServiceProvider.GetService<ScopedFactory>();
+                jobHostServices.AddSingleton<SingletonConstructor>();
+                jobHostServices.AddSingleton<SingletonFactory>(p => new SingletonFactory(p));
+
+                jobHostServices.AddScoped<ScopedConstructor>();
+                jobHostServices.AddScoped<ScopedFactory>(p => new ScopedFactory(p));
+
+                IServiceProvider jobHostProvider = new JobHostServiceProvider(jobHostServices, rootContainer, rootScopeFactory);
+
+                // Resolve some root services
+                SingletonConstructor rootSingletonConstructor = jobHostProvider.GetService<SingletonConstructor>();
+                SingletonFactory rootSingletonFactory = jobHostProvider.GetService<SingletonFactory>();
+                ScopedConstructor rootScopedConstructor = jobHostProvider.GetService<ScopedConstructor>();
+                ScopedFactory rootScopedFactory = jobHostProvider.GetService<ScopedFactory>();
+
+                // Resolve some child scope services
+                SingletonConstructor childSingletonConstructor1;
+                SingletonFactory childSingletonFactory1;
+                ScopedConstructor childScopedConstructor1;
+                ScopedFactory childScopedFactory1;
+
+                using (var scope = jobHostProvider.CreateScope())
+                {
+                    childSingletonConstructor1 = scope.ServiceProvider.GetService<SingletonConstructor>();
+                    childSingletonFactory1 = scope.ServiceProvider.GetService<SingletonFactory>();
+
+                    childScopedConstructor1 = scope.ServiceProvider.GetService<ScopedConstructor>();
+                    childScopedFactory1 = scope.ServiceProvider.GetService<ScopedFactory>();
+                }
+
+                // Do it again
+                SingletonConstructor childSingletonConstructor2;
+                SingletonFactory childSingletonFactory2;
+                ScopedConstructor childScopedConstructor2;
+                ScopedFactory childScopedFactory2;
+
+                using (var scope = jobHostProvider.CreateScope())
+                {
+                    childSingletonConstructor2 = scope.ServiceProvider.GetService<SingletonConstructor>();
+                    childSingletonFactory2 = scope.ServiceProvider.GetService<SingletonFactory>();
+
+                    childScopedConstructor2 = scope.ServiceProvider.GetService<ScopedConstructor>();
+                    childScopedFactory2 = scope.ServiceProvider.GetService<ScopedFactory>();
+                }
+
+                // Ensure all ServiceProviders for Singletons are the same.
+                Assert.Same(rootSingletonConstructor.ServiceProvider, childSingletonConstructor1.ServiceProvider);
+                Assert.Same(childSingletonConstructor1.ServiceProvider, rootSingletonFactory.ServiceProvider);
+                Assert.Same(rootSingletonFactory.ServiceProvider, childSingletonFactory1.ServiceProvider);
+
+                // The root ServiceProviders for Scoped should also be the same.
+                Assert.Same(childSingletonFactory1.ServiceProvider, rootScopedConstructor.ServiceProvider);
+                Assert.Same(rootScopedConstructor.ServiceProvider, rootScopedFactory.ServiceProvider);
+
+                // Root and child should not match for Scoped
+                Assert.NotSame(rootScopedConstructor.ServiceProvider, childScopedConstructor1.ServiceProvider);
+                Assert.NotSame(rootScopedFactory.ServiceProvider, childScopedFactory1.ServiceProvider);
+
+                // Both Scopes should match
+                Assert.Same(childScopedConstructor1.ServiceProvider, childScopedFactory1.ServiceProvider);
+                Assert.Same(childScopedConstructor2.ServiceProvider, childScopedFactory2.ServiceProvider);
+
+                // But not between scopes
+                Assert.NotSame(childScopedConstructor1.ServiceProvider, childScopedConstructor2.ServiceProvider);
+                Assert.NotSame(childScopedFactory1.ServiceProvider, childScopedFactory2.ServiceProvider);
+
+                // Roots and Singletons are not disposed
+                rootSingletonConstructor.DoSomething();
+                rootSingletonFactory.DoSomething();
+                rootScopedConstructor.DoSomething();
+                rootScopedFactory.DoSomething();
+                childSingletonConstructor1.DoSomething();
+                childSingletonFactory1.DoSomething();
+                childSingletonConstructor2.DoSomething();
+                childSingletonFactory2.DoSomething();
+
+                // Child scopes are disposed.
+                Assert.Throws<ContainerException>(() => childScopedConstructor1.DoSomething());
+                Assert.Throws<ContainerException>(() => childScopedFactory1.DoSomething());
+                Assert.Throws<ContainerException>(() => childScopedConstructor2.DoSomething());
+                Assert.Throws<ContainerException>(() => childScopedFactory2.DoSomething());
             }
-
-            // Do it again
-            SingletonConstructor childSingletonConstructor2;
-            SingletonFactory childSingletonFactory2;
-            ScopedConstructor childScopedConstructor2;
-            ScopedFactory childScopedFactory2;
-
-            using (var scope = jobHostProvider.CreateScope())
-            {
-                childSingletonConstructor2 = scope.ServiceProvider.GetService<SingletonConstructor>();
-                childSingletonFactory2 = scope.ServiceProvider.GetService<SingletonFactory>();
-
-                childScopedConstructor2 = scope.ServiceProvider.GetService<ScopedConstructor>();
-                childScopedFactory2 = scope.ServiceProvider.GetService<ScopedFactory>();
-            }
-
-            // Ensure all ServiceProviders for Singletons are the same.
-            Assert.Same(rootSingletonConstructor.ServiceProvider, childSingletonConstructor1.ServiceProvider);
-            Assert.Same(childSingletonConstructor1.ServiceProvider, rootSingletonFactory.ServiceProvider);
-            Assert.Same(rootSingletonFactory.ServiceProvider, childSingletonFactory1.ServiceProvider);
-
-            // The root ServiceProviders for Scoped should also be the same.
-            Assert.Same(childSingletonFactory1.ServiceProvider, rootScopedConstructor.ServiceProvider);
-            Assert.Same(rootScopedConstructor.ServiceProvider, rootScopedFactory.ServiceProvider);
-
-            // Root and child should not match for Scoped
-            Assert.NotSame(rootScopedConstructor.ServiceProvider, childScopedConstructor1.ServiceProvider);
-            Assert.NotSame(rootScopedFactory.ServiceProvider, childScopedFactory1.ServiceProvider);
-
-            // Both Scopes should match
-            Assert.Same(childScopedConstructor1.ServiceProvider, childScopedFactory1.ServiceProvider);
-            Assert.Same(childScopedConstructor2.ServiceProvider, childScopedFactory2.ServiceProvider);
-
-            // But not between scopes
-            Assert.NotSame(childScopedConstructor1.ServiceProvider, childScopedConstructor2.ServiceProvider);
-            Assert.NotSame(childScopedFactory1.ServiceProvider, childScopedFactory2.ServiceProvider);
-
-            // Roots and Singletons are not disposed
-            rootSingletonConstructor.DoSomething();
-            rootSingletonFactory.DoSomething();
-            rootScopedConstructor.DoSomething();
-            rootScopedFactory.DoSomething();
-            childSingletonConstructor1.DoSomething();
-            childSingletonFactory1.DoSomething();
-            childSingletonConstructor2.DoSomething();
-            childSingletonFactory2.DoSomething();
-
-            // Child scopes are disposed.
-            Assert.Throws<ContainerException>(() => childScopedConstructor1.DoSomething());
-            Assert.Throws<ContainerException>(() => childScopedFactory1.DoSomething());
-            Assert.Throws<ContainerException>(() => childScopedConstructor2.DoSomething());
-            Assert.Throws<ContainerException>(() => childScopedFactory2.DoSomething());
         }
 
         private static (IServiceProvider Default, IServiceProvider JobHost) SetupProviders(params ServiceLifetime[] lifetimes)
