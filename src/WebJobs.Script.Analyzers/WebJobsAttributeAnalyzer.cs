@@ -1,5 +1,9 @@
-﻿using Microsoft.Azure.WebJobs;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace Microsoft.Azure.Functions.Analyzers
@@ -20,7 +25,10 @@ namespace Microsoft.Azure.Functions.Analyzers
         // TODO: Scope this to per-project
         JobHostMetadataProvider _tooling;
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(DiagnosticDescriptors.IllegalFunctionName); } }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(
+            DiagnosticDescriptors.IllegalFunctionName,
+            DiagnosticDescriptors.BadBindingExpressionSyntax,
+            DiagnosticDescriptors.FailedValidation); } }
 
     public static void VerifyWebJobsLoaded() 
         {
@@ -28,7 +36,7 @@ namespace Microsoft.Azure.Functions.Analyzers
         }
 
         public override void Initialize(AnalysisContext context)
-        {
+            {
             // https://stackoverflow.com/questions/62638455/analyzer-with-code-fix-project-template-is-broken
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
@@ -87,7 +95,59 @@ namespace Microsoft.Azure.Functions.Analyzers
                 return;
             }
 
-            // TODO: Attribute validation
+            // Go through
+            var parameterList = methodDecl.ParameterList;
+
+            foreach (ParameterSyntax parameterSyntax in parameterList.Parameters)
+            {
+                // No symbol fort he parameter; just the parameter's type
+                // Lazily do this - only do this if we're actually looking at a webjobs parameter.
+                Type parameterType = null;
+
+                // Now validate each parameter in the method.
+                foreach (var attrListSyntax in parameterSyntax.AttributeLists)
+                {
+                    foreach (AttributeSyntax attributeSyntax in attrListSyntax.Attributes)
+                    {
+                        var sym = context.SemanticModel.GetSymbolInfo(attributeSyntax);
+
+                        var sym2 = sym.Symbol;
+                        if (sym2 == null)
+                        {
+                            return; // compilation error
+                        }
+
+                        try
+                        {
+                            // Major call to instantiate a reflection Binding attribute from a symbol.
+                            // Need this so we can pass the attribute to WebJobs's binding engine.
+                            // throws if fails to instantiate
+                            Attribute attribute = ReflectionHelpers.MakeAttr(_tooling, context.SemanticModel, attributeSyntax);
+                            if (attribute == null)
+                            {
+                                continue;
+                            }
+
+                            // At this point, we know we're looking at a webjobs parameter.
+                            if (parameterType == null)
+                            {
+                                parameterType = ReflectionHelpers.GetParameterType(context, parameterSyntax);
+                                if (parameterType == null)
+                                {
+                                    return; // errors in signature
+                                }
+                            }
+
+                            // Report errors from invalid attribute properties.
+                            ValidateAttribute(context, attribute, attributeSyntax);
+                        }
+                        catch (Exception e)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         // First argument to the FunctionName ctor.
@@ -136,6 +196,136 @@ namespace Microsoft.Azure.Functions.Analyzers
                 }
             }
             return false;
+        }
+
+        // Given an instantiated attribute, run the validators on it and report back any errors.
+        // Attribute is the live attribute, constructed from the attributeSyntax node in the user's source code.
+        private void ValidateAttribute(SyntaxNodeAnalysisContext context, Attribute attribute, AttributeSyntax attributeSyntax)
+        {
+            SemanticModel semantics = context.SemanticModel;
+            Type attributeType = attribute.GetType();
+
+            IMethodSymbol symAttributeCtor = (IMethodSymbol)semantics.GetSymbolInfo(attributeSyntax).Symbol;
+            var syntaxParams = symAttributeCtor.Parameters;
+
+            int idx = 0;
+            if (attributeSyntax.ArgumentList != null)
+            {
+                foreach (AttributeArgumentSyntax arg in attributeSyntax.ArgumentList.Arguments)
+                {
+                    string argName = null;
+                    if (arg.NameColon != null)
+                    {
+                        argName = arg.NameColon.Name.ToString();
+                    }
+                    else if (arg.NameEquals != null)
+                    {
+                        argName = arg.NameEquals.Name.ToString();
+                    }
+                    else
+                    {
+                        argName = syntaxParams[idx].Name; // Positional
+                    }
+
+                    PropertyInfo propInfo = attributeType.GetProperty(argName, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
+                    if (propInfo != null) 
+                    {
+                        ValidateAttributeProperty(context, attribute, propInfo, arg);
+                    }
+
+                    idx++;
+                }
+            }
+        }
+
+        // Validate an individual property on the attribute
+        // propInfo is a property on the attribute.
+        private void ValidateAttributeProperty(SyntaxNodeAnalysisContext context, Attribute attribute, PropertyInfo propInfo, AttributeArgumentSyntax attributeSyntax)
+        {
+            var value = propInfo.GetValue(attribute);
+            var propertyAttributes = propInfo.GetCustomAttributes();
+
+            // First validate [AutoResolve] and [AppSetting].
+            // Then do validators.
+            bool isAutoResolve = false;
+            bool isAppSetting = false;
+            MethodInfo validator = null;
+            Attribute validatorAttribute = null;
+
+            foreach (Attribute propertyAttribute in propertyAttributes)
+            {
+                // AutoResolve and AppSetting are exclusive.
+                // TODO: Does GetType() really have to be called three times?
+                if (propertyAttribute.GetType() == typeof(Microsoft.Azure.WebJobs.Description.AutoResolveAttribute))
+                {
+                    isAutoResolve = true;
+                }
+                if (propertyAttribute.GetType() == typeof(Microsoft.Azure.WebJobs.Description.AppSettingAttribute))
+                {
+                    isAppSetting = true;
+                }
+
+                if (validator == null)
+                {
+                    validator = propertyAttribute.GetType().GetMethod("Validate", new Type[] { typeof(object), typeof(string) });
+                    validatorAttribute = propertyAttribute;
+                }
+            }
+
+            // Now apply error checks in order.
+            if (isAutoResolve)
+            {
+                // Value should parse with { } and %%
+                try
+                {
+                    if (value is string valueStr)
+                    {
+                        var template = Microsoft.Azure.WebJobs.Host.Bindings.Path.BindingTemplate.FromString(valueStr);
+                        if (template.HasParameters)
+                        {
+                            // The validator runs after the { } and %% are substituted.
+                            // But {} and %% may be illegal characters, so we can't validate with them.
+                            // So skip validation.
+                            // TODO - could we have some "dummy" substitution so that we can still do validation?
+                            return;
+                        }
+                    }
+                }
+                catch (FormatException e)
+                {
+                    // Parse error
+                    var error = Diagnostic.Create(DiagnosticDescriptors.BadBindingExpressionSyntax, attributeSyntax.GetLocation(), propInfo.Name, value, e.Message);
+                    context.ReportDiagnostic(error);
+                    return;
+                }
+            }
+            else if (isAppSetting)
+            {
+                // TODO - validate the appsetting. In local.json? etc?
+            }
+
+            if (validator != null)
+            {
+                // Run Validators.
+                //   If this is an autoresolve/appsetting, technically we should do the runtime substitution
+                // for the %appsetting% and {key} tokens.
+
+                // We'd like to get all attributes deriving from ValidationAttribute.
+                // But that's net20, and the analyzer is net451, so we can't reference the right type.
+                // Need to do a dynamic dispatch to ValidationAttribute.Validate(object,string).
+
+                try
+                {
+                    // attr.Validate(value, propInfo.Name);
+                    validator.Invoke(validatorAttribute, new object[] { value, propInfo.Name });
+                }
+                catch (TargetInvocationException te)
+                {
+                    var ex = te.InnerException;
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.FailedValidation, attributeSyntax.GetLocation(), propInfo.Name, value, ex.Message);
+                    context.ReportDiagnostic(diagnostic);
+                }
+            }
         }
     }
 }

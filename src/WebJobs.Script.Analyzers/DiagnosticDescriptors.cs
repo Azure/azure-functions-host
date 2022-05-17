@@ -33,5 +33,17 @@ namespace Microsoft.Azure.Functions.Analyzers
                 messageFormat: "Function name can't be '{0}'",
                 category: Constants.DiagnosticsCategories.WebJobs,
                 severity: DiagnosticSeverity.Error);
+
+        public static DiagnosticDescriptor BadBindingExpressionSyntax { get; }
+            = Create(id: "AZF0004", title: "Illegal binding expression syntax",
+                messageFormat: "{0} can't be value '{1}': {2}",
+                category: Constants.DiagnosticsCategories.WebJobs,
+                severity: DiagnosticSeverity.Warning);
+
+        public static DiagnosticDescriptor FailedValidation { get; }
+            = Create(id: "AZF0005", title: "Illegal binding type",
+                messageFormat: "{0} can't be value '{1}': {2}",
+                category: Constants.DiagnosticsCategories.WebJobs,
+                severity: DiagnosticSeverity.Warning);
     }
 }

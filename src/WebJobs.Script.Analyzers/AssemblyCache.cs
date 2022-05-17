@@ -129,6 +129,56 @@ namespace Microsoft.Azure.Functions.Analyzers
             }
         }
 
+        public bool TryMapAssembly(IAssemblySymbol asm, out Assembly asmRef)
+        {
+            // Top-level map only supports mscorlib, webjobs, or extensions
+            var asmName = asm.Identity.Name;
+
+            Assembly asm2;
+            if (_mapRef.TryGetValue(asmName, out asm2))
+            {
+                asmRef = asm2;
+                return true;
+            }
+
+            // Is this an extension? Must have a reference to WebJobs
+            bool isWebJobsAssembly = false;
+            foreach (var module in asm.Modules)
+            {
+                foreach (var asmReference in module.ReferencedAssemblies)
+                {
+                    if (asmReference.Name == WebJobsAssemblyName)
+                    {
+                        isWebJobsAssembly = true;
+                        goto Done;
+                    }
+                }
+            }
+            Done:
+            if (!isWebJobsAssembly)
+            {
+                asmRef = null;
+                return false;
+            }
+
+            foreach (var kv in _map)
+            {
+                var path = kv.Value;
+                var shortName = Path.GetFileNameWithoutExtension(path);
+
+                if (string.Equals(asmName, shortName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var asm3 = Assembly.LoadFile(path);
+                    _mapRef[asmName] = asm3;
+
+                    asmRef = asm3;
+                    return true;
+                }
+            }
+
+            throw new NotImplementedException();
+        }
+
         public void Register()
         {
             if (_registered)

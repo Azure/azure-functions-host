@@ -26,6 +26,7 @@ namespace Microsoft.Azure.Functions.Analyzers
 
         public Type[] GetStartupTypes()
         {
+            var types = _startupTypes.Value;
             return _startupTypes.Value;
         }
 
