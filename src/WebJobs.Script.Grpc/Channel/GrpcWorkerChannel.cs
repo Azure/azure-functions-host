@@ -883,7 +883,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 var gracePeriod = TimeSpan.FromMilliseconds((double)WorkerConstants.ProcessExitTimeoutInMilliseconds);
 
-                WorkerTerminate workerTerminateRequest = new WorkerTerminate()
+                var workerTerminate = new WorkerTerminate()
                 {
                     GracePeriod = Duration.FromTimeSpan(gracePeriod)
                 };
@@ -892,7 +892,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
                 SendStreamingMessage(new StreamingMessage
                 {
-                    WorkerTerminate = workerTerminateRequest
+                    WorkerTerminate = workerTerminate
                 });
             }
         }

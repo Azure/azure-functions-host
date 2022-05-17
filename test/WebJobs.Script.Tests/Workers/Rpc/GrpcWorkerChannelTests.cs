@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void WorkerChannel_Dispose_With_WorkerTerminate()
+        public void WorkerChannel_Dispose_With_WorkerTerminateCapability()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
@@ -156,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void WorkerChannel_Dispose_Without_WorkerTerminate()
+        public void WorkerChannel_Dispose_Without_WorkerTerminateCapability()
         {
             var initTask = _workerChannel.StartWorkerProcessAsync(CancellationToken.None);
 
