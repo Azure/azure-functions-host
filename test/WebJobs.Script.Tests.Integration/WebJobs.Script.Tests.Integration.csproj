@@ -35,7 +35,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.DependencyCollector" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
-    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.7" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.8" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Core" Version="5.2.6">
       <NoWarn>NU1701</NoWarn>
     </PackageReference>
@@ -85,7 +85,7 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -94,11 +94,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  
+
   <ItemGroup>
     <Folder Include="TestScripts\Empty\" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Include="ScriptHostEndToEnd\ListenerFailureTests.cs" />
     <None Include="ServiceBus\ServiceBusEndToEndTestBase.cs" />
@@ -106,20 +106,20 @@
     <None Include="ServiceBus\ServiceBusTriggerNodeEndToEndTests.cs" />
     <None Include="Twilio\TwilioEndToEndTestsBase.cs" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <Content Update="Management\Payload\DurableMsSQLProviderPayload.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-   
+
   <Import Project="..\..\build\GrpcTestFix.targets" />
   <Import Project="..\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems" Label="Shared" />
 
-  <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->  
+  <!-- Ensure this is built for tests; we cannot have a project reference due to conflicting nuget references -->
   <Target Name="BuildTestProjects" AfterTargets="Build">
     <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Restore" />
     <MSBuild Projects="..\CSharpPrecompiledTestProjects\CSharpPrecompiledTestProjects.sln" Targets="Publish" Properties="Configuration=Debug" />
   </Target>
-  
+
 </Project>
