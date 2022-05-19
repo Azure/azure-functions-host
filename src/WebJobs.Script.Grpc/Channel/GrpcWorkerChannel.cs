@@ -882,22 +882,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         public void StopWorkerProcessAsync()
         {
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
-            if (capabilityEnabled)
+            if (!capabilityEnabled)
             {
-                var gracePeriod = TimeSpan.FromMilliseconds((double)WorkerConstants.ProcessExitTimeoutInMilliseconds);
-
-                var workerTerminate = new WorkerTerminate()
-                {
-                    GracePeriod = Duration.FromTimeSpan(gracePeriod)
-                };
-
-                _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInMilliseconds}.");
-
-                SendStreamingMessage(new StreamingMessage
-                {
-                    WorkerTerminate = workerTerminate
-                });
+                return;
             }
+
+            var workerTerminate = new WorkerTerminate()
+            {
+                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(WorkerConstants.ProcessExitTimeoutInSeconds))
+            };
+
+            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInSeconds} seconds.");
+
+            SendStreamingMessage(new StreamingMessage
+            {
+                WorkerTerminate = workerTerminate
+            });
         }
 
         public async Task DrainInvocationsAsync()

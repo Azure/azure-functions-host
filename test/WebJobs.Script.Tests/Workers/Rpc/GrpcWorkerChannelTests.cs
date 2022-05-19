@@ -172,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInMilliseconds}.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInSeconds} seconds.";
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
@@ -183,7 +183,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
             _workerChannel.Dispose();
             var traces = _logger.GetLogMessages();
-            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInMilliseconds}.";
+            var expectedLogMsg = $"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInSeconds} seconds.";
             Assert.False(traces.Any(m => string.Equals(m.FormattedMessage, expectedLogMsg)));
         }
 
