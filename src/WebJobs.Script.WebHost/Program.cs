@@ -95,12 +95,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private static void InitializeProcess()
         {
-            Timer tTimer = null;
-            tTimer = new Timer(
+            if (SystemEnvironment.Instance.IsKubernetesManagedHosting()) {
+                Timer tTimer = null;
+                    tTimer = new Timer(
                         new TimerCallback(LogVersions),
                         null,
-                        5000,
-                        5000);
+                        15000,
+                        15000);
+            }
             if (SystemEnvironment.Instance.IsLinuxConsumption())
             {
                 AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledExceptionInLinuxConsumption;
