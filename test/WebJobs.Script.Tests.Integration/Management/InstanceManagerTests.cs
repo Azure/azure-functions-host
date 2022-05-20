@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -211,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
             var optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(options);
 
-            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
                 .Returns(Task.FromResult(string.Empty));
 
             var instanceManager = new InstanceManager(optionsFactory, _httpClientFactory, _scriptWebEnvironment,
