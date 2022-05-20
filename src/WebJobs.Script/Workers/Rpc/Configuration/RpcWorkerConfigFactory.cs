@@ -128,11 +128,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     workerDescription.WorkerDirectory = workerDir;
 
                     //Read the profiles from worker description and load the profile for which the conditions match
-                    List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(workerConfig);
-                    if (workerDescriptionProfiles.Count > 0)
+                    var profilesJToken = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
+                    if (profilesJToken != null)
                     {
-                        _profileManager.SaveWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
-                        _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                        List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profilesJToken);
+                        if (workerDescriptionProfiles.Count > 0)
+                        {
+                            _profileManager.SaveWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                            _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                        }
                     }
 
                     // Check if any appsettings are provided for that langauge
@@ -176,9 +180,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JObject workerConfig)
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JToken profilesJToken)
         {
-            var profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles).ToObject<IList<WorkerProfileDescriptor>>();
+            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
 
             if (profiles == null || profiles.Count <= 0)
             {

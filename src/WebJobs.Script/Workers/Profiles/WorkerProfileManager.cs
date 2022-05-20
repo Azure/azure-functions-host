@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
+    // The default profile manager that manages profiles from language workers
     internal class WorkerProfileManager : IWorkerProfileManager
     {
         private readonly ILogger _logger;
@@ -16,19 +17,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
         private string _activeProfile;
 
-        public WorkerProfileManager(ILogger logger,
-                                             IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
             _activeProfile = string.Empty;
         }
 
+        /// <inheritdoc />
         public void SaveWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language)
         {
             _profiles.Add(language, workerDescriptionProfiles);
         }
 
+        // Evaluate profile conditions for a language
         private bool GetEvaluatedProfile(string language, out WorkerDescriptionProfile evaluatedProfile)
         {
             if (_profiles.TryGetValue(language, out List<WorkerDescriptionProfile> profiles))
@@ -46,6 +48,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return false;
         }
 
+        /// <inheritdoc />
         public void LoadWorkerDescriptionFromProfiles(RpcWorkerDescription defaultWorkerDescription, out RpcWorkerDescription workerDescription)
         {
             if (GetEvaluatedProfile(defaultWorkerDescription.Language, out WorkerDescriptionProfile profile))
@@ -53,10 +56,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
                 _activeProfile = profile.ProfileId;
                 workerDescription = profile.ApplyProfile(defaultWorkerDescription);
+                return;
             }
             workerDescription = defaultWorkerDescription;
         }
 
+        /// <inheritdoc />
         public bool TryCreateWorkerProfileCondition(WorkerProfileConditionDescriptor conditionDescriptor, out IWorkerProfileCondition condition)
         {
             foreach (var provider in _conditionProviders)
@@ -73,6 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return false;
         }
 
+        /// <inheritdoc />
         public bool IsCorrectProfileLoaded(string workerRuntime)
         {
             var profileId = string.Empty;

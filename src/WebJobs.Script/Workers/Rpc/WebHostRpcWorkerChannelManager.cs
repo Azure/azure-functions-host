@@ -33,7 +33,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IConfiguration config, IWorkerProfileManager profileManager)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager,
+                                              IEnvironment environment,
+                                              ILoggerFactory loggerFactory,
+                                              IRpcWorkerChannelFactory rpcWorkerChannelFactory,
+                                              IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+                                              IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+                                              IConfiguration config,
+                                              IWorkerProfileManager profileManager)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;

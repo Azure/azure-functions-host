@@ -3,8 +3,12 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
+    // Interface for different types of conditions
     public interface IWorkerProfileCondition
     {
+        /// <summary>
+        /// Check if different condition type meet their criteria
+        /// </summary>
         bool Evaluate();
     }
 }

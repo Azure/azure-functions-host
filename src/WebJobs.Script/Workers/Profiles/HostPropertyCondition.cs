@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
+    // HostPropertycondition checks if host match the expected output for properties such as Sku, Platform, HostVersion
     internal class HostPropertyCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
@@ -35,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             Validate();
         }
 
-        public enum ConditionHostPropertyName
+        public enum HostProperty
         {
             Sku,
             Platform,
@@ -46,24 +47,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string Expression => _expression;
 
+        /// <inheritdoc />
         public bool Evaluate()
         {
-            string value = string.Empty;
-            Enum.TryParse(Name, out ConditionHostPropertyName hostPropertyName);
-            switch (hostPropertyName)
+            Enum.TryParse(Name, out HostProperty hostPropertyName);
+
+            string value = hostPropertyName switch
             {
-                case ConditionHostPropertyName.Sku:
-                    value = ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteSku);
-                    break;
-                case ConditionHostPropertyName.Platform:
-                    value = _systemRuntimeInformation.GetOSPlatform().ToString();
-                    break;
-                case ConditionHostPropertyName.HostVersion:
-                    value = ScriptHost.Version;
-                    break;
-                default:
-                    break;
-            }
+                HostProperty.Sku => ScriptSettingsManager.Instance.GetSetting(EnvironmentSettingNames.AzureWebsiteSku),
+                HostProperty.Platform => _systemRuntimeInformation.GetOSPlatform().ToString(),
+                HostProperty.HostVersion => ScriptHost.Version,
+                _ => null
+            };
 
             if (string.IsNullOrEmpty(value))
             {
@@ -75,14 +70,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             return _regex.IsMatch(value);
         }
 
-        public void Validate()
+        // Validates if condition parametrs meet expected values, fail if they don't
+        internal void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
             }
 
-            if (!Enum.GetNames(typeof(ConditionHostPropertyName)).Any(x => x.ToLower().Contains(Name)))
+            if (!Enum.GetNames(typeof(HostProperty)).Any(x => x.ToLower().Contains(Name)))
             {
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
             }

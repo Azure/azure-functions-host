@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
+    // Environment condition checks if environment variables match the expected output
     public class EnvironmentCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
@@ -37,20 +38,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string Expression => _expression;
 
+        /// <inheritdoc />
         public bool Evaluate()
         {
             string value = _environment.GetEnvironmentVariable(Name);
+
             if (string.IsNullOrEmpty(value))
             {
                 return false;
             }
 
-            _logger.LogDebug($"Evaluating EnvironmentCondition with value: {value} and expression {Expression}");
+            _logger.LogDebug($"Evaluating EnvironmentCondition with value '{value}' and expression '{Expression}'");
 
             return _regex.IsMatch(value);
         }
 
-        public void Validate()
+        // Validates if condition parametrs meet expected values, fail if they don't
+        internal void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {

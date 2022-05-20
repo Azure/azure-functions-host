@@ -69,15 +69,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// <summary>
         /// Overrides the worker description parameters to that available in the profile
         /// </summary>
-        public RpcWorkerDescription ApplyProfile(RpcWorkerDescription defaultWorkerDescription)
+        public RpcWorkerDescription ApplyProfile(RpcWorkerDescription workerDescription)
         {
-            defaultWorkerDescription.Arguments = UseProfileOrDefault(ProfileDescription.Arguments, defaultWorkerDescription.Arguments);
-            defaultWorkerDescription.DefaultExecutablePath = UseProfileOrDefault(ProfileDescription.DefaultExecutablePath, defaultWorkerDescription.DefaultExecutablePath);
-            defaultWorkerDescription.DefaultWorkerPath = UseProfileOrDefault(ProfileDescription.DefaultWorkerPath, defaultWorkerDescription.DefaultWorkerPath);
-            defaultWorkerDescription.Extensions = UseProfileOrDefault(ProfileDescription.Extensions, defaultWorkerDescription.Extensions) as List<string>;
-            defaultWorkerDescription.Language = UseProfileOrDefault(ProfileDescription.Language, defaultWorkerDescription.Language);
-            defaultWorkerDescription.WorkerDirectory = UseProfileOrDefault(ProfileDescription.WorkerDirectory, defaultWorkerDescription.WorkerDirectory);
-            return defaultWorkerDescription;
+            workerDescription.Arguments = UseProfileOrDefault(ProfileDescription.Arguments, workerDescription.Arguments);
+            workerDescription.DefaultExecutablePath = UseProfileOrDefault(ProfileDescription.DefaultExecutablePath, workerDescription.DefaultExecutablePath);
+            workerDescription.DefaultWorkerPath = UseProfileOrDefault(ProfileDescription.DefaultWorkerPath, workerDescription.DefaultWorkerPath);
+            workerDescription.Extensions = UseProfileOrDefault(ProfileDescription.Extensions, workerDescription.Extensions) as List<string>;
+            workerDescription.Language = UseProfileOrDefault(ProfileDescription.Language, workerDescription.Language);
+            workerDescription.WorkerDirectory = UseProfileOrDefault(ProfileDescription.WorkerDirectory, workerDescription.WorkerDirectory);
+            return workerDescription;
         }
 
         private string UseProfileOrDefault(string profileParameter, string defaultParameter)

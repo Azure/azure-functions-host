@@ -20,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
         }
 
+        /// <inheritdoc />
         public bool TryCreateCondition(WorkerProfileConditionDescriptor descriptor, out IWorkerProfileCondition condition)
         {
             condition = descriptor.Type switch
