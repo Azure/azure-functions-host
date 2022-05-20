@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -40,11 +41,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
 
-        public async Task<string> Download(RunFromPackageContext pkgContext)
+        public async Task<string> Download(RunFromPackageContext pkgContext, IFileSystem fileSystem = null)
         {
             if (pkgContext.IsRunFromLocalPackage())
             {
-                 return CopyPackageFile();
+                 return CopyPackageFile(fileSystem);
             }
 
             if (Utility.TryCleanUrl(pkgContext.Url, out var cleanedUrl))
@@ -223,22 +224,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
-        private string CopyPackageFile()
+        private string CopyPackageFile(IFileSystem fileSystem = null)
         {
+            fileSystem ??= FileUtility.Instance;
             var packageFolderPath = _environment.GetSitePackagesPath();
 
-            if (!Directory.Exists(packageFolderPath))
+            if (!fileSystem.Directory.Exists(packageFolderPath))
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
             }
 
             var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
-            if (!File.Exists(packageNameTxtPath))
+            if (!fileSystem.File.Exists(packageNameTxtPath))
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
             }
 
-            var packageFileName = File.ReadAllText(packageNameTxtPath);
+            var packageFileName = fileSystem.File.ReadAllText(packageNameTxtPath);
 
             if (string.IsNullOrEmpty(packageFileName))
             {
@@ -246,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
 
             var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
-            if (!File.Exists(packageFilePath))
+            if (!fileSystem.File.Exists(packageFilePath))
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
             }
@@ -257,11 +259,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
             }
 
-            var tmpPath = Path.GetTempPath();
-            var fileName = Path.GetFileName(packageFileName);
-            var filePath = Path.Combine(tmpPath, fileName);
+            var tmpPath = fileSystem.Path.GetTempPath();
+            var fileName = fileSystem.Path.GetFileName(packageFileName);
+            var filePath = fileSystem.Path.Combine(tmpPath, fileName);
 
-            File.Copy(packageFilePath, filePath, true);
+            fileSystem.File.Copy(packageFilePath, filePath, true);
 
             _logger.LogInformation($"{nameof(CopyPackageFile)} was successfull. {packageFileName} was copied to {filePath}.");
 

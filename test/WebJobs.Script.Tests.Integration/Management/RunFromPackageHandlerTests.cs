@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Abstractions;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -398,7 +399,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             if (throwOnFailure)
             {
-                _packageDownloadHandler.Setup(h => h.Download(It.IsAny<RunFromPackageContext>()))
+                _packageDownloadHandler.Setup(h => h.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
                     .Returns(Task.FromResult(string.Empty));
                 await Assert.ThrowsAsync<NullReferenceException>(async () =>
                     await _runFromPackageHandler.ApplyRunFromPackageContext(null, string.Empty, true, throwOnFailure));
@@ -563,7 +564,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                 });
 
             _httpClient = new HttpClient(handlerMock.Object);
-            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>()))
+            _packageDownloadHandler.Setup(p => p.Download(It.IsAny<RunFromPackageContext>(), It.IsAny<IFileSystem>()))
                 .Returns(Task.FromResult(string.Empty));
 
             var downloadHandler = new PackageDownloadHandler(_httpClient,
