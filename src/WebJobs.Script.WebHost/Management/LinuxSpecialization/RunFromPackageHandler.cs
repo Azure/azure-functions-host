@@ -22,20 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IMeshServiceClient _meshServiceClient;
         private readonly IBashCommandHandler _bashCommandHandler;
         private readonly IUnZipHandler _unZipHandler;
-        private readonly IPackageCopyHandler _packageCopyHandler;
         private readonly IPackageDownloadHandler _packageDownloadHandler;
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger<RunFromPackageHandler> _logger;
 
         public RunFromPackageHandler(IEnvironment environment, IMeshServiceClient meshServiceClient,
-            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageCopyHandler packageCopyHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
+            IBashCommandHandler bashCommandHandler, IUnZipHandler unZipHandler, IPackageDownloadHandler packageDownloadHandler, IMetricsLogger metricsLogger, ILogger<RunFromPackageHandler> logger)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _meshServiceClient = meshServiceClient ?? throw new ArgumentNullException(nameof(meshServiceClient));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
             _unZipHandler = unZipHandler ?? throw new ArgumentNullException(nameof(unZipHandler));
             _packageDownloadHandler = packageDownloadHandler ?? throw new ArgumentNullException(nameof(packageDownloadHandler));
-            _packageCopyHandler = packageCopyHandler ?? throw new ArgumentNullException(nameof(packageCopyHandler));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -53,29 +51,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         EnvironmentSettingNames.DefaultLocalSitePackagesPath)
                     : string.Empty;
 
-                string filePath;
-
-                if (!pkgContext.IsRunFromLocalPackage())
-                {
-                    // download zip
-                    filePath = await _packageDownloadHandler.Download(pkgContext);
-                }
-                else
-                {
-                    _logger.LogInformation($"{nameof(ApplyRunFromPackageContext)}: Going to copy package file.");
-                    if (!azureFilesMounted)
-                    {
-                        _logger.LogWarning($"{nameof(ApplyRunFromPackageContext)} failed. FileShareMount is required when RunFromPackage is 1.");
-                    }
-
-                    // copy zip
-                    filePath = _packageCopyHandler.CopyPackageFile();
-
-                    if (string.IsNullOrEmpty(filePath))
-                    {
-                        return false;
-                    }
-                }
+                // download zip
+                string filePath = await _packageDownloadHandler.Download(pkgContext);
 
                 // extract zip
                 await UnpackPackage(filePath, targetPath, pkgContext, localSitePackagesPath);
