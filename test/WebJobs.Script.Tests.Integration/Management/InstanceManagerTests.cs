@@ -40,7 +40,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         private readonly TestOptionsFactory<ScriptApplicationHostOptions> _optionsFactory = new TestOptionsFactory<ScriptApplicationHostOptions>(new ScriptApplicationHostOptions() { ScriptPath = Path.GetTempPath() });
         private readonly IRunFromPackageHandler _runFromPackageHandler;
         private readonly Mock<IPackageDownloadHandler> _packageDownloadHandler;
-        private readonly Mock<IPackageCopyHandler> _packageCopyHandler;
 
         public InstanceManagerTests()
         {
@@ -53,13 +52,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             _scriptWebEnvironment = new ScriptWebHostEnvironment(_environment);
             _meshServiceClientMock = new Mock<IMeshServiceClient>(MockBehavior.Strict);
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
-            _packageCopyHandler = new Mock<IPackageCopyHandler>(MockBehavior.Strict);
 
             var metricsLogger = new MetricsLogger();
             var bashCommandHandler = new BashCommandHandler(metricsLogger, new Logger<BashCommandHandler>(_loggerFactory));
             var zipHandler = new UnZipHandler(metricsLogger, NullLogger<UnZipHandler>.Instance);
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                bashCommandHandler, zipHandler, _packageCopyHandler.Object, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
+                bashCommandHandler, zipHandler, _packageDownloadHandler.Object, metricsLogger, new Logger<RunFromPackageHandler>(_loggerFactory));
 
             _instanceManager = new InstanceManager(_optionsFactory, _httpClient, _scriptWebEnvironment, _environment,
                 _loggerFactory.CreateLogger<InstanceManager>(), new TestMetricsLogger(), _meshServiceClientMock.Object, _runFromPackageHandler, _packageDownloadHandler.Object);

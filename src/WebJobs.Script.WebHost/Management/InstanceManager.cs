@@ -314,7 +314,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
             var options = _optionsFactory.Create(ScriptApplicationHostOptionsSetup.SkipPlaceholder);
             RunFromPackageContext pkgContext = assignmentContext.GetRunFromPkgContext();
 
-            if (_environment.SupportsAzureFileShareMount(pkgContext.Url))
+            if (_environment.SupportsAzureFileShareMount() || pkgContext.IsRunFromLocalPackage())
             {
                 var azureFilesMounted = false;
                 if (assignmentContext.IsAzureFilesContentShareConfigured(_logger))
@@ -347,7 +347,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     if (!azureFilesMounted)
                     {
-                        _logger.LogWarning("App Run-From-Package is set as '1'. AzureFiles is needed but is not configured.");
+                        var mountErrorMessage = "App Run-From-Package is set as '1'. AzureFiles is needed but is not configured.";
+                        _logger.LogWarning(mountErrorMessage);
+                        throw new Exception(mountErrorMessage);
                     }
 
                     var blobContextApplied =

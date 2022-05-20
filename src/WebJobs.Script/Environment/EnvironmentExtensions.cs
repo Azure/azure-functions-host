@@ -95,6 +95,16 @@ namespace Microsoft.Azure.WebJobs.Script
                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
+        public static string GetAzureWebsiteHomePath(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(AzureWebsiteHomePath);
+        }
+
+        public static string GetSitePackagesPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetAzureWebsiteHomePath(), ScriptConstants.DataFolderName, ScriptConstants.SitePackagesFolderName);
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
@@ -465,10 +475,10 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets a value indicating whether AzureFileShare should be mounted when specializing Linux Consumption workers.
         /// </summary>
-        public static bool SupportsAzureFileShareMount(this IEnvironment environment, string runFromPackageValue)
+        public static bool SupportsAzureFileShareMount(this IEnvironment environment)
         {
             return string.Equals(environment.GetFunctionsWorkerRuntime(), RpcWorkerConstants.PowerShellLanguageWorkerName,
-                StringComparison.OrdinalIgnoreCase) || string.Equals(runFromPackageValue, "1", StringComparison.OrdinalIgnoreCase);
+                StringComparison.OrdinalIgnoreCase);
         }
 
         public static string GetHttpLeaderEndpoint(this IEnvironment environment)

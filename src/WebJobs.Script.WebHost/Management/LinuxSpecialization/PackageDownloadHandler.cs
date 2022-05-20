@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+using DryIoc;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.WebHost.Models;
 using Microsoft.Extensions.Logging;
@@ -25,20 +26,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private readonly IBashCommandHandler _bashCommandHandler;
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IEnvironment _environment;
 
         public PackageDownloadHandler(HttpClient httpClient, IManagedIdentityTokenProvider managedIdentityTokenProvider,
-            IBashCommandHandler bashCommandHandler, ILogger<PackageDownloadHandler> logger,
+            IBashCommandHandler bashCommandHandler, IEnvironment environment, ILogger<PackageDownloadHandler> logger,
             IMetricsLogger metricsLogger)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
+            _environment = environment;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
 
         public async Task<string> Download(RunFromPackageContext pkgContext)
         {
+            if (pkgContext.IsRunFromLocalPackage())
+            {
+                 return CopyPackageFile();
+            }
+
             if (Utility.TryCleanUrl(pkgContext.Url, out var cleanedUrl))
             {
                 _logger.LogDebug("Downloading app contents from '{cleanedUrl}'", cleanedUrl);
@@ -213,6 +221,57 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 _logger.LogError(e, nameof(IsResourceAccessibleWithoutAuthorization));
                 return false;
             }
+        }
+
+        private string CopyPackageFile()
+        {
+            var packageFolderPath = _environment.GetSitePackagesPath();
+
+            if (!Directory.Exists(packageFolderPath))
+            {
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
+            }
+
+            var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
+            if (!File.Exists(packageNameTxtPath))
+            {
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
+            }
+
+            var packageFileName = File.ReadAllText(packageNameTxtPath);
+
+            if (string.IsNullOrEmpty(packageFileName))
+            {
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
+            }
+
+            var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
+            if (!File.Exists(packageFilePath))
+            {
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
+            }
+
+            var packageFileInfo = new FileInfo(packageFilePath);
+            if (packageFileInfo.Length == 0)
+            {
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
+            }
+
+            var tmpPath = Path.GetTempPath();
+            var fileName = Path.GetFileName(packageFileName);
+            var filePath = Path.Combine(tmpPath, fileName);
+
+            File.Copy(packageFilePath, filePath, true);
+
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successfull. {packageFileName} was copied to {filePath}.");
+
+            return filePath;
+        }
+
+        private void CopyPackageFileFailed(string message)
+        {
+            _logger.LogWarning(message);
+            throw new Exception(message);
         }
     }
 }

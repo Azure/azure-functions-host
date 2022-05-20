@@ -38,7 +38,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private readonly ILogger<RunFromPackageHandler> _logger;
         private readonly Mock<IUnZipHandler> _zipHandler;
         private readonly Mock<IPackageDownloadHandler> _packageDownloadHandler;
-        private readonly Mock<IPackageCopyHandler> _packageCopyHandler;
 
         private RunFromPackageHandler _runFromPackageHandler;
         private HttpClient _httpClient;
@@ -56,10 +55,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _logger = NullLogger<RunFromPackageHandler>.Instance;
 
             _packageDownloadHandler = new Mock<IPackageDownloadHandler>(MockBehavior.Strict);
-            _packageCopyHandler = new Mock<IPackageCopyHandler>(MockBehavior.Strict);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object, 
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageDownloadHandler.Object, _metricsLogger, _logger);
         }
 
         private static bool IsZipDownloadRequest(HttpRequestMessage httpRequestMessage, string filePath)
@@ -158,11 +156,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClient = new HttpClient(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
-                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object, 
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             if (azureFilesMounted)
             {
@@ -243,10 +241,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -291,10 +289,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -344,10 +342,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -412,62 +410,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         }
 
         [Theory]
-        [InlineData("1")]
-        [InlineData("http://url/zip-file.zip")]
-        public async Task CopyPackageFileIfRunFromPackageIsOne(string runFromPackageValue)
-        {
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.MountEnabled, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
-
-            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
-                runFromPackageValue, DefaultPackageLength, false);
-
-            _packageDownloadHandler.Setup(h => h.Download(runFromPackageContext))
-                .Returns(Task.FromResult(string.Empty));
-            _packageCopyHandler.Setup(h => h.CopyPackageFile()).Returns(string.Empty);
-            _zipHandler.Setup(b => b.UnzipPackage(It.IsAny<string>(), It.IsAny<string>()));
-            _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.ZipOperation,
-                It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(Task.FromResult(true));
-
-            await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, string.Empty, true);
-
-            if (runFromPackageValue == "1")
-            {
-                _packageCopyHandler.Verify(p => p.CopyPackageFile(), Times.Once);
-                _packageDownloadHandler.Verify(p => p.Download(It.IsAny<RunFromPackageContext>()), Times.Never);
-            }
-            else
-            {
-                _packageCopyHandler.Verify(p => p.CopyPackageFile(), Times.Never);
-                _packageDownloadHandler.Verify(p => p.Download(runFromPackageContext), Times.Once);
-            }
-        }
-
-        [Theory]
-        [InlineData("", false)]
-        [InlineData("the-zip.zip", true)]
-        public async Task FailRunFromPackageContextIfCopyPackageFails(string copyResult, bool expectedResult )
-        {
-            var runFromPackageValue = "1";
-
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.MountEnabled, "1");
-            _environment.SetEnvironmentVariable(EnvironmentSettingNames.MeshInitURI, MeshInitUri);
-
-            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
-                runFromPackageValue, DefaultPackageLength, false);
-
-            _packageCopyHandler.Setup(h => h.CopyPackageFile()).Returns(copyResult);
-            _zipHandler.Setup(b => b.UnzipPackage(It.IsAny<string>(), It.IsAny<string>()));
-            _meshServiceClientMock.Setup(m => m.MountFuse(MeshServiceClient.ZipOperation,
-                It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(Task.FromResult(true));
-
-            var result = await _runFromPackageHandler.ApplyRunFromPackageContext(runFromPackageContext, string.Empty, true);
-            Assert.Equal(expectedResult, result);
-        }
-
-        [Theory]
         [InlineData(true)]
         [InlineData(false)]
         public async Task MountsZipFileIfMountEnabledUsingFileCommand(bool azureFilesMounted)
@@ -493,10 +435,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -561,10 +503,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, packageDownloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
@@ -626,10 +568,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
 
             var downloadHandler = new PackageDownloadHandler(_httpClient,
                 new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict).Object, _bashCmdHandlerMock.Object,
-                NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
+                _environment, NullLogger<PackageDownloadHandler>.Instance, _metricsLogger);
 
             _runFromPackageHandler = new RunFromPackageHandler(_environment, _meshServiceClientMock.Object,
-                _bashCmdHandlerMock.Object, _zipHandler.Object, _packageCopyHandler.Object, downloadHandler, _metricsLogger, _logger);
+                _bashCmdHandlerMock.Object, _zipHandler.Object, downloadHandler, _metricsLogger, _logger);
 
             var url = $"http://url/zip-file.{extension}";
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage,
