@@ -105,6 +105,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return Path.Combine(environment.GetAzureWebsiteHomePath(), ScriptConstants.DataFolderName, ScriptConstants.SitePackagesFolderName);
         }
 
+        public static string GetSitePackageNameTxtPath(this IEnvironment environment)
+        {
+            return Path.Combine(environment.GetSitePackagesPath(), ScriptConstants.SitePackageNameTxtFileName);
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
