@@ -41,6 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
 
+        /// <summary>
+        /// Download the package from blobg storage or fileshare.
+        /// </summary>
+        /// <param name="pkgContext">Package Context.</param>
+        /// <param name="fileSystem">Fileshare object. Only needed for unit tests.</param>
+        /// <returns>Path of the downloaded package.</returns>
         public async Task<string> Download(RunFromPackageContext pkgContext, IFileSystem fileSystem = null)
         {
             if (pkgContext.IsRunFromLocalPackage())
@@ -234,7 +240,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
             }
 
-            var packageNameTxtPath = Path.Combine(packageFolderPath, "packagename.txt");
+            var packageNameTxtPath = _environment.GetSitePackageNameTxtPath();
             if (!fileSystem.File.Exists(packageNameTxtPath))
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
@@ -247,13 +253,13 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
             }
 
-            var packageFilePath = Path.Combine(packageFolderPath, packageFileName);
+            var packageFilePath = fileSystem.Path.Combine(packageFolderPath, packageFileName);
             if (!fileSystem.File.Exists(packageFilePath))
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
             }
 
-            var packageFileInfo = new FileInfo(packageFilePath);
+            var packageFileInfo = fileSystem.FileInfo.FromFileName(packageFilePath);
             if (packageFileInfo.Length == 0)
             {
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
@@ -273,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         private void CopyPackageFileFailed(string message)
         {
             _logger.LogWarning(message);
-            throw new Exception(message);
+            throw new InvalidOperationException(message);
         }
     }
 }

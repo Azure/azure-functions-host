@@ -28,9 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private const string UriWithSasToken = "https://storageaccount.blob.core.windows.net/funcs/hello.zip?sv=secret";
         private const string UriWithNoSasToken = "https://storageaccount.blob.core.windows.net/funcs/hello.zip";
         private const string ZipFileName = "zip-file.zip";
+        private const string HomePath = "home-path";
+        private const string PackagePath = "source-package-path";
+        private const string RunFromPackageOne = "1";
         private readonly Mock<IBashCommandHandler> _bashCmdHandlerMock;
         private readonly Mock<IManagedIdentityTokenProvider> _managedIdentityTokenProvider;
-        private readonly Mock<IEnvironment> _environmentMock;
+        private readonly TestEnvironment _environment;
         private readonly ILogger<PackageDownloadHandler> _logger;
         private readonly TestMetricsLogger _metricsLogger;
 
@@ -42,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory();
             _bashCmdHandlerMock = new Mock<IBashCommandHandler>(MockBehavior.Strict);
             _managedIdentityTokenProvider = new Mock<IManagedIdentityTokenProvider>(MockBehavior.Strict);
-            _environmentMock = new Mock<IEnvironment>(MockBehavior.Strict);
+            _environment = new TestEnvironment();
             _logger = NullLogger<PackageDownloadHandler>.Instance;
             _metricsLogger = new TestMetricsLogger();
         }
@@ -55,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         public async Task ThrowsExceptionForInvalidUrls(string url)
         {
             var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, null, true);
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext));
         }
@@ -124,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);
             await downloader.Download(runFromPackageContext);
@@ -196,7 +199,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _managedIdentityTokenProvider.Setup(p => p.GetManagedIdentityToken(UriWithNoSasToken)).Returns(Task.FromResult(BearerToken));
 
             var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, UriWithNoSasToken, 0, false);
             await downloader.Download(runFromPackageContext);
@@ -265,7 +268,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             }
 
             var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, 0, false);
             await downloader.Download(runFromPackageContext);
@@ -284,6 +287,122 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
                     ItExpr.Is<HttpRequestMessage>(s => MatchesVerb(s, HttpMethod.Get) && !HasBearerToken(s) && MatchesTargetUri(s, url)),
                     ItExpr.IsAny<CancellationToken>());
             }
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionIfSourcePackageFolderDoesNotExist()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+            
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(false);
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext, fileSystem.Object));
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionIfSourcePackageNameFileDoesNotExist()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
+            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(false);
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext, fileSystem.Object));
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionIfSourcePackageNameFileIsEmpty()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
+            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(true);
+            fileSystem.Setup(x => x.File.ReadAllText(_environment.GetSitePackageNameTxtPath())).Returns(string.Empty);
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext, fileSystem.Object));
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionIfSourcePakgeFileDoesNotExist()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
+            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(true);
+            fileSystem.Setup(x => x.File.ReadAllText(_environment.GetSitePackageNameTxtPath())).Returns(ZipFileName);
+            fileSystem.Setup(x => x.Path.Combine(_environment.GetSitePackagesPath(), ZipFileName)).Returns(PackagePath);
+            fileSystem.Setup(x => x.File.Exists(PackagePath)).Returns(false);
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext, fileSystem.Object));
+        }
+
+        [Fact]
+        public async Task ShouldThrowExceptionIfSourcePakgeFileIsEmpty()
+        {
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
+            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(true);
+            fileSystem.Setup(x => x.File.ReadAllText(_environment.GetSitePackageNameTxtPath())).Returns(ZipFileName);
+            fileSystem.Setup(x => x.Path.Combine(_environment.GetSitePackagesPath(), ZipFileName)).Returns(PackagePath);
+            fileSystem.Setup(x => x.File.Exists(PackagePath)).Returns(true);
+            var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
+            fileInfo.SetupGet(f => f.Length).Returns(0);
+            fileSystem.Setup(f => f.FileInfo.FromFileName(PackagePath)).Returns(fileInfo.Object);
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await downloader.Download(runFromPackageContext, fileSystem.Object));
+        }
+
+        [Fact]
+        public async Task ShouldCopySourcePakgeToTempLocation()
+        {
+            var tempPath = "temp-path";
+            var destinationPath = "dest-path";
+            _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHomePath, HomePath);
+
+            var fileSystem = GetFileSystem();
+            fileSystem.Setup(x => x.Directory.Exists(_environment.GetSitePackagesPath())).Returns(true);
+            fileSystem.Setup(x => x.File.Exists(_environment.GetSitePackageNameTxtPath())).Returns(true);
+            fileSystem.Setup(x => x.File.ReadAllText(_environment.GetSitePackageNameTxtPath())).Returns(ZipFileName);
+            fileSystem.Setup(x => x.Path.Combine(_environment.GetSitePackagesPath(), ZipFileName)).Returns(PackagePath);
+            fileSystem.Setup(x => x.File.Exists(PackagePath)).Returns(true);
+            var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
+            fileInfo.SetupGet(f => f.Length).Returns(1);
+            fileSystem.Setup(f => f.FileInfo.FromFileName(PackagePath)).Returns(fileInfo.Object);
+
+            fileSystem.Setup(x => x.Path.GetTempPath()).Returns(tempPath);
+            fileSystem.Setup(x => x.Path.GetFileName(ZipFileName)).Returns(ZipFileName);
+            fileSystem.Setup(x => x.Path.Combine(tempPath, ZipFileName)).Returns(destinationPath);
+            fileSystem.Setup(x => x.File.Copy(PackagePath, destinationPath, true)).Verifiable();
+
+
+            var downloader = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
+            var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, RunFromPackageOne, 0, false);
+            var returnedDestPath = await downloader.Download(runFromPackageContext, fileSystem.Object);
+            fileSystem.Verify(x => x.File.Copy(PackagePath, destinationPath, true), Times.Once);
+            Assert.Equal(destinationPath, returnedDestPath);
+            
         }
 
         private static bool MatchesVerb(HttpRequestMessage s, HttpMethod httpMethod)
@@ -338,7 +457,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
 
             var filePath = await packageDownloadHandler.Download(runFromPackageContext);
 
@@ -379,7 +498,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             _httpClientFactory = TestHelpers.CreateHttpClientFactory(handlerMock.Object);
 
             var packageDownloadHandler = new PackageDownloadHandler(_httpClientFactory, _managedIdentityTokenProvider.Object,
-                _bashCmdHandlerMock.Object, _environmentMock.Object, _logger, _metricsLogger);
+                _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
 
             var runFromPackageContext = new RunFromPackageContext(EnvironmentSettingNames.AzureWebsiteRunFromPackage, url, fileSize, isWarmupRequest);
             var filePath = await packageDownloadHandler.Download(runFromPackageContext);;
@@ -408,6 +527,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
             fileInfo.SetupGet(f => f.Length).Returns(0);
             fileSystem.Setup(f => f.FileInfo.FromFileName(It.IsAny<string>())).Returns(fileInfo.Object);
+
             return fileSystem;
         }
     }
