@@ -874,12 +874,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
-            StopWorkerProcessAsync();
+            StopWorkerProcess();
             _disposing = true;
             Dispose(true);
         }
 
-        public void StopWorkerProcessAsync()
+        public void StopWorkerProcess()
         {
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
             if (!capabilityEnabled)
@@ -889,10 +889,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             var workerTerminate = new WorkerTerminate()
             {
-                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(WorkerConstants.ProcessExitTimeoutInSeconds))
+                GracePeriod = Duration.FromTimeSpan(TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds))
             };
 
-            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.ProcessExitTimeoutInSeconds} seconds.");
+            _workerChannelLogger.LogDebug($"Sending WorkerTerminate message with grace period {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds.");
 
             SendStreamingMessage(new StreamingMessage
             {

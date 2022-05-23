@@ -12,6 +12,7 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Config;
+using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.WebJobs.Script.Tests;
 using Xunit;
@@ -46,7 +47,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
             await HttpTrigger_Java_Get_Succeeds();
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            await Task.Delay(TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds));
+            await Task.Delay(TimeSpan.FromSeconds(WorkerConstants.ProcessExitTimeoutInMilliSeconds));
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesAfter.Count() > 0);
             // Verify number of java processes before and after restart are the same.
