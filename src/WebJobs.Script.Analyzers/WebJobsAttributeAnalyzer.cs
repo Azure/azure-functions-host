@@ -25,18 +25,25 @@ namespace Microsoft.Azure.Functions.Analyzers
         // TODO: Scope this to per-project
         JobHostMetadataProvider _tooling;
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics { get { return ImmutableArray.Create(
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
+        {
+            get
+            {
+                return ImmutableArray.Create(
             DiagnosticDescriptors.IllegalFunctionName,
             DiagnosticDescriptors.BadBindingExpressionSyntax,
-            DiagnosticDescriptors.FailedValidation); } }
+            DiagnosticDescriptors.FailedValidation,
+            DiagnosticDescriptors.IllegalBindingType);
+            }
+        }
 
-    public static void VerifyWebJobsLoaded() 
+        public static void VerifyWebJobsLoaded()
         {
             var x = new JobHost(new OptionsWrapper<JobHostOptions>(new JobHostOptions()), null);
         }
 
         public override void Initialize(AnalysisContext context)
-            {
+        {
             // https://stackoverflow.com/questions/62638455/analyzer-with-code-fix-project-template-is-broken
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
             context.EnableConcurrentExecution();
@@ -140,6 +147,22 @@ namespace Microsoft.Azure.Functions.Analyzers
 
                             // Report errors from invalid attribute properties.
                             ValidateAttribute(context, attribute, attributeSyntax);
+
+                            // This is the major call into the WebJobs' binding engine to check for binding errors.
+                            // Returns null if success, else a list of possible fixes.
+                            var diagnosticHelper = new DiagnosticHelper(_tooling);
+                            ErrorSuggestions[] errors = diagnosticHelper.CheckBindingErrors(attribute, parameterType);
+
+                            if (errors != null && errors.Length > 0)
+                            {
+                                var sb = new StringBuilder();
+                                foreach (var suggestion in errors)
+                                {
+                                    sb.Append("\n " + suggestion.ToString());
+                                }
+                                var error = Diagnostic.Create(DiagnosticDescriptors.IllegalBindingType, parameterSyntax.GetLocation(), attribute.GetType().Name, parameterType.ToString(), sb.ToString());
+                                context.ReportDiagnostic(error);
+                            }
                         }
                         catch (Exception e)
                         {
@@ -158,7 +181,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                 var val = semantics.GetConstantValue(arg.Expression);
                 if (!val.HasValue)
                 {
-                return null;
+                    return null;
                 }
                 return val.Value as string;
             }
@@ -228,7 +251,7 @@ namespace Microsoft.Azure.Functions.Analyzers
                     }
 
                     PropertyInfo propInfo = attributeType.GetProperty(argName, BindingFlags.IgnoreCase | BindingFlags.Instance | BindingFlags.Public);
-                    if (propInfo != null) 
+                    if (propInfo != null)
                     {
                         ValidateAttributeProperty(context, attribute, propInfo, arg);
                     }

@@ -92,6 +92,7 @@ namespace FunctionApp
         [Fact]
         public async Task ValidAutoResolve_NoDiagnostic()
         {
+            string goodValue = "samples-workitems/{queueTrigger}";
             string testCode = @"
 using System.IO;
 using System.Net.Http;
@@ -121,7 +122,7 @@ namespace FunctionApp
                 new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
 
             test.TestCode = testCode;
-            
+
             // 0 diagnostics expected
 
             await test.RunAsync();
@@ -169,7 +170,7 @@ namespace FunctionApp
             await test.RunAsync();
         }
 
-// TODO: Add AppSetting validation tests once logic defined
+        // TODO: Add AppSetting validation tests once logic defined
 
         [Fact]
         public async Task ValidationFails_Diagnostic()
@@ -209,6 +210,46 @@ namespace FunctionApp
                 .WithSeverity(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
                 .WithSpan(15, 38, 15, 65)
                 .WithArguments("BlobPath", badValue, $"The field BlobPath is invalid."));
+
+            await test.RunAsync();
+        }
+        [Fact]
+
+        public async Task IllegalBinding_Diagnostic()
+        {
+            string testCode = $@"
+using System.IO;
+using System.Net.Http;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Extensions.Logging;
+
+namespace FunctionApp
+{{
+    public static class SomeFunction
+    {{
+        public static HttpClient httpClient = new HttpClient();
+
+        [FunctionName(""TestFunction"")]
+        public static void Run([QueueTrigger(""myqueue-items"", Connection = """")] string myQueueItem,
+                                ILogger log)
+        {{
+            httpClient.GetAsync(""https://www.microsoft.com"");
+        }}
+    }}
+}}
+";
+
+            var test = new AnalyzerTest();
+            test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+
+            test.TestCode = testCode;
+
+            test.ExpectedDiagnostics.Add(Verify.Diagnostic(DiagnosticDescriptors.IllegalBindingType)
+                .WithSeverity(Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+                .WithSpan(14, 32, 14, 99)
+                .WithArguments("BlobPath", "", $"The field BlobPath is invalid."));
 
             await test.RunAsync();
         }

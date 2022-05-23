@@ -12,12 +12,12 @@ namespace Microsoft.Azure.Functions.Analyzers
     {
         private static DiagnosticDescriptor Create(string id, string title, string messageFormat, string category, DiagnosticSeverity severity)
         {
-            string helpLink = $"https://docs.microsoft.com/azure/azure-functions/errors-diagnostics/sdk-rules/{id}"; 
+            string helpLink = $"https://docs.microsoft.com/azure/azure-functions/errors-diagnostics/sdk-rules/{id}";
             return new DiagnosticDescriptor(id, title, messageFormat, category, severity, isEnabledByDefault: true, helpLinkUri: helpLink);
         }
 
         public static DiagnosticDescriptor AsyncVoidDiscouraged { get; }
-            = Create(id: "AZF0001", title: "Avoid async void", 
+            = Create(id: "AZF0001", title: "Avoid async void",
                 messageFormat: "Async void can lead to unexpected behavior. Return Task instead.",
                 category: Constants.DiagnosticsCategories.Usage,
                 severity: DiagnosticSeverity.Error);
@@ -43,6 +43,12 @@ namespace Microsoft.Azure.Functions.Analyzers
         public static DiagnosticDescriptor FailedValidation { get; }
             = Create(id: "AZF0005", title: "Illegal binding type",
                 messageFormat: "{0} can't be value '{1}': {2}",
+                category: Constants.DiagnosticsCategories.WebJobs,
+                severity: DiagnosticSeverity.Warning);
+
+        public static DiagnosticDescriptor IllegalBindingType { get; }
+            = Create(id: "AZF0006", title: "Illegal binding type",
+                messageFormat: "Can't bind attribute '{0}' to parameter type '{1}'. Possible options are: {2}",
                 category: Constants.DiagnosticsCategories.WebJobs,
                 severity: DiagnosticSeverity.Warning);
     }
