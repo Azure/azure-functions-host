@@ -9,7 +9,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         public const string HttpScheme = "http";
 
         public const int WorkerReadyCheckPollingIntervalMilliseconds = 25;
-        public const int ProcessExitTimeoutInMilliSeconds = 1000;
         public const int WorkerTerminateGracePeriodInSeconds = 10;
         public const string WorkerConfigFileName = "worker.config.json";
         public const string DefaultWorkersDirectoryName = "workers";
