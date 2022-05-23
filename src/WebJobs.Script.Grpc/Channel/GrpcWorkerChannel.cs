@@ -874,12 +874,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public void Dispose()
         {
-            StopWorkerProcess();
+            StopWorkerProcessAsync();
             _disposing = true;
             Dispose(true);
         }
 
-        public void StopWorkerProcess()
+        public async void StopWorkerProcessAsync()
         {
             bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.HandlesWorkerTerminateMessage));
             if (!capabilityEnabled)
@@ -898,6 +898,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 WorkerTerminate = workerTerminate
             });
+
+            await Task.Delay(TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds));
         }
 
         public async Task DrainInvocationsAsync()

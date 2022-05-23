@@ -310,8 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
 
             await HttpTrigger_Get_Succeeds();
             // wait for orphaned jobhost instance to be disposed
-            await Task.Delay(TimeSpan.FromSeconds(WorkerConstants.WorkerTerminateGracePeriodInSeconds));
-            await Task.Delay(TimeSpan.FromSeconds(WorkerConstants.ProcessExitTimeoutInMilliSeconds));
+            await Task.Delay(TimeSpan.FromSeconds(5));
             IEnumerable<int> nodeProcessesAfter = Process.GetProcessesByName("node").Select(p => p.Id);
             // Verify number of node processes before and after restart are the same.
             Assert.Equal(nodeProcessesBefore.Count(), nodeProcessesAfter.Count());
