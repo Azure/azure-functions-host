@@ -7472,10 +7472,6 @@ string.ToLower(CultureInfo)~System.String,System.Private.CoreLib~1~0~ToLower
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.Diagnostics.FileLogger.Log<LogValues`1<int64>>(LogLevel,EventId,LogValues`1<int64>,Exception,Func`3<LogValues`1<int64>,Exception,string>)~Microsoft.Azure.WebJobs.Script.Diagnostics.FileLogger,Microsoft.Azure.WebJobs.Script~5~1:Microsoft.Extensions.Logging.LoggerMessage+LogValues`1[[System.Int64,System.Private.CoreLib]],Microsoft.Extensions.Logging.Abstractions~Log
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.Diagnostics.MetricEvent.get_Timestamp()~Microsoft.Azure.WebJobs.Script.Diagnostics.MetricEvent,Microsoft.Azure.WebJobs.Script~0~0~get_Timestamp
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.EnvironmentExtensions.IsDynamicSku(IEnvironment)~Microsoft.Azure.WebJobs.Script.EnvironmentExtensions,Microsoft.Azure.WebJobs.Script~1~0~IsDynamicSku
-<<<<<<< Updated upstream
-[Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.EnvironmentExtensions.IsWorkerDynamicConcurrencyEnabled(IEnvironment)~Microsoft.Azure.WebJobs.Script.EnvironmentExtensions,Microsoft.Azure.WebJobs.Script~1~0~IsWorkerDynamicConcurrencyEnabled
-=======
->>>>>>> Stashed changes
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.Eventing.File.FileWatcherEventSource..ctor(IScriptEventManager,string,string,string,bool,WatcherChangeTypes,ILoggerFactory)~Microsoft.Azure.WebJobs.Script.Eventing.File.FileWatcherEventSource,Microsoft.Azure.WebJobs.Script~7~0~.ctor
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.Eventing.HostStartEvent..ctor()~Microsoft.Azure.WebJobs.Script.Eventing.HostStartEvent,Microsoft.Azure.WebJobs.Script~0~0~.ctor
 [Microsoft.Azure.WebJobs.Script]Microsoft.Azure.WebJobs.Script.Eventing.ScriptEventManager.Publish(ScriptEvent)~Microsoft.Azure.WebJobs.Script.Eventing.ScriptEventManager,Microsoft.Azure.WebJobs.Script~1~0~Publish
@@ -8978,11 +8974,6 @@ uint32.TryFormat(Span`1<char>,int32&,ReadOnlySpan`1<char>,IFormatProvider)~Syste
 [Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<CallAsyncCore>d__31.MoveNext()~Microsoft.Azure.WebJobs.JobHost+<CallAsyncCore>d__31,Microsoft.Azure.WebJobs.Host~0~0~MoveNext
 [Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25..ctor()~Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25,Microsoft.Azure.WebJobs.Host~0~0~.ctor
 [Microsoft.Azure.WebJobs.Host]Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25.MoveNext()~Microsoft.Azure.WebJobs.JobHost+<StopAsyncCore>d__25,Microsoft.Azure.WebJobs.Host~0~0~MoveNext
-<<<<<<< Updated upstream
-[S.P.CoreLib]System.Runtime.CompilerServices.CompilerGeneratedAttribute..ctor()~System.Runtime.CompilerServices.CompilerGeneratedAttribute,System.Private.CoreLib~0~0~.ctor
-[S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.System.Threading.IThreadPoolWorkItem.Execute()~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~0~0~System.Threading.IThreadPoolWorkItem.Execute
-[S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.UnsafeScheduleAction(Action,Task)~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~2~0~UnsafeScheduleAction
-=======
 [S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.System.Threading.IThreadPoolWorkItem.Execute()~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~0~0~System.Threading.IThreadPoolWorkItem.Execute
 [S.P.CoreLib]System.Threading.Tasks.AwaitTaskContinuation.UnsafeScheduleAction(Action,Task)~System.Threading.Tasks.AwaitTaskContinuation,System.Private.CoreLib~2~0~UnsafeScheduleAction
 [Microsoft.AspNetCore.Http.Abstractions]Microsoft.AspNetCore.Http.PathString.get_HasValue()~Microsoft.AspNetCore.Http.PathString,Microsoft.AspNetCore.Http.Abstractions~0~0~get_HasValue
@@ -9005,4 +8996,3 @@ uint32.TryFormat(Span`1<char>,int32&,ReadOnlySpan`1<char>,IFormatProvider)~Syste
 [S.P.CoreLib]System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1<System.__Canon>.Start<<GetInitializedWorkerChannelsAsync>d__62>(<GetInitializedWorkerChannelsAsync>d__62&)~System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1[[System.__Canon,System.Private.CoreLib]],System.Private.CoreLib~1~1:Microsoft.Azure.WebJobs.Script.Workers.Rpc.RpcFunctionInvocationDispatcher+<GetInitializedWorkerChannelsAsync>d__62,Microsoft.Azure.WebJobs.Script~Start
 [S.P.CoreLib]System.Runtime.CompilerServices.ConditionalWeakTable`2+Container<System.__Canon,System.__Canon>.Resize()~System.Runtime.CompilerServices.ConditionalWeakTable`2+Container[[System.__Canon,System.Private.CoreLib],[System.__Canon,System.Private.CoreLib]],System.Private.CoreLib~0~0~Resize
 [S.P.CoreLib]System.Runtime.CompilerServices.ConditionalWeakTable`2+Container<System.__Canon,System.__Canon>.Resize(int32)~System.Runtime.CompilerServices.ConditionalWeakTable`2+Container[[System.__Canon,System.Private.CoreLib],[System.__Canon,System.Private.CoreLib]],System.Private.CoreLib~1~0~Resize
->>>>>>> Stashed changes
