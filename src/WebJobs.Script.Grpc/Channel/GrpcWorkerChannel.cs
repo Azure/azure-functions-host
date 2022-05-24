@@ -209,7 +209,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             if (_environment.IsV2CompatibilityMode())
             {
                 _workerChannelLogger.LogDebug("Worker and host running in V2 compatibility mode");
-                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatable, "true");
+                initRequest.Capabilities.Add(RpcWorkerConstants.V2Compatible, "true");
             }
 
             if (ScriptHost.IsFunctionDataCacheEnabled)
