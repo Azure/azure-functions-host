@@ -141,8 +141,6 @@ message StatusResult {
   repeated RpcLog logs = 3;
 }
 
-// TODO: investigate grpc heartbeat - don't limit to grpc implementation
-
 // Warning before killing the process after grace_period
 // Worker self terminates ..no response on this
 message WorkerTerminate {
