@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void SendWorkerInitRequest_PublishesOutboundEvent_V2Compatible()
+        public void SendWorkerInitRequest_PublishesOutboundEvent_V2Compatable()
         {
             _testEnvironment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsV2CompatibilityModeKey, "true");
             StartStream startStream = new StartStream()

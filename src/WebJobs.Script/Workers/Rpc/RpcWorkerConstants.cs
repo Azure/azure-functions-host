@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
 
         // Host Capabilites
-        public const string V2Compatible = "V2Compatible";
+        public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components
         public const string DotNetExecutableName = "dotnet";
