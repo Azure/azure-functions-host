@@ -808,19 +808,22 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool IsResourceAzureBlobWithoutSas(Uri resourceUri)
         {
-            // Screen out URLs that don't have <name>.blob.core... format
-            if (string.IsNullOrEmpty(GetAccountNameFromDomain(resourceUri.Host)))
-            {
-                return false;
-            }
+            // Console.WriteLine("SUUXXXXXX url to get zip content is ", resourceUri);
+            // // Screen out URLs that don't have <name>.blob.core... format
+            // if (string.IsNullOrEmpty(GetAccountNameFromDomain(resourceUri.Host)))
+            // {
+            //     Console.WriteLine("SUUXXXXXX account name empty so IsResourceAzureBlobWithoutSas false");
+            //     return false;
+            // }
 
-            // Screen out URLs with an SAS token
-            var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
-            if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasVersionQueryParam]))
-            {
-                return false;
-            }
-
+            // // Screen out URLs with an SAS token
+            // var queryParams = HttpUtility.ParseQueryString(resourceUri.Query.ToLower());
+            // if (queryParams != null && !string.IsNullOrEmpty(queryParams[SasVersionQueryParam]))
+            // {
+            //     Console.WriteLine("SUUXXXXXX queryParams not empty so IsResourceAzureBlobWithoutSas false, queryParams = ", queryParams);
+            //     return false;
+            // }
+            // Console.WriteLine("SUUXXXXXX returns true for IsResourceAzureBlobWithoutSas");
             return true;
         }
 
@@ -906,21 +909,17 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            if (!FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment))
-            {
-                return false;
-            }
-
             var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
             if (workerConfigs != null)
             {
                 var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
-                if (workerConfig != null
+                if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableWorkerIndexing, environment)
+                    && (workerConfig != null
                         && workerConfig.Description != null
                         && workerConfig.Description.WorkerIndexing != null
-                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase))
+                        && workerConfig.Description.WorkerIndexing.Equals("true", StringComparison.OrdinalIgnoreCase)))
                 {
                     return true;
                 }

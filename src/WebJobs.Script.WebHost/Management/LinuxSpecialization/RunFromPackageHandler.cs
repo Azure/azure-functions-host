@@ -84,6 +84,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 packageType = GetPackageType(filePath, pkgContext);
             }
 
+            Console.WriteLine("SUXXXXX package type found as ", packageType);
+
+            packageType = CodePackageType.Squashfs;
+
             if (packageType == CodePackageType.Squashfs)
             {
                 // default to mount for squashfs images

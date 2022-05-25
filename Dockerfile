@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS installer-env
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS installer-env
 
 ENV PublishWithAspNetCoreTargetManifest false
 
@@ -14,7 +14,9 @@ RUN apt-get update && \
     apt-get install -y gnupg && \
     curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
     apt-get update && \
-    apt-get install -y nodejs dotnet-sdk-3.1
+    apt-get install -y nodejs dotnet-sdk-3.1 && \
+    apt-get install -y squashfs-tools && \
+    mkdir -p  /home/site/wwwroot
 
 # Install the dependencies for Visual Studio Remote Debugger
 RUN apt-get update && apt-get install -y --no-install-recommends unzip procps
@@ -28,7 +30,7 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     HOME=/home \
     ASPNETCORE_URLS=http://+:80 \
     AZURE_FUNCTIONS_ENVIRONMENT=Development \
-    FUNCTIONS_WORKER_RUNTIME=
+    FUNCTIONS_WORKER_RUNTIME=dotnet
 
 EXPOSE 80
 

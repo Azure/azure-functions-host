@@ -97,10 +97,17 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
             else
             {
-                _logger.LogDebug(
-                    "Downloading zip contents using httpclient. IsWarmupRequest = '{pkgContext.IsWarmUpRequest}'. Managed Identity TokenPrefix = '{tokenPrefix}'",
-                    pkgContext.IsWarmUpRequest, tokenPrefix);
-                await HttpClientDownload(filePath, zipUri, pkgContext.IsWarmUpRequest, token, downloadMetricName);
+                try
+                {
+                    _logger.LogDebug(
+                        "Downloading zip contents using httpclient. IsWarmupRequest = '{pkgContext.IsWarmUpRequest}'. Managed Identity TokenPrefix = '{tokenPrefix}'",
+                        pkgContext.IsWarmUpRequest, tokenPrefix);
+                    await HttpClientDownload(filePath, zipUri, pkgContext.IsWarmUpRequest, token, downloadMetricName);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("SUXXXXX error in downloading zip content, err: ", e);
+                }
             }
 
             return filePath;
@@ -138,9 +145,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
                             request.Headers.Add(ScriptConstants.AzureVersionHeader, StorageBlobDownloadApiVersion);
                         }
-
-                        response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                        response.EnsureSuccessStatusCode();
+                        HttpClientHandler handler = new HttpClientHandler();
+                        handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+                        HttpClient client = new HttpClient(handler);
+                        response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                        // _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                        if (response.StatusCode != HttpStatusCode.OK)
+                        {
+                            Console.WriteLine("SUXXXXX found non ok status code , code : ", response.StatusCode);
+                        }
+                        // response.EnsureSuccessStatusCode();
                     }
                 }
                 catch (Exception e)
@@ -169,27 +183,27 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             }
         }
 
-        private async Task<bool> IsAuthenticationTokenNecessary(string resourceUrl)
+        private Task<bool> IsAuthenticationTokenNecessary(string resourceUrl)
         {
             if (!Uri.TryCreate(resourceUrl, UriKind.Absolute, out var resourceUri))
             {
                 _logger.LogDebug("Token retrieval not required since site content url is invalid");
-                return false;
+                return Task.FromResult(false);
             }
 
             if (!Utility.IsResourceAzureBlobWithoutSas(resourceUri))
             {
                 _logger.LogDebug("Token retrieval not required because site content is a SAS Azure Blob URL.");
-                return false;
+                return Task.FromResult(false);
             }
 
-            if (await IsResourceAccessibleWithoutAuthorization(resourceUrl))
-            {
-                _logger.LogDebug("Token retrieval not required because site content zip is publicly accessible.");
-                return false;
-            }
+            // if (await IsResourceAccessibleWithoutAuthorization(resourceUrl))
+            // {
+            //     _logger.LogDebug("Token retrieval not required because site content zip is publicly accessible.");
+            //     return false;
+            // }
 
-            return true;
+            return Task.FromResult(false);
         }
 
         private async Task<bool> IsResourceAccessibleWithoutAuthorization(string resourceUrl)
@@ -211,6 +225,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             catch (Exception e)
             {
                 _logger.LogError(e, nameof(IsResourceAccessibleWithoutAuthorization));
+                Console.WriteLine("SUXXXXX error in IsResourceAccessibleWithoutAuthorization ", e);
                 return false;
             }
         }
