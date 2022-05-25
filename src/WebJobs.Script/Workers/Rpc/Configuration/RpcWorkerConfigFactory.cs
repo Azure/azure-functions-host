@@ -128,10 +128,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     workerDescription.WorkerDirectory = workerDir;
 
                     //Read the profiles from worker description and load the profile for which the conditions match
-                    var profilesJToken = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
-                    if (profilesJToken != null)
+                    JToken profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
+                    if (profiles != null)
                     {
-                        List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profilesJToken);
+                        List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
                         if (workerDescriptionProfiles.Count > 0)
                         {
                             _profileManager.SaveWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);

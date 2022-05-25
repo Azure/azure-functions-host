@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     // HostPropertycondition checks if host match the expected output for properties such as Sku, Platform, HostVersion
-    internal class HostPropertyCondition : IWorkerProfileCondition
+    public class HostPropertyCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// <inheritdoc />
         public bool Evaluate()
         {
-            Enum.TryParse(Name, out HostProperty hostPropertyName);
+            var hostPropertyName = Enum.Parse(typeof(HostProperty), Name, true);
 
             string value = hostPropertyName switch
             {
@@ -71,14 +71,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         // Validates if condition parametrs meet expected values, fail if they don't
-        internal void Validate()
+        private void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
             }
 
-            if (!Enum.GetNames(typeof(HostProperty)).Any(x => x.ToLower().Contains(Name)))
+            if (!Enum.GetNames(typeof(HostProperty)).Any(x => x.ToLower().Contains(Name.ToLower())))
             {
                throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
             }

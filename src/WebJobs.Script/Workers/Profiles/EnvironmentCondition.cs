@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         // Validates if condition parametrs meet expected values, fail if they don't
-        internal void Validate()
+        private void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {

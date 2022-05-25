@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Newtonsoft.Json.Linq;
@@ -31,8 +32,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     DefaultExecutablePath = "myFooPath",
                 };
 
-                JObject profiles = new JObject();
-                profiles[profileName] = JObject.FromObject(appSvcDescription);
+                JArray profiles = new JArray();
+                JObject profile = new JObject();
+                profile[WorkerConstants.WorkerDescriptionProfileName] = "profileName";
+                profile[WorkerConstants.WorkerDescriptionProfileConditions] = ProfilesTestUtilities.GetTestWorkerProfileCondition();
+                profile[WorkerConstants.WorkerDescription] = JObject.FromObject(appSvcDescription);
+                profiles.Add(profile);
                 config[WorkerConstants.WorkerDescriptionProfiles] = profiles;
             }
 

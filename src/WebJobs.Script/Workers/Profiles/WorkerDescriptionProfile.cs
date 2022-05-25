@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public string ProfileId { get; }
 
-        public void Validate()
+        private void Validate()
         {
             if (string.IsNullOrEmpty(Name))
             {
