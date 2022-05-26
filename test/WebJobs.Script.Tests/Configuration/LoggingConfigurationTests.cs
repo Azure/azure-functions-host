@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(4, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             {
                 IEnumerable<ILoggerProvider> loggerProviders = host.Services.GetService<IEnumerable<ILoggerProvider>>();
 
-                Assert.Equal(5, loggerProviders.Count());
+                Assert.Equal(6, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();
@@ -295,7 +295,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
 
                 int expectedCount = isAzureMonitorEnabled ? 5 : 4;
 
-                Assert.Equal(4, loggerProviders.Count());
+                Assert.Equal(5, loggerProviders.Count());
                 loggerProviders.OfType<SystemLoggerProvider>().Single();
                 loggerProviders.OfType<HostFileLoggerProvider>().Single();
                 loggerProviders.OfType<FunctionFileLoggerProvider>().Single();

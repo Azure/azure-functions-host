@@ -31,15 +31,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly SemaphoreSlim _startWorkerProcessLock = new SemaphoreSlim(1, 1);
         private readonly TimeSpan _thresholdBetweenRestarts = TimeSpan.FromMinutes(WorkerConstants.WorkerRestartErrorIntervalThresholdInMinutes);
         private readonly IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
+        private readonly IEnumerable<RpcWorkerConfig> _workerConfigs;
+        private readonly Lazy<Task<int>> _maxProcessCount;
 
         private IScriptEventManager _eventManager;
-        private IEnumerable<RpcWorkerConfig> _workerConfigs;
         private IWebHostRpcWorkerChannelManager _webHostLanguageWorkerChannelManager;
         private IJobHostRpcWorkerChannelManager _jobHostLanguageWorkerChannelManager;
         private IDisposable _workerErrorSubscription;
         private IDisposable _workerRestartSubscription;
         private ScriptJobHostOptions _scriptOptions;
-        private int _maxProcessCount;
         private IRpcFunctionInvocationDispatcherLoadBalancer _functionDispatcherLoadBalancer;
         private bool _disposed = false;
         private bool _disposing = false;
@@ -71,12 +71,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             _metricsLogger = metricsLogger;
             _scriptOptions = scriptHostOptions.Value;
-            _environment = environment;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _applicationLifetime = applicationLifetime;
             _webHostLanguageWorkerChannelManager = webHostLanguageWorkerChannelManager;
             _jobHostLanguageWorkerChannelManager = jobHostLanguageWorkerChannelManager;
             _eventManager = eventManager;
-            _workerConfigs = languageWorkerOptions.CurrentValue.WorkerConfigs;
+            _workerConfigs = languageWorkerOptions?.CurrentValue?.WorkerConfigs ?? throw new ArgumentNullException(nameof(languageWorkerOptions));
             _managedDependencyOptions = managedDependencyOptions ?? throw new ArgumentNullException(nameof(managedDependencyOptions));
             _logger = loggerFactory.CreateLogger<RpcFunctionInvocationDispatcher>();
             _rpcWorkerChannelFactory = rpcWorkerChannelFactory;
@@ -86,13 +86,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _workerIndexing = Utility.CanWorkerIndex(_workerConfigs, _environment);
             State = FunctionInvocationDispatcherState.Default;
 
-            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>()
-               .Subscribe(WorkerError);
-            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>()
-               .Subscribe(WorkerRestart);
+            _workerErrorSubscription = _eventManager.OfType<WorkerErrorEvent>().Subscribe(WorkerError);
+            _workerRestartSubscription = _eventManager.OfType<WorkerRestartEvent>().Subscribe(WorkerRestart);
 
             _shutdownStandbyWorkerChannels = ShutdownWebhostLanguageWorkerChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
+
+            _maxProcessCount = new Lazy<Task<int>>(GetMaxProcessCount);
         }
 
         public FunctionInvocationDispatcherState State { get; private set; }
@@ -101,11 +101,30 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IJobHostRpcWorkerChannelManager JobHostLanguageWorkerChannelManager => _jobHostLanguageWorkerChannelManager;
 
+        internal Task<int> MaxProcessCount => _maxProcessCount.Value;
+
         internal ConcurrentStack<WorkerErrorEvent> LanguageWorkerErrors => _languageWorkerErrors;
 
-        internal int MaxProcessCount => _maxProcessCount;
-
         internal IWebHostRpcWorkerChannelManager WebHostLanguageWorkerChannelManager => _webHostLanguageWorkerChannelManager;
+
+        private async Task<int> GetMaxProcessCount()
+        {
+            if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                return 1;
+            }
+            if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
+            {
+                var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
+                                                 .FirstOrDefault();
+                if (workerConfig != null)
+                {
+                    return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;
+                }
+            }
+
+            return (await GetAllWorkerChannelsAsync()).Count();
+        }
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(IEnumerable<string> languages = null)
         {
@@ -135,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private void SetFunctionDispatcherStateToInitializedAndLog()
         {
             State = FunctionInvocationDispatcherState.Initialized;
-            // Do not change this log message. Vs Code relies on this to figure out when to attach debuger to the worker process.
+            // Do not change this log message. Vs Code relies on this to figure out when to attach debugger to the worker process.
             _logger.LogInformation("Worker process started and initialized.");
         }
 
@@ -178,7 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             Task.Run(async () =>
             {
-                for (var count = startIndex; count < _maxProcessCount
+                for (var count = startIndex; count < (await _maxProcessCount.Value)
                     && !_processStartCancellationToken.IsCancellationRequested; count++)
                 {
                     if (_environment.IsWorkerDynamicConcurrencyEnabled() && count > 0)
@@ -238,6 +257,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
 
             var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+
             // We are skipping this check for multi-language environments because they use multiple workers and thus doesn't honor 'FUNCTIONS_WORKER_RUNTIME'
             if (workerConfig == null && (functions == null || functions.Count() == 0) && !_environment.IsMultiLanguageRuntimeEnvironment())
             {
@@ -249,26 +269,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if ((functions == null || functions.Count() == 0) && !_workerIndexing)
             {
                 // do not initialize function dispatcher if there are no functions, unless the worker is indexing
-                _logger.LogDebug("RpcFunctionInvocationDispatcher received no functions");
+                _logger.LogDebug($"{nameof(RpcFunctionInvocationDispatcher)} received no functions");
                 return;
             }
 
             _functions = functions ?? new List<FunctionMetadata>();
+
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                _maxProcessCount = 1;
                 _processStartupInterval = _workerConfigs.Max(wc => wc.CountOptions.ProcessStartupInterval);
                 _restartWait = _workerConfigs.Max(wc => wc.CountOptions.ProcessRestartInterval);
                 _shutdownTimeout = _workerConfigs.Max(wc => wc.CountOptions.ProcessShutdownTimeout);
             }
             else
             {
-                _maxProcessCount = workerConfig.CountOptions.ProcessCount;
                 _processStartupInterval = workerConfig.CountOptions.ProcessStartupInterval;
                 _restartWait = workerConfig.CountOptions.ProcessRestartInterval;
                 _shutdownTimeout = workerConfig.CountOptions.ProcessShutdownTimeout;
             }
-            ErrorEventsThreshold = 3 * _maxProcessCount;
+            ErrorEventsThreshold = 3 * await _maxProcessCount.Value;
 
             if (Utility.IsSupportedRuntime(_workerRuntime, _workerConfigs) || _environment.IsMultiLanguageRuntimeEnvironment())
             {
@@ -445,10 +464,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             language ??= _workerRuntime;
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync(language);
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
-            int workerCount = _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : _maxProcessCount;
+
+            int workerCount = await _maxProcessCount.Value;
+            // In case of multi language environment, we are not aware of workers we need until we get function metadata. Thus skipping this check
             if (initializedWorkers.Count() > workerCount && !_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {_maxProcessCount}");
+                throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {workerCount}");
             }
 
             return initializedWorkers;
