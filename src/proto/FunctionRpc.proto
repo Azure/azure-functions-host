@@ -548,9 +548,8 @@ message RpcException {
   // Source of the exception
   string source = 3;
 
-  // Stack trace for the exception. If it's a user code exception,
-  // worker should assign this value to the that exception's stack trace, 
-  // so that it can be passed along to app insights.  
+  // Stack trace for the exception. In case of system exception, worker should set to
+  // system exception's stack trace. In case of user exception, set to user exception's stack trace. 
   string stack_trace = 1;
 
   // Textual message describing the exception
