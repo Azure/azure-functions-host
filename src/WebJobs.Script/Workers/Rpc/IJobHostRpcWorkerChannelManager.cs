@@ -9,11 +9,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal interface IJobHostRpcWorkerChannelManager
     {
-        void AddChannel(IRpcWorkerChannel channel);
+        void AddChannel(IRpcWorkerChannel channel, string language);
 
         Task<bool> ShutdownChannelIfExistsAsync(string channelId, Exception workerException);
 
         void ShutdownChannels();
+
+        IEnumerable<IRpcWorkerChannel> GetChannels(string language);
 
         IEnumerable<IRpcWorkerChannel> GetChannels();
     }

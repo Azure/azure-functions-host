@@ -304,7 +304,8 @@ namespace Microsoft.Azure.WebJobs.Script
                         // Windows Consumption as well.
                         string runtimeVersion = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeVersionSettingName);
 
-                        if (!string.IsNullOrEmpty(runtimeVersion))
+                        // If the environemt is multi language, we are running multiple language worker, and thus not honoring 'FUNCTIONS_WORKER_RUNTIME_VERSION'
+                        if (!string.IsNullOrEmpty(runtimeVersion) && !_environment.IsMultiLanguageRuntimeEnvironment())
                         {
                             runtimeStack = string.Concat(runtimeStack, "-", runtimeVersion);
                         }
@@ -540,6 +541,13 @@ namespace Microsoft.Azure.WebJobs.Script
                 _logger.AddingDescriptorProviderForLanguage(RpcWorkerConstants.DotNetLanguageWorkerName);
                 _descriptorProviders.Add(new DotNetFunctionDescriptorProvider(this, ScriptOptions, _bindingProviders, _metricsLogger, _loggerFactory));
             }
+            else if (_environment.IsMultiLanguageRuntimeEnvironment())
+            {
+                _logger.AddingDescriptorProviderForLanguage("All (Multi Language)");
+
+                _descriptorProviders.Add(new MultiLanguageFunctionDescriptorProvider(this, _languageWorkerOptions.Value.WorkerConfigs, ScriptOptions, _bindingProviders,
+                    _functionDispatcher, _loggerFactory, _applicationLifetime, _languageWorkerOptions.Value.WorkerConfigs.Max(wc => wc.CountOptions.InitializationTimeout)));
+            }
             else if (_isHttpWorker)
             {
                 _logger.AddingDescriptorProviderForHttpWorker();
@@ -557,7 +565,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 var workerConfig = _languageWorkerOptions.Value.WorkerConfigs?.FirstOrDefault(c => c.Description.Language.Equals(_workerRuntime, StringComparison.OrdinalIgnoreCase));
 
                 // If there's no worker config, use the default (for legacy behavior; mostly for tests).
-                TimeSpan initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
+                var initializationTimeout = workerConfig?.CountOptions?.InitializationTimeout ?? WorkerProcessCountOptions.DefaultInitializationTimeout;
 
                 _descriptorProviders.Add(new RpcFunctionDescriptorProvider(this, _workerRuntime, ScriptOptions, _bindingProviders,
                     _functionDispatcher, _loggerFactory, _applicationLifetime, initializationTimeout));
