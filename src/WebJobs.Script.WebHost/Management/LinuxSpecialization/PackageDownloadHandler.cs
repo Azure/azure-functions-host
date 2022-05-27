@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
         }
 
         /// <summary>
-        /// Download the package from blobg storage or fileshare.
+        /// Download the package from blob storage or fileshare.
         /// </summary>
         /// <param name="pkgContext">Package Context.</param>
         /// <param name="fileSystem">Fileshare object. Only needed for unit tests.</param>
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             fileSystem.File.Copy(packageFilePath, filePath, true);
 
-            _logger.LogInformation($"{nameof(CopyPackageFile)} was successfull. {packageFileName} was copied to {filePath}.");
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied to {filePath}.");
 
             return filePath;
         }
