@@ -265,6 +265,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
             }
 
+            if (_environment.IsRunDirectlyFromFileshareEnabled())
+            {
+                return packageFilePath;
+            }
+
             var tmpPath = fileSystem.Path.GetTempPath();
             var fileName = fileSystem.Path.GetFileName(packageFileName);
             var filePath = fileSystem.Path.Combine(tmpPath, fileName);

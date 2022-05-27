@@ -110,6 +110,12 @@ namespace Microsoft.Azure.WebJobs.Script
             return Path.Combine(environment.GetSitePackagesPath(), ScriptConstants.SitePackageNameTxtFileName);
         }
 
+        public static bool IsRunDirectlyFromFileshareEnabled(this IEnvironment environment)
+        {
+            var runDirectlyFromFileshare = environment.GetEnvironmentVariable(RunDirectlyFromFileshare);
+            return runDirectlyFromFileshare == "1" || string.Equals(runDirectlyFromFileshare, "true", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static bool IsCoreTools(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(CoreToolsEnvironment));
