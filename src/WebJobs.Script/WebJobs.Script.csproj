@@ -47,7 +47,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer" Version="2.20.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel" Version="2.20.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.34-11937" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.0.4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Host.Storage" Version="4.1.0-11943" />
     <PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.WebApiCompatShim" Version="2.2.0">
       <NoWarn>NU1701</NoWarn>
