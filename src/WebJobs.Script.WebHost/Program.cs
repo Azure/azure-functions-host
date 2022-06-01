@@ -95,13 +95,14 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
         /// </summary>
         private static void InitializeProcess()
         {
+            int hourInMillis = 3600000;
             if (SystemEnvironment.Instance.IsKubernetesManagedHosting()) {
                 Timer tTimer = null;
                     tTimer = new Timer(
                         new TimerCallback(LogVersions),
                         null,
-                        15000,
-                        15000);
+                        hourInMillis,
+                        hourInMillis);
             }
             if (SystemEnvironment.Instance.IsLinuxConsumption())
             {
