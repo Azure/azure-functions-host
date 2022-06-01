@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 _webHostEnvironment.DelayRequests();
 
                 // start the specialization process in the background
-                Task.Run(async () => await Assign(context));
+                Task.Run(async () => await Assign(context)).Wait();
 
                 return true;
             }
@@ -297,7 +297,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 // the switch now on specialization
                 // even if there are failures applying context above, we want to
                 // leave placeholder mode
-                _logger.LogInformation("Triggering specialization");
+                _logger.LogInformation("SUXXXXX Triggering specialization");
                 _webHostEnvironment.FlagAsSpecializedAndReady();
 
                 _webHostEnvironment.ResumeRequests();

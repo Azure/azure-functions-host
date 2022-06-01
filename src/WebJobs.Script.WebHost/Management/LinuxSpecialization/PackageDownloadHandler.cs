@@ -138,6 +138,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 {
                     using (_metricsLogger.LatencyEvent(downloadMetricName))
                     {
+                        Console.WriteLine("SUXXXX url of app is ", zipUri);
                         var request = new HttpRequestMessage(HttpMethod.Get, zipUri);
 
                         if (!string.IsNullOrEmpty(token))
@@ -149,10 +150,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                         handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
                         HttpClient client = new HttpClient(handler);
                         response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
-                        // _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                        // response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
                         if (response.StatusCode != HttpStatusCode.OK)
                         {
-                            Console.WriteLine("SUXXXXX found non ok status code , code : ", response.StatusCode);
+                            var responseString = await response.Content.ReadAsStringAsync();
+                            Console.WriteLine("SUXXXXX found non ok status code with response : ", response);
                         }
                         // response.EnsureSuccessStatusCode();
                     }
@@ -160,6 +162,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
                 catch (Exception e)
                 {
                     const string error = "Error downloading zip content";
+                    Console.WriteLine("SUXXXXX error in httpclient download : ", e);
                     _logger.LogError(e, error);
                     throw;
                 }
