@@ -36,15 +36,6 @@ From within the Azure Functions language worker repo:
     -	`git commit -m "Updated subtree from https://github.com/azure/azure-functions-language-worker-protobuf. Tag: <tag-name>. Commit: <commit hash>"`
     -	`git push`
 
-## Releasing a Language Worker Protobuf version
-
-1.	Draft a release in the GitHub UI
-    -   Be sure to include details of the release
-2.	Create a release version, following semantic versioning guidelines ([semver.org](https://semver.org/))
-3.	Tag the version with the pattern: `v<M>.<m>.<p>-protofile` (example: `v1.1.0-protofile`)
-4.	Merge `dev` to `main`
-5.	Run the release you'd created
-
 ## Consuming FunctionRPC.proto
 *Note: Update versionNumber before running following commands*
 
