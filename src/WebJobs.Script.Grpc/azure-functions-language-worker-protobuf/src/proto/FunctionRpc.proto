@@ -553,6 +553,14 @@ message RpcException {
 
   // Textual message describing the exception
   string message = 2;
+
+  // Worker specifies whether exception is a user exception, 
+  // for purpose of application insights logging. Defaults to false. 
+  optional bool is_user_exception = 4;
+
+  // Type of exception. If it's a user exception, the type is passed along to app insights.
+  // Otherwise, it's ignored for now.
+  optional string type = 5; 
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
