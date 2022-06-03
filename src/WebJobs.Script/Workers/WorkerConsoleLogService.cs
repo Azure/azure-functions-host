@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _toolingConsoleJsonLoggerLazy = toolingConsoleJsonLoggerLazy;
+            _toolingConsoleJsonLoggerLazy = toolingConsoleJsonLoggerLazy ?? throw new ArgumentNullException(nameof(toolingConsoleJsonLoggerLazy));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
