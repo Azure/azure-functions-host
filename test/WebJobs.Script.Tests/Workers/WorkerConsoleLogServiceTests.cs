@@ -15,15 +15,21 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 {
     public class WorkerConsoleLogServiceTests
     {
-        private static TestLogger toolingConsoleTestLogger = new TestLogger("Host.Function.ToolingConsole");
+        private TestLogger _toolingConsoleTestLogger;
         private IScriptEventManager _eventManager;
         private IProcessRegistry _processRegistry;
         private TestLogger _testUserLogger = new TestLogger("Host.Function.Console");
         private TestLogger _testSystemLogger = new TestLogger("Worker.rpcWorkerProcess");
-        private Lazy<ILogger> _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => toolingConsoleTestLogger);
+        private Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
         private WorkerConsoleLogService _workerConsoleLogService;
         private WorkerConsoleLogSource _workerConsoleLogSource;
         private Mock<IServiceProvider> _serviceProviderMock;
+
+        public WorkerConsoleLogServiceTests()
+        {
+            _toolingConsoleTestLogger = new TestLogger("Host.Function.ToolingConsole");
+            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => _toolingConsoleTestLogger, true);
+        }
 
         [Theory]
         [InlineData(false)]
@@ -51,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             await _workerConsoleLogService.StopAsync(System.Threading.CancellationToken.None);
             var userLogs = _testUserLogger.GetLogMessages();
             var systemLogs = _testSystemLogger.GetLogMessages();
-            var toolingConsoleLogs = toolingConsoleTestLogger.GetLogMessages();
+            var toolingConsoleLogs = _toolingConsoleTestLogger.GetLogMessages();
 
             // Assert
             Assert.Equal(3, userLogs.Count);
