@@ -46,7 +46,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
         public int MaxFileSizeMb { get; set; } = 10;
 
         // Maximum time between successive flushes (seconds)
-        public int FlushFrequencySeconds { get; set; } = 30;
+        public int MaxFlushFrequencySeconds { get; set; } = 30;
+
+        public int StartingFlushFrequencySeconds { get; set; } = 1;
 
         public virtual void Log(string message)
         {
@@ -87,7 +89,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 await InternalProcessLogQueue();
-                await Task.Delay(TimeSpan.FromSeconds(FlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                await Task.Delay(TimeSpan.FromSeconds(StartingFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
+                if (StartingFlushFrequencySeconds < MaxFlushFrequencySeconds) 
+                {
+                    StartingFlushFrequencySeconds++;
+                }
             }
             // ReSharper disable once FunctionNeverReturns
         }
@@ -105,6 +111,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 try
                 {
+                    if (_logFileDirectory.Contains("exec")){
+                        _currentBatch.Add($"InternalProcessLogQueue found executions size {_currentBatch.Count} at time {DateTime.UtcNow} ");
+                    }
                     await WriteLogs(_currentBatch);
                 }
                 catch (Exception)
