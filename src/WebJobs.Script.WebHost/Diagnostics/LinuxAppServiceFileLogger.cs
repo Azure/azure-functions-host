@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 await InternalProcessLogQueue();
                 await Task.Delay(TimeSpan.FromSeconds(StartingFlushFrequencySeconds), _cancellationTokenSource.Token).ContinueWith(task => { });
-                if (StartingFlushFrequencySeconds < MaxFlushFrequencySeconds) 
+                if ( StartingFlushFrequencySeconds < MaxFlushFrequencySeconds)
                 {
                     StartingFlushFrequencySeconds++;
                 }
@@ -111,7 +111,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 try
                 {
-                    if (_logFileDirectory.Contains("exec")){
+                    if (_logFileDirectory.Contains("exec") ) 
+                    {
                         _currentBatch.Add($"InternalProcessLogQueue found executions size {_currentBatch.Count} at time {DateTime.UtcNow} ");
                     }
                     await WriteLogs(_currentBatch);
