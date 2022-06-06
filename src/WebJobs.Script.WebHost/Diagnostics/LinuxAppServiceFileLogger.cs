@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             {
                 try
                 {
-                    if (_logFileDirectory.Contains("exec") ) 
+                    if (_logFileDirectory.Contains("exec"))
                     {
                         _currentBatch.Add($"InternalProcessLogQueue found executions size {_currentBatch.Count} at time {DateTime.UtcNow} ");
                     }
