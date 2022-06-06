@@ -128,10 +128,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(IEnumerable<string> languages = null)
         {
-            languages ??= new[] { _workerRuntime };
-            foreach (string language in languages)
+            if (languages == null)
             {
-                await InitializeJobhostLanguageWorkerChannelAsync(0, language);
+                await InitializeJobhostLanguageWorkerChannelAsync(0, _workerRuntime);
+            }
+            else
+            {
+                await InitializeJobhostLanguageWorkerChannelAsync(0, languages);
             }
         }
 
@@ -149,6 +152,25 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                 SetFunctionDispatcherStateToInitializedAndLog();
             }
+        }
+
+        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, IEnumerable<string> languages)
+        {
+            foreach (string language in languages)
+            {
+                var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, language, _metricsLogger, attemptCount, _workerConfigs);
+                _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel, language);
+                await rpcWorkerChannel.StartWorkerProcessAsync();
+                _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", language, rpcWorkerChannel.Id);
+
+                // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
+                if (!_workerIndexing)
+                {
+                    rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
+                    rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
+                }
+            }
+            SetFunctionDispatcherStateToInitializedAndLog();
         }
 
         private void SetFunctionDispatcherStateToInitializedAndLog()
