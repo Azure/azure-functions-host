@@ -69,7 +69,7 @@ namespace Microsoft.Extensions.Logging
                 builder.AddConsole()
                        // Tooling console json log entries are meant to be used by IDEs / Debuggers.
                        // Users are not supposed to set the log level for this category via host.JSON logging settings.
-                       .AddFilter(WorkerConstants.FunctionToolingConsoleJsonCategoryName, LogLevel.Information);
+                       .AddFilter(WorkerConstants.ToolingConsoleLogCategoryName, LogLevel.Information);
             }
         }
     }

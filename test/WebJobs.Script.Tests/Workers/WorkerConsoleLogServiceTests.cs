@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
 
         public WorkerConsoleLogServiceTests()
         {
-            _toolingConsoleTestLogger = new TestLogger("Host.Function.ToolingConsole");
+            _toolingConsoleTestLogger = new TestLogger("Host.Function.ToolingConsoleLog");
             _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => _toolingConsoleTestLogger, true);
         }
 
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers
             var message = allLogs.FirstOrDefault(l => l.FormattedMessage.Contains(msg));
             Assert.NotNull(message);
             Assert.DoesNotContain(WorkerConstants.LanguageWorkerConsoleLogPrefix, message.FormattedMessage);
-            Assert.DoesNotContain(WorkerConstants.ToolingConsoleJsonLogEntryPrefix, message.FormattedMessage);
+            Assert.DoesNotContain(WorkerConstants.ToolingConsoleLogPrefix, message.FormattedMessage);
             Assert.Equal(expectedLevel, message.Level);
         }
     }

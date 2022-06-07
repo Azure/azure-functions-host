@@ -27,8 +27,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
 
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
-            _logger = loggerFactory.CreateLogger(WorkerConstants.FunctionConsoleLogCategoryName);
-            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.FunctionToolingConsoleJsonCategoryName), isThreadSafe: true);
+            _logger = loggerFactory.CreateLogger(WorkerConstants.ConsoleLogCategoryName);
+            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName), isThreadSafe: true);
         }
 
         internal WorkerConsoleLogService(ILogger logger, Lazy<ILogger> toolingConsoleJsonLoggerLazy, IWorkerConsoleLogSource consoleLogSource)

@@ -41,12 +41,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public static bool IsToolingConsoleJsonLogEntry(ConsoleLog consoleLog)
         {
-            return consoleLog.Message.StartsWith(WorkerConstants.ToolingConsoleJsonLogEntryPrefix, StringComparison.OrdinalIgnoreCase);
+            return consoleLog.Message.StartsWith(WorkerConstants.ToolingConsoleLogPrefix, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string RemoveToolingConsoleJsonLogPrefix(string msg)
         {
-            return Regex.Replace(msg, WorkerConstants.ToolingConsoleJsonLogEntryPrefix, string.Empty, RegexOptions.IgnoreCase);
+            return Regex.Replace(msg, WorkerConstants.ToolingConsoleLogPrefix, string.Empty, RegexOptions.IgnoreCase);
         }
     }
 }
