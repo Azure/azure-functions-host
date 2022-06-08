@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             var status = statusResult?.Status.ToString();
             if (ex != null)
             {
-                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace); // TODO - once add protobuf, add typeName & isUserException
+                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace, ex.Type, ex.IsUserException);
             }
             return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);
         }
