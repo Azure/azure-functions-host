@@ -28,7 +28,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             rpcEx.IsUserException = true;
 
             TelemetryConfiguration config = new TelemetryConfiguration("instrumentation key");
-            config.ConnectionString = "connString";
             ExceptionTelemetry oldEt = new ExceptionTelemetry(rpcEx);
             config.TelemetryProcessorChainBuilder.Use(next => new MyCustomTelemetryProcessor(next));
             TelemetryClient client = new TelemetryClient(config);
