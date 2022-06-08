@@ -7,17 +7,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    internal sealed class SystemConditionProvider : IWorkerProfileConditionProvider
+    internal sealed class WorkerProfileConditionProvider : IWorkerProfileConditionProvider
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<WorkerProfileConditionProvider> _logger;
         private readonly IEnvironment _environment;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
 
-        public SystemConditionProvider(ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment)
+        public WorkerProfileConditionProvider(ILogger<WorkerProfileConditionProvider> logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
-            _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
+            _systemRuntimeInformation = systemRuntimeInfo ?? SystemRuntimeInformation.Instance;
         }
 
         /// <inheritdoc />

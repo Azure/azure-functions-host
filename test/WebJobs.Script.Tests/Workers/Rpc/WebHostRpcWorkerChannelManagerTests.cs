@@ -73,8 +73,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _testLogger = new TestLogger("WebHostLanguageWorkerChannelManagerTests");
             _rpcWorkerChannelFactory = new TestRpcWorkerChannelFactory(_eventManager, _testLogger, _scriptRootPath);
             _emptyConfig = new ConfigurationBuilder().Build();
-            var systemConditionProvider = new SystemConditionProvider(new TestLogger<SystemConditionProvider>(), _testSysRuntimeInfo, _testEnvironment);
-            _profileManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { systemConditionProvider });
+            var profileConditionProvider = new WorkerProfileConditionProvider(new TestLogger<WorkerProfileConditionProvider>(), _testSysRuntimeInfo, _testEnvironment);
+            _profileManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { profileConditionProvider });
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, new TestMetricsLogger(), _workerOptionsMonitor, _emptyConfig, _profileManager);
         }
 

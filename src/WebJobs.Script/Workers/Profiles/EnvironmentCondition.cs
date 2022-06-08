@@ -9,7 +9,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    // Environment condition checks if environment variables match the expected output
+    /// <summary>
+    /// An implementation of an <see cref="IWorkerProfileCondition"/> that checks if
+    /// environment variables match the expected output
+    /// </summary>
     public class EnvironmentCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;

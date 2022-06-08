@@ -7,7 +7,9 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    // Regulate profile operations through the profile manager
+    /// <summary>
+    /// Interface to regulate profile operations through the profile manager
+    /// </summary>
     public interface IWorkerProfileManager
     {
         /// <summary>

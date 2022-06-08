@@ -9,18 +9,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    // The default profile manager that manages profiles from language workers
+    /// <summary>
+    /// The default profile manager that manages profiles from language workers
+    /// </summary>
     internal class WorkerProfileManager : IWorkerProfileManager
     {
         private readonly ILogger _logger;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
-        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
+        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
         private string _activeProfile;
 
-        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
+            _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
             _activeProfile = string.Empty;
         }
 

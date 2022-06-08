@@ -3,7 +3,9 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
-    // Manage differnt conditions
+    /// <summary>
+    /// Interface to manage different profile condition providers
+    /// </summary>
     internal interface IWorkerProfileConditionProvider
     {
         /// <summary>

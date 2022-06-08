@@ -8,6 +8,9 @@ using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
+    /// <summary>
+    /// Class that holds data of a profile
+    /// </summary>
     public class WorkerDescriptionProfile
     {
         public WorkerDescriptionProfile(string name, List<IWorkerProfileCondition> conditions, RpcWorkerDescription profileDescription)

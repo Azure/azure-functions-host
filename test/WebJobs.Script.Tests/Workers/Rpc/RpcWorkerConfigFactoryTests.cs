@@ -25,8 +25,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             _testEnvironment = new TestEnvironment();
 
-            var systemConditionProvider = new SystemConditionProvider(new TestLogger<SystemConditionProvider>(), _testSysRuntimeInfo, _testEnvironment);
-            _profileManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { systemConditionProvider });
+            var profileConditionProvider = new WorkerProfileConditionProvider(new TestLogger<WorkerProfileConditionProvider>(), _testSysRuntimeInfo, _testEnvironment);
+            _profileManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { profileConditionProvider });
         }
 
         public void Dispose()

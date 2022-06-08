@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
 
-            var systemConditionProvider = new SystemConditionProvider(new TestLogger<SystemConditionProvider>(), runtimeInfo, testEnvironment);
-            var profileConditionManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { systemConditionProvider });
+            var profileConditionProvider = new WorkerProfileConditionProvider(new TestLogger<WorkerProfileConditionProvider>(), runtimeInfo, testEnvironment);
+            var profileConditionManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { profileConditionProvider });
 
             var configuration = configurationBuilder.Build();
             if (!string.IsNullOrEmpty(workerRuntime))

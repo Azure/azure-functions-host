@@ -11,7 +11,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
-    // HostPropertycondition checks if host match the expected output for properties such as Sku, Platform, HostVersion
+    /// <summary>
+    /// An implementation of an <see cref="IWorkerProfileCondition"/> that checks if different host properties
+    /// such as Sku, Platform, HostVersion match the expected output
+    /// </summary>
     public class HostPropertyCondition : IWorkerProfileCondition
     {
         private readonly ILogger _logger;
