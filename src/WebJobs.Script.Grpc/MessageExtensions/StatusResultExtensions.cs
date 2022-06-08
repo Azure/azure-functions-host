@@ -29,17 +29,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
+        /// <summary>
+        /// This method is only hit on the invocation code path.
+        /// </summary>
         public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs)
         {
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
                     var rpcException = GetRpcException(status);
-                    // TODO - once add protobuf, remove below
-                    if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableUserException))
-                    {
-                        rpcException.IsUserException = true;
-                    }
                     tcs.SetException(rpcException);
                     return false;
 
