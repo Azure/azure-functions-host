@@ -1,7 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -84,22 +83,25 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Authentication
 
         internal static Task<(string, AuthorizationLevel)> GetAuthorizationKeyInfoAsync(HttpRequest request, ISecretManagerProvider secretManagerProvider)
         {
-            // first see if a key value is specified via headers or query string (header takes precedence)
-            string keyValue = null;
-            if (request.Headers.TryGetValue(FunctionsKeyHeaderName, out StringValues values))
+            if (secretManagerProvider.SecretsEnabled)
             {
-                keyValue = values.First();
-            }
-            else if (request.Query.TryGetValue(FunctionsKeyQueryParamName, out values))
-            {
-                keyValue = values.First();
-            }
+                // first see if a key value is specified via headers or query string (header takes precedence)
+                string keyValue = null;
+                if (request.Headers.TryGetValue(FunctionsKeyHeaderName, out StringValues values))
+                {
+                    keyValue = values.First();
+                }
+                else if (request.Query.TryGetValue(FunctionsKeyQueryParamName, out values))
+                {
+                    keyValue = values.First();
+                }
 
-            if (!string.IsNullOrEmpty(keyValue))
-            {
-                ISecretManager secretManager = secretManagerProvider.Current;
-                var functionName = request.HttpContext.Features.Get<IFunctionExecutionFeature>()?.Descriptor.Name;
-                return secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
+                if (!string.IsNullOrEmpty(keyValue))
+                {
+                    ISecretManager secretManager = secretManagerProvider.Current;
+                    var functionName = request.HttpContext.Features.Get<IFunctionExecutionFeature>()?.Descriptor.Name;
+                    return secretManager.GetAuthorizationLevelOrNullAsync(keyValue, functionName);
+                }
             }
 
             return Task.FromResult<(string, AuthorizationLevel)>((null, AuthorizationLevel.Anonymous));
