@@ -73,8 +73,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IEnumerable<IRpcWorkerChannel> GetChannels(string language)
         {
-            _channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels);
-            return channels?.Values;
+            if (language == null)
+            {
+                return GetChannels();
+            }
+            else if (_channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels))
+            {
+                return channels.Values;
+            }
+            return Enumerable.Empty<IRpcWorkerChannel>();
         }
 
         public IEnumerable<IRpcWorkerChannel> GetChannels()

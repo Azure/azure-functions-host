@@ -912,9 +912,9 @@ namespace Microsoft.Azure.WebJobs.Script
 
         public static bool CanWorkerIndex(IEnumerable<RpcWorkerConfig> workerConfigs, IEnvironment environment)
         {
-            var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
-            if (workerConfigs != null)
+            if (workerConfigs != null && !environment.IsMultiLanguageRuntimeEnvironment())
             {
+                var workerRuntime = environment.GetEnvironmentVariable(EnvironmentSettingNames.FunctionWorkerRuntime);
                 var workerConfig = workerConfigs.Where(c => c.Description != null && c.Description.Language != null && c.Description.Language.Equals(workerRuntime, StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
 
                 // if feature flag is enabled and workerConfig.WorkerIndexing == true, then return true
