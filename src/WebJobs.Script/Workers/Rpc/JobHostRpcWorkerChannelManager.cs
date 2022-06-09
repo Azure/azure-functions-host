@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class JobHostRpcWorkerChannelManager : IJobHostRpcWorkerChannelManager
     {
         private readonly ILogger _logger;
-        private ConcurrentDictionary<string, ConcurrentDictionary<string, IRpcWorkerChannel>> _channels = new ConcurrentDictionary<string, ConcurrentDictionary<string, IRpcWorkerChannel>>();
+        private ConcurrentDictionary<string, IRpcWorkerChannelHolder> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelHolder>();
 
         public JobHostRpcWorkerChannelManager(ILoggerFactory loggerFactory)
         {
@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void AddChannel(IRpcWorkerChannel channel, string language)
         {
-            if (_channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels))
+            if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
             {
                 channels.TryAdd(channel.Id, channel);
             }
             else
             {
-                _channels.TryAdd(language, new ConcurrentDictionary<string, IRpcWorkerChannel>
+                _channels.TryAdd(language, new IRpcWorkerChannelHolder
                 {
                     [channel.Id] = channel,
                 });
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             foreach (string language in _channels.Keys)
             {
-                if (_channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels))
+                if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
                 {
                     if (channels.TryRemove(channelId, out IRpcWorkerChannel rpcChannel))
                     {
@@ -57,7 +57,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             foreach (string language in _channels.Keys)
             {
-                if (_channels.TryRemove(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels))
+                if (_channels.TryRemove(language, out IRpcWorkerChannelHolder channels))
                 {
                     foreach (var rpcWorkerChannel in channels.Values)
                     {
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 return GetChannels();
             }
-            else if (_channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels))
+            else if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
             {
                 return channels.Values;
             }
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             List<IRpcWorkerChannel> rpcWorkerChannels = new List<IRpcWorkerChannel>();
             foreach (string language in _channels.Keys)
             {
-                _channels.TryGetValue(language, out ConcurrentDictionary<string, IRpcWorkerChannel> channels);
+                _channels.TryGetValue(language, out IRpcWorkerChannelHolder channels);
                 rpcWorkerChannels.AddRange(channels.Values);
             }
             return rpcWorkerChannels;

@@ -354,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     else if (_environment.IsMultiLanguageRuntimeEnvironment())
                     {
-                        StartWorkerProcesses(startIndex: 0, startAction: InitializeJobhostLanguageWorkerChannelAsync, functionLanguages: functions.Select(f => f.Language).Distinct());
+                        StartWorkerProcesses(startIndex: 0, startAction: InitializeJobhostLanguageWorkerChannelAsync, functionLanguages: functions.Select(function => function.Language).Distinct());
                     }
                     else
                     {
@@ -486,8 +486,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             language ??= _workerRuntime;
             IEnumerable<IRpcWorkerChannel> workerChannels = await GetAllWorkerChannelsAsync(language);
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
-
             int workerCount = await _maxProcessCount.Value;
+
             // In case of multi language environment, we are not aware of workers we need until we get function metadata. Thus skipping this check
             if (initializedWorkers.Count() > workerCount && !_environment.IsMultiLanguageRuntimeEnvironment())
             {

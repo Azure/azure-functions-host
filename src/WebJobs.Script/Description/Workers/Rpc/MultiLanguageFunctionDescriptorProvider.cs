@@ -16,6 +16,17 @@ namespace Microsoft.Azure.WebJobs.Script.Description
     {
         private readonly IList<RpcWorkerConfig> _workerConfig;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MultiLanguageFunctionDescriptorProvider"/> class.
+        /// </summary>
+        /// <param name="host"><see cref="ScriptHost"/> instance.</param>
+        /// <param name="workerConfig">All supported <see cref="RpcWorkerConfig"/>.</param>
+        /// <param name="config"><see cref="ScriptJobHostOptions"/> instance.</param>
+        /// <param name="bindingProviders">List of <see cref="IScriptBindingProvider"/> instances.</param>
+        /// <param name="dispatcher"><see cref="IFunctionInvocationDispatcher"/> instance.</param>
+        /// <param name="loggerFactory"><see cref="ILoggerFactory"/> instance.</param>
+        /// <param name="applicationLifetime"><see cref="IApplicationLifetime"/> instance.</param>
+        /// <param name="workerInitializationTimeout">Worker initialization timeout.</param>
         public MultiLanguageFunctionDescriptorProvider(ScriptHost host, IList<RpcWorkerConfig> workerConfig, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders,
             IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
             : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
@@ -23,6 +34,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             _workerConfig = workerConfig;
         }
 
+        /// <inheritdoc/>
         public override async Task<(bool, FunctionDescriptor)> TryCreate(FunctionMetadata functionMetadata)
         {
             if (functionMetadata == null)

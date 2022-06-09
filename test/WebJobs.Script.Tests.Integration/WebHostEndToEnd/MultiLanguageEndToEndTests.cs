@@ -16,8 +16,15 @@ using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 {
+    /// <summary>
+    /// Class to run tests for Multi Language Runtime
+    /// </summary>
     public class MultiLanguageEndToEndTests
     {
+
+        /// <summary>
+        /// Runs tests with multiple language provider funtion.
+        /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_MultipleLanguageProviders()
         {
@@ -61,6 +68,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        /// <summary>
+        /// Runs tests with Java language provider funtion.
+        /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
         {
@@ -97,7 +107,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
-
+        /// <summary>
+        /// Runs tests with Node language provider funtion.
+        /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders()
         {
@@ -134,7 +146,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
-
+        /// <summary>
+        /// Runs tests with no language provider funtion.
+        /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_NoLanguageProviders()
         {
@@ -164,6 +178,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             }
         }
 
+        /// <summary>
+        /// Starts a function host
+        /// </summary>
+        /// <param name="baseTestPath">Base path of test project.</param>
+        /// <param name="sourceFunctionApp">Sorce path of function app.</param>
+        /// <param name="allowedList">Allowed functions list.</param>
+        /// <param name="providers">List of function providers.</param>
+        /// <param name="testEnvironment">Environment settings.</param>
         private TestFunctionHost StartLocalHost(string baseTestPath, string sourceFunctionApp, string[] allowedList, IList<IFunctionProvider> providers, IEnvironment testEnvironment)
         {
             string appContent = Path.Combine(baseTestPath, "FunctionApp");
@@ -199,18 +221,36 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             return host;
         }
 
+        /// <summary>
+        /// Class to hold codeless function providers.
+        /// </summary>
         public class TestCodelessFunctionProvider : IFunctionProvider
         {
+            /// <summary>
+            /// List of function metadata.
+            /// </summary>
             private ImmutableArray<FunctionMetadata> _functionMetadata;
 
+            /// <summary>
+            /// Initializes a new instance of the <see cref="TestCodelessFunctionProvider"/> class.
+            /// </summary>
+            /// <param name="metadata">Funtion metadata.</param>
+            /// <param name="errors">Funtion errors.</param>
             public TestCodelessFunctionProvider(IList<FunctionMetadata> metadata, ImmutableDictionary<string, ImmutableArray<string>> errors)
             {
                 _functionMetadata = metadata.ToImmutableArray();
                 FunctionErrors = errors;
             }
 
+            /// <summary>
+            /// Funtion host errors.
+            /// </summary>
             public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
 
+            /// <summary>
+            /// Gets the funtion metadata.
+            /// </summary>
+            /// <returns></returns>
             public Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()
             {
                 return Task.FromResult(_functionMetadata);
