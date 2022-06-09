@@ -192,8 +192,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await TestHelpers.Await(() =>
             {
                 userLogs = Fixture.Host.GetScriptHostLogMessages(userCategory).Select(p => p.FormattedMessage).ToList();
-                consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.FunctionConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
-                return userLogs.Count == 10 && consoleLog != null;
+                consoleLog = Fixture.Host.GetScriptHostLogMessages(WorkerConstants.ConsoleLogCategoryName).Select(p => p.FormattedMessage).SingleOrDefault();
+                return userLogs.Count == 11 && consoleLog != null;
             }, userMessageCallback: Fixture.Host.GetLog);
 
             // verify use of context.log to log complex objects
@@ -232,7 +232,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.False(allLogs.Any(l => l.Summary.Contains("loglevel")));
             Assert.False(allLogs.Any(l => l.Summary.Contains("after done")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.ConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 

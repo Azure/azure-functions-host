@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string LogPropertyIsSystemLogKey = "MS_IsSystemLog";
         public const string LogPropertyFunctionInvocationIdKey = "MS_FunctionInvocationId";
         public const string LogPropertyHostInstanceIdKey = "HostInstanceId";
+        public const string LogPropertyProcessIdKey = "ProcessId";
         public const string LogPropertyActivityIdKey = "MS_ActivityId";
 
         public const string TraceSourceSecretManagement = "SecretManagement";
@@ -105,6 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string FeatureFlagAllowSynchronousIO = "AllowSynchronousIO";
         public const string FeatureFlagRelaxedAssemblyUnification = "RelaxedAssemblyUnification";
         public const string FeatureFlagEnableDiagnosticEventLogging = "EnableDiagnosticEventLogging";
+        public const string FeatureFlagDisableDiagnosticEventLogging = "DisableDiagnosticEventLogging";
         public const string FeatureFlagDisableMergedWebHostScriptHostConfiguration = "DisableMergedConfiguration";
         public const string FeatureFlagEnableWorkerIndexing = "EnableWorkerIndexing";
 
@@ -191,5 +193,6 @@ namespace Microsoft.Azure.WebJobs.Script
         public static readonly ImmutableArray<string> SystemLogCategoryPrefixes = ImmutableArray.Create("Microsoft.Azure.WebJobs.", "Function.", "Worker.", "Host.");
 
         public static readonly string FunctionMetadataDirectTypeKey = "DirectType";
+        public static readonly string LiveLogsSessionAIKey = "#AzFuncLiveLogsSessionId";
     }
 }

@@ -37,8 +37,8 @@ namespace FunctionApp
 
             var test = new AnalyzerTest();
             test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
-                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
-                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.1.1"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.11")));
 
             test.TestCode = testCode;
 
@@ -71,8 +71,8 @@ namespace FunctionApp
 
             var test = new AnalyzerTest();
             test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
-                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
-                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.1.1"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.11")));
 
             test.TestCode = testCode;
 
@@ -112,8 +112,8 @@ namespace FunctionApp
 
             var test = new AnalyzerTest();
             test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
-                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
-                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.1.1"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.11")));
 
             test.TestCode = testCode;
 
@@ -152,8 +152,8 @@ namespace FunctionApp
 
             var test = new AnalyzerTest();
             test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
-                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
-                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.1.1"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.11")));
 
             test.TestCode = testCode;
 
@@ -190,8 +190,8 @@ namespace FunctionApp
 
             var test = new AnalyzerTest();
             test.ReferenceAssemblies = ReferenceAssemblies.Net.Net50.WithPackages(ImmutableArray.Create(
-                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.0.11"),
-                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.10")));
+                new PackageIdentity("Microsoft.NET.Sdk.Functions", "3.1.1"),
+                new PackageIdentity("Microsoft.Azure.WebJobs.Extensions.Storage", "3.0.11")));
 
             test.TestCode = testCode;
 

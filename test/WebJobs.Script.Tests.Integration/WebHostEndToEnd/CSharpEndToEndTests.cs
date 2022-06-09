@@ -124,7 +124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<FunctionTraceEvent> allLogs = Fixture.EventGenerator.GetFunctionTraceEvents();
             Assert.False(allLogs.Any(l => l.Summary.Contains("From ")));
             Assert.False(allLogs.Any(l => l.Source.EndsWith(".User")));
-            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.FunctionConsoleLogCategoryName));
+            Assert.False(allLogs.Any(l => l.Source == WorkerConstants.ConsoleLogCategoryName));
             Assert.NotEmpty(allLogs);
         }
 

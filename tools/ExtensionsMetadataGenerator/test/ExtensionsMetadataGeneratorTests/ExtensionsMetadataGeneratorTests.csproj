@@ -19,7 +19,9 @@
   </ItemGroup>
 
   <Target Name="UpdateRuntimeAssemblies" BeforeTargets="Build">
-    <Exec Command="powershell.exe –command .\..\..\src\ExtensionsMetadataGenerator\updateruntimeassemblies.ps1" />
+    <Exec Command="pwsh ./../../src/ExtensionsMetadataGenerator/updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Unix' "/>
+    <Exec Command="powershell.exe –command .\..\..\src\ExtensionsMetadataGenerator\updateruntimeassemblies.ps1" Condition=" '$(OS)' == 'Windows_NT' "/>
+
     <Copy SourceFiles="runtimeassemblies.txt" DestinationFolder="$(OutputPath)" />
   </Target>
   

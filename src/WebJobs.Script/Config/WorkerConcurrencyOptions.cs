@@ -14,10 +14,10 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             // Setting default values
             LatencyThreshold = TimeSpan.FromMilliseconds(100);
-            AdjustmentPeriod = TimeSpan.FromSeconds(10);
-            CheckInterval = TimeSpan.FromSeconds(1);
-            HistorySize = 10;
-            NewWorkerThreshold = 0.2F;
+            AdjustmentPeriod = TimeSpan.FromSeconds(20);
+            CheckInterval = TimeSpan.FromSeconds(10);
+            HistorySize = 6;
+            NewWorkerThreshold = 0.3F;
             MaxWorkerCount = 10;
         }
 

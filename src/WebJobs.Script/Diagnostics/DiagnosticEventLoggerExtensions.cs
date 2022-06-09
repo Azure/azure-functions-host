@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics
 
         public static void LogError(this ILogger logger, int eventId, string errorCode, string message, string helpLink, Exception exception)
         {
-            logger.LogDiagnosticEvent(LogLevel.Information, eventId, errorCode, message, helpLink, exception);
+            logger.LogDiagnosticEvent(LogLevel.Error, eventId, errorCode, message, helpLink, exception);
         }
     }
 }

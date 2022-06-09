@@ -1,0 +1,27 @@
+[
+  {
+    "authLevel": "anonymous",
+    "type": "httpTrigger",
+    "direction": "in",
+    "name": "req",
+    "functionName": "function1"
+  },
+  {
+    "name": "myQueueItem",
+    "type": "orchestrationTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "",
+    "functionName": "function2",
+    "taskHubName": "TestHubValue"
+  },
+  {
+    "name": "myQueueItem",
+    "type": "activityTrigger",
+    "direction": "in",
+    "queueName": "myqueue-items",
+    "connection": "",
+    "functionName": "function3",
+    "taskHubName": "TestHubValue"
+  }
+]

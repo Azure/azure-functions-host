@@ -3,7 +3,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Microsoft.Azure.WebJobs.Script.Workers
+namespace Microsoft.Azure.WebJobs.Script
 {
     public interface ISystemRuntimeInformation
     {

@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private readonly IEnvironment _environment;
         private readonly IScriptHostManager _hostManager;
         private readonly ILogger _logger;
+        private string _assemblyLocalPath;
 
         public HostWarmupMiddleware(RequestDelegate next, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment, IScriptHostManager hostManager, ILogger<HostWarmupMiddleware> logger)
         {
@@ -28,6 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             _environment = environment;
             _hostManager = hostManager;
             _logger = logger;
+            _assemblyLocalPath = Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath);
         }
 
         public async Task Invoke(HttpContext httpContext)
@@ -40,17 +43,62 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
                     PreJitPrepare(WarmUpConstants.LinuxJitTraceFileName);
                 }
 
+                ReadRuntimeAssemblyFiles();
+
                 await WarmUp(httpContext.Request);
             }
 
             await _next.Invoke(httpContext);
         }
 
+        internal void ReadRuntimeAssemblyFiles()
+        {
+            try
+            {
+                string[] allFiles = Directory.GetFiles(_assemblyLocalPath, "*.dll", SearchOption.TopDirectoryOnly);
+                // Read File content in 4K chunks
+                int maxBuffer = 4 * 1024;
+                byte[] chunk = new byte[maxBuffer];
+                Random random = new Random();
+                foreach (string file in allFiles)
+                {
+                    // Read file content to avoid disk reads during specialization. This is only to page-in bytes.
+                    ReadFileInChunks(file, chunk, maxBuffer, random);
+                }
+                _logger.LogDebug(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), "Number of files read: '{allFilesCount}'. AssemblyLocalPath: '{assemblyLocalPath}' ", allFiles.Count(), _assemblyLocalPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(new EventId(100, nameof(ReadRuntimeAssemblyFiles)), ex, "Reading ReadRuntimeAssemblyFiles failed. AssemblyLocalPath: '{assemblyLocalPath}'", _assemblyLocalPath);
+            }
+        }
+
+        private void ReadFileInChunks(string file, byte[] chunk, int maxBuffer, Random random)
+        {
+            try
+            {
+                using (FileStream fileStream = new FileStream(file, FileMode.Open, FileAccess.Read))
+                {
+                    int bytesRead;
+                    while ((bytesRead = fileStream.Read(chunk, 0, maxBuffer)) != 0)
+                    {
+                        // Read one random byte for every 4K bytes - 4K is default OS page size. This will help avoid disk read during specialization
+                        // see for details on OS page buffering in Windows - https://docs.microsoft.com/en-us/windows/win32/fileio/file-buffering
+                        var randomByte = Convert.ToInt32(chunk[random.Next(0, bytesRead - 1)]);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(new EventId(100, nameof(ReadFileInChunks)), ex, "Reading file '{file}' failed. AssemblyLocalPath: '{assemblyLocalPath}'", file, _assemblyLocalPath);
+            }
+        }
+
         private void PreJitPrepare(string jitTraceFileName)
         {
             // This is to PreJIT all methods captured in coldstart.jittrace file to improve cold start time
             var path = Path.Combine(
-                Path.GetDirectoryName(new Uri(typeof(HostWarmupMiddleware).Assembly.Location).LocalPath),
+                _assemblyLocalPath,
                 WarmUpConstants.PreJitFolderName, jitTraceFileName);
 
             var file = new FileInfo(path);

@@ -82,6 +82,9 @@ message StreamingMessage {
 
     // Host sends required metadata to worker to load functions
     FunctionLoadRequestCollection function_load_request_collection = 31;
+
+    // Host gets the list of function load responses
+    FunctionLoadResponseCollection function_load_response_collection = 32;
   }
 }
 
@@ -110,6 +113,9 @@ message WorkerInitRequest {
 
   // Full path of worker.config.json location
   string worker_directory = 4;
+
+  // base directory for function app
+  string function_app_directory = 5;
 }
 
 // Worker responds with the result of initializing itself
@@ -226,6 +232,11 @@ message CloseSharedMemoryResourcesResponse {
 // Host tells the worker to load a list of Functions
 message FunctionLoadRequestCollection {
   repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Host gets the list of function load responses
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
 }
 
 // Load request of a single Function
@@ -542,6 +553,14 @@ message RpcException {
 
   // Textual message describing the exception
   string message = 2;
+
+  // Worker specifies whether exception is a user exception, 
+  // for purpose of application insights logging. Defaults to false. 
+  optional bool is_user_exception = 4;
+
+  // Type of exception. If it's a user exception, the type is passed along to app insights.
+  // Otherwise, it's ignored for now.
+  optional string type = 5; 
 }
 
 // Http cookie type. Note that only name and value are used for Http requests

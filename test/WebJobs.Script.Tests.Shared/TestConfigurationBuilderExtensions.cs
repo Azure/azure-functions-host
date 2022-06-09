@@ -3,16 +3,16 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests
 {
     public static class TestConfigurationBuilderExtensions
     {
-        public static IConfigurationBuilder AddTestSettings(this IConfigurationBuilder builder)
-        {
-            string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", "appsettings.tests.json");
-            return builder.AddJsonFile(configPath, true);
-        }
+        private const string ConfigFile = "appsettings.tests.json";
+        private static string configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".azurefunctions", ConfigFile);
+
+        public static IConfigurationBuilder AddTestSettings(this IConfigurationBuilder builder) => builder.AddJsonFile(configPath, true);
     }
 }

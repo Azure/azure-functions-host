@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Google.Protobuf.Collections;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Description;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -228,7 +230,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return new WorkerInitRequest()
             {
                 HostVersion = ScriptHost.Version,
-                WorkerDirectory = _workerConfig.Description.WorkerDirectory
+                WorkerDirectory = _workerConfig.Description.WorkerDirectory,
+                FunctionAppDirectory = _applicationHostOptions.CurrentValue.ScriptPath
             };
         }
 
@@ -300,6 +303,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         .Subscribe((msg) => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError));
                 }
 
+                // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
+                // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
+                _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
+
                 // Check if the worker supports this feature
                 bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
                 if (capabilityEnabled)
@@ -308,7 +315,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 else
                 {
-                    foreach (FunctionMetadata metadata in _functions.OrderBy(metadata => metadata.IsDisabled()))
+                    foreach (FunctionMetadata metadata in _functions)
                     {
                         SendFunctionLoadRequest(metadata, managedDependencyOptions);
                     }
@@ -335,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             var functionLoadRequestCollection = new FunctionLoadRequestCollection();
 
-            foreach (FunctionMetadata metadata in functions.OrderBy(metadata => metadata.IsDisabled()))
+            foreach (FunctionMetadata metadata in functions)
             {
                 var functionLoadRequest = GetFunctionLoadRequest(metadata, managedDependencyOptions);
                 functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
@@ -482,6 +489,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         return;
                     }
                     var invocationRequest = await context.ToRpcInvocationRequest(_workerChannelLogger, _workerCapabilities, _isSharedMemoryDataTransferEnabled, _sharedMemoryManager);
+                    AddAdditionalTraceContext(invocationRequest.TraceContext.Attributes, context);
                     _executingInvocations.TryAdd(invocationRequest.InvocationId, context);
 
                     SendStreamingMessage(new StreamingMessage
@@ -522,10 +530,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return _functionsIndexingTask.Task;
         }
 
-        // parse metadata response into RawFunctionMetadata objects for WorkerFunctionMetadataProvider to further parse and validate
+        // parse metadata response into RawFunctionMetadata objects for AggregateFunctionMetadataProvider to further parse and validate
         internal void ProcessFunctionMetadataResponses(FunctionMetadataResponse functionMetadataResponse)
         {
             _workerChannelLogger.LogDebug("Received the worker function metadata response from worker {worker_id}", _workerId);
+
+            if (functionMetadataResponse.Result.IsFailure(out Exception metadataResponseEx))
+            {
+                _workerChannelLogger?.LogError(metadataResponseEx, "Worker failed to index functions");
+            }
 
             var functions = new List<RawFunctionMetadata>();
 
@@ -567,6 +580,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     });
                 }
             }
+            else
+            {
+                functions.Add(new RawFunctionMetadata()
+                {
+                    UseDefaultMetadataIndexing = functionMetadataResponse.UseDefaultMetadataIndexing
+                });
+            }
+
             // set it as task result because we cannot directly return from SendWorkerMetadataRequest
             _functionsIndexingTask.SetResult(functions);
         }
@@ -982,6 +1003,28 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                     samples.RemoveAt(0);
                 }
                 samples.Add(sample);
+            }
+        }
+
+        private void AddAdditionalTraceContext(MapField<string, string> attributes, ScriptInvocationContext context)
+        {
+            // This is only applicable for AI agents running along side worker
+            if (_environment.IsApplicationInsightsAgentEnabled())
+            {
+                attributes[ScriptConstants.LogPropertyProcessIdKey] = Convert.ToString(_rpcWorkerProcess.Id);
+                if (context.FunctionMetadata.Properties.ContainsKey(ScriptConstants.LogPropertyHostInstanceIdKey))
+                {
+                    attributes[ScriptConstants.LogPropertyHostInstanceIdKey] = Convert.ToString(context.FunctionMetadata.Properties[ScriptConstants.LogPropertyHostInstanceIdKey]);
+                }
+                if (context.FunctionMetadata.Properties.ContainsKey(LogConstants.CategoryNameKey))
+                {
+                    attributes[LogConstants.CategoryNameKey] = Convert.ToString(context.FunctionMetadata.Properties[LogConstants.CategoryNameKey]);
+                }
+                string sessionid = Activity.Current?.GetBaggageItem(ScriptConstants.LiveLogsSessionAIKey);
+                if (!string.IsNullOrEmpty(sessionid))
+                {
+                    attributes[ScriptConstants.LiveLogsSessionAIKey] = sessionid;
+                }
             }
         }
     }
