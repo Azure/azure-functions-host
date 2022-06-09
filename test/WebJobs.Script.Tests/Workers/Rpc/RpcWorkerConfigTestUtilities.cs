@@ -18,7 +18,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         public const string HttpWorkerExe = "httpServer.exe";
         public const string TestDefaultExecutablePath = "testWorkerPath";
 
-        public static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool emptyWorkerPath = false)
+        public static JObject GetTestWorkerConfig(string language, string[] arguments, bool invalid, string profileName, bool invalidProfile, bool emptyWorkerPath = false)
         {
             WorkerDescription description = GetTestDefaultWorkerDescription(language, arguments);
 
@@ -32,10 +32,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                     DefaultExecutablePath = "myFooPath",
                 };
 
-                JArray profiles = new JArray();
-                JObject profile = new JObject();
+                var profiles = new JArray();
+                var profile = new JObject();
+                var conditions = new JArray();
                 profile[WorkerConstants.WorkerDescriptionProfileName] = "profileName";
-                profile[WorkerConstants.WorkerDescriptionProfileConditions] = ProfilesTestUtilities.GetTestWorkerProfileCondition();
+                if (invalidProfile)
+                {
+                    conditions.Add(ProfilesTestUtilities.GetTestWorkerProfileCondition(WorkerConstants.WorkerDescriptionProfileHostPropertyCondition, "hostVersion", "-1"));
+                }
+                conditions.Add(ProfilesTestUtilities.GetTestWorkerProfileCondition());
+                profile[WorkerConstants.WorkerDescriptionProfileConditions] = conditions;
                 profile[WorkerConstants.WorkerDescription] = JObject.FromObject(appSvcDescription);
                 profiles.Add(profile);
                 config[WorkerConstants.WorkerDescriptionProfiles] = profiles;

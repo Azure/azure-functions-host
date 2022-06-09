@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Profiles
 {
     public class ProfilesTestUtilities
     {
-        public static JObject GetTestWorkerProfileCondition(string type = "hostproperty", string name = "hostversion", string expression = "4.*")
+        public static JObject GetTestWorkerProfileCondition(string type = WorkerConstants.WorkerDescriptionProfileHostPropertyCondition, string name = "hostVersion", string expression = "4.*")
         {
             var condition = new JObject();
             condition[WorkerConstants.WorkerDescriptionProfileConditionType] = type;

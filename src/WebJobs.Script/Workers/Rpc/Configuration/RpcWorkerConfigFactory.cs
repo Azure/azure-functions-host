@@ -201,14 +201,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         if (!_profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
                         {
                             // Failed to resolve condition. This profile will be disabled using a mock false condition
-                            _logger?.LogInformation($"Profile {profile.Name} is disabled. Cannot resolve the profile condition {descriptor.Type}");
+                            _logger?.LogInformation($"Profile {profile.ProfileName} is disabled. Cannot resolve the profile condition {descriptor.Type}");
                             condition = new FalseCondition();
                         }
 
                         profileConditions.Add(condition);
                     }
 
-                    descriptionProfiles.Add(new (profile.Name, profileConditions, profile.Description));
+                    descriptionProfiles.Add(new (profile.ProfileName, profileConditions, profile.Description));
                 }
             }
             catch (Exception)

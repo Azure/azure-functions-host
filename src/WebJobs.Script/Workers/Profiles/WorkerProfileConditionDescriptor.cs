@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 
         private IDictionary<string, string> _properties;
 
-        [JsonProperty(Required = Required.Always)]
+        [JsonProperty(Required = Required.Always, PropertyName = WorkerConstants.WorkerDescriptionProfileConditionType)]
         public string Type { get; set; }
 
         public IDictionary<string, string> Properties

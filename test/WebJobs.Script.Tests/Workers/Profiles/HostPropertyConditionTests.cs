@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
         [Theory]
         //[InlineData("sku", "Dynamic")] TODO: Add test case
         [InlineData("platForm", "Windows")]
-        [InlineData("HostVersion", "3.*")]
+        [InlineData("HostVersion", "-1")]
         public void HostPropertyConditionTest_EvaluateFalse(string name, string testExpression)
         {
             var testLogger = new TestLogger("test");

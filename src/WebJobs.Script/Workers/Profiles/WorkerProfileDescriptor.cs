@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Profiles
 {
     public sealed class WorkerProfileDescriptor
     {
-        public string Name { get; set; }
+        public string ProfileName { get; set; }
 
         public RpcWorkerDescription Description { get; set; }
 

@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         private IList<string> UseProfileOrDefault(IList<string> profileParameter, IList<string> defaultParameter)
         {
-            return profileParameter.Count > 0 ? profileParameter : defaultParameter;
+            return profileParameter != null && profileParameter.Count > 0 ? profileParameter : defaultParameter;
         }
     }
 }
