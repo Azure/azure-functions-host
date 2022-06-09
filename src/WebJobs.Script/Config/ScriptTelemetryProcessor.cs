@@ -22,8 +22,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableUserCodeException)
                 && item is ExceptionTelemetry exceptionTelemetry
-                && exceptionTelemetry.Exception.InnerException is RpcException rpcException
-                && rpcException.IsUserException)
+                && exceptionTelemetry?.Exception?.InnerException is RpcException rpcException
+                && (rpcException?.IsUserException).GetValueOrDefault())
             {
                 item = ToUserException(rpcException, item);
             }
@@ -32,9 +32,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         private ITelemetry ToUserException(RpcException rpcException, ITelemetry originalItem)
         {
-            // TODO - remove. For testing purposes while worker changes aren't in place yet.
-            rpcException.RemoteTypeName = "test processor exception type";
-
             string typeName = string.IsNullOrEmpty(rpcException.RemoteTypeName) ? rpcException.GetType().ToString() : rpcException.RemoteTypeName;
 
             var userExceptionDetails = new ExceptionDetailsInfo(1, -1, typeName, rpcException.RemoteMessage, true, rpcException.RemoteStackTrace, new StackFrame[] { });
