@@ -60,7 +60,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.PowerShellWorker.PS7" Version="3.0.1845" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Logging.ApplicationInsights" Version="3.0.31" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.4-10859" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="4.0.5-10872" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Script.Abstractions" Version="1.0.2-preview" />
     <PackageReference Include="Microsoft.Build" Version="15.8.166" />    
     <PackageReference Include="Microsoft.CodeAnalysis" Version="3.3.1" />
