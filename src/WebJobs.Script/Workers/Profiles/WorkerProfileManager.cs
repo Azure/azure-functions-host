@@ -30,7 +30,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         /// <inheritdoc />
         public void SaveWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language)
         {
-            _profiles.Add(language, workerDescriptionProfiles);
+            _profiles[language] = workerDescriptionProfiles;
         }
 
         // Evaluate profile conditions for a language
