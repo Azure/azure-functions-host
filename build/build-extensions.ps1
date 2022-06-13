@@ -238,7 +238,10 @@ function CreateSiteExtensions() {
     Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null    
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
+    
+    #This needs to be removed post Ant 99 as it's a temporary workaround
+    New-Item "$siteExtensionPath\$extensionVersion.hardlinksCreated" > $null
     
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
