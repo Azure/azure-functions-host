@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
 
         public static bool IsAppServiceInternalRequest(this HttpRequest request, IEnvironment environment = null)
         {
-            environment = environment ?? SystemEnvironment.Instance;
+            environment = GetEnvironment(request, environment);
             if (!environment.IsAppService())
             {
                 return false;
@@ -88,6 +89,24 @@ namespace Microsoft.Azure.WebJobs.Script.Extensions
             // through the Anatares front end). For requests originating internally it will NOT be
             // present.
             return !request.Headers.Keys.Contains(ScriptConstants.AntaresLogIdHeaderName);
+        }
+
+        public static bool IsPlatformInternalRequest(this HttpRequest request, IEnvironment environment = null)
+        {
+            environment = GetEnvironment(request, environment);
+            if (!environment.IsAppService())
+            {
+                return false;
+            }
+
+            var header = request.Headers[ScriptConstants.AntaresPlatformInternal];
+            string value = header.FirstOrDefault();
+            return string.Compare(value, "true", StringComparison.OrdinalIgnoreCase) == 0;
+        }
+
+        private static IEnvironment GetEnvironment(HttpRequest request, IEnvironment environment = null)
+        {
+            return environment ?? request.HttpContext.RequestServices?.GetService<IEnvironment>() ?? SystemEnvironment.Instance;
         }
 
         public static bool IsColdStart(this HttpRequest request)

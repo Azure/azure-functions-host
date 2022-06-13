@@ -103,6 +103,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
             var authorizationPolicyProvider = context.RequestServices.GetRequiredService<IAuthorizationPolicyProvider>();
             var policyEvaluator = context.RequestServices.GetRequiredService<IPolicyEvaluator>();
 
+            if (!AuthorizationOptionsExtensions.CheckPlatformInternal(context, allowAppServiceInternal: false))
+            {
+                return false;
+            }
+
             var policy = await authorizationPolicyProvider.GetPolicyAsync(PolicyNames.AdminAuthLevel);
             var authenticateResult = await policyEvaluator.AuthenticateAsync(policy, context);
 

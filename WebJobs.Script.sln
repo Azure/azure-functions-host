@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29409.12
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32505.173
 MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16351B76-87CA-4A8C-80A1-3DD83A0C4AA6}"
 EndProject
@@ -304,8 +304,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Python", "Python", "{0AE3CE
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger", "HttpTrigger", "{BA45A727-34B7-484F-9B93-B1755AF09A2A}"
 	ProjectSection(SolutionItems) = preProject
-		sample\Python\HttpTrigger\__init__.py = sample\Python\HttpTrigger\__init__.py
 		sample\Python\HttpTrigger\function.json = sample\Python\HttpTrigger\function.json
+		sample\Python\HttpTrigger\__init__.py = sample\Python\HttpTrigger\__init__.py
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebJobs.Script.Abstractions", "src\WebJobs.Script.Abstractions\WebJobs.Script.Abstractions.csproj", "{9A522D9D-2D86-4572-B7D1-ECBFBFAF312C}"
@@ -360,12 +360,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-LongRun", "Http
 		sample\NodeDrain\HttpTrigger-LongRun\index.js = sample\NodeDrain\HttpTrigger-LongRun\index.js
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "HttpTrigger-AdminLevel", "HttpTrigger-AdminLevel", "{7FDE25BC-43C0-4902-AB9B-8B09123716BA}"
+	ProjectSection(SolutionItems) = preProject
+		sample\CSharp\HttpTrigger-AdminLevel\function.json = sample\CSharp\HttpTrigger-AdminLevel\function.json
+		sample\CSharp\HttpTrigger-AdminLevel\run.csx = sample\CSharp\HttpTrigger-AdminLevel\run.csx
+	EndProjectSection
+EndProject
 Global
-	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
-		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
@@ -471,8 +472,14 @@ Global
 		{09D16953-A048-4E6B-B366-1E0D7E5EF86E} = {AFB0F5F7-A612-4F4A-94DD-8B69CABF7970}
 		{6FE94892-4E58-403D-BA32-4A35C0EE1E46} = {FF9C0818-30D3-437A-A62D-7A61CA44F459}
 		{1EE80AFE-8B64-4670-9462-3DEA692D4457} = {6FE94892-4E58-403D-BA32-4A35C0EE1E46}
+		{7FDE25BC-43C0-4902-AB9B-8B09123716BA} = {34506711-9D66-41EF-BBA1-9A9DC1140209}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85400884-5FFD-4C27-A571-58CB3C8CAAC5}
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{35c9ccb7-d8b6-4161-bb0d-bcfa7c6dcffb}*SharedItemsImports = 13
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{3ba93614-3a4a-49b0-bfbc-7831e2c02bb7}*SharedItemsImports = 5
+		test\WebJobs.Script.Tests.Shared\WebJobs.Script.Tests.Shared.projitems*{edddaed1-0e37-4ed7-a595-63f686dee90a}*SharedItemsImports = 5
 	EndGlobalSection
 EndGlobal

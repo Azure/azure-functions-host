@@ -45,6 +45,11 @@ namespace Microsoft.Azure.WebJobs.Script
             return environment.GetEnvironmentVariable(FunctionsRuntimeScaleMonitoringEnabled) == "1";
         }
 
+        public static bool IsAdminIsolationEnabled(this IEnvironment environment)
+        {
+            return environment.GetEnvironmentVariable(FunctionsAdminIsolationEnabled) == "1";
+        }
+
         public static bool IsEasyAuthEnabled(this IEnvironment environment)
         {
             bool.TryParse(environment.GetEnvironmentVariable(EasyAuthEnabled), out bool isEasyAuthEnabled);
