@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -30,6 +32,65 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Controllers
             _instanceManager = instanceManager;
             _logger = loggerFactory.CreateLogger<InstanceController>();
             _startupContextProvider = startupContextProvider;
+        }
+
+        [HttpPost]
+        [Route("admin/instance/filewriter")]
+        public IActionResult WriteFileWithWriter()
+        {
+            try
+            {
+                var path = Path.Combine("/home", "site", "deployments", $"host-streamwriter.txt");
+                using (var writer = System.IO.File.CreateText(path))
+                {
+                    writer.WriteLine("Test: Line One");
+                    writer.WriteLine("Test: Line One");
+                }
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
+
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("admin/instance/filewriteall")]
+        public IActionResult WriteFileWithWriteAll()
+        {
+            try
+            {
+                var path = Path.Combine("/home", "site", "deployments", $"host-filewriteline.txt");
+                System.IO.File.WriteAllText(path, "Hello World, this is a test");
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
+
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("admin/instance/filewritestream")]
+        public IActionResult WriteFileWithStream()
+        {
+            try
+            {
+                var path = Path.Combine("/home", "site", "deployments", $"host-filestream.txt");
+                using (FileStream destinationStream = System.IO.File.Create(path))
+                {
+                    byte[] bytes = System.Text.Encoding.UTF8.GetBytes("one two three");
+                    destinationStream.Write(bytes, 0, bytes.Length);
+                }
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
+
+            return Ok();
         }
 
         [HttpPost]

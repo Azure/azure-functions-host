@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -325,6 +326,16 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management
                 {
                     _logger.LogError(
                         $"No {nameof(EnvironmentSettingNames.AzureFilesConnectionString)} or {nameof(EnvironmentSettingNames.AzureFilesContentShare)} configured. Azure FileShare will not be mounted. For PowerShell Functions, Managed Dependencies will not persisted across functions host instances.");
+                }
+
+                try
+                {
+                    var path = Path.Combine("/home", "site", "deployments", $"host-assign-filewriteline.txt");
+                    File.WriteAllText(path, "Hello World, this is a test");
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning($"File write failed. {e}");
                 }
 
                 if (pkgContext.IsRunFromPackage(options, _logger))
