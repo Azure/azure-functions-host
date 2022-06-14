@@ -633,7 +633,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerDirectory = workerDirectory,
                 Language = "python"
             };
-            workerDescription.FormatArgumentsIfNeeded();
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
 
             for (int i = 0; i < arguments.Count; i++)
             {
@@ -659,7 +659,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 WorkerDirectory = workerDirectory,
                 Language = "python"
             };
-            workerDescription.FormatArgumentsIfNeeded();
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
 
             for (int i = 0; i < arguments.Count; i++)
             {
