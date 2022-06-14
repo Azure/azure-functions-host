@@ -117,13 +117,35 @@ message WorkerInitRequest {
 
 // Worker responds with the result of initializing itself
 message WorkerInitResponse {
-  // Version of worker
+  // NOT USED
+  // TODO: Remove from protobuf during next breaking change release
   string worker_version = 1;
+
   // A map of worker supported features/capabilities
   map<string, string> capabilities = 2;
 
   // Status of the response
   StatusResult result = 3;
+
+  // Worker metadata captured for telemetry purposes
+  WorkerMetadata worker_metadata = 4;
+}
+
+message WorkerMetadata {
+  // The runtime/stack name
+  string runtime_name = 1;
+
+  // The version of the runtime/stack
+  string runtime_version = 2;
+
+  // The version of the worker or worker SDK
+  string worker_version = 3;
+
+  // The worker bitness/architecture
+  string worker_bitness = 4;
+
+  // Optional additional custom properties
+  map<string, string> custom_properties = 5;
 }
 
 // Used by the host to determine success/failure/cancellation
@@ -134,6 +156,7 @@ message StatusResult {
     Success = 1;
     Cancelled = 2;
   }
+
   // Status for the given result
   Status status = 4;
 
@@ -556,13 +579,13 @@ message RpcException {
   // Textual message describing the exception
   string message = 2;
 
-  // Worker specifies whether exception is a user exception, 
-  // for purpose of application insights logging. Defaults to false. 
+  // Worker specifies whether exception is a user exception,
+  // for purpose of application insights logging. Defaults to false.
   optional bool is_user_exception = 4;
 
   // Type of exception. If it's a user exception, the type is passed along to app insights.
   // Otherwise, it's ignored for now.
-  optional string type = 5; 
+  optional string type = 5;
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
