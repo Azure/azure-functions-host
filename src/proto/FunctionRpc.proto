@@ -138,7 +138,7 @@ message WorkerMetadata {
   // The version of the runtime/stack
   string runtime_version = 2;
 
-  // The version of the worker or worker SDK
+  // The version of the worker
   string worker_version = 3;
 
   // The worker bitness/architecture
