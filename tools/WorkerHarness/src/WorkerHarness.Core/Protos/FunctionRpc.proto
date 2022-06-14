@@ -1,0 +1,621 @@
+syntax = "proto3";
+// protobuf vscode extension: https://marketplace.visualstudio.com/items?itemName=zxh404.vscode-proto3
+
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.functions.rpc.messages";
+option java_outer_classname = "FunctionProto";
+option csharp_namespace = "Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages";
+option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
+
+package AzureFunctionsRpcMessages;
+
+import "google/protobuf/duration.proto";
+import "identity/ClaimsIdentityRpc.proto";
+import "shared/NullableTypes.proto";
+
+// Interface exported by the server.
+service FunctionRpc {
+ rpc EventStream (stream StreamingMessage) returns (stream StreamingMessage) {}
+}
+
+message StreamingMessage {
+  // Used to identify message between host and worker
+  string request_id = 1;
+
+  // Payload of the message
+  oneof content {
+
+    // Worker initiates stream
+    StartStream start_stream = 20; 
+
+    // Host sends capabilities/init data to worker
+    WorkerInitRequest worker_init_request = 17;
+    // Worker responds after initializing with its capabilities & status
+    WorkerInitResponse worker_init_response = 16;
+
+    // Worker periodically sends empty heartbeat message to host
+    WorkerHeartbeat worker_heartbeat = 15;
+
+    // Host sends terminate message to worker.
+    // Worker terminates if it can, otherwise host terminates after a grace period
+    WorkerTerminate worker_terminate = 14;
+
+    // Add any worker relevant status to response
+    WorkerStatusRequest worker_status_request = 12;
+    WorkerStatusResponse worker_status_response = 13;
+
+    // On file change event, host sends notification to worker
+    FileChangeEventRequest file_change_event_request = 6;
+
+    // Worker requests a desired action (restart worker, reload function)
+    WorkerActionResponse worker_action_response = 7;
+    
+    // Host sends required metadata to worker to load function
+    FunctionLoadRequest function_load_request = 8;
+    // Worker responds after loading with the load result
+    FunctionLoadResponse function_load_response = 9;
+    
+    // Host requests a given invocation
+    InvocationRequest invocation_request = 4;
+
+    // Worker responds to a given invocation
+    InvocationResponse invocation_response = 5;
+
+    // Host sends cancel message to attempt to cancel an invocation. 
+    // If an invocation is cancelled, host will receive an invocation response with status cancelled.
+    InvocationCancel invocation_cancel = 21;
+
+    // Worker logs a message back to the host
+    RpcLog rpc_log = 2;
+    
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
+
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
+
+    // Ask the worker to close any open shared memory resources for a given invocation
+    CloseSharedMemoryResourcesRequest close_shared_memory_resources_request = 27;
+    CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
+
+    // Worker indexing message types
+    FunctionsMetadataRequest functions_metadata_request = 29;
+    FunctionMetadataResponse function_metadata_response = 30;
+
+    // Host sends required metadata to worker to load functions
+    FunctionLoadRequestCollection function_load_request_collection = 31;
+
+    // Host gets the list of function load responses
+    FunctionLoadResponseCollection function_load_response_collection = 32;
+  }
+}
+
+// Process.Start required info
+//   connection details
+//   protocol type
+//   protocol version 
+
+// Worker sends the host information identifying itself
+message StartStream {
+  // id of the worker
+  string worker_id = 2;
+}
+
+// Host requests the worker to initialize itself 
+message WorkerInitRequest {
+  // version of the host sending init request
+  string host_version = 1;
+
+  // A map of host supported features/capabilities
+  map<string, string> capabilities = 2;
+
+  // inform worker of supported categories and their levels
+  // i.e. Worker = Verbose, Function.MyFunc = None
+  map<string, RpcLog.Level> log_categories = 3;
+
+  // Full path of worker.config.json location
+  string worker_directory = 4;
+
+  // base directory for function app
+  string function_app_directory = 5;
+}
+
+// Worker responds with the result of initializing itself
+message WorkerInitResponse {
+  // Version of worker
+  string worker_version = 1;
+  // A map of worker supported features/capabilities
+  map<string, string> capabilities = 2;
+
+  // Status of the response
+  StatusResult result = 3;
+}
+
+// Used by the host to determine success/failure/cancellation
+message StatusResult {
+  // Indicates Failure/Success/Cancelled
+  enum Status {
+    Failure = 0;
+    Success = 1;
+    Cancelled = 2;
+  }
+  // Status for the given result
+  Status status = 4;
+
+  // Specific message about the result
+  string result = 1;
+
+  // Exception message (if exists) for the status
+  RpcException exception = 2;
+
+  // Captured logs or relevant details can use the logs property
+  repeated RpcLog logs = 3;
+}
+
+// TODO: investigate grpc heartbeat - don't limit to grpc implemention
+
+// Message is empty by design - Will add more fields in future if needed
+message WorkerHeartbeat {}
+
+// Warning before killing the process after grace_period
+// Worker self terminates ..no response on this
+message WorkerTerminate {
+  google.protobuf.Duration grace_period = 1;
+}
+
+// Host notifies worker of file content change
+message FileChangeEventRequest {
+  // Types of File change operations (See link for more info: https://msdn.microsoft.com/en-us/library/t6xf43e0(v=vs.110).aspx)
+  enum Type {
+	  Unknown = 0;
+    Created = 1;
+    Deleted = 2;
+    Changed = 4;
+    Renamed = 8;
+    All = 15;
+  }
+
+  // type for this event
+  Type type = 1;
+
+  // full file path for the file change notification
+  string full_path = 2;
+
+  // Name of the function affected
+  string name = 3;
+}
+
+// Indicates whether worker reloaded successfully or needs a restart
+message WorkerActionResponse {
+  // indicates whether a restart is needed, or reload succesfully
+  enum Action {
+    Restart = 0;
+    Reload = 1;
+  }
+  
+  // action for this response
+  Action action = 1;
+
+  // text reason for the response
+  string reason = 2;
+}
+
+// NOT USED
+message WorkerStatusRequest{
+}
+
+// NOT USED
+message WorkerStatusResponse {
+}
+
+message FunctionEnvironmentReloadRequest {
+  // Environment variables from the current process
+  map<string, string> environment_variables = 1;
+  // Current directory of function app
+  string function_app_directory = 2;
+}
+
+message FunctionEnvironmentReloadResponse {
+  // Status of the response
+  StatusResult result = 3;
+}
+
+// Tell the out-of-proc worker to close any shared memory maps it allocated for given invocation
+message CloseSharedMemoryResourcesRequest {
+  repeated string map_names = 1;
+}
+
+// Response from the worker indicating which of the shared memory maps have been successfully closed and which have not been closed
+// The key (string) is the map name and the value (bool) is true if it was closed, false if not
+message CloseSharedMemoryResourcesResponse {
+  map<string, bool> close_map_results = 1;
+}
+
+// Host tells the worker to load a list of Functions
+message FunctionLoadRequestCollection {
+  repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+// Host gets the list of function load responses
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
+}
+
+// Load request of a single Function
+message FunctionLoadRequest {
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 1;
+
+  // Metadata for the request
+  RpcFunctionMetadata metadata = 2;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 3;
+}
+
+// Worker tells host result of reload
+message FunctionLoadResponse {
+  // unique function identifier
+  string function_id = 1;
+
+  // Result of load operation
+  StatusResult result = 2;
+  // TODO: return type expected?
+
+  // Result of load operation
+  bool is_dependency_downloaded = 3;
+}
+
+// Information on how a Function should be loaded and its bindings
+message RpcFunctionMetadata {
+  // TODO: do we want the host's name - the language worker might do a better job of assignment than the host
+  string name = 4;
+
+  // base directory for the Function
+  string directory = 1;
+  
+  // Script file specified
+  string script_file = 2;
+
+  // Entry point specified
+  string entry_point = 3;
+
+  // Bindings info
+  map<string, BindingInfo> bindings = 6;
+
+  // Is set to true for proxy
+  bool is_proxy = 7;
+
+  // Function indexing status
+  StatusResult status = 8;
+
+  // Function language
+  string language = 9;
+
+  // Raw binding info
+  repeated string raw_bindings = 10;
+
+  // unique function identifier (avoid name collisions, facilitate reload case)
+  string function_id = 13;
+
+  // A flag indicating if managed dependency is enabled or not
+  bool managed_dependency_enabled = 14;
+}
+
+// Host tells worker it is ready to receive metadata
+message FunctionsMetadataRequest {
+  // base directory for function app
+  string function_app_directory = 1;
+}
+
+// Worker sends function metadata back to host
+message FunctionMetadataResponse {
+  // list of function indexing responses
+  repeated RpcFunctionMetadata function_metadata_results = 1;
+
+  // status of overall metadata request
+  StatusResult result = 2;
+
+  // if set to true then host will perform indexing
+  bool use_default_metadata_indexing = 3;
+}
+
+// Host requests worker to invoke a Function
+message InvocationRequest {
+  // Unique id for each invocation
+  string invocation_id = 1;
+
+  // Unique id for each Function
+  string function_id = 2;
+
+  // Input bindings (include trigger)
+  repeated ParameterBinding input_data = 3;
+
+  // binding metadata from trigger
+  map<string, TypedData> trigger_metadata = 4;
+
+  // Populates activityId, tracestate and tags from host
+  RpcTraceContext trace_context = 5;
+
+  // Current retry context
+  RetryContext retry_context = 6;
+}
+
+// Host sends ActivityId, traceStateString and Tags from host
+message RpcTraceContext {
+	// This corresponds to Activity.Current?.Id
+	string trace_parent = 1;
+
+	// This corresponds to Activity.Current?.TraceStateString
+	string trace_state = 2;
+
+	// This corresponds to Activity.Current?.Tags
+	map<string, string> attributes = 3;
+}
+
+// Host sends retry context for a function invocation
+message RetryContext {
+  // Current retry count
+  int32 retry_count = 1;
+
+  // Max retry count
+  int32 max_retry_count = 2;
+
+  // Exception that caused the retry
+  RpcException exception = 3;
+}
+
+// Host requests worker to cancel invocation
+message InvocationCancel {
+  // Unique id for invocation
+  string invocation_id = 2;
+
+  // Time period before force shutdown
+  google.protobuf.Duration grace_period = 1; // could also use absolute time
+}
+
+// Worker responds with status of Invocation
+message InvocationResponse {
+  // Unique id for invocation
+  string invocation_id = 1;
+
+  // Output binding data
+  repeated ParameterBinding output_data = 2;
+
+  // data returned from Function (for $return and triggers with return support)
+  TypedData return_value = 4;
+
+  // Status of the invocation (success/failure/canceled)
+  StatusResult result = 3;
+}
+
+// Used to encapsulate data which could be a variety of types
+message TypedData {
+  oneof data {
+    string string = 1;
+    string json = 2;
+    bytes bytes = 3;
+    bytes stream = 4;
+    RpcHttp http = 5;
+    sint64 int = 6;
+    double double = 7;
+    CollectionBytes collection_bytes = 8;
+    CollectionString collection_string = 9;
+    CollectionDouble collection_double = 10;
+    CollectionSInt64 collection_sint64 = 11;
+  }
+}
+
+// Specify which type of data is contained in the shared memory region being read
+enum RpcDataType {
+  unknown = 0;
+  string = 1;
+  json = 2;
+  bytes = 3;
+  stream = 4;
+  http = 5;
+  int = 6;
+  double = 7;
+  collection_bytes = 8;
+  collection_string = 9;
+  collection_double = 10;
+  collection_sint64 = 11;
+}
+
+// Used to provide metadata about shared memory region to read data from
+message RpcSharedMemory {
+  // Name of the shared memory map containing data
+  string name = 1;
+  // Offset in the shared memory map to start reading data from
+  int64 offset = 2;
+  // Number of bytes to read (starting from the offset)
+  int64 count = 3;
+  // Final type to which the read data (in bytes) is to be interpreted as
+  RpcDataType type = 4;
+}
+
+// Used to encapsulate collection string
+message CollectionString {
+  repeated string string = 1;
+}
+
+// Used to encapsulate collection bytes
+message CollectionBytes {
+  repeated bytes bytes = 1;
+}
+
+// Used to encapsulate collection double
+message CollectionDouble {
+  repeated double double = 1;
+}
+
+// Used to encapsulate collection sint64
+message CollectionSInt64 {
+  repeated sint64 sint64 = 1;
+}
+
+// Used to describe a given binding on invocation
+message ParameterBinding {
+  // Name for the binding
+  string name = 1;
+
+  oneof rpc_data {
+    // Data for the binding
+    TypedData data = 2;
+
+    // Metadata about the shared memory region to read data from
+    RpcSharedMemory rpc_shared_memory = 3;
+  }
+}
+
+// Used to describe a given binding on load
+message BindingInfo {
+    // Indicates whether it is an input or output binding (or a fancy inout binding)
+    enum Direction {
+      in = 0;
+      out = 1;
+      inout = 2;
+    }
+
+    // Indicates the type of the data for the binding
+    enum DataType {
+      undefined = 0;
+      string = 1;
+      binary = 2;
+      stream = 3;
+    }
+
+  // Type of binding (e.g. HttpTrigger)
+  string type = 2;
+
+  // Direction of the given binding
+  Direction direction = 3;
+
+  DataType data_type = 4;
+}
+
+// Used to send logs back to the Host 
+message RpcLog {
+  // Matching ILogger semantics
+  // https://github.com/aspnet/Logging/blob/9506ccc3f3491488fe88010ef8b9eb64594abf95/src/Microsoft.Extensions.Logging/Logger.cs
+  // Level for the Log
+  enum Level {
+    Trace = 0;
+    Debug = 1;
+    Information = 2;
+    Warning = 3;
+    Error = 4;
+    Critical = 5;
+    None = 6;
+  }
+
+  // Category of the log. Defaults to User if not specified.
+  enum RpcLogCategory {
+    User = 0;
+    System = 1;
+    CustomMetric = 2;
+  }
+
+  // Unique id for invocation (if exists)
+  string invocation_id = 1;
+
+  // TOD: This should be an enum
+  // Category for the log (startup, load, invocation, etc.)
+  string category = 2;
+
+  // Level for the given log message
+  Level level = 3;
+
+  // Message for the given log
+  string message = 4;
+
+  // Id for the even associated with this log (if exists)
+  string event_id = 5;
+
+  // Exception (if exists)
+  RpcException exception = 6;
+
+  // json serialized property bag
+  string properties = 7;
+
+  // Category of the log. Either user(default), system, or custom metric.
+  RpcLogCategory log_category = 8;
+
+  // strongly-typed (ish) property bag
+  map<string, TypedData> propertiesMap = 9;
+}
+
+// Encapsulates an Exception 
+message RpcException {
+  // Source of the exception
+  string source = 3;
+
+  // Stack trace for the exception
+  string stack_trace = 1;
+
+  // Textual message describing the exception
+  string message = 2;
+
+  // Worker specifies whether exception is a user exception, 
+  // for purpose of application insights logging. Defaults to false. 
+  optional bool is_user_exception = 4;
+
+  // Type of exception. If it's a user exception, the type is passed along to app insights.
+  // Otherwise, it's ignored for now.
+  optional string type = 5; 
+}
+
+// Http cookie type. Note that only name and value are used for Http requests
+message RpcHttpCookie {
+  // Enum that lets servers require that a cookie shouldn't be sent with cross-site requests
+  enum SameSite {
+      None = 0;
+      Lax = 1;
+      Strict = 2;
+      ExplicitNone = 3;
+  }
+
+  // Cookie name
+  string name = 1;
+
+  // Cookie value
+  string value = 2;
+
+  // Specifies allowed hosts to receive the cookie
+  NullableString domain = 3;
+
+  // Specifies URL path that must exist in the requested URL
+  NullableString path = 4;
+
+  // Sets the cookie to expire at a specific date instead of when the client closes.
+  // It is generally recommended that you use "Max-Age" over "Expires".
+  NullableTimestamp expires = 5;
+
+  // Sets the cookie to only be sent with an encrypted request
+  NullableBool secure = 6;
+
+  // Sets the cookie to be inaccessible to JavaScript's Document.cookie API
+  NullableBool http_only = 7;
+
+  // Allows servers to assert that a cookie ought not to be sent along with cross-site requests
+  SameSite same_site = 8;
+
+  // Number of seconds until the cookie expires. A zero or negative number will expire the cookie immediately.
+  NullableDouble max_age = 9;
+}
+
+// TODO - solidify this or remove it
+message RpcHttp {
+  string method = 1;
+  string url = 2; 
+  map<string,string> headers = 3;
+  TypedData body = 4;
+  map<string,string> params = 10;
+  string status_code = 12;
+  map<string,string> query = 15;
+  bool enable_content_negotiation= 16;
+  TypedData rawBody = 17;
+  repeated RpcClaimsIdentity identities = 18;
+  repeated RpcHttpCookie cookies = 19;
+  map<string,NullableString> nullable_headers = 20;
+  map<string,NullableString> nullable_params = 21;
+  map<string,NullableString> nullable_query = 22;
+}

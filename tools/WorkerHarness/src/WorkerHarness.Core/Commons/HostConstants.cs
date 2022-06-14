@@ -1,14 +1,19 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the MIT License. See License.txt in the project root for license information.
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class WorkerProcessConstants
+    internal class HostConstants
     {
         internal const string DefaultHostUri = "127.0.0.1";
 
         internal const int DefaultPort = 30052;
 
         internal const int GrpcMaxMessageLength = int.MaxValue;
+
+        internal const string HostVersion = "4.3.2.0";
     }
 }

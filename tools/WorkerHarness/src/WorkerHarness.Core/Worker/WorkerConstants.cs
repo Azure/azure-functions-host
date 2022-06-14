@@ -1,21 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core.Worker
+namespace WorkerHarness.Core
 {
-    internal class WorkerConstants
+    public class WorkerConstants
     {
-        internal const string WorkerConfigFileName = "worker.config.json";
+        public const string WorkerConfigFileName = "worker.config.json";
 
-        internal const string ProgramFilesFolder = @"C:\Program Files";
+        public const string ProgramFilesFolder = @"C:\Program Files";
 
-        internal const string DotnetExecutableFileName = "dotnet.exe";
+        public const string DotnetExecutableFileName = "dotnet.exe";
 
-        internal const string DotnetFolder = "dotnet";
+        public const string DotnetFolder = "dotnet";
 
-        internal const string DotnetExecutableName = "dotnet";
+        public const string DotnetExecutableName = "dotnet";
     }
 }

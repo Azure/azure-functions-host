@@ -1,56 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WorkerHarness.Core.Worker;
-using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core
 {
     public class WorkerHarnessExecutor
     {
-        private IWorkerDescriptionBuilder _workerDescriptionBuilder;
+        private WorkerDescription _workerDescription;
         private IWorkerProcessBuilder _workerProcessBuilder;
-        private string _workerId;
+        private IScenarioParser _scenarioParser;
 
-        public WorkerHarnessExecutor(IWorkerDescriptionBuilder workerDescriptionBuilder,
-            IWorkerProcessBuilder workerProcessBuilder)
+        public WorkerHarnessExecutor(IOptions<WorkerDescription> workerDescription,
+            IWorkerProcessBuilder workerProcessBuilder,
+            IScenarioParser scenarioParser)
         {
-            _workerDescriptionBuilder = workerDescriptionBuilder;
+            _workerDescription = workerDescription.Value;
             _workerProcessBuilder = workerProcessBuilder;
-            _workerId = Guid.NewGuid().ToString();
+            _scenarioParser = scenarioParser;
         }
 
-        /// <summary>
-        /// Start a language worker process
-        /// </summary>
-        /// <param name="workerDirectory">an absolute path to the language worker folder</param>
-        /// <returns>boolean whether the process starts successfully</returns>
-        /// <exception cref="FileNotFoundException"></exception>
-        public bool Start(string workerDirectory)
+        public bool Start(string scenarioFile)
         {
-            // find the worker.config.json file in the WorkerDirectory
-            var workerConfigPath = Path.Combine(workerDirectory, WorkerConstants.WorkerConfigFileName);
-            if (!File.Exists(workerConfigPath))
-            {
-                throw new FileNotFoundException($"The worker.config.json file is not found in {workerDirectory}");
-            }
 
-            WorkerDescription workerDescription = _workerDescriptionBuilder.Build(workerConfigPath, workerDirectory);
+            Process myProcess = _workerProcessBuilder.Build(_workerDescription);
 
-            string requestId = Guid.NewGuid().ToString();
-            Process myProcess = _workerProcessBuilder.Build(workerDescription, _workerId, requestId);
+            Scenario scenario = _scenarioParser.Parse(scenarioFile);
+
             try
             {
                 myProcess.Start();
-                Console.WriteLine($"A {workerDescription.Language} is starting");
+                Console.WriteLine($"A {_workerDescription.Language} process is starting...");
+
+                foreach (IAction action in scenario.Actions)
+                {
+                    action.Execute();
+                }
+
                 return true;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
+
                 return false;
             }
         }

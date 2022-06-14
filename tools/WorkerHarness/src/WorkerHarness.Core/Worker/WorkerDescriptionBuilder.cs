@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
-namespace WorkerHarness.Core.Worker
+namespace WorkerHarness.Core
 {
     public class WorkerDescriptionBuilder : IWorkerDescriptionBuilder
     {
@@ -33,14 +33,10 @@ namespace WorkerHarness.Core.Worker
             {
                 PropertyNameCaseInsensitive = true
             };
-            var deserializedObject = JsonSerializer.Deserialize(jsonDescription, typeof(WorkerDescription), options);
 
-            WorkerDescription workerDescription;
-            if (deserializedObject != null)
-            {
-                workerDescription = (WorkerDescription)deserializedObject;
-            }
-            else
+            WorkerDescription? workerDescription = JsonSerializer.Deserialize<WorkerDescription>(jsonDescription, options);
+
+            if (workerDescription == null)
             {
                 throw new JsonException($"Unable to deserialize a {typeof(JsonNode)} to a {typeof(WorkerDescription)} object");
             }

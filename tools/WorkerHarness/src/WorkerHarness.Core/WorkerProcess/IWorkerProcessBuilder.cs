@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WorkerHarness.Core.Worker;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core.WorkerProcess
+using System.Diagnostics;
+
+namespace WorkerHarness.Core
 {
     public interface IWorkerProcessBuilder
     {
-        Process Build(WorkerDescription workerDescription, string workerId, string requestId);
+        Process Build(WorkerDescription workerDescription);
     }
 }
