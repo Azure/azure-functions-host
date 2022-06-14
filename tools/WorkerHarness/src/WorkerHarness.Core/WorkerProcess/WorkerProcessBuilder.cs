@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WorkerHarness.Core.Worker;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core.WorkerProcess
+using System.Diagnostics;
+
+namespace WorkerHarness.Core
 {
     public class WorkerProcessBuilder : IWorkerProcessBuilder
     {
@@ -18,8 +15,10 @@ namespace WorkerHarness.Core.WorkerProcess
         /// <param name="requestId">a request Id</param>
         /// <returns></returns>
         /// <exception cref="MissingMemberException"></exception>
-        public Process Build(WorkerDescription workerDescription, string workerId, string requestId)
+        public Process Build(WorkerDescription workerDescription)
         {
+            string workerId = Guid.NewGuid().ToString();
+            string requestId = Guid.NewGuid().ToString();
             string workerFile = workerDescription.DefaultWorkerPath ?? throw new MissingMemberException("The default worker path is null");
             string arguments = $"{workerFile} --host {WorkerProcessConstants.DefaultHostUri} --port {WorkerProcessConstants.DefaultPort} --workerId {workerId} --requestId {requestId} --grpcMaxMessageLength {WorkerProcessConstants.GrpcMaxMessageLength}";
         

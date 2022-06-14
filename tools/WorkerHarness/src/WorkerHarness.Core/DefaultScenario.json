@@ -1,0 +1,148 @@
+{
+  "scenarioName": "Happy path scenario with successful worker initialization and function invocation",
+  "actions": [
+    {
+      "type": "Default",
+      "name": "Launching a worker process and validating a StartStream response...",
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "StartStream",
+          "direction": "Incoming",
+          "match": {
+            "query": "$.ContentCase",
+            "expected": "StartStream"
+          },
+          "validators": [
+            {
+              "type": "regex",
+              "query": "$.StartStream.WorkerId",
+              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Default",
+      "name": "Sending WorkerInitRequest and validating WorkerInitResponse...",
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "WorkerInitRequest",
+          "direction": "Outgoing",
+          "content": {}
+        },
+        {
+          "id": "message_2",
+          "contentCase": "WorkerInitResponse",
+          "direction": "Incoming",
+          "match": {
+            "query": "$.ContentCase",
+            "expected": "WorkerInitResponse"
+          },
+          "validators": [
+            {
+              "type": "jsonpath",
+              "query": "$.WorkerInitResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Default",
+      "name": "Sending FunctionLoadRequest and validating FunctionLoadRespond...",
+      "timeout": 60000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "FunctionLoadRequest",
+          "direction": "Outgoing",
+          "content": {
+            "Metadata": {
+              "ScriptFile": "FunctionApp.dll",
+              "EntryPoint": "FunctionApp.SimpleQueueTrigger.Run",
+              "Name": "SimpleQueueTrigger",
+              "Bindings": {
+                "myQueueItem": {
+                  "type": "queueTrigger",
+                  "dataType": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "FunctionLoadResponse",
+          "direction": "Incoming",
+          "match": {
+            "query": "$.FunctionLoadResponse.FunctionId",
+            "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+          },
+          "validators": [
+            {
+              "type": "jsonpath",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+
+      ]
+    },
+    {
+      "type": "Default",
+      "name": "Sending InvocationRequest and validating InvocationResponse...",
+      "timeout": 60000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "InvocationRequest",
+          "direction": "Outgoing",
+          "content": {
+            "InputData": [
+              {
+                "name": "myQueueItem",
+                "data": {
+                  "string": "Hello, Emma. QueueTrigger works"
+                }
+              }
+            ],
+            "TriggerMetadata": {
+              "QueueTrigger": { "string": "Hello, Emma. QueueTrigger works" },
+              "DequeueCount": { "json": "1" },
+              "ExpirationTime": { "json": "2022-06-08T17:28:44+00:00" },
+              "Id": { "string": "f4cdda55-f774-4381-9f3a-aa7abc8309bc" },
+              "InsertionTime": { "json": "2022-06-01T17:28:44+00:00" },
+              "NextVisibleTime": { "json": "2022-06-01T17:38:46+00:00" },
+              "PopReceipt": { "string": "AgAAAAMAAAAAAAAAKLX1cd512AE=" }
+            }
+          },
+          "setVariables": {
+            "invocationId_1": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "InvocationResponse",
+          "direction": "Incoming",
+          "match": {
+            "query": "$.InvocationResponse.InvocationId",
+            "expected": "@{invocationId_1}"
+          },
+          "validators": [
+            {
+              "type": "jsonpath",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+  
