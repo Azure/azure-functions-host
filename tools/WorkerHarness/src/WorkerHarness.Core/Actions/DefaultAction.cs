@@ -13,24 +13,43 @@ namespace WorkerHarness.Core
 {
     internal class DefaultAction : IAction
     {
+        // _validatorManager is responsible for validating message. TODO: implement the validation functionality
         private IValidatorManager _validatorManager;
-        private IGrpcMessageProvider _grpcMessageProvider;
-        private DefaultActionData _actionData;
-        private IDictionary<string, object> _globalVariables;
 
-        internal DefaultAction(IValidatorManager validatorManager, IGrpcMessageProvider grpcMessageProvider, DefaultActionData actionData)
+        // _grpcMessageProvider create the right StreamingMessage object
+        private IGrpcMessageProvider _grpcMessageProvider;
+
+        // _actionData encapsulates data for each action in the Scenario file.
+        private DefaultActionData _actionData;
+
+        // _variableManager evaluates all registered expressions once the variable values are available.
+        private IVariableManager _variableManager;
+
+        internal DefaultAction(IValidatorManager validatorManager, 
+            IGrpcMessageProvider grpcMessageProvider, 
+            DefaultActionData actionData,
+            IVariableManager variableManager)
         {
             _validatorManager = validatorManager;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
-            _globalVariables = new Dictionary<string, object>();
+            _variableManager = variableManager;
         }
 
+        // Type of action, type "Default" in this case
         public string? Type { get => _actionData.Type; }
 
+        // Displayed name of the action
         public string? Name { get => _actionData.Name; }
 
+        // Execuation timeout for an action
         public int? Timeout { get => _actionData.Timeout; }
+
+        // Placeholder that stores StreamingMessage to be sent to Grpc Layer
+        private IList<StreamingMessage> _grpcOutgoingMessages = new List<StreamingMessage>();
+
+        // Placeholder that stores IncomingMessage to be matched and validated against messages from Grpc Layer.
+        private IList<IncomingMessage> _unvalidatedMessages = new List<IncomingMessage>();
 
         public void Execute()
         {
@@ -38,12 +57,17 @@ namespace WorkerHarness.Core
             ProcessIncomingMessages();
         }
 
-        private IEnumerable<StreamingMessage> ProcessOutgoingMessages()
+        /// <summary>
+        /// Create StreamingMessage objects for each action in the scenario file.
+        /// Add them to the _grpcOutgoingMessages to be sent to Grpc Service layer later.
+        /// If users set any variables, resolve those variables.
+        /// 
+        /// </summary>
+        /// <exception cref="NullReferenceException"></exception>
+        private void ProcessOutgoingMessages()
         {
-            IList<StreamingMessage> grpcOutgoingMessages = new List<StreamingMessage>();
-
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            options.Converters.Add(new JsonStringEnumConverter());
+            //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            //options.Converters.Add(new JsonStringEnumConverter());
 
             foreach (OutgoingMessage message in _actionData.OutgoingMessages)
             {
@@ -55,24 +79,27 @@ namespace WorkerHarness.Core
 
                 StreamingMessage streamingMessage = _grpcMessageProvider.Create(message.ContentCase, message.Content);
 
-                // buffer streamingMessage in the _globalVariables dictionary
                 string messageId = message.Id ?? Guid.NewGuid().ToString();
-                _globalVariables[messageId] = streamingMessage;
 
-                // update _globalVariables with the "SetProperties"
+                // resolve "SetVariables" property
+                VariableHelper.ResolveVariableMap(message.SetVariables, messageId, streamingMessage);
+
+                // add the variables inside "SetVariables" to VariableManager
                 if (message.SetVariables != null)
                 {
-                    VariableHelper.UpdateDefaultVariableExpressions(message.SetVariables, messageId);
-                    IDictionary<string, object> resolvedVariables = VariableHelper.ResolveVariableExpressions(message.SetVariables, _globalVariables);
-                    VariableHelper.UpdateMap(_globalVariables, resolvedVariables);
+                    foreach (KeyValuePair<string, string> variable in message.SetVariables)
+                    {
+                        _variableManager.AddVariable(variable.Key, variable.Value);
+                    }
                 }
 
-                grpcOutgoingMessages.Add(streamingMessage);
-            }
+                _variableManager.AddVariable(messageId, streamingMessage);
 
-            return grpcOutgoingMessages;
+                _grpcOutgoingMessages.Add(streamingMessage);
+            }
         }
 
+        // TODO: debugging methods, to be deleted later
         private void PrintDictionary(IDictionary<string, object> resolvedVariables)
         {
             JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
@@ -84,51 +111,51 @@ namespace WorkerHarness.Core
             }
         }
 
+        /// <summary>
+        /// Register incoming messages that are to be validated against actual grpc messages.
+        /// 
+        /// Subscribe variable expressions (if any) mentioned in the scenario file.
+        /// Variable expressions are allowed in:
+        ///     - Expected field in the Match property: this feature allows user to identify an incoming message based on
+        ///     the property of another message, which enable dependency between messages
+        ///     - Expected field in the Validators property: this feature allows user to validate an incoming message based on
+        ///     the property of another message.
+        ///     
+        /// </summary>
         private void ProcessIncomingMessages()
         {
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
             foreach (IncomingMessage message in _actionData.IncomingMessages)
             {
-                var objectName = message.Id ?? Guid.NewGuid().ToString();
-                IDictionary<string, string> placeholder = new Dictionary<string, string>();
+                var messageId = message.Id ?? Guid.NewGuid().ToString();
 
-                // in message.Match, update any default variable '$.' to '$.{message.Id}'
+                // in message.Match, update any default variable '$.' to '$.{messageId}'
                 if (message.Match != null)
                 {
-                    placeholder["matchQuery"] = message.Match.Query ?? String.Empty;
-                    placeholder["matchExpected"] = message.Match.Expected ?? String.Empty;
-
-                    VariableHelper.UpdateDefaultVariableExpressions(placeholder, objectName);
-
-                    message.Match.Query = placeholder["matchQuery"];
-                    message.Match.Expected = placeholder["matchExpected"];
+                    message.Match.Query = VariableHelper.UpdateSingleDefaultVariableExpression(message.Match.Query ?? string.Empty, messageId);
+                    message.Match.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(message.Match.Expected ?? string.Empty, messageId);
                     message.Match.ExpectedExpression = new Expression(message.Match.Expected);
+
+                    _variableManager.Subscribe(message.Match.ExpectedExpression);
                 }
 
-                placeholder.Clear();
-
-                // in message.Validators, update any default variable '$.' to '$.{message.Id}'
+                // in message.Validators, update any default variable '$.' to '$.{messageId}'
                 if (message.Validators != null)
                 {
                     foreach (var validator in message.Validators)
                     {
                         if (validator != null)
                         {
-                            placeholder["validatorQuery"] = validator.Query ?? String.Empty;
-                            placeholder["validatorExpected"] = validator.Expected ?? String.Empty;
-
-                            VariableHelper.UpdateDefaultVariableExpressions(placeholder, objectName);
-
-                            validator.Query = placeholder["validatorQuery"];
-                            validator.Expected = placeholder["validatorExpected"];
+                            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query ?? string.Empty, messageId);
+                            validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected ?? string.Empty, messageId);
                             validator.ExpectedExpression = new Expression(validator.Expected);
+
+                            _variableManager.Subscribe(validator.ExpectedExpression);
                         }
                     }
                 }
-                Console.WriteLine("Incoming messages: ");
-                Console.WriteLine(JsonSerializer.Serialize(message, options));
-                Console.WriteLine("*******************************************************");
-                Task.Delay(1000).Wait();
+
+                _unvalidatedMessages.Add(message);
             }
         }
     }

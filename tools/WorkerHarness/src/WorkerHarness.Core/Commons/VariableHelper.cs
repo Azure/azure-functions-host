@@ -10,6 +10,9 @@ using System.Text.Json.Nodes;
 
 namespace WorkerHarness.Core
 {
+    /// <summary>
+    /// Many helper methods to validate and resolve variable expressions.
+    /// </summary>
     internal static class VariableHelper
     {
         private const string defaultObjectVariablePattern = @"\$\.";
@@ -82,7 +85,7 @@ namespace WorkerHarness.Core
             object evaluatedResult = RecursiveIndex(jsonNode, properties, 0);
 
             //return evaluatedResult as a Json string
-            return JsonSerializer.Serialize(evaluatedResult);
+            return evaluatedResult.ToString() ?? JsonSerializer.Serialize(evaluatedResult);
         }
 
         /// <summary>
@@ -99,6 +102,29 @@ namespace WorkerHarness.Core
             return objectVariableMatches.Count > 0 || stringVariableMatches.Count > 0;
         }
 
+
+        public static void ResolveVariableMap(IDictionary<string, string>? setVariables, string defaultObjectName, object defaultObjectValue)
+        {
+            if (setVariables == null)
+            {
+                return;
+            }
+
+            IDictionary<string, object> variableRegistry = new Dictionary<string, object>
+            {
+                { defaultObjectName, defaultObjectValue }
+            };
+
+            foreach (KeyValuePair<string, string> variable in setVariables)
+            {
+                // first, change the default variable ($.) if any to ${defaultObjectName}.
+                string variableExpression = UpdateSingleDefaultVariableExpression(variable.Value, defaultObjectName);
+                object variableValue = ResolveSingleVariableExpression(variableExpression, variableRegistry);
+                variableRegistry.Add(variable.Key, variableValue);
+                setVariables[variable.Key] = variableValue.ToString() ?? JsonSerializer.Serialize(variableValue);
+            }
+        }
+
         /// <summary>
         /// Update the default variable expression '$.' that lacks object name.
         /// E.g., variableMap['variable_1'] = "$.Property.Subproperty" will be updated to 
@@ -110,7 +136,6 @@ namespace WorkerHarness.Core
         {
             foreach (KeyValuePair<string, string> variable in variableMap)
             {
-                ValidateDefaultVariableExpression(variable.Value);
                 variableMap[variable.Key] = UpdateSingleDefaultVariableExpression(variable.Value, objectName);
             }
         }
@@ -121,10 +146,13 @@ namespace WorkerHarness.Core
         /// <param name="expression" cref="string">a string that may contain a default object expression</param>
         /// <param name="objectName" cref="string">the object name to replace the default object expression</param>
         /// <returns></returns>
-        private static string UpdateSingleDefaultVariableExpression(string expression, string objectName)
+        public static string UpdateSingleDefaultVariableExpression(string expression, string objectName)
         {
+            ValidateDefaultVariableExpression(expression);
+
             string replacement = @"${" + objectName + "}.";
             string newExpression = Regex.Replace(expression, defaultObjectVariablePattern, replacement);
+
             return newExpression;
         }
 
@@ -211,7 +239,7 @@ namespace WorkerHarness.Core
         /// </summary>
         /// <param name="expression" cref="string">a string that may contain an object variable or several string variables.</param>
         /// <param name="variableRegistry" cref="IDictionary{string, object}">map a variable name to its value</param>
-        /// <returns cref="object">an object that represents the evaluated value of the given expression</returns>
+        /// <returns cref="object">the evaluated value of the given expression</returns>
         /// <exception cref="InvalidDataException">throw when the variable name does not exist in the variableRegistry dictionary</exception>
         /// <exception cref="InvalidOperationException">throw when the system fails to parse a json string to a JsonNode object</exception>
         public static object ResolveSingleVariableExpression(string expression, IDictionary<string, object> variableRegistry)

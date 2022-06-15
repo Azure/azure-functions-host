@@ -2,30 +2,51 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class VariableManager
+    internal class VariableManager : IVariableManager
     {
-        private IDictionary<string, object?> _variables;
+        // _variables maps variable name to variable value
+        private IDictionary<string, object> _variables;
 
+        // _expressions store registered Expression object
         private IList<Expression> _expressions;
 
         internal VariableManager()
         {
-            _variables = new Dictionary<string, object?>();
+            _variables = new Dictionary<string, object>();
             _expressions = new List<Expression>();
         }
 
+        /// <summary>
+        /// Allow an Expression object to subscribe. 
+        /// The expression object is first evaluated using the availabe variables.
+        /// If it still have unresolved dependency, then add it to the _expression list
+        /// 
+        /// </summary>
+        /// <param name="expression"></param>
         public void Subscribe(Expression expression)
         {
-            _expressions.Add(expression);
+            // if expression has dependency that is available, resolve it immediately
+            foreach (KeyValuePair<string, object> variable in _variables)
+            {
+                expression.TryResolve(variable.Key, variable.Value);
+            }
+            
+            // if expression still has dependency, add it the _expressions list
+            if (!expression.Resolved) 
+            {
+                _expressions.Add(expression);
+            }
         }
 
         /// <summary>
         /// Add variable name and value.
-        /// Values should not be of type Expression
+        /// All subscribed expressions will be notified and evaluated.
         /// </summary>
         /// <param name="variableName"></param>
         /// <param name="variableValue"></param>
@@ -49,6 +70,19 @@ namespace WorkerHarness.Core
                 {
                     _expressions.Remove(expression);
                 }
+            }
+        }
+
+        // TODO: to be deleted, for debugging
+        public void PrintVariables()
+        {
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            options.Converters.Add(new JsonStringEnumConverter());
+
+            foreach (KeyValuePair<string, object?> variable in _variables)
+            {
+                Console.WriteLine($"Variable = {variable.Key}");
+                Console.WriteLine(JsonSerializer.Serialize(variable.Value, options));
             }
         }
     }

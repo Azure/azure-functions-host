@@ -15,16 +15,18 @@ namespace WorkerHarness.Core
         // true if all variables within _expression has been resolve
         private bool _resolved = false;
 
+        public bool Resolved => _resolved;
+
         // a dependency here is the name of the variable that the expression uses
         private IList<string> _dependencies;
 
         // an object variable that the expression may depend on.
         private object? _objectVariable;
 
-        // TODO: to be deleted
+        // TODO: to be deleted, for debugging
         public IList<string> Dependencies => _dependencies;
 
-        // TODO: to be deleted
+        // TODO: to be deleted, for debugging
         public string Value => _expression;
 
         /// <summary>
@@ -37,6 +39,8 @@ namespace WorkerHarness.Core
 
             // use VariableHelper to extract the variable name
             _dependencies = VariableHelper.ExtractVariableNames(_expression);
+
+            _resolved = !_dependencies.Any();
         }
 
         /// <summary>
