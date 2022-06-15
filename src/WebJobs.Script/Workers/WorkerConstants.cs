@@ -33,7 +33,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         // Logs
         public const string LanguageWorkerConsoleLogPrefix = "LanguageWorkerConsoleLog";
-        public const string FunctionConsoleLogCategoryName = "Host.Function.Console";
+        public const string ConsoleLogCategoryName = "Host.Function.Console";
+
+        /// <summary>
+        /// The log category to be used for logging Tooling log entries emitted from language workers.
+        /// </summary>
+        public const string ToolingConsoleLogCategoryName = "Host.Function.ToolingConsoleLog";
+
+        /// <summary>
+        /// The prefix used by language workers when sending a tooling data log entry via Console.WriteLine.
+        /// Tooling data log entries are meant to be used by IDEs / Debuggers.
+        /// </summary>
+        public const string ToolingConsoleLogPrefix = "azfuncjsonlog:";
 
         // Thresholds
         public const int WorkerRestartErrorIntervalThresholdInMinutes = 30;
