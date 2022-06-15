@@ -33,6 +33,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string OSPlaceholder = "{os}";
         public const string ArchitecturePlaceholder = "{architecture}";
         public const string RuntimeVersionPlaceholder = "%" + FunctionWorkerRuntimeVersionSettingName + "%";
+        public const string WorkerDirectoryPath = "{workerDirectoryPath}";
 
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = int.MaxValue;

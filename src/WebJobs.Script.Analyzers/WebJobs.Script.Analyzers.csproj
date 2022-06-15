@@ -25,6 +25,9 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="2.9.8" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.3.1" />
+	  
+	<!-- Packed in Microsoft.Azure.Functions.Analyzers NuGet -->
+	<PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.33" PrivateAssets="All" IncludeInPackage="true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -40,5 +43,4 @@
       <TfmSpecificPackageFile Include="$(OutputPath)\Microsoft.Azure.Functions.Analyzers.dll" PackagePath="analyzers/dotnet/cs" />
     </ItemGroup>
   </Target>
-
 </Project>

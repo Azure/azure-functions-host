@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         private bool IsUserLogCategory(string categoryName)
         {
-            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.FunctionConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
+            return LogCategories.IsFunctionUserCategory(categoryName) || categoryName.Equals(WorkerConstants.ConsoleLogCategoryName, StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()
