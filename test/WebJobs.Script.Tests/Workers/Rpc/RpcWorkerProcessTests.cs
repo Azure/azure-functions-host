@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         }
 
         [Fact]
-        public void WorkerProcess_NotExited_Dispose()
+        public void WorkerProcess_Dispose()
         {
             Process process = new Process();
             ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -193,26 +193,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             process.Start();
 
             _rpcWorkerProcess.Process = process;
-            _rpcWorkerProcess.Dispose();
-            var traces = _logger.GetLogMessages();
-            var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms"));
-            Assert.True(disposeLogs.Any());
-        }
-
-        [Fact]
-        public void WorkerProcess_Exited_Dispose()
-        {
-            Process process = new Process();
-            ProcessStartInfo startInfo = new ProcessStartInfo();
-            startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-            startInfo.FileName = "cmd.exe";
-            startInfo.Arguments = $"ls";
-            process.StartInfo = startInfo;
-            process.Start();
-
-            _rpcWorkerProcess.Process = process;
-            process.Kill();
-
             _rpcWorkerProcess.Dispose();
             var traces = _logger.GetLogMessages();
             var disposeLogs = traces.Where(m => string.Equals(m.FormattedMessage, "Worker process has not exited despite waiting for 1000 ms"));
