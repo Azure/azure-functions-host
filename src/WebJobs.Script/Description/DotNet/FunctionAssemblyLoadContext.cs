@@ -555,7 +555,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             bool containsPathDelimiter = unmanagedLibraryName.Contains(Path.DirectorySeparatorChar);
             bool containsExtension = platform == OSPlatform.Linux
                 && (unmanagedLibraryName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)
-                || unmanagedLibraryName.Contains(suffix + ".", StringComparison.OrdinalIgnoreCase));
+                || unmanagedLibraryName.ToLower().Contains(suffix));
 
             if (containsExtension)
             {
