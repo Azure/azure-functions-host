@@ -32,6 +32,9 @@ message StreamingMessage {
     WorkerInitRequest worker_init_request = 17;
     // Worker responds after initializing with its capabilities & status
     WorkerInitResponse worker_init_response = 16;
+    
+    // Worker periodically sends empty heartbeat message to host
+    WorkerHeartbeat worker_heartbeat = 15;
 
     // Host sends terminate message to worker.
     // Worker terminates if it can, otherwise host terminates after a grace period
