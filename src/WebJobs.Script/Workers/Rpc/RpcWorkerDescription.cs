@@ -203,6 +203,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                              .Replace(RpcWorkerConstants.RuntimeVersionPlaceholder, DefaultRuntimeVersion);
         }
 
+        internal void FormatArgumentsIfNeeded(ILogger logger)
+        {
+            if (Arguments?.Any() == false)
+            {
+                return;
+            }
+
+            for (int i = 0; i < Arguments.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(Arguments[i]))
+                {
+                    Arguments[i] = Arguments[i].Replace(RpcWorkerConstants.WorkerDirectoryPath, WorkerDirectory);
+                }
+            }
+
+            logger.LogDebug($"Worker description arguments after formatting: {Arguments}");
+        }
+
         internal bool ShouldFormatWorkerPath(string workerPath)
         {
             if (string.IsNullOrEmpty(workerPath))

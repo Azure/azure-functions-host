@@ -615,6 +615,58 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal("3.7", workerDescription.DefaultRuntimeVersion);
         }
 
+        public static IEnumerable<object[]> RpcWorkerDescriptionArgumentsWithPlaceholder()
+        {
+            yield return new object[] { "D:/Code/Host/workers/java", new List<string> { RpcWorkerConstants.WorkerDirectoryPath } };
+            yield return new object[] { "/java", new List<string> { string.Concat("/path/version/", RpcWorkerConstants.WorkerDirectoryPath) } };
+            yield return new object[] { "/", new List<string> { string.Concat("version/", RpcWorkerConstants.WorkerDirectoryPath) } };
+        }
+
+        [Theory]
+        [MemberData(nameof(RpcWorkerDescriptionArgumentsWithPlaceholder))]
+        public void LanguageWorker_FormatArguments_ReplacePlaceholder(string workerDirectory, List<string> arguments)
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = arguments,
+                DefaultExecutablePath = "python",
+                WorkerDirectory = workerDirectory,
+                Language = "python"
+            };
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
+
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                Assert.Contains(workerDirectory, workerDescription.Arguments[i]);
+            }
+        }
+
+        public static IEnumerable<object[]> RpcWorkerDescriptionArgumentsWithoutPlaceholder()
+        {
+            yield return new object[] { "D:/Code/Host/workers/java", new List<string> { } };
+            yield return new object[] { "D:/Code/Host/workers/", new List<string> { string.Empty, null } };
+            yield return new object[] { "/worker/path", new List<string> { string.Empty, null, "/path/version/" } };
+        }
+
+        [Theory]
+        [MemberData(nameof(RpcWorkerDescriptionArgumentsWithoutPlaceholder))]
+        public void LanguageWorker_FormatArguments_DoNotReplacePlaceholder(string workerDirectory, List<string> arguments)
+        {
+            RpcWorkerDescription workerDescription = new RpcWorkerDescription()
+            {
+                Arguments = arguments,
+                DefaultExecutablePath = "python",
+                WorkerDirectory = workerDirectory,
+                Language = "python"
+            };
+            workerDescription.FormatArgumentsIfNeeded(new TestLogger(testLanguage));
+
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                Assert.DoesNotContain(workerDirectory, workerDescription.Arguments[i]);
+            }
+        }
+
         private IEnumerable<RpcWorkerConfig> TestReadWorkerProviderFromConfig(IEnumerable<TestRpcWorkerConfig> configs, ILogger testLogger, TestMetricsLogger testMetricsLogger, string language = null, Dictionary<string, string> keyValuePairs = null, bool appSvcEnv = false)
         {
             Mock<IEnvironment> mockEnvironment = new Mock<IEnvironment>();
