@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script
     public class SystemRuntimeInformation : ISystemRuntimeInformation
     {
         private static OSPlatform? _platform;
-        private static Lazy<SystemRuntimeInformation> _runtimeInformationInstance = new Lazy<SystemRuntimeInformation>(new SystemRuntimeInformation());
+        private static Lazy<SystemRuntimeInformation> _runtimeInformationInstance = new Lazy<SystemRuntimeInformation>(() => new SystemRuntimeInformation());
 
         public static ISystemRuntimeInformation Instance => _runtimeInformationInstance.Value;
 
