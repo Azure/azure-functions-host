@@ -139,5 +139,57 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string result = FunctionAssemblyLoadContext.ProbeForNativeAsset(probingPaths, "assembly.dll", mockFile.Object);
             Assert.Equal(assetPath, result);
         }
+
+        [Theory]
+        [MemberData(nameof(UnmanagedLibraryNames))]
+        public void GetUnmanagedLibraryFileNames_ReturnsExpectedResults(string libName, string[] expectedResults, OSPlatform platform)
+        {
+            var result = FunctionAssemblyLoadContext.GetUnmanagedLibraryFileNames(libName, platform);
+
+            Assert.Equal(expectedResults, result);
+        }
+
+        public static IEnumerable<object[]> UnmanagedLibraryNames()
+        {
+            return new[]
+            {
+                new object[]
+                {
+                    "testdep",
+                    new string[] { "testdep.dll" },
+                    OSPlatform.Windows
+                },
+                new object[]
+                {
+                    "testdep.dll",
+                    new string[] { "testdep.dll" },
+                    OSPlatform.Windows
+                },
+                new object[]
+                {
+                    "testdep",
+                    new string[] { "testdep.so", "libtestdep.so", "testdep", "libtestdep" },
+                    OSPlatform.Linux
+                },
+                new object[]
+                {
+                    "testdep",
+                    new string[] { "testdep.dylib", "libtestdep.dylib", "testdep", "libtestdep" },
+                    OSPlatform.OSX
+                },
+                new object[]
+                {
+                    "testdep.so",
+                    new string[] { "testdep.so", "libtestdep.so", "testdep.so.so", "libtestdep.so.so" },
+                    OSPlatform.Linux
+                },
+                new object[]
+                {
+                    "testdep.so.6",
+                    new string[] { "testdep.so.6", "libtestdep.so.6", "testdep.so.6.so", "libtestdep.so.6.so" },
+                    OSPlatform.Linux
+                },
+            };
+        }
     }
 }
