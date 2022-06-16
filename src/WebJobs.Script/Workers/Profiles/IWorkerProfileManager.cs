@@ -18,9 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         bool TryCreateWorkerProfileCondition(WorkerProfileConditionDescriptor conditionDescriptor, out IWorkerProfileCondition condition);
 
         /// <summary>
-        /// Save different profiles for a given worker runtime language
+        /// Set the different profiles for a given worker runtime language
         /// </summary>
-        void SaveWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language);
+        void SetWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language);
 
         /// <summary>
         /// Load a profile that meets it's conditions

@@ -134,7 +134,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                         List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
                         if (workerDescriptionProfiles.Count > 0)
                         {
-                            _profileManager.SaveWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                            _profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
                             _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
                         }
                     }

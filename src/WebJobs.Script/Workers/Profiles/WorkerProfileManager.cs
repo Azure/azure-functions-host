@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         }
 
         /// <inheritdoc />
-        public void SaveWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language)
+        public void SetWorkerDescriptionProfiles(List<WorkerDescriptionProfile> workerDescriptionProfiles, string language)
         {
             _profiles[language] = workerDescriptionProfiles;
         }
