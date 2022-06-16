@@ -16,7 +16,7 @@ namespace WorkerHarness.Core
     internal class DefaultAction : IAction
     {
         // _validatorManager is responsible for validating message. TODO: implement the validation functionality
-        private IValidatorManager _validatorManager;
+        private IValidatorFactory _validatorManager;
 
         // _grpcMessageProvider create the right StreamingMessage object
         private IGrpcMessageProvider _grpcMessageProvider;
@@ -30,7 +30,7 @@ namespace WorkerHarness.Core
         private Channel<StreamingMessage> _inboundChannel;
         private Channel<StreamingMessage> _outboundChannel;
 
-        internal DefaultAction(IValidatorManager validatorManager, 
+        internal DefaultAction(IValidatorFactory validatorManager, 
             IGrpcMessageProvider grpcMessageProvider, 
             DefaultActionData actionData,
             IVariableManager variableManager,
@@ -63,8 +63,10 @@ namespace WorkerHarness.Core
 
         public async Task ExecuteAsync()
         {
-            // process _actionData
+            // create grpc messages to send to Grpc
             ProcessOutgoingMessages();
+
+            // process incoming message's match criteria and validators
             ProcessIncomingMessages();
 
             // push grpc outgoing message to the _channel
@@ -79,28 +81,52 @@ namespace WorkerHarness.Core
 
         private async Task ReceiveFromGrpcAsync()
         {
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            JsonSerializerOptions options = new() { WriteIndented = true };
             options.Converters.Add(new JsonStringEnumConverter());
 
             var timeout = Task.Run(() => Thread.Sleep(Timeout));
             while (!timeout.IsCompleted && _unvalidatedMessages.Any())
             {
                 StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync();
-                // iterate through _unvalidatedMessages and select the first one which has the same ContentCase and fullfils the match criteria
+                // iterate through _unvalidatedMessages and select the first one which has the same ContentCase
                 IEnumerable<IncomingMessage> matches = _unvalidatedMessages.Where(msg => msg.ContentCase != null && msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
+                    // filter those that fulfills the match criteria
                     .Where(msg => msg.Match != null && msg.Match.ExpectedExpression != null && msg.Match.ExpectedExpression.Resolved && MatchHelper.Matched(msg.Match, grpcMsg));
+                    //// filter those that have dependencies fully resolved in the the validators
+                    //.Where(msg => msg.Validators != null && !msg.Validators.Select(v => v.ExpectedExpression != null && !v.ExpectedExpression.Resolved).Any());
 
                 if (matches.Any())
                 {
                     IncomingMessage match = matches.First();
                     _unvalidatedMessages.Remove(match);
+
+                    Console.WriteLine($"Incoming Message Criteria:\n{JsonSerializer.Serialize(match, options)}");
+                    Console.WriteLine($"Actual Grpc message:\n{JsonSerializer.Serialize(grpcMsg, options)}");
+
                     // validate the match
+                    if (match.Validators != null)
+                    {
+                        foreach (ValidationContext validationContext in match.Validators)
+                        {
+                            string validatorType = validationContext.Type != null ? validationContext.Type.ToLower() : throw new MissingFieldException($"Missing validator type");
+                            IValidator validator = _validatorManager.Create(validatorType);
+                            bool validated = validator.Validate(validationContext, grpcMsg);
+
+                            if (validated)
+                            {
+                                Console.WriteLine($"Validation SUCCEEDS with validation context {JsonSerializer.Serialize(validationContext, options)}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Validation FAILS with validation context {JsonSerializer.Serialize(validationContext, options)}");
+                            }
+                        }
+                    }
+
                     // register grpcMsg as a variable in _variableManager
                     _variableManager.AddVariable(match.Id ?? Guid.NewGuid().ToString(), grpcMsg);
 
-                    Console.WriteLine("Match succeeds:");
-                    Console.WriteLine($"Incoming Message Criteria:\n{JsonSerializer.Serialize(match, options)}");
-                    Console.WriteLine($"Actual Grpc message:\n{JsonSerializer.Serialize(grpcMsg, options)}");
+                    Console.WriteLine("*********************************************************************");
                 }
                 else
                 {

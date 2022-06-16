@@ -283,7 +283,7 @@ namespace WorkerHarness.Core
         /// <param name="index" cref="int">an integer to index into the properties array</param>
         /// <returns cref="object"></returns>
         /// <exception cref="MissingFieldException">throws when a property in the properties array is not found inside the root node</exception>
-        public static object RecursiveIndex(JsonNode jsonNode, string[] properties, int index)
+        public static JsonNode RecursiveIndex(JsonNode jsonNode, string[] properties, int index)
         {
             if (index == properties.Length)
             {

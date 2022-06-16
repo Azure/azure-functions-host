@@ -30,7 +30,7 @@ namespace WorkerHarness
 
             IGrpcMessageProvider rpcMessageProvider = new GrpcMessageProvider(workerDescription);
 
-            IValidatorManager validatorManager = new ValidatorManager();
+            IValidatorFactory validatorManager = new ValidatorFactory();
 
             IVariableManager variableManager = new VariableManager();
 
