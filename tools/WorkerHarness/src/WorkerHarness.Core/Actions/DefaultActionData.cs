@@ -18,7 +18,7 @@ namespace WorkerHarness.Core
         public string? Name { get; set; }
 
         // the amount of time to execute an action
-        public int? Timeout { get; set; }
+        public int Timeout { get; set; }
 
         // a list of incoming messages
         public IList<IncomingMessage> IncomingMessages { get; private set; }
@@ -28,6 +28,7 @@ namespace WorkerHarness.Core
 
         public DefaultActionData()
         {
+            Timeout = 10000;
             IncomingMessages = new List<IncomingMessage>();
             OutgoingMessages = new List<OutgoingMessage>();
         }

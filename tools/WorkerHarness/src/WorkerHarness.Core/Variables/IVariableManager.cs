@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal interface IVariableManager
+    public interface IVariableManager
     {
         void Subscribe(Expression expression);
 
         void AddVariable(string variableName, object variableValue);
+
+        void Clear();
     }
 }

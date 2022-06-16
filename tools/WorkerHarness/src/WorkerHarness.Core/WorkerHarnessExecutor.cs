@@ -21,7 +21,7 @@ namespace WorkerHarness.Core
             _scenarioParser = scenarioParser;
         }
 
-        public bool Start(string scenarioFile)
+        public async Task<bool> Start(string scenarioFile)
         {
 
             Process myProcess = _workerProcessBuilder.Build(_workerDescription);
@@ -35,7 +35,7 @@ namespace WorkerHarness.Core
 
                 foreach (IAction action in scenario.Actions)
                 {
-                    action.Execute();
+                    await action.ExecuteAsync();
                 }
 
                 return true;

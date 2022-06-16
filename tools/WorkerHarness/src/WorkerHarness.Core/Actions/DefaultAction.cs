@@ -7,7 +7,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core
 {
@@ -25,15 +27,23 @@ namespace WorkerHarness.Core
         // _variableManager evaluates all registered expressions once the variable values are available.
         private IVariableManager _variableManager;
 
+        private Channel<StreamingMessage> _inboundChannel;
+        private Channel<StreamingMessage> _outboundChannel;
+
         internal DefaultAction(IValidatorManager validatorManager, 
             IGrpcMessageProvider grpcMessageProvider, 
             DefaultActionData actionData,
-            IVariableManager variableManager)
+            IVariableManager variableManager,
+            Channel<StreamingMessage> inboundChannel,
+            Channel<StreamingMessage> outboundChannel
+        )
         {
             _validatorManager = validatorManager;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
             _variableManager = variableManager;
+            _inboundChannel = inboundChannel;
+            _outboundChannel = outboundChannel;
         }
 
         // Type of action, type "Default" in this case
@@ -42,8 +52,8 @@ namespace WorkerHarness.Core
         // Displayed name of the action
         public string? Name { get => _actionData.Name; }
 
-        // Execuation timeout for an action
-        public int? Timeout { get => _actionData.Timeout; }
+        // Execution timeout for an action
+        public int Timeout { get => _actionData.Timeout; }
 
         // Placeholder that stores StreamingMessage to be sent to Grpc Layer
         private IList<StreamingMessage> _grpcOutgoingMessages = new List<StreamingMessage>();
@@ -51,10 +61,63 @@ namespace WorkerHarness.Core
         // Placeholder that stores IncomingMessage to be matched and validated against messages from Grpc Layer.
         private IList<IncomingMessage> _unvalidatedMessages = new List<IncomingMessage>();
 
-        public void Execute()
+        public async Task ExecuteAsync()
         {
+            // process _actionData
             ProcessOutgoingMessages();
             ProcessIncomingMessages();
+
+            // push grpc outgoing message to the _channel
+            await SendToGrpcAsync();
+
+            // listen and process any StreamingMessage from _channel
+            await ReceiveFromGrpcAsync();
+
+            // clear all variables stored in _variableManager to get a clean state for the next action
+            _variableManager.Clear();
+        }
+
+        private async Task ReceiveFromGrpcAsync()
+        {
+            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            options.Converters.Add(new JsonStringEnumConverter());
+
+            var timeout = Task.Run(() => Thread.Sleep(Timeout));
+            while (!timeout.IsCompleted && _unvalidatedMessages.Any())
+            {
+                StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync();
+                // iterate through _unvalidatedMessages and select the first one which has the same ContentCase and fullfils the match criteria
+                IEnumerable<IncomingMessage> matches = _unvalidatedMessages.Where(msg => msg.ContentCase != null && msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
+                    .Where(msg => msg.Match != null && msg.Match.ExpectedExpression != null && msg.Match.ExpectedExpression.Resolved && MatchHelper.Matched(msg.Match, grpcMsg));
+
+                if (matches.Any())
+                {
+                    IncomingMessage match = matches.First();
+                    _unvalidatedMessages.Remove(match);
+                    // validate the match
+                    // register grpcMsg as a variable in _variableManager
+                    _variableManager.AddVariable(match.Id ?? Guid.NewGuid().ToString(), grpcMsg);
+
+                    Console.WriteLine("Match succeeds:");
+                    Console.WriteLine($"Incoming Message Criteria:\n{JsonSerializer.Serialize(match, options)}");
+                    Console.WriteLine($"Actual Grpc message:\n{JsonSerializer.Serialize(grpcMsg, options)}");
+                }
+                else
+                {
+                    //Console.WriteLine("Match fails:");
+                    //Console.WriteLine($"Actual Grpc message:\n{grpcMsg}");
+                    // push the grpcMsg back into the channel
+                    await _inboundChannel.Writer.WriteAsync(grpcMsg);
+                }
+            }
+        }
+
+        private async Task SendToGrpcAsync()
+        {
+            foreach (StreamingMessage message in _grpcOutgoingMessages)
+            {
+                await _outboundChannel.Writer.WriteAsync(message);
+            }
         }
 
         /// <summary>

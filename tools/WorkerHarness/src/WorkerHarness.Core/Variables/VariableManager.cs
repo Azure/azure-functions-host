@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class VariableManager : IVariableManager
+    public class VariableManager : IVariableManager
     {
         // _variables maps variable name to variable value
         private IDictionary<string, object> _variables;
@@ -16,7 +16,7 @@ namespace WorkerHarness.Core
         // _expressions store registered Expression object
         private IList<Expression> _expressions;
 
-        internal VariableManager()
+        public VariableManager()
         {
             _variables = new Dictionary<string, object>();
             _expressions = new List<Expression>();
@@ -73,13 +73,18 @@ namespace WorkerHarness.Core
             }
         }
 
+        public void Clear()
+        {
+            _variables.Clear();
+        }
+
         // TODO: to be deleted, for debugging
         public void PrintVariables()
         {
             JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
             options.Converters.Add(new JsonStringEnumConverter());
 
-            foreach (KeyValuePair<string, object?> variable in _variables)
+            foreach (KeyValuePair<string, object> variable in _variables)
             {
                 Console.WriteLine($"Variable = {variable.Key}");
                 Console.WriteLine(JsonSerializer.Serialize(variable.Value, options));
