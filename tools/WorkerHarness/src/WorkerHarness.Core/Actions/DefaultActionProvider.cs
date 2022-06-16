@@ -12,7 +12,7 @@ namespace WorkerHarness.Core
     /// </summary>
     public class DefaultActionProvider : IActionProvider
     {
-        private IValidatorFactory _validatorManager;
+        private IValidatorFactory _validatorFactory;
 
         private IGrpcMessageProvider _rpcMessageProvider;
 
@@ -22,13 +22,13 @@ namespace WorkerHarness.Core
 
         private Channel<StreamingMessage> _outboundChannel;
 
-        public DefaultActionProvider(IValidatorFactory validatorManager, 
+        public DefaultActionProvider(IValidatorFactory validatorFactory, 
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel)
         {
-            _validatorManager = validatorManager;
+            _validatorFactory = validatorFactory;
             _rpcMessageProvider = rpcMessageProvider;
             _variableManager = variableManager;
             _inboundChannel = inboundChannel;
@@ -46,7 +46,7 @@ namespace WorkerHarness.Core
             // 1. create a DefaultActionData that encapsulate info about an action
             DefaultActionData actionData = CreateDefaultActionData(actionNode);
             // 2. create a DefaultAction object
-            return new DefaultAction(_validatorManager, 
+            return new DefaultAction(_validatorFactory, 
                                      _rpcMessageProvider, 
                                      actionData,
                                      _variableManager,

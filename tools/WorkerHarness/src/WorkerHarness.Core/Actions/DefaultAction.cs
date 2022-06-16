@@ -16,7 +16,7 @@ namespace WorkerHarness.Core
     internal class DefaultAction : IAction
     {
         // _validatorManager is responsible for validating message. TODO: implement the validation functionality
-        private IValidatorFactory _validatorManager;
+        private IValidatorFactory _validatorFactory;
 
         // _grpcMessageProvider create the right StreamingMessage object
         private IGrpcMessageProvider _grpcMessageProvider;
@@ -30,7 +30,7 @@ namespace WorkerHarness.Core
         private Channel<StreamingMessage> _inboundChannel;
         private Channel<StreamingMessage> _outboundChannel;
 
-        internal DefaultAction(IValidatorFactory validatorManager, 
+        internal DefaultAction(IValidatorFactory validatorFactory, 
             IGrpcMessageProvider grpcMessageProvider, 
             DefaultActionData actionData,
             IVariableManager variableManager,
@@ -38,7 +38,7 @@ namespace WorkerHarness.Core
             Channel<StreamingMessage> outboundChannel
         )
         {
-            _validatorManager = validatorManager;
+            _validatorFactory = validatorFactory;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
             _variableManager = variableManager;
@@ -109,7 +109,7 @@ namespace WorkerHarness.Core
                         foreach (ValidationContext validationContext in match.Validators)
                         {
                             string validatorType = validationContext.Type != null ? validationContext.Type.ToLower() : throw new MissingFieldException($"Missing validator type");
-                            IValidator validator = _validatorManager.Create(validatorType);
+                            IValidator validator = _validatorFactory.Create(validatorType);
                             bool validated = validator.Validate(validationContext, grpcMsg);
 
                             if (validated)
@@ -189,16 +189,16 @@ namespace WorkerHarness.Core
         }
 
         // TODO: debugging methods, to be deleted later
-        private void PrintDictionary(IDictionary<string, object> resolvedVariables)
-        {
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            options.Converters.Add(new JsonStringEnumConverter());
+        //private void PrintDictionary(IDictionary<string, object> resolvedVariables)
+        //{
+        //    JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+        //    options.Converters.Add(new JsonStringEnumConverter());
 
-            foreach (KeyValuePair<string, object> pair in resolvedVariables)
-            {
-                Console.WriteLine($"Variable: {pair.Key}\nValue: {JsonSerializer.Serialize(pair.Value, options)}");
-            }
-        }
+        //    foreach (KeyValuePair<string, object> pair in resolvedVariables)
+        //    {
+        //        Console.WriteLine($"Variable: {pair.Key}\nValue: {JsonSerializer.Serialize(pair.Value, options)}");
+        //    }
+        //}
 
         /// <summary>
         /// Register incoming messages that are to be validated against actual grpc messages.
@@ -228,21 +228,21 @@ namespace WorkerHarness.Core
                     _variableManager.Subscribe(message.Match.ExpectedExpression);
                 }
 
-                // in message.Validators, update any default variable '$.' to '$.{messageId}'
-                if (message.Validators != null)
-                {
-                    foreach (var validator in message.Validators)
-                    {
-                        if (validator != null)
-                        {
-                            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query ?? string.Empty, messageId);
-                            validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected ?? string.Empty, messageId);
-                            validator.ExpectedExpression = new Expression(validator.Expected);
+                //// in message.Validators, update any default variable '$.' to '$.{messageId}'
+                //if (message.Validators != null)
+                //{
+                //    foreach (var validator in message.Validators)
+                //    {
+                //        if (validator != null)
+                //        {
+                //            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query ?? string.Empty, messageId);
+                //            validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected ?? string.Empty, messageId);
+                //            validator.ExpectedExpression = new Expression(validator.Expected);
 
-                            _variableManager.Subscribe(validator.ExpectedExpression);
-                        }
-                    }
-                }
+                //            _variableManager.Subscribe(validator.ExpectedExpression);
+                //        }
+                //    }
+                //}
 
                 _unvalidatedMessages.Add(message);
             }
