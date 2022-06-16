@@ -30,7 +30,7 @@ namespace WorkerHarness
 
             IGrpcMessageProvider rpcMessageProvider = new GrpcMessageProvider(workerDescription);
 
-            IValidatorFactory validatorManager = new ValidatorFactory();
+            IValidatorFactory validatorFactory = new ValidatorFactory();
 
             IVariableManager variableManager = new VariableManager();
 
@@ -38,7 +38,7 @@ namespace WorkerHarness
 
             Channels.Channel<StreamingMessage> outboundChannel = Channels.Channel.CreateUnbounded<StreamingMessage>();
 
-            IActionProvider actionProvider = new DefaultActionProvider(validatorManager, 
+            IActionProvider actionProvider = new DefaultActionProvider(validatorFactory, 
                 rpcMessageProvider, variableManager, inboundChannel, outboundChannel);
 
             IScenarioParser scenarioParser = new ScenarioParser(actionProvider);

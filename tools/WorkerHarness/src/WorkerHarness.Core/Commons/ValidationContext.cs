@@ -20,7 +20,8 @@ namespace WorkerHarness.Core
         // The expected value of the property
         public string? Expected { get; set; }
 
+        // TODO: To be deleted
         // Wrap the expected value in an Expression object
-        public Expression? ExpectedExpression { get; set; }
+        //public Expression? ExpectedExpression { get; set; }
     }
 }
