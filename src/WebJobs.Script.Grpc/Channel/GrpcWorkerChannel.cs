@@ -254,13 +254,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
-            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
+
+            ParseWorkerMetadata();
+
+            using (_workerChannelLogger.BeginScope(_initMessage.WorkerMetadata))
+            {
+                _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
+            }
+
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
                 _workerInitTask.SetResult(false);
                 return;
             }
+
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
@@ -272,6 +280,17 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.SetResult(true);
+        }
+
+        internal void ParseWorkerMetadata()
+        {
+            if (_initMessage?.WorkerMetadata == null)
+            {
+                return;
+            }
+
+            _initMessage.WorkerMetadata.RuntimeName = string.IsNullOrEmpty(_initMessage.WorkerMetadata.RuntimeName) ? _workerConfig.Description.Language : _initMessage.WorkerMetadata.RuntimeName;
+            _initMessage.WorkerMetadata.RuntimeVersion = string.IsNullOrEmpty(_initMessage.WorkerMetadata.RuntimeVersion) ? _workerConfig.Description.DefaultRuntimeVersion : _initMessage.WorkerMetadata.RuntimeVersion;
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
