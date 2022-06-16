@@ -10,11 +10,11 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
     {
         // EventId range is 1-99
 
-        private static readonly Action<ILogger, string, string, Exception> _assemblyDynamiclyResolved =
+        private static readonly Action<ILogger, string, string, Exception> _assemblyDynamicallyResolved =
         LoggerMessage.Define<string, string>(LogLevel.Trace, new EventId(1, nameof(AssemblyResolved)),
             "Resolved assembly '{assemblyName}' in the function load context using the dynamic resolver for function '{functionName}'");
 
-        private static readonly Action<ILogger, string, string, Exception> _assemblyDynamiclyResolutionFailure =
+        private static readonly Action<ILogger, string, string, Exception> _assemblyDynamicallyResolutionFailure =
             LoggerMessage.Define<string, string>(LogLevel.Trace, new EventId(2, nameof(AssemblyResolutionFailure)),
                 "Attempt to resolve assembly '{assemblyName}' failed in the function load context using the dynamic resolver for function '{functionName}'");
 
@@ -26,14 +26,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             LoggerMessage.Define<string, string>(LogLevel.Trace, new EventId(4, nameof(AssemblyResolutionFailure)),
                 "Attempt to resolve assembly '{assemblyName}' failed in the function load context using the resolver '{assemblyResolverName}'");
 
-        public static void AssemblyDynamiclyResolved(this ILogger logger, string assemblyName, string functionName)
+        public static void AssemblyDynamicallyResolved(this ILogger logger, string assemblyName, string functionName)
         {
-            _assemblyDynamiclyResolved(logger, assemblyName, functionName, null);
+            _assemblyDynamicallyResolved(logger, assemblyName, functionName, null);
         }
 
-        public static void AssemblyDynamiclyResolutionFailure(this ILogger logger, string assemblyName, string functionName)
+        public static void AssemblyDynamicallyResolutionFailure(this ILogger logger, string assemblyName, string functionName)
         {
-            _assemblyDynamiclyResolutionFailure(logger, assemblyName, functionName, null);
+            _assemblyDynamicallyResolutionFailure(logger, assemblyName, functionName, null);
         }
 
         public static void AssemblyResolved(this ILogger logger, string assemblyName, string assemblyResolverName)
