@@ -1,6 +1,9 @@
-﻿using System.Text.Json;
+﻿using Grpc.Core;
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Threading.Channels;
 
 namespace WorkerHarness.Core
 {
@@ -13,10 +16,23 @@ namespace WorkerHarness.Core
 
         private IGrpcMessageProvider _rpcMessageProvider;
 
-        public DefaultActionProvider(IValidatorManager validatorManager, IGrpcMessageProvider rpcMessageProvider)
+        private IVariableManager _variableManager;
+
+        private Channel<StreamingMessage> _inboundChannel;
+
+        private Channel<StreamingMessage> _outboundChannel;
+
+        public DefaultActionProvider(IValidatorManager validatorManager, 
+            IGrpcMessageProvider rpcMessageProvider,
+            IVariableManager variableManager,
+            Channel<StreamingMessage> inboundChannel,
+            Channel<StreamingMessage> outboundChannel)
         {
             _validatorManager = validatorManager;
             _rpcMessageProvider = rpcMessageProvider;
+            _variableManager = variableManager;
+            _inboundChannel = inboundChannel;
+            _outboundChannel = outboundChannel;
         }
 
         /// <summary>
@@ -30,7 +46,12 @@ namespace WorkerHarness.Core
             // 1. create a DefaultActionData that encapsulate info about an action
             DefaultActionData actionData = CreateDefaultActionData(actionNode);
             // 2. create a DefaultAction object
-            return new DefaultAction(_validatorManager, _rpcMessageProvider, actionData);
+            return new DefaultAction(_validatorManager, 
+                                     _rpcMessageProvider, 
+                                     actionData,
+                                     _variableManager,
+                                     _inboundChannel,
+                                     _outboundChannel);
         }
 
         /// <summary>

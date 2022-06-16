@@ -3,12 +3,15 @@
 
 using Microsoft.Extensions.Options;
 using WorkerHarness.Core;
+using Channels = System.Threading.Channels;
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using Grpc.Core;
 
 namespace WorkerHarness
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var workerDirectory = "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0";
             var workerFile = @"C:\temp\FunctionApp1\FunctionApp1\bin\Debug\net6.0\FunctionApp1.dll";
@@ -29,13 +32,29 @@ namespace WorkerHarness
 
             IValidatorManager validatorManager = new ValidatorManager();
 
-            IActionProvider actionProvider = new DefaultActionProvider(validatorManager, rpcMessageProvider);
+            IVariableManager variableManager = new VariableManager();
+
+            Channels.Channel<StreamingMessage> inboundChannel = Channels.Channel.CreateUnbounded<StreamingMessage>();
+
+            Channels.Channel<StreamingMessage> outboundChannel = Channels.Channel.CreateUnbounded<StreamingMessage>();
+
+            IActionProvider actionProvider = new DefaultActionProvider(validatorManager, 
+                rpcMessageProvider, variableManager, inboundChannel, outboundChannel);
 
             IScenarioParser scenarioParser = new ScenarioParser(actionProvider);
 
+            GrpcService grpcService = new(inboundChannel, outboundChannel);
+
+            Server server = new()
+            {
+                Services = { FunctionRpc.BindService(grpcService) },
+                Ports = { new ServerPort(HostConstants.DefaultHostUri, HostConstants.DefaultPort, ServerCredentials.Insecure) }
+            };
+            server.Start();
+
             WorkerHarnessExecutor harnessExecutor = new WorkerHarnessExecutor(workerDescription, workerProcessBuilder, scenarioParser);
 
-            harnessExecutor.Start(scenarioFile);
+            await harnessExecutor.Start(scenarioFile);
         }
     }
 }

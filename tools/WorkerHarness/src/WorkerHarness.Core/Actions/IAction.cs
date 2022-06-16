@@ -5,6 +5,6 @@
     /// </summary>
     public interface IAction
     {
-        void Execute();
+        Task ExecuteAsync();
     }
 }
