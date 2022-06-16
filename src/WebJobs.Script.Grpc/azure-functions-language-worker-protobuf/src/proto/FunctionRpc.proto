@@ -26,13 +26,13 @@ message StreamingMessage {
   oneof content {
 
     // Worker initiates stream
-    StartStream start_stream = 20; 
+    StartStream start_stream = 20;
 
     // Host sends capabilities/init data to worker
     WorkerInitRequest worker_init_request = 17;
     // Worker responds after initializing with its capabilities & status
     WorkerInitResponse worker_init_response = 16;
-
+    
     // Worker periodically sends empty heartbeat message to host
     WorkerHeartbeat worker_heartbeat = 15;
 
@@ -40,7 +40,7 @@ message StreamingMessage {
     // Worker terminates if it can, otherwise host terminates after a grace period
     WorkerTerminate worker_terminate = 14;
 
-    // Add any worker relevant status to response
+    // Host periodically sends status request to the worker
     WorkerStatusRequest worker_status_request = 12;
     WorkerStatusResponse worker_status_response = 13;
 
@@ -49,25 +49,25 @@ message StreamingMessage {
 
     // Worker requests a desired action (restart worker, reload function)
     WorkerActionResponse worker_action_response = 7;
-    
+
     // Host sends required metadata to worker to load function
     FunctionLoadRequest function_load_request = 8;
     // Worker responds after loading with the load result
     FunctionLoadResponse function_load_response = 9;
-    
+
     // Host requests a given invocation
     InvocationRequest invocation_request = 4;
 
     // Worker responds to a given invocation
     InvocationResponse invocation_response = 5;
 
-    // Host sends cancel message to attempt to cancel an invocation. 
+    // Host sends cancel message to attempt to cancel an invocation.
     // If an invocation is cancelled, host will receive an invocation response with status cancelled.
     InvocationCancel invocation_cancel = 21;
 
     // Worker logs a message back to the host
     RpcLog rpc_log = 2;
-    
+
     FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
 
     FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
@@ -91,7 +91,7 @@ message StreamingMessage {
 // Process.Start required info
 //   connection details
 //   protocol type
-//   protocol version 
+//   protocol version
 
 // Worker sends the host information identifying itself
 message StartStream {
@@ -99,7 +99,7 @@ message StartStream {
   string worker_id = 2;
 }
 
-// Host requests the worker to initialize itself 
+// Host requests the worker to initialize itself
 message WorkerInitRequest {
   // version of the host sending init request
   string host_version = 1;
@@ -120,13 +120,35 @@ message WorkerInitRequest {
 
 // Worker responds with the result of initializing itself
 message WorkerInitResponse {
-  // Version of worker
+  // NOT USED
+  // TODO: Remove from protobuf during next breaking change release
   string worker_version = 1;
+
   // A map of worker supported features/capabilities
   map<string, string> capabilities = 2;
 
   // Status of the response
   StatusResult result = 3;
+
+  // Worker metadata captured for telemetry purposes
+  WorkerMetadata worker_metadata = 4;
+}
+
+message WorkerMetadata {
+  // The runtime/stack name
+  string runtime_name = 1;
+
+  // The version of the runtime/stack
+  string runtime_version = 2;
+
+  // The version of the worker
+  string worker_version = 3;
+
+  // The worker bitness/architecture
+  string worker_bitness = 4;
+
+  // Optional additional custom properties
+  map<string, string> custom_properties = 5;
 }
 
 // Used by the host to determine success/failure/cancellation
@@ -137,6 +159,7 @@ message StatusResult {
     Success = 1;
     Cancelled = 2;
   }
+
   // Status for the given result
   Status status = 4;
 
@@ -150,9 +173,8 @@ message StatusResult {
   repeated RpcLog logs = 3;
 }
 
-// TODO: investigate grpc heartbeat - don't limit to grpc implemention
-
-// Message is empty by design - Will add more fields in future if needed
+// NOT USED
+// TODO: Remove from protobuf during next breaking change release
 message WorkerHeartbeat {}
 
 // Warning before killing the process after grace_period
@@ -185,12 +207,12 @@ message FileChangeEventRequest {
 
 // Indicates whether worker reloaded successfully or needs a restart
 message WorkerActionResponse {
-  // indicates whether a restart is needed, or reload succesfully
+  // indicates whether a restart is needed, or reload successfully
   enum Action {
     Restart = 0;
     Reload = 1;
   }
-  
+
   // action for this response
   Action action = 1;
 
@@ -198,11 +220,12 @@ message WorkerActionResponse {
   string reason = 2;
 }
 
-// NOT USED
-message WorkerStatusRequest{
+// Used by the host to determine worker health
+message WorkerStatusRequest {
 }
 
-// NOT USED
+// Worker responds with status message
+// TODO: Add any worker relevant status to response
 message WorkerStatusResponse {
 }
 
@@ -271,7 +294,7 @@ message RpcFunctionMetadata {
 
   // base directory for the Function
   string directory = 1;
-  
+
   // Script file specified
   string script_file = 2;
 
@@ -298,6 +321,11 @@ message RpcFunctionMetadata {
 
   // A flag indicating if managed dependency is enabled or not
   bool managed_dependency_enabled = 14;
+
+  // Properties for function metadata
+  // They're usually specific to a worker and largely passed along to the controller API for use
+  // outside the host
+   map<string,string> Properties = 16;
 }
 
 // Host tells worker it is ready to receive metadata
@@ -492,7 +520,7 @@ message BindingInfo {
   DataType data_type = 4;
 }
 
-// Used to send logs back to the Host 
+// Used to send logs back to the Host
 message RpcLog {
   // Matching ILogger semantics
   // https://github.com/aspnet/Logging/blob/9506ccc3f3491488fe88010ef8b9eb64594abf95/src/Microsoft.Extensions.Logging/Logger.cs
@@ -543,7 +571,7 @@ message RpcLog {
   map<string, TypedData> propertiesMap = 9;
 }
 
-// Encapsulates an Exception 
+// Encapsulates an Exception
 message RpcException {
   // Source of the exception
   string source = 3;
@@ -556,11 +584,11 @@ message RpcException {
 
   // Worker specifies whether exception is a user exception, 
   // for purpose of application insights logging. Defaults to false. 
-  optional bool is_user_exception = 4;
+  bool is_user_exception = 4;
 
   // Type of exception. If it's a user exception, the type is passed along to app insights.
   // Otherwise, it's ignored for now.
-  optional string type = 5; 
+  string type = 5; 
 }
 
 // Http cookie type. Note that only name and value are used for Http requests
@@ -605,7 +633,7 @@ message RpcHttpCookie {
 // TODO - solidify this or remove it
 message RpcHttp {
   string method = 1;
-  string url = 2; 
+  string url = 2;
   map<string,string> headers = 3;
   TypedData body = 4;
   map<string,string> params = 10;

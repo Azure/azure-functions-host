@@ -7,8 +7,10 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
@@ -19,17 +21,24 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IConfiguration _config;
         private readonly ILogger _logger;
         private readonly ISystemRuntimeInformation _systemRuntimeInformation;
+        private readonly IWorkerProfileManager _profileManager;
         private readonly IMetricsLogger _metricsLogger;
         private readonly string _workerRuntime;
         private readonly IEnvironment _environment;
 
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
-        public RpcWorkerConfigFactory(IConfiguration config, ILogger logger, ISystemRuntimeInformation systemRuntimeInfo, IEnvironment environment, IMetricsLogger metricsLogger)
+        public RpcWorkerConfigFactory(IConfiguration config,
+                                      ILogger logger,
+                                      ISystemRuntimeInformation systemRuntimeInfo,
+                                      IWorkerProfileManager profileManager,
+                                      IEnvironment environment,
+                                      IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
+            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
@@ -118,6 +127,18 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     RpcWorkerDescription workerDescription = workerConfig.Property(WorkerConstants.WorkerDescription).Value.ToObject<RpcWorkerDescription>();
                     workerDescription.WorkerDirectory = workerDir;
 
+                    //Read the profiles from worker description and load the profile for which the conditions match
+                    JToken profiles = workerConfig.GetValue(WorkerConstants.WorkerDescriptionProfiles);
+                    if (profiles != null)
+                    {
+                        List<WorkerDescriptionProfile> workerDescriptionProfiles = ReadWorkerDescriptionProfiles(profiles);
+                        if (workerDescriptionProfiles.Count > 0)
+                        {
+                            _profileManager.SetWorkerDescriptionProfiles(workerDescriptionProfiles, workerDescription.Language);
+                            _profileManager.LoadWorkerDescriptionFromProfiles(workerDescription, out workerDescription);
+                        }
+                    }
+
                     // Check if any appsettings are provided for that langauge
                     var languageSection = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerDescription.Language}");
                     workerDescription.Arguments = workerDescription.Arguments ?? new List<string>();
@@ -158,6 +179,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _logger?.LogError(ex, $"Failed to initialize worker provider for: {workerDir}");
                 }
             }
+        }
+
+        private List<WorkerDescriptionProfile> ReadWorkerDescriptionProfiles(JToken profilesJToken)
+        {
+            var profiles = profilesJToken.ToObject<IList<WorkerProfileDescriptor>>();
+
+            if (profiles == null || profiles.Count <= 0)
+            {
+                return new List<WorkerDescriptionProfile>(0);
+            }
+
+            var descriptionProfiles = new List<WorkerDescriptionProfile>(profiles.Count);
+            try
+            {
+                foreach (var profile in profiles)
+                {
+                    var profileConditions = new List<IWorkerProfileCondition>(profile.Conditions.Count);
+
+                    foreach (var descriptor in profile.Conditions)
+                    {
+                        if (!_profileManager.TryCreateWorkerProfileCondition(descriptor, out IWorkerProfileCondition condition))
+                        {
+                            // Failed to resolve condition. This profile will be disabled using a mock false condition
+                            _logger?.LogInformation($"Profile {profile.ProfileName} is disabled. Cannot resolve the profile condition {descriptor.Type}");
+                            condition = new FalseCondition();
+                        }
+
+                        profileConditions.Add(condition);
+                    }
+
+                    descriptionProfiles.Add(new (profile.ProfileName, profileConditions, profile.Description));
+                }
+            }
+            catch (Exception)
+            {
+                throw new FormatException("Failed to parse profiles in worker config.");
+            }
+            return descriptionProfiles;
         }
 
         internal WorkerProcessCountOptions GetWorkerProcessCount(JObject workerConfig)
