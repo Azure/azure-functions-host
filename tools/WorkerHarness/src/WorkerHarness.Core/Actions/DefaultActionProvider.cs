@@ -12,7 +12,7 @@ namespace WorkerHarness.Core
     /// </summary>
     public class DefaultActionProvider : IActionProvider
     {
-        private IValidatorManager _validatorManager;
+        private IValidatorFactory _validatorManager;
 
         private IGrpcMessageProvider _rpcMessageProvider;
 
@@ -22,7 +22,7 @@ namespace WorkerHarness.Core
 
         private Channel<StreamingMessage> _outboundChannel;
 
-        public DefaultActionProvider(IValidatorManager validatorManager, 
+        public DefaultActionProvider(IValidatorFactory validatorManager, 
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
             Channel<StreamingMessage> inboundChannel,

@@ -3,7 +3,7 @@
     /// <summary>
     /// Abtract the responsibility to create a validator
     /// </summary>
-    public interface IValidatorManager
+    public interface IValidatorFactory
     {
         /// <summary>
         /// Create a validator based on a given type

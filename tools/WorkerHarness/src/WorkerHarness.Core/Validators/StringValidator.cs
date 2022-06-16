@@ -1,30 +1,30 @@
-﻿using System;
+﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace WorkerHarness.Core.Validators
 {
-    internal class RegexValidator : IValidator
+    internal class StringValidator : IValidator
     {
         /// <summary>
-        /// Validate a message given a validation context
+        /// Validate a message given a validation context.
         /// The validation context contains 2 fields:
-        ///     - expected: the expected string value that is a regex expression
+        ///     - expected: the expected string value
         ///     - query: the query that identify a string value inside message
         ///         E.g. message = {A: {B: "hello"}}. Then query "message.A.B" yields "hello"
-        /// If the query is hello, the method will determine if the query match the regex expression
-        /// 
+        ///         
         /// </summary>
         /// <param name="context"></param>
         /// <param name="message"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="InvalidDataException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public bool Validate(ValidationContext context, object message)
         {
             // context has the query and and expected value
@@ -54,7 +54,7 @@ namespace WorkerHarness.Core.Validators
             }
             string actualValueAsString = actualValueAsObject.AsValue().ToString();
 
-            return Regex.IsMatch(actualValueAsString, context.Expected);
+            return actualValueAsString == context.Expected;
         }
     }
 }

@@ -38,12 +38,13 @@
           "contentCase": "WorkerInitResponse",
           "direction": "Incoming",
           "match": {
+            "type": "string",
             "query": "$.ContentCase",
             "expected": "WorkerInitResponse"
           },
           "validators": [
             {
-              "type": "jsonpath",
+              "type": "string",
               "query": "$.WorkerInitResponse.Result.Status",
               "expected": "Success"
             }
@@ -84,7 +85,7 @@
           },
           "validators": [
             {
-              "type": "jsonpath",
+              "type": "string",
               "query": "$.FunctionLoadResponse.Result.Status",
               "expected": "Success"
             }
@@ -135,7 +136,7 @@
           },
           "validators": [
             {
-              "type": "jsonpath",
+              "type": "string",
               "query": "$.InvocationResponse.Result.Status",
               "expected": "Success"
             }
