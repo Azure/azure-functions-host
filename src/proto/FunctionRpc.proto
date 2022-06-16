@@ -32,7 +32,8 @@ message StreamingMessage {
     WorkerInitRequest worker_init_request = 17;
     // Worker responds after initializing with its capabilities & status
     WorkerInitResponse worker_init_response = 16;
-    
+
+    // MESSAGE NOT USED
     // Worker periodically sends empty heartbeat message to host
     WorkerHeartbeat worker_heartbeat = 15;
 
@@ -120,7 +121,7 @@ message WorkerInitRequest {
 
 // Worker responds with the result of initializing itself
 message WorkerInitResponse {
-  // NOT USED
+  // PROPERTY NOT USED
   // TODO: Remove from protobuf during next breaking change release
   string worker_version = 1;
 
@@ -173,7 +174,7 @@ message StatusResult {
   repeated RpcLog logs = 3;
 }
 
-// NOT USED
+// MESSAGE NOT USED
 // TODO: Remove from protobuf during next breaking change release
 message WorkerHeartbeat {}
 
