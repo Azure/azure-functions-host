@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         // Rpc message length
         public const int DefaultMaxMessageLengthBytes = int.MaxValue;
 
-        // Capabilites
+        // Capabilities
         public const string RawHttpBodyBytes = "RawHttpBodyBytes";
         public const string TypedDataCollection = "TypedDataCollection";
         public const string RpcHttpBodyOnly = "RpcHttpBodyOnly";
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string FunctionDataCache = "FunctionDataCache";
         public const string AcceptsListOfFunctionLoadRequests = "AcceptsListOfFunctionLoadRequests";
 
-        // Host Capabilites
+        // Host Capabilities
         public const string V2Compatable = "V2Compatable";
 
         // dotnet executable file path components
@@ -63,5 +63,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string PythonThreadpoolThreadCount = "PYTHON_THREADPOOL_THREAD_COUNT";
         public const string PSWorkerInProcConcurrencyUpperBound = "PSWorkerInProcConcurrencyUpperBound";
         public const string DefaultConcurrencyLimit = "1000";
+
+        // Metric events
+        public const string WorkerMetadataMetricEvent = "WorkerMetadata";
     }
 }
