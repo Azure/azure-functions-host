@@ -256,7 +256,12 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
 
-            ParseAndLogWorkerMetadata();
+            if (_initMessage.WorkerMetadata != null)
+            {
+                _initMessage.WorkerMetadata = ParseWorkerMetadata(_initMessage.WorkerMetadata);
+                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, _initMessage.WorkerMetadata.ToString());
+                _workerChannelLogger.LogDebug($"Worker metadata: {_initMessage.WorkerMetadata}");
+            }
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -278,20 +283,13 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerInitTask.SetResult(true);
         }
 
-        private void ParseAndLogWorkerMetadata()
+        private WorkerMetadata ParseWorkerMetadata(WorkerMetadata workerMetadata)
         {
-            if (_initMessage?.WorkerMetadata == null)
-            {
-                return;
-            }
-
-            _initMessage.WorkerMetadata.RuntimeName = string.IsNullOrEmpty(_initMessage.WorkerMetadata.RuntimeName)
-                                                        ? _workerConfig.Description.Language : _initMessage.WorkerMetadata.RuntimeName;
-            _initMessage.WorkerMetadata.RuntimeVersion = string.IsNullOrEmpty(_initMessage.WorkerMetadata.RuntimeVersion)
-                                                        ? _workerConfig.Description.DefaultRuntimeVersion : _initMessage.WorkerMetadata.RuntimeVersion;
-
-            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, null, _initMessage.WorkerMetadata.ToString());
-            _workerChannelLogger.LogDebug($"Worker metadata: {_initMessage.WorkerMetadata}");
+            workerMetadata.RuntimeName = string.IsNullOrEmpty(workerMetadata.RuntimeName)
+                                            ? _workerConfig.Description.Language : workerMetadata.RuntimeName;
+            workerMetadata.RuntimeVersion = string.IsNullOrEmpty(workerMetadata.RuntimeVersion)
+                                            ? _workerConfig.Description.DefaultRuntimeVersion : workerMetadata.RuntimeVersion;
+            return workerMetadata;
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
