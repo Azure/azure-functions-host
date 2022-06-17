@@ -3,7 +3,7 @@
     /// <summary>
     /// Encapsulate the criteria to match a Message to a Grpc StreamingMessage
     /// </summary>
-    internal class MatchingCriteria
+    public class MatchingCriteria
     {
         // The property of a Grpc StreamingMessage to match against
         public string? Query { get; set; }

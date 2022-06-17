@@ -22,17 +22,21 @@ namespace WorkerHarness.Core
 
         private Channel<StreamingMessage> _outboundChannel;
 
+        private IActionWriter _actionWriter;
+
         public DefaultActionProvider(IValidatorFactory validatorFactory, 
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
             Channel<StreamingMessage> inboundChannel,
-            Channel<StreamingMessage> outboundChannel)
+            Channel<StreamingMessage> outboundChannel,
+            IActionWriter actionWriter)
         {
             _validatorFactory = validatorFactory;
             _rpcMessageProvider = rpcMessageProvider;
             _variableManager = variableManager;
             _inboundChannel = inboundChannel;
             _outboundChannel = outboundChannel;
+            _actionWriter = actionWriter;
         }
 
         /// <summary>
@@ -51,7 +55,8 @@ namespace WorkerHarness.Core
                                      actionData,
                                      _variableManager,
                                      _inboundChannel,
-                                     _outboundChannel);
+                                     _outboundChannel,
+                                     _actionWriter);
         }
 
         /// <summary>
