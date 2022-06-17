@@ -38,8 +38,10 @@ namespace WorkerHarness
 
             Channels.Channel<StreamingMessage> outboundChannel = Channels.Channel.CreateUnbounded<StreamingMessage>();
 
+            IActionWriter actionWriter = new ActionToConsoleWriter();
+
             IActionProvider actionProvider = new DefaultActionProvider(validatorFactory, 
-                rpcMessageProvider, variableManager, inboundChannel, outboundChannel);
+                rpcMessageProvider, variableManager, inboundChannel, outboundChannel, actionWriter);
 
             IScenarioParser scenarioParser = new ScenarioParser(actionProvider);
 

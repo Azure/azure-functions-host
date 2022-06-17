@@ -38,7 +38,6 @@
           "contentCase": "WorkerInitResponse",
           "direction": "Incoming",
           "match": {
-            "type": "string",
             "query": "$.ContentCase",
             "expected": "WorkerInitResponse"
           },

@@ -3,7 +3,7 @@
     /// <summary>
     /// Encapsulates information about an incoming message mentioned in a scenario file
     /// </summary>
-    internal class IncomingMessage
+    public class IncomingMessage
     {
         // Identifier should be unique within an action's context
         public string? Id { get; set; }
