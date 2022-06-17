@@ -254,13 +254,9 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
+            _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
 
             ParseAndLogWorkerMetadata();
-
-            using (_workerChannelLogger.BeginScope(_initMessage.WorkerMetadata))
-            {
-                _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
-            }
 
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
@@ -282,7 +278,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerInitTask.SetResult(true);
         }
 
-        internal void ParseAndLogWorkerMetadata()
+        private void ParseAndLogWorkerMetadata()
         {
             if (_initMessage?.WorkerMetadata == null)
             {
@@ -294,7 +290,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _initMessage.WorkerMetadata.RuntimeVersion = string.IsNullOrEmpty(_initMessage.WorkerMetadata.RuntimeVersion)
                                                         ? _workerConfig.Description.DefaultRuntimeVersion : _initMessage.WorkerMetadata.RuntimeVersion;
 
-            _metricsLogger.LogEvent(RpcWorkerConstants.WorkerMetadataMetricEvent, null, _initMessage.WorkerMetadata.ToString());
+            _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, null, _initMessage.WorkerMetadata.ToString());
+            _workerChannelLogger.LogDebug($"Worker metadata: {_initMessage.WorkerMetadata}");
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
