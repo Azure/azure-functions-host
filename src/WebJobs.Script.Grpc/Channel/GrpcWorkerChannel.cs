@@ -908,7 +908,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             while (DateTime.Now.Subtract(now).Seconds < gracePeriod)
             {
             }
-            _workerChannelLogger.LogDebug($"Waited for {gracePeriod} seconds");
         }
 
         public async Task DrainInvocationsAsync()
