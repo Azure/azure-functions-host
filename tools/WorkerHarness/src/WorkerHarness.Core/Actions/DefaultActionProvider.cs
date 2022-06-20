@@ -14,6 +14,8 @@ namespace WorkerHarness.Core
     {
         private readonly IValidatorFactory _validatorFactory;
 
+        private readonly IMatch _matchService;
+
         private readonly IGrpcMessageProvider _rpcMessageProvider;
 
         private readonly IVariableManager _variableManager;
@@ -27,6 +29,7 @@ namespace WorkerHarness.Core
         public string Type => "Default";
 
         public DefaultActionProvider(IValidatorFactory validatorFactory, 
+            IMatch matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
             Channel<StreamingMessage> inboundChannel,
@@ -34,6 +37,7 @@ namespace WorkerHarness.Core
             IActionWriter actionWriter)
         {
             _validatorFactory = validatorFactory;
+            _matchService = matchService;
             _rpcMessageProvider = rpcMessageProvider;
             _variableManager = variableManager;
             _inboundChannel = inboundChannel;
@@ -52,7 +56,8 @@ namespace WorkerHarness.Core
             // 1. create a DefaultActionData that encapsulate info about an action
             DefaultActionData actionData = CreateDefaultActionData(actionNode);
             // 2. create a DefaultAction object
-            return new DefaultAction(_validatorFactory, 
+            return new DefaultAction(_validatorFactory,
+                                     _matchService,
                                      _rpcMessageProvider, 
                                      actionData,
                                      _variableManager,
