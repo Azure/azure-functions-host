@@ -388,12 +388,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var fileInfo = new Mock<FileInfoBase>(MockBehavior.Strict);
             fileInfo.SetupGet(f => f.Length).Returns(1);
             fileSystem.Setup(f => f.FileInfo.FromFileName(PackagePath)).Returns(fileInfo.Object);
-
             fileSystem.Setup(x => x.Path.GetTempPath()).Returns(tempPath);
             fileSystem.Setup(x => x.Path.GetFileName(ZipFileName)).Returns(ZipFileName);
             fileSystem.Setup(x => x.Path.Combine(tempPath, ZipFileName)).Returns(destinationPath);
             fileSystem.Setup(x => x.File.Copy(PackagePath, destinationPath, true)).Verifiable();
-
 
             var downloader = new PackageDownloadHandler(_httpClient, _managedIdentityTokenProvider.Object,
                 _bashCmdHandlerMock.Object, _environment, _logger, _metricsLogger);
@@ -401,7 +399,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var returnedDestPath = await downloader.Download(runFromPackageContext, fileSystem.Object);
             fileSystem.Verify(x => x.File.Copy(PackagePath, destinationPath, true), Times.Once);
             Assert.Equal(destinationPath, returnedDestPath);
-            
         }
 
         private static bool MatchesVerb(HttpRequestMessage s, HttpMethod httpMethod)
