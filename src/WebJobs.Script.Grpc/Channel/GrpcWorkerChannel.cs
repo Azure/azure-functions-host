@@ -212,7 +212,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 for (int i = 0; i < count; i++)
                 {
-                    var newItem = i == count - 1 && timeout != TimeSpan.Zero
+                    var newItem = (i == count - 1) && (timeout != TimeSpan.Zero)
                         ? new PendingItem(callback, faultHandler, timeout)
                         : new PendingItem(callback, faultHandler);
                     queue.Enqueue(newItem);
