@@ -133,21 +133,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         private void ProcessItem(InboundGrpcEvent msg)
         {
-            // note this is a QUWI entry-point
+            // note this method is a thread-pool (QueueUserWorkItem) entry-point
             try
             {
                 switch (msg.MessageType)
                 {
+                    case MsgType.RpcLog when msg.Message.RpcLog.LogCategory == RpcLogCategory.System:
+                        SystemLog(msg);
+                        break;
                     case MsgType.RpcLog:
-                        switch (msg.Message.RpcLog.LogCategory)
-                        {
-                            case RpcLogCategory.System:
-                                SystemLog(msg);
-                                break;
-                            default:
-                                Log(msg);
-                                break;
-                        }
+                        Log(msg);
                         break;
                     case MsgType.WorkerStatusResponse:
                         ReceiveWorkerStatusResponse(msg.Message.RequestId, msg.Message.WorkerStatusResponse);
@@ -156,7 +151,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                         _ = InvokeResponse(msg.Message.InvocationResponse);
                         break;
                     default:
-                        OnNext(msg);
+                        ProcessRegisteredGrpcCallbacks(msg);
                         break;
                 }
             }
@@ -166,7 +161,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        private void OnNext(InboundGrpcEvent message)
+        private void ProcessRegisteredGrpcCallbacks(InboundGrpcEvent message)
         {
             Queue<PendingItem> queue;
             lock (_pendingActions)
@@ -191,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             next.SetResult(message);
         }
 
-        private void OnNext(MsgType messageType, TimeSpan timeout, int count, Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
+        private void RegisterCallbackForNextGrpcMessage(MsgType messageType, TimeSpan timeout, int count, Action<InboundGrpcEvent> callback, Action<Exception> faultHandler)
         {
             Queue<PendingItem> queue;
             lock (_pendingActions)
@@ -260,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         public async Task StartWorkerProcessAsync(CancellationToken cancellationToken)
         {
-            OnNext(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
+            RegisterCallbackForNextGrpcMessage(MsgType.StartStream, _workerConfig.CountOptions.ProcessStartupTimeout, 1, SendWorkerInitRequest, HandleWorkerStartStreamError);
             // note: it is important that the ^^^ StartStream is in place *before* we start process the loop, otherwise we get a race condition
             _ = ProcessInbound();
 
@@ -310,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         internal void SendWorkerInitRequest(GrpcEvent startEvent)
         {
             _workerChannelLogger.LogDebug("Worker Process started. Received StartStream message");
-            OnNext(MsgType.WorkerInitResponse, _workerConfig.CountOptions.InitializationTimeout, 1, WorkerInitResponse, HandleWorkerInitError);
+            RegisterCallbackForNextGrpcMessage(MsgType.WorkerInitResponse, _workerConfig.CountOptions.InitializationTimeout, 1, WorkerInitResponse, HandleWorkerInitError);
 
             WorkerInitRequest initRequest = GetWorkerInitRequest();
 
@@ -409,11 +404,11 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 {
                     _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
 
-                    OnNext(MsgType.FunctionLoadResponse, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
+                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
                 }
                 else
                 {
-                    OnNext(MsgType.FunctionLoadResponse, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
+                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
                 }
 
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
@@ -469,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Sending FunctionEnvironmentReloadRequest to WorkerProcess with Pid: '{0}'", _rpcWorkerProcess.Id);
             IDisposable latencyEvent = _metricsLogger.LatencyEvent(MetricEventNames.SpecializationEnvironmentReloadRequestResponse);
 
-            OnNext(MsgType.FunctionEnvironmentReloadResponse, _workerConfig.CountOptions.EnvironmentReloadTimeout, 1,
+            RegisterCallbackForNextGrpcMessage(MsgType.FunctionEnvironmentReloadResponse, _workerConfig.CountOptions.EnvironmentReloadTimeout, 1,
                 msg => FunctionEnvironmentReloadResponse(msg.Message.FunctionEnvironmentReloadResponse, latencyEvent), HandleWorkerEnvReloadError);
 
             IDictionary processEnv = Environment.GetEnvironmentVariables();
@@ -621,7 +616,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
         internal Task<List<RawFunctionMetadata>> SendFunctionMetadataRequest()
         {
-            OnNext(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
+            RegisterCallbackForNextGrpcMessage(MsgType.FunctionMetadataResponse, _functionLoadTimeout, 1,
                 msg => ProcessFunctionMetadataResponses(msg.Message.FunctionMetadataResponse), HandleWorkerMetadataRequestError);
 
             _workerChannelLogger.LogDebug("Sending WorkerMetadataRequest to {language} worker with worker ID {workerID}", _runtime, _workerId);
