@@ -17,7 +17,10 @@ namespace WorkerHarness.Core
         // _validatorManager is responsible for validating message.
         private readonly IValidatorFactory _validatorFactory;
 
-        // _grpcMessageProvider create the right StreamingMessage object
+        // _matchService decides if an incoming grpc message matches our criteria.
+        private readonly IMatch _matchService;
+
+        // _grpcMessageProvider create the right StreamingMessage object.
         private readonly IGrpcMessageProvider _grpcMessageProvider;
 
         // _actionData encapsulates data for each action in the Scenario file.
@@ -26,12 +29,17 @@ namespace WorkerHarness.Core
         // _variableManager evaluates all registered expressions once the variable values are available.
         private readonly IVariableManager _variableManager;
 
+        // _inboundChannel stores messages from Grpc Layer. These messages are yet matched or validated.
         private readonly Channel<StreamingMessage> _inboundChannel;
+
+        // _outboundChannel stores messages that will be consumed by Grpc Layer and sent to the language worker.
         private readonly Channel<StreamingMessage> _outboundChannel;
 
+        // _actionWriter writes action execution results to appropriate medium.
         private readonly IActionWriter _actionWriter;
 
         internal DefaultAction(IValidatorFactory validatorFactory, 
+            IMatch matchService,
             IGrpcMessageProvider grpcMessageProvider, 
             DefaultActionData actionData,
             IVariableManager variableManager,
@@ -41,6 +49,7 @@ namespace WorkerHarness.Core
         )
         {
             _validatorFactory = validatorFactory;
+            _matchService = matchService;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
             _variableManager = variableManager;
@@ -59,14 +68,14 @@ namespace WorkerHarness.Core
         public int Timeout { get => _actionData.Timeout; }
 
         // Placeholder that stores StreamingMessage to be sent to Grpc Layer
-        private IList<StreamingMessage> _grpcOutgoingMessages = new List<StreamingMessage>();
+        private readonly IList<StreamingMessage> _grpcOutgoingMessages = new List<StreamingMessage>();
 
         // Placeholder that stores IncomingMessage to be matched and validated against messages from Grpc Layer.
-        private IList<IncomingMessage> _unmatchedMessages = new List<IncomingMessage>();
+        private readonly IList<IncomingMessage> _unmatchedMessages = new List<IncomingMessage>();
 
         public async Task ExecuteAsync()
         {
-            _actionWriter.WriteActionName(_actionData.Name);
+            _actionWriter.WriteActionName(Name);
 
             // create grpc messages to send to Grpc
             ProcessOutgoingMessages();
@@ -88,9 +97,6 @@ namespace WorkerHarness.Core
 
         private async Task ReceiveFromGrpcAsync()
         {
-            //JsonSerializerOptions options = new() { WriteIndented = true };
-            //options.Converters.Add(new JsonStringEnumConverter());
-
             var timeout = Task.Run(() => Thread.Sleep(Timeout));
             while (!timeout.IsCompleted && _unmatchedMessages.Any())
             {
@@ -98,7 +104,7 @@ namespace WorkerHarness.Core
 
                 // filter _unvalidatedMessages for those with same ContentCase and fullfills the matching criteria
                 IEnumerable<IncomingMessage> matches = _unmatchedMessages.Where(msg => msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
-                    .Where(msg => msg.Resolved() && msg.Matched(grpcMsg));
+                    .Where(msg => msg.DependenciesResolved() && _matchService.MatchAll(msg.Match, grpcMsg));
 
                 if (matches.Any())
                 {
@@ -192,18 +198,6 @@ namespace WorkerHarness.Core
                 _grpcOutgoingMessages.Add(streamingMessage);
             }
         }
-
-        // TODO: debugging methods, to be deleted later
-        //private void PrintDictionary(IDictionary<string, object> resolvedVariables)
-        //{
-        //    JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-        //    options.Converters.Add(new JsonStringEnumConverter());
-
-        //    foreach (KeyValuePair<string, object> pair in resolvedVariables)
-        //    {
-        //        Console.WriteLine($"Variable: {pair.Key}\nValue: {JsonSerializer.Serialize(pair.Value, options)}");
-        //    }
-        //}
 
         /// <summary>
         /// Register incoming messages that are to be validated against actual grpc messages.

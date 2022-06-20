@@ -22,7 +22,11 @@
         // A mapping of variable names to their values/expressions
         public IDictionary<string, string> SetVariables { get; set; } = new Dictionary<string, string>();
 
-        internal bool Resolved()
+        /// <summary>
+        /// Check whether all variable dependencies in Match and Validators have been resolved
+        /// </summary>
+        /// <returns></returns>
+        internal bool DependenciesResolved()
         {
             foreach (var match in Match)
             {
@@ -43,17 +47,5 @@
             return true;
         }
 
-        internal bool Matched(object source)
-        {
-            foreach (var match in Match)
-            {
-                if (!MatchHelper.Matched(match, source))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
     }
 }

@@ -40,10 +40,12 @@ namespace WorkerHarness
 
             IActionWriter actionWriter = new ConsoleWriter();
 
-            IActionProvider defaultAtionProvider = new DefaultActionProvider(validatorFactory, 
+            IMatch matchService = new StringMatch();
+
+            IActionProvider defaultAtionProvider = new DefaultActionProvider(validatorFactory, matchService,
                 rpcMessageProvider, variableManager, inboundChannel, outboundChannel, actionWriter);
 
-            List<IActionProvider> actionProviders = new List<IActionProvider>() { defaultAtionProvider };
+            List<IActionProvider> actionProviders = new() { defaultAtionProvider };
 
             IScenarioParser scenarioParser = new ScenarioParser(actionProviders);
 

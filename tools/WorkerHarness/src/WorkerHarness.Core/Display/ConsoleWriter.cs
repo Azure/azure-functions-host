@@ -1,31 +1,29 @@
 ﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+using System.Text.Unicode;
 
 namespace WorkerHarness.Core
 {
     public class ConsoleWriter : IActionWriter
     {
-        private string checkedSymbol = "\u2713";
-        private string errorSymbol = "X";
+        private readonly string checkedSymbol = "\u2713";
+        private readonly string errorSymbol = "X";
 
         public IList<MatchingContext> Match { get; } = new List<MatchingContext>();
 
         public IDictionary<ValidationContext, bool> ValidationResults { get; } = new Dictionary<ValidationContext, bool>();
 
-        private JsonSerializerOptions options;
+        private readonly JsonSerializerOptions options;
 
         public ConsoleWriter()
         {
             options = new JsonSerializerOptions()
             {
                 WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
             };
             options.Converters.Add(new JsonStringEnumConverter());
         }
@@ -83,7 +81,7 @@ namespace WorkerHarness.Core
             Console.WriteLine($"\n- Sent a {message.ContentCase} message");
             Console.WriteLine($"\nPayload:");
             Console.WriteLine($"========");
-            Console.WriteLine($"{JsonSerializer.Serialize(message, options)}");
+            Console.WriteLine(JsonSerializer.Serialize(message, options));
         }
 
         public void WriteUnmatchedMessages(IncomingMessage message)
