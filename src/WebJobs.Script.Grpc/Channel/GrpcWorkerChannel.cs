@@ -981,7 +981,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 }
                 catch
                 {
-                    // nowehere to log
+                    // no where to log
                 }
             }
         }
