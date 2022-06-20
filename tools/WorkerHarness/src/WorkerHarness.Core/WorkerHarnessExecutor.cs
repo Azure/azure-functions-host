@@ -38,6 +38,7 @@ namespace WorkerHarness.Core
                     await action.ExecuteAsync();
                 }
 
+                myProcess.Kill();
                 return true;
             }
             catch (Exception ex)
