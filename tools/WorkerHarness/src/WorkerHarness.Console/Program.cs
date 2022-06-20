@@ -38,12 +38,14 @@ namespace WorkerHarness
 
             Channels.Channel<StreamingMessage> outboundChannel = Channels.Channel.CreateUnbounded<StreamingMessage>();
 
-            IActionWriter actionWriter = new ActionToConsoleWriter();
+            IActionWriter actionWriter = new ConsoleWriter();
 
-            IActionProvider actionProvider = new DefaultActionProvider(validatorFactory, 
+            IActionProvider defaultAtionProvider = new DefaultActionProvider(validatorFactory, 
                 rpcMessageProvider, variableManager, inboundChannel, outboundChannel, actionWriter);
 
-            IScenarioParser scenarioParser = new ScenarioParser(actionProvider);
+            List<IActionProvider> actionProviders = new List<IActionProvider>() { defaultAtionProvider };
+
+            IScenarioParser scenarioParser = new ScenarioParser(actionProviders);
 
             GrpcService grpcService = new(inboundChannel, outboundChannel);
 

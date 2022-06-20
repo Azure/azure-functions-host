@@ -1,5 +1,5 @@
 {
-  "scenarioName": "Happy path scenario with successful worker initialization and function invocation",
+  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger",
   "actions": [
     {
       "type": "Default",
@@ -9,10 +9,12 @@
           "id": "message_1",
           "contentCase": "StartStream",
           "direction": "Incoming",
-          "match": {
-            "query": "$.ContentCase",
-            "expected": "StartStream"
-          },
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "StartStream"
+            }
+          ],
           "validators": [
             {
               "type": "regex",
@@ -37,10 +39,12 @@
           "id": "message_2",
           "contentCase": "WorkerInitResponse",
           "direction": "Incoming",
-          "match": {
-            "query": "$.ContentCase",
-            "expected": "WorkerInitResponse"
-          },
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "WorkerInitResponse"
+            }
+          ],
           "validators": [
             {
               "type": "string",
@@ -78,10 +82,12 @@
           "id": "message_2",
           "contentCase": "FunctionLoadResponse",
           "direction": "Incoming",
-          "match": {
-            "query": "$.FunctionLoadResponse.FunctionId",
-            "expected": "${message_1}.FunctionLoadRequest.FunctionId"
-          },
+          "match": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+            }
+          ],
           "validators": [
             {
               "type": "string",
@@ -129,10 +135,12 @@
           "id": "message_2",
           "contentCase": "InvocationResponse",
           "direction": "Incoming",
-          "match": {
-            "query": "$.InvocationResponse.InvocationId",
-            "expected": "@{invocationId_1}"
-          },
+          "match": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_1}"
+            }
+          ],
           "validators": [
             {
               "type": "string",

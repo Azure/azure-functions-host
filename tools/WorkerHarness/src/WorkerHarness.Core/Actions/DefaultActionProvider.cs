@@ -12,17 +12,19 @@ namespace WorkerHarness.Core
     /// </summary>
     public class DefaultActionProvider : IActionProvider
     {
-        private IValidatorFactory _validatorFactory;
+        private readonly IValidatorFactory _validatorFactory;
 
-        private IGrpcMessageProvider _rpcMessageProvider;
+        private readonly IGrpcMessageProvider _rpcMessageProvider;
 
-        private IVariableManager _variableManager;
+        private readonly IVariableManager _variableManager;
 
-        private Channel<StreamingMessage> _inboundChannel;
+        private readonly Channel<StreamingMessage> _inboundChannel;
 
-        private Channel<StreamingMessage> _outboundChannel;
+        private readonly Channel<StreamingMessage> _outboundChannel;
 
-        private IActionWriter _actionWriter;
+        private readonly IActionWriter _actionWriter;
+
+        public string Type => "Default";
 
         public DefaultActionProvider(IValidatorFactory validatorFactory, 
             IGrpcMessageProvider rpcMessageProvider,
@@ -68,24 +70,34 @@ namespace WorkerHarness.Core
         {
             JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
             serializerOptions.Converters.Add(new JsonStringEnumConverter());
-            DefaultActionData actionData = JsonSerializer.Deserialize<DefaultActionData>(actionNode, serializerOptions)!;
+            DefaultActionData? actionData = JsonSerializer.Deserialize<DefaultActionData>(actionNode, serializerOptions)!;
+
             if (actionData == null)
             {
                 throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(DefaultActionData)} object");
             }
 
-            // iterate over 'messages' property and populate actionData.IncomingMessages list and actionData.OutgoingMessages list
-            JsonArray jsonMessages = actionNode["messages"] != null ? actionNode["messages"]!.AsArray() : throw new NullReferenceException("The 'messages' property is missing from the JsonNode object");
+            // iterate over 'messages' array and populate actionData.IncomingMessages list and actionData.OutgoingMessages list
+            if (actionNode["messages"] == null || actionNode["messages"] is not JsonArray)
+            {
+                throw new MissingFieldException($"Missing the 'messages' array in an action");
+            }
+
+            JsonArray jsonMessages = actionNode["messages"]!.AsArray();
             for (int i = 0; i < jsonMessages.Count; i++)
             {
-                JsonNode jsonMessage = jsonMessages[i] ?? throw new NullReferenceException($"{typeof(JsonNode)} {nameof(jsonMessage)} has a null value");
+                JsonNode? jsonMessage = jsonMessages[i];
+                ValidateMessage(jsonMessage);
+
                 string messageDirection = jsonMessage!["direction"]!.ToString().ToLower();
                 if (messageDirection == "incoming")
                 {
+                    ValidateIncomingMessage(jsonMessage);
                     actionData.IncomingMessages.Add(JsonSerializer.Deserialize<IncomingMessage>(jsonMessage, serializerOptions)!);
                 }
                 else if (messageDirection == "outgoing")
                 {
+                    ValidateOutgoingMessage(jsonMessage);
                     actionData.OutgoingMessages.Add(JsonSerializer.Deserialize<OutgoingMessage>(jsonMessage, serializerOptions)!);
                 }
                 else
@@ -102,5 +114,46 @@ namespace WorkerHarness.Core
 
             return actionData;
         }
+
+        // TODO: write private method to check the required fields for incoming message and outgoing message
+        private void ValidateMessage(JsonNode? message)
+        {
+            if (message == null || message is not JsonObject)
+            {
+                throw new InvalidDataException($"The 'messages' array must contain non-null json object");
+            }
+
+            if (message["contentCase"] == null)
+            {
+                throw new MissingFieldException($"Missing 'contentCase' property in a message object");
+            }
+
+            if (message["direction"] == null)
+            {
+                throw new MissingFieldException($"Missing 'direction' property in a message object");
+            }
+        }
+
+        private void ValidateIncomingMessage(JsonNode message)
+        {
+            if (message["match"] == null || message["match"] is not JsonArray)
+            {
+                throw new InvalidDataException("Missing the 'match' array in an 'incoming' message object");
+            }
+
+            if (message["validators"] == null || message["validators"] is not JsonArray)
+            {
+                throw new InvalidDataException("Missing the 'validators' array in an 'incoming' message object");
+            }
+        }
+
+        private void ValidateOutgoingMessage(JsonNode message)
+        {
+            if (message["content"] == null || message["content"] is not JsonObject)
+            {
+                throw new InvalidDataException("Missing the 'content' object in an 'outgoing' message object");
+            }
+        }
+
     }
 }

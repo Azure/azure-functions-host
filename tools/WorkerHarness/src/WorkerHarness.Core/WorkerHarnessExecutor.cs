@@ -31,7 +31,7 @@ namespace WorkerHarness.Core
             try
             {
                 myProcess.Start();
-                Console.WriteLine($"A {_workerDescription.Language} process is starting...");
+                Console.WriteLine($"Executing scenario: {scenario.ScenarioName}");
 
                 foreach (IAction action in scenario.Actions)
                 {

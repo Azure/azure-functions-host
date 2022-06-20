@@ -9,18 +9,18 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    public class ActionToConsoleWriter : IActionWriter
+    public class ConsoleWriter : IActionWriter
     {
         private string checkedSymbol = "\u2713";
         private string errorSymbol = "X";
 
-        public IList<MatchingCriteria> Match { get; } = new List<MatchingCriteria>();
+        public IList<MatchingContext> Match { get; } = new List<MatchingContext>();
 
         public IDictionary<ValidationContext, bool> ValidationResults { get; } = new Dictionary<ValidationContext, bool>();
 
         private JsonSerializerOptions options;
 
-        public ActionToConsoleWriter()
+        public ConsoleWriter()
         {
             options = new JsonSerializerOptions()
             {
@@ -41,10 +41,10 @@ namespace WorkerHarness.Core
 
             Console.WriteLine($"\nmatches:");
             Console.WriteLine($"========");
-            foreach (MatchingCriteria match in Match)
+            foreach (MatchingContext match in Match)
             {
-                match.ExpectedExpression!.TryEvaluate(out string? expected);
-                Console.WriteLine($"{checkedSymbol} {match.Query}: {expected}");
+                match.TryEvaluate(out string? evaluated);
+                Console.WriteLine($"{checkedSymbol} {match.Query}: {evaluated}");
             }
 
             Console.WriteLine($"\nvalidates:");
@@ -95,9 +95,11 @@ namespace WorkerHarness.Core
 
             Console.WriteLine($"\nmatches:");
             Console.WriteLine($"========");
-            MatchingCriteria match = message.Match!;
-            match.ExpectedExpression!.TryEvaluate(out string? expected);
-            Console.WriteLine($"{errorSymbol} {match.Query}: {expected}");
+            foreach (var match in message.Match)
+            {
+                match.TryEvaluate(out string? expected);
+                Console.WriteLine($"{errorSymbol} {match.Query}: {expected}");
+            }
 
             Console.WriteLine($"\nvalidates:");
             Console.WriteLine($"==========");
@@ -112,7 +114,7 @@ namespace WorkerHarness.Core
 
         public void WriteActionEnding()
         {
-            Console.WriteLine($"\n{new String('-', 100)}");
+            Console.WriteLine($"\n{new string('-', 100)}");
         }
     }
 }
