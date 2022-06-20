@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
             _httpClient = httpClientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _managedIdentityTokenProvider = managedIdentityTokenProvider ?? throw new ArgumentNullException(nameof(managedIdentityTokenProvider));
             _bashCommandHandler = bashCommandHandler ?? throw new ArgumentNullException(nameof(bashCommandHandler));
-            _environment = environment;
+            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
         }
@@ -237,32 +237,32 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             if (!fileSystem.Directory.Exists(packageFolderPath))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. SitePackages folder in the data folder doesn't exist.");
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackagesFolderName} folder doesn't exist at {packageFolderPath}.");
             }
 
             var packageNameTxtPath = _environment.GetSitePackageNameTxtPath();
             if (!fileSystem.File.Exists(packageNameTxtPath))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt doesn't exist.");
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackageNameTxtFileName} doesn't exist at {packageNameTxtPath}.");
             }
 
             var packageFileName = fileSystem.File.ReadAllText(packageNameTxtPath);
 
             if (string.IsNullOrEmpty(packageFileName))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. packagename.txt is empty.");
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {ScriptConstants.SitePackageNameTxtFileName} is empty at {packageNameTxtPath}.");
             }
 
             var packageFilePath = fileSystem.Path.Combine(packageFolderPath, packageFileName);
             if (!fileSystem.File.Exists(packageFilePath))
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist.");
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} doesn't exist at {packageFilePath}.");
             }
 
             var packageFileInfo = fileSystem.FileInfo.FromFileName(packageFilePath);
             if (packageFileInfo.Length == 0)
             {
-                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero.");
+                CopyPackageFileFailed($"{nameof(CopyPackageFile)} failed. {packageFileName} size is zero at {packageFilePath}.");
             }
 
             var tmpPath = fileSystem.Path.GetTempPath();
@@ -271,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             fileSystem.File.Copy(packageFilePath, filePath, true);
 
-            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied to {filePath}.");
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied from {packageFilePath} to {filePath}.");
 
             return filePath;
         }

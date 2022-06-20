@@ -29,6 +29,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
             return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.ScmRunFromPackage, StringComparison.OrdinalIgnoreCase);
         }
 
+        public bool IsWebsiteRunFromPackage()
+        {
+            return string.Equals(EnvironmentVariableName, EnvironmentSettingNames.AzureWebsiteRunFromPackage, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(EnvironmentVariableName, EnvironmentSettingNames.AzureWebsiteAltZipDeployment, StringComparison.OrdinalIgnoreCase);
+        }
+
         public bool IsRunFromPackage(ScriptApplicationHostOptions options, ILogger logger)
         {
             return (IsScmRunFromPackage() && ScmRunFromPackageBlobExists(options, logger)) || (!IsScmRunFromPackage() && !string.IsNullOrEmpty(Url) && Url != "1");
@@ -36,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
 
         public bool IsRunFromLocalPackage()
         {
-            return string.Equals(Url, "1", StringComparison.OrdinalIgnoreCase);
+            return IsWebsiteRunFromPackage() && string.Equals(Url, "1", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool ScmRunFromPackageBlobExists(ScriptApplicationHostOptions options, ILogger logger)
