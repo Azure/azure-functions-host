@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    public class Expression
+    public abstract class Expression
     {
+        public abstract void ConstructExpression();
+
         // the value of the expression; could contain an object variable name ${...} and several string variable names @{...}
-        private string _expression;
+        private string _expression = string.Empty;
 
         // true if all variables within _expression has been resolve
         private bool _resolved = false;
@@ -18,22 +20,27 @@ namespace WorkerHarness.Core
         public bool Resolved => _resolved;
 
         // a dependency here is the name of the variable that the expression uses
-        private IList<string> _dependencies;
+        private IList<string> _dependencies = new List<string>();
 
         // an object variable that the expression may depend on.
         private object? _objectVariable;
 
-        // TODO: to be deleted, for debugging
-        public IList<string> Dependencies => _dependencies;
-
-        // TODO: to be deleted, for debugging
-        public string Value => _expression;
 
         /// <summary>
         /// constructor for an Expression object. Assume that an expression has been validated before being passed to the constructor
         /// </summary>
         /// <param name="expression" cref="string">a valid expression</param>
-        public Expression(string expression)
+        //public Expression(string expression)
+        //{
+        //    _expression = expression;
+
+        //    // use VariableHelper to extract the variable name
+        //    _dependencies = VariableHelper.ExtractVariableNames(_expression);
+
+        //    _resolved = !_dependencies.Any();
+        //}
+
+        protected void SetExpression(string expression)
         {
             _expression = expression;
 

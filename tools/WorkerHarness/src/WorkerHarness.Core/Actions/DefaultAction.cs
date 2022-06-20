@@ -9,28 +9,27 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core
 {
     internal class DefaultAction : IAction
     {
-        // _validatorManager is responsible for validating message. TODO: implement the validation functionality
-        private IValidatorFactory _validatorFactory;
+        // _validatorManager is responsible for validating message.
+        private readonly IValidatorFactory _validatorFactory;
 
         // _grpcMessageProvider create the right StreamingMessage object
-        private IGrpcMessageProvider _grpcMessageProvider;
+        private readonly IGrpcMessageProvider _grpcMessageProvider;
 
         // _actionData encapsulates data for each action in the Scenario file.
-        private DefaultActionData _actionData;
+        private readonly DefaultActionData _actionData;
 
         // _variableManager evaluates all registered expressions once the variable values are available.
-        private IVariableManager _variableManager;
+        private readonly IVariableManager _variableManager;
 
-        private Channel<StreamingMessage> _inboundChannel;
-        private Channel<StreamingMessage> _outboundChannel;
+        private readonly Channel<StreamingMessage> _inboundChannel;
+        private readonly Channel<StreamingMessage> _outboundChannel;
 
-        private IActionWriter _actionWriter;
+        private readonly IActionWriter _actionWriter;
 
         internal DefaultAction(IValidatorFactory validatorFactory, 
             IGrpcMessageProvider grpcMessageProvider, 
@@ -51,10 +50,10 @@ namespace WorkerHarness.Core
         }
 
         // Type of action, type "Default" in this case
-        public string? Type { get => _actionData.Type; }
+        public string Type { get => _actionData.Type; }
 
         // Displayed name of the action
-        public string? Name { get => _actionData.Name; }
+        public string Name { get => _actionData.Name; }
 
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
@@ -67,7 +66,7 @@ namespace WorkerHarness.Core
 
         public async Task ExecuteAsync()
         {
-            _actionWriter.WriteActionName(_actionData.Name ?? string.Empty);
+            _actionWriter.WriteActionName(_actionData.Name);
 
             // create grpc messages to send to Grpc
             ProcessOutgoingMessages();
@@ -96,35 +95,35 @@ namespace WorkerHarness.Core
             while (!timeout.IsCompleted && _unmatchedMessages.Any())
             {
                 StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync();
-                // iterate through _unvalidatedMessages and select the first one which has the same ContentCase
-                IEnumerable<IncomingMessage> matches = _unmatchedMessages.Where(msg => msg.ContentCase != null && msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
-                    // filter those that fulfills the match criteria
-                    .Where(msg => msg.Match != null && msg.Match.ExpectedExpression != null && msg.Match.ExpectedExpression.Resolved && MatchHelper.Matched(msg.Match, grpcMsg));
+
+                // filter _unvalidatedMessages for those with same ContentCase and fullfills the matching criteria
+                IEnumerable<IncomingMessage> matches = _unmatchedMessages.Where(msg => msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
+                    .Where(msg => msg.Resolved() && msg.Matched(grpcMsg));
 
                 if (matches.Any())
                 {
-                    IncomingMessage match = matches.First();
-                    _unmatchedMessages.Remove(match);
+                    IncomingMessage matchMsg = matches.First();
+                    _unmatchedMessages.Remove(matchMsg);
 
-                    _actionWriter.Match.Add(match.Match!);
+                    foreach (var matchingCriteria in matchMsg.Match)
+                    {
+                        _actionWriter.Match.Add(matchingCriteria);
+                    }
 
                     // validate the match
-                    if (match.Validators != null)
+                    foreach (var validationContext in matchMsg.Validators)
                     {
-                        foreach (ValidationContext validationContext in match.Validators)
-                        {
-                            string validatorType = validationContext.Type != null ? validationContext.Type.ToLower() : throw new MissingFieldException($"Missing validator type");
-                            IValidator validator = _validatorFactory.Create(validatorType);
-                            bool validated = validator.Validate(validationContext, grpcMsg);
+                        string validatorType = validationContext.Type.ToLower();
+                        IValidator validator = _validatorFactory.Create(validatorType);
+                        bool validated = validator.Validate(validationContext, grpcMsg);
 
-                            _actionWriter.ValidationResults.Add(validationContext, validated);
-                        }
+                        _actionWriter.ValidationResults.Add(validationContext, validated);
                     }
 
                     _actionWriter.WriteMatchedMessage(grpcMsg);
 
                     // register grpcMsg as a variable in _variableManager
-                    _variableManager.AddVariable(match.Id ?? Guid.NewGuid().ToString(), grpcMsg);
+                    _variableManager.AddVariable(matchMsg.Id, grpcMsg);
 
                 }
                 else
@@ -174,17 +173,10 @@ namespace WorkerHarness.Core
             foreach (OutgoingMessage message in _actionData.OutgoingMessages)
             {
                 // create a StreamingMessage that will be sent to a language worker
-                if (string.IsNullOrEmpty(message.ContentCase))
-                {
-                    throw new NullReferenceException($"The property {nameof(message.ContentCase)} is required to create a {typeof(StreamingMessage)} object");
-                }
-
                 StreamingMessage streamingMessage = _grpcMessageProvider.Create(message.ContentCase, message.Content);
 
-                string messageId = message.Id ?? Guid.NewGuid().ToString();
-
                 // resolve "SetVariables" property
-                VariableHelper.ResolveVariableMap(message.SetVariables, messageId, streamingMessage);
+                VariableHelper.ResolveVariableMap(message.SetVariables, message.Id, streamingMessage);
 
                 // add the variables inside "SetVariables" to VariableManager
                 if (message.SetVariables != null)
@@ -195,7 +187,7 @@ namespace WorkerHarness.Core
                     }
                 }
 
-                _variableManager.AddVariable(messageId, streamingMessage);
+                _variableManager.AddVariable(message.Id, streamingMessage);
 
                 _grpcOutgoingMessages.Add(streamingMessage);
             }
@@ -229,34 +221,26 @@ namespace WorkerHarness.Core
             //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
             foreach (IncomingMessage message in _actionData.IncomingMessages)
             {
-                var messageId = message.Id ?? Guid.NewGuid().ToString();
-
                 // in message.Match, update any default variable '$.' to '$.{messageId}'
-                if (message.Match != null)
+                foreach (var matchingCriteria in message.Match)
                 {
-                    //message.Match.Query = VariableHelper.UpdateSingleDefaultVariableExpression(message.Match.Query ?? string.Empty, messageId);
-                    message.Match.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(message.Match.Expected ?? string.Empty, messageId);
-                    message.Match.ExpectedExpression = new Expression(message.Match.Expected);
+                    matchingCriteria.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Expected, message.Id);
 
-                    _variableManager.Subscribe(message.Match.ExpectedExpression);
+                    matchingCriteria.ConstructExpression();
+
+                    _variableManager.Subscribe(matchingCriteria);
                 }
 
-                // TODO: to be deleted
-                //// in message.Validators, update any default variable '$.' to '$.{messageId}'
-                //if (message.Validators != null)
-                //{
-                //    foreach (var validator in message.Validators)
-                //    {
-                //        if (validator != null)
-                //        {
-                //            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query ?? string.Empty, messageId);
-                //            validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected ?? string.Empty, messageId);
-                //            validator.ExpectedExpression = new Expression(validator.Expected);
+                // in message.Validators, update any default variable '$.' to '$.{messageId}'
+                foreach (var validator in message.Validators)
+                {
+                    //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
+                    validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected, message.Id);
 
-                //            _variableManager.Subscribe(validator.ExpectedExpression);
-                //        }
-                //    }
-                //}
+                    validator.ConstructExpression();
+
+                    _variableManager.Subscribe(validator);
+                }
 
                 _unmatchedMessages.Add(message);
             }

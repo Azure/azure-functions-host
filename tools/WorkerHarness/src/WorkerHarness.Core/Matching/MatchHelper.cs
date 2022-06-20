@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace WorkerHarness.Core.Commons
+namespace WorkerHarness.Core
 {
     internal static class MatchHelper
     {
@@ -28,20 +28,20 @@ namespace WorkerHarness.Core.Commons
         /// <param name="match"></param>
         /// <param name="actual"></param>
         /// <returns></returns>
-        internal static bool Matched(MatchingCriteria match, object source)
+        internal static bool Matched(MatchingContext match, object source)
         {
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+            JsonSerializerOptions options = new();
             options.Converters.Add(new JsonStringEnumConverter());
 
-            if (string.IsNullOrEmpty(match.Query))
-            {
-                throw new MissingFieldException("The query field is null or empty. A query is needed to do matching");
-            }
+            //if (string.IsNullOrEmpty(match.Query))
+            //{
+            //    throw new MissingFieldException("The query field is null or empty. A query is needed to do matching");
+            //}
 
-            if (match.ExpectedExpression == null)
-            {
-                throw new MissingFieldException("The expected expression is null or empty. An expected expression is needed to do matching");
-            }
+            //if (match.ExpectedExpression == null)
+            //{
+            //    throw new MissingFieldException("The expected expression is null or empty. An expected expression is needed to do matching");
+            //}
 
             // find all properties to index in match.query
             string replacement = Regex.Replace(match.Query, objectVariablePattern, string.Empty);
@@ -50,11 +50,10 @@ namespace WorkerHarness.Core.Commons
             string jsonString = JsonSerializer.Serialize(source, options);
             JsonNode jsonNode = JsonNode.Parse(jsonString) ?? throw new InvalidOperationException($"Unable to convert a string to a JsonNode object");
             // recursively index into jsonNode to find the actual string data
-            string actual = VariableHelper.RecursiveIndex(jsonNode, properties, 0).ToString() ?? 
+            string actual = VariableHelper.RecursiveIndex(jsonNode, properties, 0).ToString() ??
                 throw new InvalidDataException($"Unable to find a string value for the query {match.Query}");
             // convert the expected value to a JsonNode
-            string? expected;
-            if (!match.ExpectedExpression.TryEvaluate(out expected))
+            if (!match.TryEvaluate(out string? expected))
             {
                 throw new InvalidDataException($"The match expected expression is not resolved");
             }

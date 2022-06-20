@@ -4,7 +4,7 @@ namespace WorkerHarness.Core
 {
     public interface IActionWriter
     {
-        IList<MatchingCriteria> Match { get; }
+        IList<MatchingContext> Match { get; }
 
         IDictionary<ValidationContext, bool> ValidationResults { get; }
 
