@@ -14,25 +14,21 @@ using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
 {
-    public class ScriptApplicationHostOptionsSetup : IConfigureNamedOptions<ScriptApplicationHostOptions>, IDisposable
+    public class ScriptApplicationHostOptionsSetup : IConfigureNamedOptions<ScriptApplicationHostOptions>
     {
         public const string SkipPlaceholder = "SkipPlaceholder";
-        private readonly IOptionsMonitorCache<ScriptApplicationHostOptions> _cache;
         private readonly IConfiguration _configuration;
         private readonly IOptionsMonitor<StandbyOptions> _standbyOptions;
-        private readonly IDisposable _standbyOptionsOnChangeSubscription;
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnvironment _environment;
 
         public ScriptApplicationHostOptionsSetup(IConfiguration configuration, IOptionsMonitor<StandbyOptions> standbyOptions,
-            IOptionsMonitorCache<ScriptApplicationHostOptions> cache, IServiceProvider serviceProvider, IEnvironment environment)
+            IServiceProvider serviceProvider, IEnvironment environment)
         {
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _standbyOptions = standbyOptions ?? throw new ArgumentNullException(nameof(standbyOptions));
             _serviceProvider = serviceProvider;
-            // If standby options change, invalidate this options cache.
-            _standbyOptionsOnChangeSubscription = _standbyOptions.OnChange(o => _cache.Clear());
+
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         }
 
@@ -162,11 +158,6 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Configuration
                     logLevel: LogLevel.Error, source: nameof(ScriptApplicationHostOptionsSetup));
                 return false;
             }
-        }
-
-        public void Dispose()
-        {
-            _standbyOptionsOnChangeSubscription?.Dispose();
         }
     }
 }

@@ -10,41 +10,23 @@ app.use(
 
 app.use(express.json())
 
-var response = {
-    "Outputs": {
-        "res": {
-            "body": "OK"
-        }
-    },
-    "Logs": null,
-    "ReturnValue": null
-}
-
+count = 0;
 app.post('/HttpTrigger', (req, res) => {
-    if (req.body.Metadata.RetryContext) {
+    let retryCount = req.body.Metadata.RetryContext.RetryCount;
+    let maxRetry = req.body.Metadata.RetryContext.MaxRetryCount;
+    var response = {
+        "Outputs": {
+            "res": {
+                "body": "Retry Count:" + retryCount + " Max Retry Count:" + maxRetry
+            }
+        },
+        "Logs": null,
+        "ReturnValue": null
+    }
+    if (retryCount < maxRetry) {
         res.status(500).send(response)
     }
     else {
-        res.status(200).send(response)
-    }
-})
-
-app.post('/TimerTrigger', (req, res) => {
-    var errorString = 'An error occurred';
-    var maxRetries = 4;
-    var retryContext = req.body.Metadata.RetryContext;
-
-    if (retryContext.MaxRetryCount != maxRetries) {
-        console.log('Unexpected error');
-        throw 'Unexpected error';
-    } else {
-        console.log('JavaScript HTTP trigger function processed a request. retryCount: ' + retryContext.RetryCount);
-
-        if (retryContext.RetryCount < maxRetries) {
-            console.log(errorString);
-            throw errorString;
-        }
-        console.log('Execution completed');
         res.status(200).send(response)
     }
 })

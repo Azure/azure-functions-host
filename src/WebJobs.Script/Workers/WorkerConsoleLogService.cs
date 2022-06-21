@@ -13,6 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     internal class WorkerConsoleLogService : IHostedService, IDisposable
     {
         private readonly ILogger _logger;
+        private readonly Lazy<ILogger> _toolingConsoleJsonLoggerLazy;
         private readonly IWorkerConsoleLogSource _source;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private Task _processingTask;
@@ -26,13 +27,15 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
 
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
-            _logger = loggerFactory.CreateLogger(WorkerConstants.FunctionConsoleLogCategoryName);
+            _logger = loggerFactory.CreateLogger(WorkerConstants.ConsoleLogCategoryName);
+            _toolingConsoleJsonLoggerLazy = new Lazy<ILogger>(() => loggerFactory.CreateLogger(WorkerConstants.ToolingConsoleLogCategoryName), isThreadSafe: true);
         }
 
-        internal WorkerConsoleLogService(ILogger logger, IWorkerConsoleLogSource consoleLogSource)
+        internal WorkerConsoleLogService(ILogger logger, Lazy<ILogger> toolingConsoleJsonLoggerLazy, IWorkerConsoleLogSource consoleLogSource)
         {
             _source = consoleLogSource ?? throw new ArgumentNullException(nameof(consoleLogSource));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _toolingConsoleJsonLoggerLazy = toolingConsoleJsonLoggerLazy ?? throw new ArgumentNullException(nameof(toolingConsoleJsonLoggerLazy));
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -59,7 +62,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 while (await source.OutputAvailableAsync(_cts.Token))
                 {
                     var consoleLog = await source.ReceiveAsync();
-                    _logger.Log(consoleLog.Level, consoleLog.Message);
+
+                    if (WorkerProcessUtilities.IsToolingConsoleJsonLogEntry(consoleLog))
+                    {
+                        _toolingConsoleJsonLoggerLazy.Value.Log(consoleLog.Level,
+                            WorkerProcessUtilities.RemoveToolingConsoleJsonLogPrefix(consoleLog.Message));
+                    }
+                    else
+                    {
+                        _logger.Log(consoleLog.Level, consoleLog.Message);
+                    }
                 }
             }
             catch (OperationCanceledException)
