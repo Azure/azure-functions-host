@@ -10,5 +10,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         // Registers processes to ensure that they are cleaned up on host exit.
         bool Register(Process process);
+
+        void Close();
     }
 }

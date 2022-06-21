@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     // Registers processes on windows with a job object to ensure disposal after parent exit
-    internal class JobObjectRegistry : IProcessRegistry, IDisposable
+    internal class JobObjectRegistry : IProcessRegistry
     {
         private IntPtr _handle;
         private bool _disposed = false;
