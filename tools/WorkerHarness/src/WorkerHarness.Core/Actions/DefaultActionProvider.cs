@@ -111,12 +111,6 @@ namespace WorkerHarness.Core
                 }
             }
 
-            // If a timeout property is not present in the scenario file, default it to 1 minute
-            if (actionNode["timeout"] == null)
-            {
-                actionData.Timeout = 60000;
-            }
-
             return actionData;
         }
 

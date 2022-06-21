@@ -8,9 +8,6 @@ namespace WorkerHarness.Core
 {
     public class ConsoleWriter : IActionWriter
     {
-        private readonly string checkedSymbol = "\u2713";
-        private readonly string errorSymbol = "X";
-
         public IList<MatchingContext> Match { get; } = new List<MatchingContext>();
 
         public IDictionary<ValidationContext, bool> ValidationResults { get; } = new Dictionary<ValidationContext, bool>();
@@ -30,47 +27,40 @@ namespace WorkerHarness.Core
 
         public void WriteActionName(string name)
         {
-            Console.WriteLine($"\nAction: {name}");
+            Console.Write($"\nAction: {name}");
+            Console.Write($"\n{new string('=', 100)}");
         }
 
         public void WriteMatchedMessage(StreamingMessage message)
         {
-            Console.WriteLine($"\n- Received a {message.ContentCase} message");
+            Console.Write($"\nReceiving a {message.ContentCase} message that fulfills the matching criteria ... ");
+            WriteConsoleInGreen("Success");
 
-            Console.WriteLine($"\nmatches:");
-            Console.WriteLine($"========");
-            foreach (MatchingContext match in Match)
-            {
-                match.TryEvaluate(out string? evaluated);
-                Console.WriteLine($"{checkedSymbol} {match.Query}: {evaluated}");
-            }
+            bool allValidated = true;
 
-            Console.WriteLine($"\nvalidates:");
-            Console.WriteLine($"==========");
             foreach (KeyValuePair<ValidationContext, bool> validation in ValidationResults)
             {
-                ConsoleColor currentForeground = Console.ForegroundColor;
-                string displayedSymbol;
-                if (validation.Value)
-                {
-                    displayedSymbol = checkedSymbol;
+                var validationContext = validation.Key;
+                var validated = validation.Value;
+                var validationType = string.Equals(validationContext.Type, "string", StringComparison.OrdinalIgnoreCase) ? "string value" : "regex pattern";
+                Console.Write($"\nValidating the property {validationContext.Query} matches {validationType} \"{validationContext.Expected}\" ... ");
 
+                if (validated)
+                {
+                    WriteConsoleInGreen("Success");
                 }
                 else
                 {
-                    displayedSymbol = errorSymbol;
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    WriteConsoleInRed("Error");
+                    allValidated = false;
                 }
-
-                ValidationContext validationContext = validation.Key;
-                Console.WriteLine($"{displayedSymbol} {validationContext.Query} : {validationContext.Expected}");
-
-                Console.ForegroundColor = currentForeground;
             }
 
-            Console.WriteLine($"\nPayload:");
-            Console.WriteLine($"========");
-            Console.WriteLine($"{JsonSerializer.Serialize(message, options)}");
+            if (!allValidated)
+            {
+                Console.Write("\nMessage payload:");
+                Console.Write($"\n{JsonSerializer.Serialize(message, options)}");
+            }
 
             Match.Clear();
             ValidationResults.Clear();
@@ -78,41 +68,41 @@ namespace WorkerHarness.Core
 
         public void WriteSentMessage(StreamingMessage message)
         {
-            Console.WriteLine($"\n- Sent a {message.ContentCase} message");
-            Console.WriteLine($"\nPayload:");
-            Console.WriteLine($"========");
-            Console.WriteLine(JsonSerializer.Serialize(message, options));
+            Console.Write($"\nSending a {message.ContentCase} message ... ");
+            WriteConsoleInGreen("Success");
         }
 
         public void WriteUnmatchedMessages(IncomingMessage message)
         {
-            ConsoleColor currentForeground = Console.ForegroundColor;
+            Console.Write($"\nReceiving a {message.ContentCase} message that fulfills the matching criteria ... ");
+            WriteConsoleInRed("Error");
 
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"-Never received an Grpc message that");
-
-            Console.WriteLine($"\nmatches:");
-            Console.WriteLine($"========");
+            Console.Write($"\nThe matching criteria:");
             foreach (var match in message.Match)
             {
-                match.TryEvaluate(out string? expected);
-                Console.WriteLine($"{errorSymbol} {match.Query}: {expected}");
+                Console.Write($"\n{match.Query}: {match.Expected}");
             }
-
-            Console.WriteLine($"\nvalidates:");
-            Console.WriteLine($"==========");
-            foreach (var validation in ValidationResults)
-            {
-                ValidationContext validationContext = validation.Key;
-                Console.WriteLine($"{errorSymbol} {validationContext.Query} : {validationContext.Expected}");
-            }
-
-            Console.ForegroundColor = currentForeground;
         }
 
         public void WriteActionEnding()
         {
             Console.WriteLine($"\n{new string('-', 100)}");
+        }
+
+        private void WriteConsoleInGreen(string message)
+        {
+            ConsoleColor currentForeground = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write(message);
+            Console.ForegroundColor = currentForeground;
+        }
+
+        private void WriteConsoleInRed(string message)
+        {
+            ConsoleColor currentForeground = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write(message);
+            Console.ForegroundColor = currentForeground;
         }
     }
 }
