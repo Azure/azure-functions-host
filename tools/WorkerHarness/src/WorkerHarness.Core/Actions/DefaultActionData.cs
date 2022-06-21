@@ -17,8 +17,8 @@ namespace WorkerHarness.Core
         // the name of an action
         public string Name { get; set; } = string.Empty;
 
-        // the amount of time to execute an action
-        public int Timeout { get; set; } = 60000;
+        // the amount of time to execute an action; default to 10s timeout
+        public int Timeout { get; set; } = 10000;
 
         // a list of incoming messages
         public IList<IncomingMessage> IncomingMessages { get; private set; } = new List<IncomingMessage>();

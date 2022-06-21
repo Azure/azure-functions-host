@@ -8,9 +8,9 @@ namespace WorkerHarness.Core
 {
     public class WorkerHarnessExecutor
     {
-        private WorkerDescription _workerDescription;
-        private IWorkerProcessBuilder _workerProcessBuilder;
-        private IScenarioParser _scenarioParser;
+        private readonly WorkerDescription _workerDescription;
+        private readonly IWorkerProcessBuilder _workerProcessBuilder;
+        private readonly IScenarioParser _scenarioParser;
 
         public WorkerHarnessExecutor(IOptions<WorkerDescription> workerDescription,
             IWorkerProcessBuilder workerProcessBuilder,
@@ -31,7 +31,6 @@ namespace WorkerHarness.Core
             try
             {
                 myProcess.Start();
-                Console.WriteLine($"Executing scenario: {scenario.ScenarioName}");
 
                 foreach (IAction action in scenario.Actions)
                 {
