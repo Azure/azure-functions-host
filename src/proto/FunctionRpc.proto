@@ -397,8 +397,8 @@ message InvocationCancel {
   // Unique id for invocation
   string invocation_id = 2;
 
-  // Time period before force shutdown
-  google.protobuf.Duration grace_period = 1; // could also use absolute time
+  // PROPERTY NOT USED
+  google.protobuf.Duration grace_period = 1;
 }
 
 // Worker responds with status of Invocation
