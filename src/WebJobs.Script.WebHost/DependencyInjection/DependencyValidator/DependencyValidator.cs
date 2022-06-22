@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text;
+using Az.ServerlessSecurity.Platform;
 using Microsoft.Azure.WebJobs.Host.Loggers;
 using Microsoft.Azure.WebJobs.Host.Timers;
 using Microsoft.Azure.WebJobs.Hosting;
@@ -52,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
                 .Optional<FuncAppFileProvisioningService>() // Used by powershell.
                 .Optional<JobHostService>() // Missing when host is offline.
                 .Optional<FunctionsSyncService>() // Conditionally registered.
+                .Optional<ServerlessSecurityHost>()
                 .OptionalExternal("Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService", "Microsoft.AspNetCore.DataProtection", "adb9793829ddae60") // Popularly-registered by DataProtection.
                 .OptionalExternal("Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckPublisherHostedService", "Microsoft.Extensions.Diagnostics.HealthChecks", "adb9793829ddae60") // Popularly-registered by Health Check Monitor.
                 .OptionalExternal("OpenTelemetry.Extensions.Hosting.Implementation.TelemetryHostedService", "OpenTelemetry.Extensions.Hosting", "7bd6737fe5b67e3c") // Enable OpenTelemetry.Net instrumentation library
