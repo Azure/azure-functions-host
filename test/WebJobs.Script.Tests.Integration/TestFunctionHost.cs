@@ -171,6 +171,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             HttpClient = _testServer.CreateClient();
             HttpClient.Timeout = TimeSpan.FromMinutes(5);
 
+            var environment = _testServer.Services.GetService<IEnvironment>();
+            if (environment.IsAppService())
+            {
+                // host is configured to simulate an AppService environment
+                // all normal requests will go through the Antares FrontEnd and receive this header
+                HttpClient.DefaultRequestHeaders.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz");
+            }
+
             var manager = _testServer.Host.Services.GetService<IScriptHostManager>();
             _hostService = manager as WebJobsScriptHostService;
 
@@ -207,6 +215,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public string ScriptPath => _hostOptions.ScriptPath;
 
         public HttpClient HttpClient { get; private set; }
+
+        /// <summary>
+        /// Create a new HttpClient without default test configuration.
+        /// </summary>
+        public HttpClient CreateHttpClient()
+        {
+            var httpClient = _testServer.CreateClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+            return httpClient;
+        }
 
         public async Task<string> GetMasterKeyAsync()
         {
