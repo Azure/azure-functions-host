@@ -11,7 +11,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     internal class JobObjectRegistry : IProcessRegistry
     {
         private IntPtr _handle;
-        private bool _disposed = false;
 
         public JobObjectRegistry()
         {
