@@ -231,14 +231,83 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Theory]
+        [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
+        [InlineData("admin/host/status", true, true, false, false, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/status", true, true, true, false, false, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/host/status", true, true, true, true, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", true, false, false, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", true, false, false, true, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", true, true, true, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/host/status", false, true, false, true, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, false, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, true, true, false, true, HttpStatusCode.NotFound)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, false, false, false, true, HttpStatusCode.NotFound)]
+        [InlineData("admin/host/extensionBundle/v1/templates", true, true, false, true, true, HttpStatusCode.Forbidden)]
+        [InlineData("admin/vfs/host.json", true, true, true, false, true, HttpStatusCode.OK)]
+        [InlineData("admin/vfs/host.json", true, true, false, false, true, HttpStatusCode.Unauthorized)]
+        [InlineData("admin/vfs/host.json", true, true, true, false, false, HttpStatusCode.Unauthorized)]
+        public async Task AdminIsolation_ReturnsExpectedStatus(string uri, bool isAppService, bool enableIsolation, bool isPlatformInternal, bool bypassFE, bool addAuthKey, HttpStatusCode expectedStatus)
+        {
+            var environment = this._fixture.Host.WebHostServices.GetService<IEnvironment>();
+            string websiteInstanceId = environment.GetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId);
+
+            try
+            {
+                if (enableIsolation)
+                {
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1");
+                    Assert.True(environment.IsAdminIsolationEnabled());
+                }
+
+                if (!isAppService)
+                {
+                    environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, null);
+                    Assert.False(environment.IsAppService());
+                }
+                else
+                {
+                    Assert.True(environment.IsAppService());
+                }
+
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+                if (addAuthKey)
+                {
+                    await this._fixture.AddMasterKey(request);
+                }
+
+                if (isPlatformInternal)
+                {
+                    request.Headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
+                }
+
+                if (!bypassFE)
+                {
+                    request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, Guid.NewGuid().ToString());
+                }
+
+                using (var httpClient = _fixture.Host.CreateHttpClient())
+                {
+                    HttpResponseMessage response = await httpClient.SendAsync(request);
+                    Assert.Equal(expectedStatus, response.StatusCode);
+                }
+            }
+            finally
+            {
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, null);
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteInstanceId, websiteInstanceId);
+            }
+        }
+
         [Fact]
         public async Task SyncTriggers_InternalAuth_Succeeds()
         {
-            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "testinstance"))
+            using (var httpClient = _fixture.Host.CreateHttpClient())
             {
                 string uri = "admin/host/synctriggers";
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
-                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+                HttpResponseMessage response = await httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             }
         }
@@ -266,17 +335,27 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task HostLog_Anonymous_Fails()
         {
             var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
-            request.Headers.Add(ScriptConstants.AntaresLogIdHeaderName, "xyz");
             request.Content = new StringContent("[]");
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
 
-            request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
-            request.Content = new StringContent("[]");
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            response = await _fixture.Host.HttpClient.SendAsync(request);
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        [Fact]
+        public async Task HostLog_PlatformInternal_Succeeds()
+        {
+            var environment = _fixture.Host.JobHostServices.GetService<IEnvironment>();
+            Assert.True(environment.IsAppService());
+
+            using (var httpClient = _fixture.Host.CreateHttpClient())
+            {
+                // no x-arr-log-id header makes this request platform internal
+                var request = new HttpRequestMessage(HttpMethod.Post, "admin/host/log");
+                request.Content = new StringContent("[]");
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                var response = await httpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
         }
 
         [Fact]
@@ -512,7 +591,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             var response = await _fixture.Host.HttpClient.SendAsync(request);
             var metadata = (await response.Content.ReadAsAsync<IEnumerable<FunctionMetadataResponse>>()).ToArray();
 
-            Assert.Equal(17, metadata.Length);
+            Assert.Equal(18, metadata.Length);
             var function = metadata.Single(p => p.Name == "HttpTrigger-CustomRoute");
             Assert.Equal("https://somewebsite.azurewebsites.net/api/csharp/products/{category:alpha?}/{id:int?}/{extra?}", function.InvokeUrlTemplate.ToString());
 
@@ -544,15 +623,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         [Fact]
         public async Task Home_Get_InAzureEnvironment_AsInternalRequest_ReturnsNoContent()
         {
-            // Pings to the site root should not return the homepage content if they are internal requests.
-            // This test sets a website instance Id which means that we'll go down the IsAzureEnvironment = true codepath
-            // but the sent request does NOT include an X-ARR-LOG-ID header. This indicates the request was internal.
+            var environment = _fixture.Host.JobHostServices.GetService<IEnvironment>();
+            Assert.True(environment.IsAppService());
 
-            using (new TestScopedSettings(_settingsManager, EnvironmentSettingNames.AzureWebsiteInstanceId, "123"))
+            // Pings to the site root should not return the homepage content if they are internal requests.
+            // The sent request does NOT include an X-ARR-LOG-ID header. This indicates the request was internal.
+            using (var httpClient = _fixture.Host.CreateHttpClient())
             {
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, string.Empty);
-
-                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+                HttpResponseMessage response = await httpClient.SendAsync(request);
                 Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
             }
         }
@@ -692,6 +771,47 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             request.Content = new StringContent(jo.ToString());
             request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             return await _fixture.Host.HttpClient.SendAsync(request);
+        }
+
+        [Fact]
+        [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
+        public async Task HttpTrigger_AdminLevel_AdminIsolationEnabled_Succeeds()
+        {
+            var environment = this._fixture.Host.WebHostServices.GetService<IEnvironment>();
+
+            var vars = new Dictionary<string, string>
+            {
+                { RpcWorkerConstants.FunctionWorkerRuntimeSettingName, RpcWorkerConstants.DotNetLanguageWorkerName},
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "testinstanceid" },
+                { EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1" }
+            };
+            using (_fixture.Host.WebHostServices.CreateScopedEnvironment(vars))
+            {
+                Assert.True(environment.IsAdminIsolationEnabled());
+
+                // verify admin isolation checks don't apply to customer admin level functions,
+                // only our admin APIs.
+
+                // no key presented
+                string uri = $"api/httptrigger-adminlevel?name=Mathew";
+                HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+                HttpResponseMessage response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+                // function level key when admin is required
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                string key = await _fixture.Host.GetFunctionSecretAsync("httptrigger-adminlevel");
+                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, key);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+
+                // required master key supplied
+                request = new HttpRequestMessage(HttpMethod.Get, uri);
+                key = await _fixture.Host.GetMasterKeyAsync();
+                request.Headers.Add(AuthenticationLevelHandler.FunctionsKeyHeaderName, key);
+                response = await _fixture.Host.HttpClient.SendAsync(request);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
         }
 
         [Fact]
@@ -985,6 +1105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                     o.Functions = new[]
                     {
                         "HttpTrigger",
+                        "HttpTrigger-AdminLevel",
                         "HttpTrigger-Compat",
                         "HttpTrigger-CustomRoute",
                         "HttpTrigger-POCO",

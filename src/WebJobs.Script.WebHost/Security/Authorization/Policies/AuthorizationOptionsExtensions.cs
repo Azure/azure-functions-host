@@ -22,6 +22,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
             {
                 p.AddScriptAuthenticationSchemes();
                 p.AddRequirements(new AuthLevelRequirement(AuthorizationLevel.Admin));
+                p.RequireAssertion(c =>
+                {
+                    if (c.Resource is AuthorizationFilterContext filterContext)
+                    {
+                        if (!CheckPlatformInternal(filterContext.HttpContext, allowAppServiceInternal: false))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                });
             });
 
             options.AddPolicy(PolicyNames.SystemAuthLevel, p =>
@@ -37,6 +49,11 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
                 {
                     if (c.Resource is AuthorizationFilterContext filterContext)
                     {
+                        if (!CheckPlatformInternal(filterContext.HttpContext, allowAppServiceInternal: true))
+                        {
+                            return false;
+                        }
+
                         if (filterContext.HttpContext.Request.IsAppServiceInternalRequest())
                         {
                             return true;
@@ -95,6 +112,21 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization.Policies
             builder.AuthenticationSchemes.Add(ArmAuthenticationDefaults.AuthenticationScheme);
             builder.AuthenticationSchemes.Add(AuthLevelAuthenticationDefaults.AuthenticationScheme);
             builder.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+        }
+
+        internal static bool CheckPlatformInternal(HttpContext httpContext, bool allowAppServiceInternal)
+        {
+            // when AdminIsolation is enabled, verify the request is platform internal
+            var environment = httpContext.RequestServices.GetRequiredService<IEnvironment>();
+            if (environment.IsAdminIsolationEnabled() &&
+                !(httpContext.Request.IsPlatformInternalRequest(environment) || (allowAppServiceInternal && httpContext.Request.IsAppServiceInternalRequest())))
+            {
+                // request must either be granted PlatformInternal by FrontEnd, or must be an internal
+                // request that has bypassed FrontEnd
+                return false;
+            }
+
+            return true;
         }
     }
 }

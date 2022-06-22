@@ -13,12 +13,62 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Azure.WebJobs.Script.Extensions;
 using Microsoft.Azure.WebJobs.Script.Tests.HttpWorker;
 using Microsoft.WebJobs.Script.Tests;
+using Moq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
 {
     public class HttpRequestExtensionsTest
     {
+        [Fact]
+        [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
+        public void IsPlatformInternalRequest_ReturnsExpectedResult()
+        {
+            // not running under Azure
+            TestEnvironment testEnvironment = new TestEnvironment();
+            var request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar");
+            Assert.False(request.IsPlatformInternalRequest(testEnvironment));
+
+            // running under Azure
+            var vars = new Dictionary<string, string>
+            {
+                { EnvironmentSettingNames.AzureWebsiteInstanceId, "123" }
+            };
+            using (var env = new TestScopedEnvironmentVariable(vars))
+            {
+                var environment = SystemEnvironment.Instance;
+                Assert.True(environment.IsAppService());
+
+                var headers = new HeaderDictionary();
+                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                Assert.False(request.IsPlatformInternalRequest(testEnvironment));
+
+                headers.Clear();
+                headers.Add(ScriptConstants.AntaresPlatformInternal, "False");
+                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                Assert.False(request.IsPlatformInternalRequest(environment));
+
+                headers.Clear();
+                headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
+
+                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                Assert.True(request.IsPlatformInternalRequest(environment));
+
+                headers.Clear();
+                headers.Add(ScriptConstants.AntaresPlatformInternal, "true");
+                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                Assert.True(request.IsPlatformInternalRequest(environment));
+
+                headers.Clear();
+                headers.Add(ScriptConstants.AntaresPlatformInternal, "True");
+                request = HttpTestHelpers.CreateHttpRequest("GET", "http://foobar", headers);
+                var servicesMock = new Mock<IServiceProvider>();
+                servicesMock.Setup(s => s.GetService(typeof(IEnvironment))).Returns(environment);
+                request.HttpContext.RequestServices = servicesMock.Object;
+                Assert.True(request.IsPlatformInternalRequest());
+            }
+        }
+
         [Fact]
         public void IsAppServiceInternalRequest_ReturnsExpectedResult()
         {
