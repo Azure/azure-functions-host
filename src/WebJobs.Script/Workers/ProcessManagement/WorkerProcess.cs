@@ -219,7 +219,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                         if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
                             Process.Kill();
-                            _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
+                            _workerProcessLogger.LogInformation($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
                         }
                     }
                     Process.Dispose();
