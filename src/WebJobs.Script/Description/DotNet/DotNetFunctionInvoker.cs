@@ -197,6 +197,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 // on the invocation path we want to log detailed logs and all compilation diagnostics
                 var properties = isInvocation ? null : PrimaryHostLogProperties;
                 FunctionLogger.Log(LogLevel.Error, 0, properties, exc, (state, ex) => "Function compilation error");
+                Utility.AddFunctionError(Host.FunctionErrors, _functionMetadata.Name, exc.ToString());
                 TraceCompilationDiagnostics(exc.Diagnostics, LogTargets.User, isInvocation);
                 throw;
             }
