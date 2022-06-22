@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly int processExitTimeoutInMilliseconds = 10000;
+        private readonly int processExitTimeoutInMilliseconds = 5000;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDisposable _eventSubscription;
 
