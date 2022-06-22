@@ -28,6 +28,12 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
 
         public async Task Invoke(HttpContext httpContext)
         {
+            // delaying request execution
+             if (_webHostEnvironment.DelayRequestsEnabled)
+            {
+                await _webHostEnvironment.DelayCompletionTask;
+            }
+            
             await _invoke(httpContext);
         }
 
