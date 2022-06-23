@@ -14,12 +14,14 @@ namespace Microsoft.Azure.WebJobs.Script
         internal const int DebugModeTimeoutMinutes = 15;
         internal const int DiagnosticModeTimeoutHours = 3;
         private readonly IOptionsMonitor<ScriptApplicationHostOptions> _scriptOptions;
+        private readonly IEnvironment _environment;
         private IDisposable _debugModeEvent;
         private IDisposable _diagnosticModeEvent;
         private bool _disposed;
 
-        public DebugStateProvider(IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions, IScriptEventManager eventManager)
+        public DebugStateProvider(IEnvironment environment, IOptionsMonitor<ScriptApplicationHostOptions> scriptOptions, IScriptEventManager eventManager)
         {
+            _environment = environment;
             _debugModeEvent = eventManager.OfType<DebugNotification>()
                 .Subscribe(evt => LastDebugNotify = evt.NotificationTime);
             _diagnosticModeEvent = eventManager.OfType<DiagnosticNotification>()
@@ -41,8 +43,11 @@ namespace Microsoft.Azure.WebJobs.Script
 
         private void InitializeLastNotificationTimes()
         {
-            LastDebugNotify = GetLastWriteTime(ScriptConstants.DebugSentinelFileName);
-            LastDiagnosticNotify = GetLastWriteTime(ScriptConstants.DiagnosticSentinelFileName);
+            Utility.ExecuteAfterColdStartDelay(_environment, () =>
+            {
+                LastDebugNotify = GetLastWriteTime(ScriptConstants.DebugSentinelFileName);
+                LastDiagnosticNotify = GetLastWriteTime(ScriptConstants.DiagnosticSentinelFileName);
+            });
         }
 
         private DateTime GetLastWriteTime(string fileName)
