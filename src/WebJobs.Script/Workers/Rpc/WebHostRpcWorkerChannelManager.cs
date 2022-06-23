@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -39,8 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                                               IRpcWorkerChannelFactory rpcWorkerChannelFactory,
                                               IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
                                               IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
-                                              IConfiguration config,
-                                              IWorkerProfileManager profileManager)
+                                              IConfiguration config)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -51,8 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
             _lanuageworkerOptions = languageWorkerOptions;
             _config = config ?? throw new ArgumentNullException(nameof(config));
-            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
-
+            var conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
+            _profileManager = new WorkerProfileManager(_logger, conditionProviders);
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
