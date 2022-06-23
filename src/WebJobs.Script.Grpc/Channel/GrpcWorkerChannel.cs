@@ -258,9 +258,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (_initMessage.WorkerMetadata != null)
             {
-                _initMessage.WorkerMetadata = ParseWorkerMetadata(_initMessage.WorkerMetadata);
-                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, _initMessage.WorkerMetadata.ToString());
-                _workerChannelLogger.LogDebug($"Worker metadata: {_initMessage.WorkerMetadata}");
+                _initMessage.ParseWorkerMetadata(_workerConfig);
+                var workerMetadata = _initMessage.WorkerMetadata.ToString();
+                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
+                _workerChannelLogger.LogDebug($"Worker metadata: {workerMetadata}");
             }
 
             if (_initMessage.Result.IsFailure(out Exception exc))
@@ -281,15 +282,6 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
 
             _workerInitTask.SetResult(true);
-        }
-
-        private WorkerMetadata ParseWorkerMetadata(WorkerMetadata workerMetadata)
-        {
-            workerMetadata.RuntimeName = string.IsNullOrEmpty(workerMetadata.RuntimeName)
-                                            ? _workerConfig.Description.Language : workerMetadata.RuntimeName;
-            workerMetadata.RuntimeVersion = string.IsNullOrEmpty(workerMetadata.RuntimeVersion)
-                                            ? _workerConfig.Description.DefaultRuntimeVersion : workerMetadata.RuntimeVersion;
-            return workerMetadata;
         }
 
         public void SetupFunctionInvocationBuffers(IEnumerable<FunctionMetadata> functions)
