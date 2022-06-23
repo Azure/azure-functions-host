@@ -26,14 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private static string testLanguage = "testLanguage";
         private readonly TestSystemRuntimeInformation _testSysRuntimeInfo = new TestSystemRuntimeInformation();
         private readonly TestEnvironment _testEnvironment;
-        private readonly WorkerProfileManager _profileManager;
 
         public RpcWorkerConfigTests()
         {
             _testEnvironment = new TestEnvironment();
-
-            var profileConditionProvider = new WorkerProfileConditionProvider(new TestLogger<WorkerProfileConditionProvider>(), _testEnvironment);
-            _profileManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { profileConditionProvider });
         }
 
         public static IEnumerable<object[]> InvalidWorkerDescriptions
@@ -685,7 +681,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
                 var scriptHostOptions = new ScriptJobHostOptions();
                 var scriptSettingsManager = new ScriptSettingsManager(config);
-                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _profileManager, _testEnvironment, testMetricsLogger);
+                var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, testMetricsLogger);
                 if (appSvcEnv)
                 {
                     var testEnvVariables = new Dictionary<string, string>

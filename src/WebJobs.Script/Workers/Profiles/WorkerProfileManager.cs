@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
         private string _activeProfile;
 
-        public WorkerProfileManager(ILogger<WorkerProfileManager> logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));

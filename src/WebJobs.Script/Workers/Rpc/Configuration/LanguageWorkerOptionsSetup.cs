@@ -12,7 +12,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class LanguageWorkerOptionsSetup : IConfigureOptions<LanguageWorkerOptions>
     {
-        private readonly IWorkerProfileManager _profileConditionManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
         private readonly IEnvironment _environment;
@@ -21,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
                                           ILoggerFactory loggerFactory,
                                           IEnvironment environment,
-                                          IWorkerProfileManager profileConditionManager,
                                           IMetricsLogger metricsLogger)
         {
             if (loggerFactory is null)
@@ -29,7 +27,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 throw new ArgumentNullException(nameof(loggerFactory));
             }
 
-            _profileConditionManager = profileConditionManager ?? throw new System.ArgumentNullException(nameof(profileConditionManager));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger ?? throw new ArgumentNullException(nameof(metricsLogger));
@@ -47,9 +44,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 return;
             }
 
-            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance,
-                _profileConditionManager, _environment, _metricsLogger);
-
+            var configFactory = new RpcWorkerConfigFactory(_configuration, _logger, SystemRuntimeInformation.Instance, _environment, _metricsLogger);
             options.WorkerConfigs = configFactory.GetConfigs();
         }
     }
