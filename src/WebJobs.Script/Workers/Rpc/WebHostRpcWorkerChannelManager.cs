@@ -51,7 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
             _lanuageworkerOptions = languageWorkerOptions;
             _config = config ?? throw new ArgumentNullException(nameof(config));
-            _profileManager = WorkerProfileManager.GetInstance(_logger, _environment);
+            var conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
+            _profileManager = new WorkerProfileManager(_logger, conditionProviders);
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }

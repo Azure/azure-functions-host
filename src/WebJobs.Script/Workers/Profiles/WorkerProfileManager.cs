@@ -14,41 +14,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     /// </summary>
     internal class WorkerProfileManager : IWorkerProfileManager
     {
-        private static WorkerProfileManager _instance = null;
-
-        private static object instanceLock = new object();
-
         private readonly ILogger _logger;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
         private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
         private string _activeProfile;
 
-        private WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
+        public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
             _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
             _activeProfile = string.Empty;
-        }
-
-        public static WorkerProfileManager GetInstance(ILogger logger, IEnvironment environment)
-        {
-            if (_instance == null)
-            {
-                lock (instanceLock)
-                {
-                    if (_instance == null)
-                    {
-                        var conditionProviders = new List<IWorkerProfileConditionProvider>
-                        {
-                            new WorkerProfileConditionProvider(logger, environment)
-                        };
-                        _instance = new WorkerProfileManager(logger, conditionProviders);
-                    }
-                }
-            }
-
-            return _instance;
         }
 
         /// <inheritdoc />

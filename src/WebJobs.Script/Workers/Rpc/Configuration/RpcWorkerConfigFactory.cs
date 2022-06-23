@@ -47,7 +47,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 WorkersDirPath = workersDirectorySection.Value;
             }
-            _profileManager = WorkerProfileManager.GetInstance(_logger, _environment);
+            var conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
+            _profileManager = new WorkerProfileManager(_logger, conditionProviders);
         }
 
         public string WorkersDirPath { get; }
