@@ -31,14 +31,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public RpcWorkerConfigFactory(IConfiguration config,
                                       ILogger logger,
                                       ISystemRuntimeInformation systemRuntimeInfo,
-                                      IWorkerProfileManager profileManager,
                                       IEnvironment environment,
                                       IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _systemRuntimeInformation = systemRuntimeInfo ?? throw new ArgumentNullException(nameof(systemRuntimeInfo));
-            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _metricsLogger = metricsLogger;
             _workerRuntime = _environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName);
@@ -49,6 +47,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 WorkersDirPath = workersDirectorySection.Value;
             }
+            _profileManager = WorkerProfileManager.GetInstance(_logger, _environment);
         }
 
         public string WorkersDirPath { get; }
