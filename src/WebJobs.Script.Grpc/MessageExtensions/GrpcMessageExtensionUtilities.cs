@@ -78,7 +78,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             return new Tuple<string, string, CookieOptions>(cookie.Name, cookie.Value, cookieOptions);
         }
 
-        internal static void ParseWorkerMetadata(this WorkerInitResponse initResponse, RpcWorkerConfig workerConfig)
+        internal static void UpdateWorkerMetadata(this WorkerInitResponse initResponse, RpcWorkerConfig workerConfig)
         {
             initResponse.WorkerMetadata.RuntimeName = string.IsNullOrEmpty(initResponse.WorkerMetadata.RuntimeName)
                                             ? workerConfig.Description.Language : initResponse.WorkerMetadata.RuntimeName;

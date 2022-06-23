@@ -258,7 +258,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
 
             if (_initMessage.WorkerMetadata != null)
             {
-                _initMessage.ParseWorkerMetadata(_workerConfig);
+                _initMessage.UpdateWorkerMetadata(_workerConfig);
                 var workerMetadata = _initMessage.WorkerMetadata.ToString();
                 _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
                 _workerChannelLogger.LogDebug($"Worker metadata: {workerMetadata}");
