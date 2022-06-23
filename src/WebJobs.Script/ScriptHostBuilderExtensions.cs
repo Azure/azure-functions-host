@@ -292,10 +292,6 @@ namespace Microsoft.Azure.WebJobs.Script
 
                 services.AddSingleton<IFileLoggingStatusManager, FileLoggingStatusManager>();
 
-                services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
-
-                services.AddSingleton<IWorkerProfileConditionProvider, WorkerProfileConditionProvider>();
-
                 if (!applicationHostOptions.HasParentScope)
                 {
                     AddCommonServices(services);
@@ -339,8 +335,6 @@ namespace Microsoft.Azure.WebJobs.Script
             services.TryAddSingleton<IWorkerConsoleLogSource, WorkerConsoleLogSource>();
             services.AddSingleton<IWorkerProcessFactory, DefaultWorkerProcessFactory>();
             services.AddSingleton<IRpcWorkerProcessFactory, RpcWorkerProcessFactory>();
-            services.AddSingleton<IWorkerProfileManager, WorkerProfileManager>();
-            services.AddSingleton<IWorkerProfileConditionProvider, WorkerProfileConditionProvider>();
             services.TryAddSingleton<IWebHostRpcWorkerChannelManager, WebHostRpcWorkerChannelManager>();
             services.TryAddSingleton<IDebugManager, DebugManager>();
             services.TryAddSingleton<IDebugStateProvider, DebugStateProvider>();
