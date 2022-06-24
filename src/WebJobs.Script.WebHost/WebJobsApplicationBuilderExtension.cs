@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();
-            if (environment.IsLinuxConsumption())
+            if (environment.IsLinuxConsumption() || environment.IsKubernetesManagedHosting())
             {
                 builder.UseMiddleware<EnvironmentReadyCheckMiddleware>();
             }
