@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    public interface IScenarioParser
+    internal class ActionType
     {
-        Scenario Parse(string scenarioFile);
-
-        Scenario Parse(Instruction scenarioContext);
+        public static string Delay = "delay";
+        public static string Default = "default";
     }
 }

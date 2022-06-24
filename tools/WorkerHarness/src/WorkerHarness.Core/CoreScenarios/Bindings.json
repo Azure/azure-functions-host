@@ -1,0 +1,20 @@
+{
+  "queueTrigger": {
+    "myQueueItem": {
+      "type": "queueTrigger",
+      "dataType": "string"
+    }
+  },
+  "blobTrigger": {
+    "myBlob": {
+      "type": "blobTrigger",
+      "dataType": "string"
+    }
+  },
+  "httpTrigger": {
+    "req": { "type": "httpTrigger" }
+  },
+  "timerTrigger": {
+    "myTimer": { "type": "timerTrigger" }
+  }
+}

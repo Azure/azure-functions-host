@@ -1,75 +1,21 @@
 {
-  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger",
+  "scenarioName": "Invoke a queue - trigger function",
   "actions": [
     {
       "type": "default",
-      "name": "Launching a worker process and validating a StartStream response...",
-      "messages": [
-        {
-          "id": "message_1",
-          "contentCase": "StartStream",
-          "direction": "Incoming",
-          "match": [
-            {
-              "query": "$.ContentCase",
-              "expected": "StartStream"
-            }
-          ],
-          "validators": [
-            {
-              "type": "regex",
-              "query": "$.StartStream.WorkerId",
-              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "Default",
-      "name": "Sending WorkerInitRequest and validating WorkerInitResponse...",
-      "messages": [
-        {
-          "id": "message_1",
-          "contentCase": "WorkerInitRequest",
-          "direction": "Outgoing",
-          "content": {}
-        },
-        {
-          "id": "message_2",
-          "contentCase": "WorkerInitResponse",
-          "direction": "Incoming",
-          "match": [
-            {
-              "query": "$.ContentCase",
-              "expected": "WorkerInitResponse"
-            }
-          ],
-          "validators": [
-            {
-              "type": "string",
-              "query": "$.WorkerInitResponse.Result.Status",
-              "expected": "Success"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "Default",
-      "name": "Sending FunctionLoadRequest and validating FunctionLoadRespond...",
-      "timeout": 60000,
+      "name": "Loading queue - trigger function ...",
+      "repeatable": false,
       "messages": [
         {
           "id": "message_1",
           "contentCase": "FunctionLoadRequest",
           "direction": "Outgoing",
           "content": {
-            "FunctionId": "function1",
+            "FunctionId": "queueFunction",
             "Metadata": {
-              "ScriptFile": "FunctionApp1.dll",
-              "EntryPoint": "FunctionApp1.SimpleQueueTrigger.Run",
-              "Name": "SimpleQueueTrigger",
+              "ScriptFile": "FunctionApp.dll",
+              "EntryPoint": "FunctionApp.QueueTrigger.Run",
+              "Name": "QueueTrigger",
               "Bindings": {
                 "myQueueItem": {
                   "type": "queueTrigger",
@@ -97,30 +43,29 @@
             }
           ]
         }
-
       ]
     },
     {
-      "type": "Default",
-      "name": "Sending InvocationRequest and validating InvocationResponse...",
-      "timeout": 60000,
+      "type": "default",
+      "name": "Sending queue - trigger invocation request to worker...",
+      "repeatable": true,
       "messages": [
         {
           "id": "message_1",
           "contentCase": "InvocationRequest",
           "direction": "Outgoing",
           "content": {
-            "FunctionId": "function1",
+            "FunctionId": "queueFunction",
             "InputData": [
               {
                 "name": "myQueueItem",
                 "data": {
-                  "string": "Hello, Emma. QueueTrigger works"
+                  "string": "Hello, world! QueueTrigger works"
                 }
               }
             ],
             "TriggerMetadata": {
-              "QueueTrigger": { "string": "Hello, Emma. QueueTrigger works" },
+              "QueueTrigger": { "string": "Hello, world! QueueTrigger works" },
               "DequeueCount": { "json": "1" },
               "ExpirationTime": { "json": "2022-08-08T17:28:44+00:00" },
               "Id": { "string": "f4cdda55-f774-4381-9f3a-aa7abc8309bc" },
@@ -156,4 +101,3 @@
     }
   ]
 }
-  

@@ -26,7 +26,7 @@ namespace WorkerHarness.Core
 
         private readonly IActionWriter _actionWriter;
 
-        public string Type => "Default";
+        public string Type => ActionType.Default;
 
         public DefaultActionProvider(IValidatorFactory validatorFactory, 
             IMatch matchService,
@@ -154,5 +154,9 @@ namespace WorkerHarness.Core
             }
         }
 
+        public IAction Create(IDictionary<string, string> context)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

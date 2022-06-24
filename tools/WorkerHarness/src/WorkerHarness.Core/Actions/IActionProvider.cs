@@ -15,5 +15,12 @@ namespace WorkerHarness.Core
         /// <param name="actionNode" cref="JsonNode">a JsonNode that encapsulates the information to create an IAction object</param>
         /// <returns>an IAction object</returns>
         IAction Create(JsonNode actionNode);
+
+        /// <summary>
+        /// Create an IAction object with the given context dictionary
+        /// </summary>
+        /// <param name="context" cref="IDictionary{string, string}"></param>
+        /// <returns cref="IAction"></returns>
+        IAction Create(IDictionary<string, string> context);
     }
 }

@@ -1,0 +1,157 @@
+{
+  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger and http trigger",
+  "actions": [
+    {
+      "type": "default",
+      "name": "Validating that the language worker is ready ...",
+      "timeout": 10000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "StartStream",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "StartStream"
+            }
+          ],
+          "validators": [
+            {
+              "type": "regex",
+              "query": "$.StartStream.WorkerId",
+              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "delay",
+      "delay": 2000
+    },
+    {
+      "type": "default",
+      "name": "Exchanging capabilities/initial data with workers...",
+      "timeout": 10000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "WorkerInitRequest",
+          "direction": "Outgoing",
+          "content": {}
+        },
+        {
+          "id": "message_2",
+          "contentCase": "WorkerInitResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "WorkerInitResponse"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.WorkerInitResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Default",
+      "name": "Loading queue-trigger function...",
+      "timeout": 10000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "FunctionLoadRequest",
+          "direction": "Outgoing",
+          "content": {
+            "FunctionId": "function1",
+            "Metadata": {
+              "ScriptFile": "FunctionApp1.dll",
+              "EntryPoint": "FunctionApp1.SimpleQueueTrigger.Run",
+              "Name": "SimpleQueueTrigger",
+              "Bindings": {
+                "myQueueItem": {
+                  "type": "queueTrigger",
+                  "dataType": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "FunctionLoadResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+
+      ]
+    },
+    {
+      "type": "Default",
+      "name": "Invoking a queue-trigger function ...",
+      "timeout": 10000,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "InvocationRequest",
+          "direction": "Outgoing",
+          "content": {
+            "FunctionId": "function1",
+            "InputData": [
+              {
+                "name": "myQueueItem",
+                "data": {
+                  "string": "Hello, Emma. QueueTrigger works"
+                }
+              }
+            ],
+
+            "TraceContext": {}
+          },
+          "setVariables": {
+            "invocationId_1": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "InvocationResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_1}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+  

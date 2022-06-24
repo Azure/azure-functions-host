@@ -1,0 +1,49 @@
+{
+  "queueTrigger": {
+    "name": "myQueueItem",
+    "data": { "string": "hello" }
+  },
+  "blobTrigger": {
+    "name": "myBlob",
+    "data": { "bytes": "aGVsbw==" }
+  },
+  "httpTrigger": {
+    "name": "req",
+    "data": {
+      "http": {
+        "method": "GET",
+        "url": "http://localhost:7071/api/HttpTriggerSimple",
+        "identities": [
+          {
+            "nameClaimType": {
+              "value": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+            },
+            "roleClaimType": {
+              "value": "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
+            }
+          }
+        ],
+        "nullableHeaders": {
+          "accept": { "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9" },
+          "connection": { "value": "keep-alive" },
+          "host": { "value": "localhost:7071" },
+          "user-agent": { "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.124 Safari/537.36 Edg/102.0.1245.44" },
+          "accept-encoding": { "value": "gzip, deflate, br" },
+          "accept-language": { "value": "en-US,en;q=0.9" },
+          "upgrade-insecure-requests": { "value": "1" },
+          "sec-ch-ua": { "value": "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"102\", \"Microsoft Edge\";v=\"102\"" },
+          "sec-ch-ua-mobile": { "value": "?0" },
+          "sec-ch-ua-platform": { "value": "\"Windows\"" },
+          "sec-fetch-site": { "value": "none" },
+          "sec-fetch-mode": { "value": "navigate" },
+          "sec-fetch-user": { "value": "?1" },
+          "sec-fetch-dest": { "value": "document" }
+        }
+      }
+    }
+  },
+  "timerTrigger": {
+    "name": "myTimer",
+    "data": { "json": "{\"Schedule\":{\"AdjustForDST\":true},\"ScheduleStatus\":{\"Last\":\"2022-06-02T14:46:00.0299264-07:00\",\"Next\":\"2022-06-02T14:47:00-07:00\",\"LastUpdated\":\"2022-06-02T14:46:00.0299264-07:00\"},\"IsPastDue\":true}" }
+  }
+}

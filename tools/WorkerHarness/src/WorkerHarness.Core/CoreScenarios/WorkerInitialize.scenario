@@ -1,0 +1,61 @@
+{
+  "scenarioName": "Initialize a language worker",
+  "actions": [
+    {
+      "type": "Initialize",
+      "name": "Validating that language worker is ready ...",
+      "repeatable": false,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "StartStream",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "StartStream"
+            }
+          ],
+          "validators": [
+            {
+              "type": "regex",
+              "query": "$.StartStream.WorkerId",
+              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "default",
+      "name": "Exchanging capabilities/initial data with worker...",
+      "repeatable": true,
+      "messages": [
+        {
+          "id": "message_2",
+          "contentCase": "WorkerInitRequest",
+          "direction": "Outgoing",
+          "content": {}
+        },
+        {
+          "id": "message_3",
+          "contentCase": "WorkerInitResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.ContentCase",
+              "expected": "WorkerInitResponse"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.WorkerInitResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
