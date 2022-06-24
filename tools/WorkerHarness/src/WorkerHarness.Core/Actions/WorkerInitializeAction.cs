@@ -6,10 +6,7 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    public interface IScenarioParser
+    internal class WorkerInitializeAction
     {
-        Scenario Parse(string scenarioFile);
-
-        Scenario Parse(Instruction scenarioContext);
     }
 }

@@ -1,0 +1,35 @@
+﻿{
+  "execute": [
+    {
+      "scenario": "WorkerInitialize"
+    },
+    {
+      "scenario": "LoadHttpTriggerFunction"
+    },
+    {
+      "scenario": "Delay",
+      "delayIn": 2000
+    },
+    {
+      "scenario": "InvokeHttpTriggerFunction",
+      "functionName": "functionX"
+    },
+    {
+      "scenario": "Delay",
+      "delayIn": 5000
+    },
+    {
+      "scenario": "InvokeHttpTriggerFunction",
+      "functionName": "functionX",
+      "repeat": 3
+    },
+    {
+      "scenario": "Delay",
+      "delayIn": 2000
+    },
+    {
+      "scenario": "C:\\Dev\\User Scenarios\\MyCustomScenario"
+    }
+  ],
+  "continueUponFailure": false
+}

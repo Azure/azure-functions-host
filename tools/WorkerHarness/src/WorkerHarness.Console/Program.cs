@@ -15,7 +15,8 @@ namespace WorkerHarness
         {
             var workerDirectory = "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0";
             var workerFile = @"C:\temp\FunctionApp1\FunctionApp1\bin\Debug\net6.0\FunctionApp1.dll";
-            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\DefaultScenario.json";
+            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\default.scenario";
+            //var composeScenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Console\compose.scenario";
             var language = "dotnet-isolated";
 
             IOptions<WorkerDescription> workerDescription = Options.Create(new WorkerDescription()
@@ -45,9 +46,13 @@ namespace WorkerHarness
             IActionProvider defaultAtionProvider = new DefaultActionProvider(validatorFactory, matchService,
                 rpcMessageProvider, variableManager, inboundChannel, outboundChannel, actionWriter);
 
-            List<IActionProvider> actionProviders = new() { defaultAtionProvider };
+            IActionProvider delayActionProvider = new DelayActionProvider();
+
+            List<IActionProvider> actionProviders = new() { defaultAtionProvider, delayActionProvider };
 
             IScenarioParser scenarioParser = new ScenarioParser(actionProviders);
+
+            IComposingService composingService = new ComposingService();
 
             GrpcService grpcService = new(inboundChannel, outboundChannel);
 
@@ -58,9 +63,9 @@ namespace WorkerHarness
             };
             server.Start();
 
-            WorkerHarnessExecutor harnessExecutor = new WorkerHarnessExecutor(workerDescription, workerProcessBuilder, scenarioParser);
+            WorkerHarnessExecutor harnessExecutor = new(workerDescription, workerProcessBuilder, scenarioParser, composingService);
 
-            await harnessExecutor.Start(scenarioFile);
+            await harnessExecutor.StartScenario(scenarioFile);
         }
     }
 }

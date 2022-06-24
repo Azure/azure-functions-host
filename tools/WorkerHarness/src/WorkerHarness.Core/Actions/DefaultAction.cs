@@ -151,15 +151,9 @@ namespace WorkerHarness.Core
 
         private async Task SendToGrpcAsync()
         {
-            JsonSerializerOptions options = new() { WriteIndented = true };
-            options.Converters.Add(new JsonStringEnumConverter());
-
             foreach (StreamingMessage message in _grpcOutgoingMessages)
             {
-                //Console.WriteLine("Outgoing grpc message:");
-                //Console.WriteLine($"{JsonSerializer.Serialize(message, options)}");
                 await _outboundChannel.Writer.WriteAsync(message);
-
                 _actionWriter.WriteSentMessage(message);
             }
         }
@@ -173,8 +167,6 @@ namespace WorkerHarness.Core
         /// <exception cref="NullReferenceException"></exception>
         private void ProcessOutgoingMessages()
         {
-            //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            //options.Converters.Add(new JsonStringEnumConverter());
 
             foreach (OutgoingMessage message in _actionData.OutgoingMessages)
             {

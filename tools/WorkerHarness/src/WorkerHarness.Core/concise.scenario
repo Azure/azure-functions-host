@@ -1,0 +1,36 @@
+{
+  "scenarioName": "optional" // default to be the name of the .scenario file. In this case, "concise"
+  "actions": [
+    {
+      "actionType": "InitializeWorker"
+      // if user does not specify more, we will do the following by default
+      // - validate that a StartStream message is received
+      // - send a WorkerInitRequest message
+      // - validate that a WorkerInitResponse message is received with a status success
+    },
+    {
+      "actionType": "LoadFunction",
+      "functionName": "functionXYZ",
+      "triggerType": "queueTrigger",
+      // by default, when a LoadFunction action is used, it will 
+      // - send a FunctionLoadRequest to worker
+      // - validate that a FunctionLoadResponse message is received.
+
+      // in order to send a FunctionLoadRequest, 2 informations is required: the FunctionName and the trigger
+      // user can either specify in the message[] or indicate with the "functionName" and "triggerType"
+
+      // let's say the user want to test a queue-trigger function with a blob input
+      // in this case, the user is required to specify the FunctionLoadRequest message payload
+
+      // the message[] will take precedence. If the users include both the shortcut option and the messages,
+      // I will take the messages
+    },
+    {
+      "actionType": "InvokeFunction",
+      "functionName": "functionXYZ",
+      "triggerType": "queueTrigger"
+      // by default, the InvokeFunction action will
+      //
+    }
+  ]
+}

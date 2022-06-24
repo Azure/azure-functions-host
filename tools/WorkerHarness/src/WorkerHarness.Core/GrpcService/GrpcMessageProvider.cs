@@ -13,21 +13,24 @@ namespace WorkerHarness.Core
 {
     public class GrpcMessageProvider : IGrpcMessageProvider
     {
-        private WorkerDescription _workerDescription;
+        private readonly WorkerDescription _workerDescription;
 
-        private JsonSerializerOptions _serializerOptions;
+        private readonly JsonSerializerOptions _serializerOptions;
 
         public GrpcMessageProvider(IOptions<WorkerDescription> workerDescription)
         {
             _workerDescription = workerDescription.Value;
+
             _serializerOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
             _serializerOptions.Converters.Add(new JsonStringEnumConverter());
         }
 
         public StreamingMessage Create(string contentCase, JsonNode? content)
         {
-            StreamingMessage message = new StreamingMessage();
-            message.RequestId = Guid.NewGuid().ToString();
+            StreamingMessage message = new StreamingMessage
+            {
+                RequestId = Guid.NewGuid().ToString()
+            };
 
             switch (contentCase)
             {

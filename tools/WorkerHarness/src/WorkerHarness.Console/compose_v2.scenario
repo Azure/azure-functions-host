@@ -1,0 +1,37 @@
+{
+  "instructions": [
+    {
+      "action": "InitializeWorker"
+    },
+    {
+      "action": "LoadFunction",
+      "functionName": "function1",
+      "trigger": "httpTrigger"
+    },
+    {
+      "action": "Delay",
+      "delayIn": 2000
+    },
+    {
+      "action": "InvokeFunction",
+      "functionName": "function1",
+      "repeat": 3
+    },
+    {
+      "action": "Delay",
+      "delayIn": 5000
+    },
+    {
+      "action": "InvokeFunction",
+      "functionName": "function1"
+    },
+    {
+      "action": "Delay",
+      "delayIn": 1000
+    },
+    {
+      "action": "TerminateWorker"
+    }
+  ],
+  "continueUponFailure": false
+}

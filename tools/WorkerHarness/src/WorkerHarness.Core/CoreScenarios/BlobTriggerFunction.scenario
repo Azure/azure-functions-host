@@ -1,0 +1,98 @@
+{
+  "scenarioName": "Invoke a blob - trigger function",
+  "actions": [
+    {
+      "type": "default",
+      "name": "Loading blob - trigger function ...",
+      "repeatable": false,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "FunctionLoadRequest",
+          "direction": "Outgoing",
+          "content": {
+            "Metadata": {
+              "ScriptFile": "FunctionApp.dll",
+              "EntryPoint": "FunctionApp.BlobTrigger.Run",
+              "Name": "BlobTrigger",
+              "Bindings": {
+                "myBlob": {
+                  "type": "blobTrigger",
+                  "dataType": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "FunctionLoadResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "default",
+      "name": "Sending blob - trigger invocation request to worker...",
+      "repeatable": true,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "InvocationRequest",
+          "direction": "Outgoing",
+          "content": {
+            "InputData": [
+              {
+                "name": "myBlob",
+                "data": { "bytes": "aGVsbw==" }
+              }
+            ],
+            "TriggerMetadata": {
+              "BlobTrigger": { "string": "samples-workitems/sample1.txt" },
+              "Uri": { "json": "\"https://functionapp2202205251056.blob.core.windows.net/samples-workitems/sample1.txt\"" },
+              "Properties": { "json": "{\"LastModified\":\"2022-06-01T23:56:51+00:00\",\"CreatedOn\":\"2022-06-01T23:56:51+00:00\",\"Metadata\":{},\"ObjectReplicationDestinationPolicyId\":null,\"ObjectReplicationSourceProperties\":null,\"BlobType\":0,\"CopyCompletedOn\":\"0001-01-01T00:00:00+00:00\",\"CopyStatusDescription\":null,\"CopyId\":null,\"CopyProgress\":null,\"CopySource\":null,\"CopyStatus\":0,\"IsIncrementalCopy\":false,\"DestinationSnapshot\":null,\"LeaseDuration\":0,\"LeaseState\":0,\"LeaseStatus\":1,\"ContentLength\":4,\"ContentType\":\"text/plain\",\"ETag\":{},\"ContentHash\":\"w1V8oiraHMr8xD+AE+8CUQ==\",\"ContentEncoding\":null,\"ContentDisposition\":null,\"ContentLanguage\":null,\"CacheControl\":null,\"BlobSequenceNumber\":0,\"AcceptRanges\":\"bytes\",\"BlobCommittedBlockCount\":0,\"IsServerEncrypted\":true,\"EncryptionKeySha256\":null,\"EncryptionScope\":null,\"AccessTier\":null,\"AccessTierInferred\":false,\"ArchiveStatus\":null,\"AccessTierChangedOn\":\"0001-01-01T00:00:00+00:00\",\"VersionId\":null,\"IsLatestVersion\":false,\"TagCount\":0,\"ExpiresOn\":\"0001-01-01T00:00:00+00:00\",\"IsSealed\":false,\"RehydratePriority\":null,\"LastAccessed\":\"0001-01-01T00:00:00+00:00\",\"ImmutabilityPolicy\":{\"ExpiresOn\":null,\"PolicyMode\":null},\"HasLegalHold\":false}" },
+              "Metadata": { "json": "{}" },
+              "name": { "string": "sample1.txt" }
+            },
+            "TraceContext": {}
+          },
+          "setVariables": {
+            "invocationId_1": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "InvocationResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_1}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

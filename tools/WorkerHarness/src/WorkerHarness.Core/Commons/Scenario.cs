@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace WorkerHarness.Core
 {
     /// <summary>
-    /// Encapsulates information about a Scenario.json file
+    /// Encapsulates information about a scenario
     /// </summary>
     public class Scenario
     {
@@ -16,6 +16,9 @@ namespace WorkerHarness.Core
 
         // a list of actions to execute
         public IList<IAction> Actions { get; private set; }
+
+        // continue to execute the remaining actions upon an action error
+        public bool ContinueUponFailure { get; set; } = true;
 
         public Scenario(string scenarioName)
         {

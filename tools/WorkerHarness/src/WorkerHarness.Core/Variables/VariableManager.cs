@@ -36,9 +36,9 @@ namespace WorkerHarness.Core
             {
                 expression.TryResolve(variable.Key, variable.Value);
             }
-            
+
             // if expression still has dependency, add it the _expressions list
-            if (!expression.Resolved) 
+            if (!expression.Resolved)
             {
                 _expressions.Add(expression);
             }
@@ -59,7 +59,10 @@ namespace WorkerHarness.Core
             }
 
             // add the name/value pair to _variables
-            _variables.Add(variableName, variableValue);
+            if (!_variables.TryAdd(variableName, variableValue))
+            {
+                throw new InvalidOperationException($"A variable with a name \"{variableName}\" has already exisited in the Global Variable dictionary");
+            } 
 
             // update all the expressions that may depend on this variable
             foreach (Expression expression in _expressions)
@@ -77,20 +80,6 @@ namespace WorkerHarness.Core
         {
             _variables.Clear();
         }
-
-        // TODO: to be deleted, for debugging
-        public void PrintVariables()
-        {
-            JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            options.Converters.Add(new JsonStringEnumConverter());
-
-            foreach (KeyValuePair<string, object> variable in _variables)
-            {
-                Console.WriteLine($"Variable = {variable.Key}");
-                Console.WriteLine(JsonSerializer.Serialize(variable.Value, options));
-            }
-        }
     }
-
 
 }

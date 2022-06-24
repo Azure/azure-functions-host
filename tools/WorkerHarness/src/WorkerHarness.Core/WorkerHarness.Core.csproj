@@ -20,4 +20,24 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
   </ItemGroup>
 
+	<ItemGroup>
+		<Content Include=".\CoreScenarios\*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="CoreScenarios\Actions.json" />
+	  <None Remove="CoreScenarios\Bindings.json" />
+	  <None Remove="CoreScenarios\InputData.json" />
+	  <None Remove="CoreScenarios\TriggerMetadata.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="CoreScenarios\Actions.json" />
+	  <Content Include="CoreScenarios\Bindings.json" />
+	  <Content Include="CoreScenarios\InputData.json" />
+	  <Content Include="CoreScenarios\TriggerMetadata.json" />
+	</ItemGroup>
+
 </Project>

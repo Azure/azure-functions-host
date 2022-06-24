@@ -1,0 +1,86 @@
+{
+  "scenarioName": "Invoke a timer - trigger function",
+  "actions": [
+    {
+      "type": "default",
+      "name": "Loading timer - trigger function ...",
+      "repeatable": false,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "FunctionLoadRequest",
+          "direction": "Outgoing",
+          "content": {
+            "Metadata": {
+              "scriptFile": "FunctionApp.dll",
+              "entryPoint": "FunctionApp.TimerTrigger.Run",
+              "name": "TimerTrigger",
+              "bindings": { "myTimer": { "type": "timerTrigger" } }
+            }
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "FunctionLoadResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "default",
+      "name": "Sending timer - trigger invocation request to worker...",
+      "repeatable": true,
+      "messages": [
+        {
+          "id": "message_1",
+          "contentCase": "InvocationRequest",
+          "direction": "Outgoing",
+          "content": {
+            "InputData": [
+              {
+                "name": "myTimer",
+                "data": { "json": "{\"Schedule\":{\"AdjustForDST\":true},\"ScheduleStatus\":{\"Last\":\"0001-01-01T00:00:00\",\"Next\":\"2022-06-01T14:46:00-07:00\",\"LastUpdated\":\"0001-01-01T00:00:00\"},\"IsPastDue\":false}" }
+              }
+            ],
+            "TriggerMetadata": { "TimerTrigger": { "string": "6/1/2022 2:46:00 PM" } },
+            "TraceContext": {}
+          },
+          "setVariables": {
+            "invocationId_1": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_2",
+          "contentCase": "InvocationResponse",
+          "direction": "Incoming",
+          "match": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_1}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
