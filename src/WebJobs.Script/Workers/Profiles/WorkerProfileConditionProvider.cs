@@ -9,10 +9,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     internal sealed class WorkerProfileConditionProvider : IWorkerProfileConditionProvider
     {
-        private readonly ILogger<WorkerProfileConditionProvider> _logger;
+        private readonly ILogger _logger;
         private readonly IEnvironment _environment;
 
-        public WorkerProfileConditionProvider(ILogger<WorkerProfileConditionProvider> logger, IEnvironment environment)
+        public WorkerProfileConditionProvider(ILogger logger, IEnvironment environment)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
