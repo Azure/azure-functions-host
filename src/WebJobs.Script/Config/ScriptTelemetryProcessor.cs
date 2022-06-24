@@ -20,8 +20,8 @@ namespace Microsoft.Azure.WebJobs.Script.Config
 
         public void Process(ITelemetry item)
         {
-            if (FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableUserCodeException)
-                && item is ExceptionTelemetry exceptionTelemetry
+            // Only process if exception is thrown by user code (if IsUserException is true).
+            if (item is ExceptionTelemetry exceptionTelemetry
                 && exceptionTelemetry?.Exception?.InnerException is RpcException rpcException
                 && (rpcException?.IsUserException).GetValueOrDefault())
             {

@@ -30,14 +30,15 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         }
 
         /// <summary>
-        /// This method is only hit on the invocation code path.
+        /// This method is only hit on the invocation code path. enableUserCodeExceptionCapability = feature flag,
+        /// exposed as a capability that is set by the worker.
         /// </summary>
-        public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs)
+        public static bool IsInvocationSuccess<T>(this StatusResult status, TaskCompletionSource<T> tcs, bool enableUserCodeExceptionCapability = false)
         {
             switch (status.Status)
             {
                 case StatusResult.Types.Status.Failure:
-                    var rpcException = GetRpcException(status);
+                    var rpcException = GetRpcException(status, enableUserCodeExceptionCapability);
                     tcs.SetException(rpcException);
                     return false;
 
@@ -50,13 +51,21 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             }
         }
 
-        public static Workers.Rpc.RpcException GetRpcException(StatusResult statusResult)
+        /// <summary>
+        /// If the capability is enabled, surface additional exception properties
+        /// so that they can be surfaced to app insights by the ScriptTelemetryProcessor.
+        /// </summary>
+        public static Workers.Rpc.RpcException GetRpcException(StatusResult statusResult, bool enableUserCodeExceptionCapability = false)
         {
             var ex = statusResult?.Exception;
             var status = statusResult?.Status.ToString();
             if (ex != null)
             {
-                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace, ex.Type, ex.IsUserException);
+                if (enableUserCodeExceptionCapability)
+                {
+                    return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace, ex.Type, ex.IsUserException);
+                }
+                return new Workers.Rpc.RpcException(status, ex.Message, ex.StackTrace);
             }
             return new Workers.Rpc.RpcException(status, string.Empty, string.Empty);
         }
