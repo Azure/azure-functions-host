@@ -898,6 +898,8 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             {
                 WorkerTerminate = workerTerminate
             });
+
+            WorkerProcess.StopProcessGracefully();
         }
 
         public async Task DrainInvocationsAsync()

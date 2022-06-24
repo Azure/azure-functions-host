@@ -11,6 +11,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IWorkerConsoleLogSource _consoleLogSource;
         private readonly IScriptEventManager _eventManager;
         private readonly IMetricsLogger _metricsLogger;
-        private readonly int processExitTimeoutInMilliseconds = 5000;
+        private readonly int processExitTimeoutInMilliseconds = 1000;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDisposable _eventSubscription;
 
@@ -204,10 +205,28 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         internal abstract void HandleWorkerProcessRestart();
 
+        public void StopProcessGracefully()
+        {
+            try
+            {
+                if (Process != null)
+                {
+                    if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds))
+                    {
+                        _workerProcessLogger.LogInformation($"Worker process has not exited despite waiting for {WorkerConstants.WorkerTerminateGracePeriodInSeconds} ms");
+                        Process.Kill();
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                _workerProcessLogger?.LogDebug(exc, "Exception in worker termination.");
+                //ignore
+            }
+        }
+
         public void Dispose()
         {
-            Disposing = true;
-            // best effort process disposal
             try
             {
                 _eventSubscription?.Dispose();
@@ -216,10 +235,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (!Process.HasExited)
                     {
+                        Process.Kill();
                         if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
                         {
-                            _workerProcessLogger.LogInformation($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
-                            Process.Kill();
+                            _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
                         }
                     }
                     Process.Dispose();
