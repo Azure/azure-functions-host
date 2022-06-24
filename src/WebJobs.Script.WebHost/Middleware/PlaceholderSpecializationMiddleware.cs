@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         }
 
         public async Task Invoke(HttpContext httpContext)
-        {            
+        {
             await _invoke(httpContext);
         }
 
