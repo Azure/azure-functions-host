@@ -32,16 +32,15 @@ namespace WorkerHarness.Core
             IMatch matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
-            Channel<StreamingMessage> inboundChannel,
-            Channel<StreamingMessage> outboundChannel,
+            GrpcServiceChannel channel,
             IActionWriter actionWriter)
         {
             _validatorFactory = validatorFactory;
             _matchService = matchService;
             _rpcMessageProvider = rpcMessageProvider;
             _variableManager = variableManager;
-            _inboundChannel = inboundChannel;
-            _outboundChannel = outboundChannel;
+            _inboundChannel = channel.InboundChannel;
+            _outboundChannel = channel.OutboundChannel;
             _actionWriter = actionWriter;
         }
 

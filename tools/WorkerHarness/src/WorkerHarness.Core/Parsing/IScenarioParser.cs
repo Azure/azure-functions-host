@@ -10,6 +10,5 @@ namespace WorkerHarness.Core
     {
         Scenario Parse(string scenarioFile);
 
-        Scenario Parse(Instruction scenarioContext);
     }
 }
