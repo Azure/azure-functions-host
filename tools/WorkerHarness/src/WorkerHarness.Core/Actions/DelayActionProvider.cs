@@ -18,9 +18,5 @@ namespace WorkerHarness.Core
             return new DelayAction(delayTime);
         }
 
-        public IAction Create(IDictionary<string, string> context)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
