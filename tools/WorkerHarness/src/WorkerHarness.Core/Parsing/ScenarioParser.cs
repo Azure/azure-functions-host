@@ -35,7 +35,7 @@ namespace WorkerHarness.Core
 
             ValidateScenario(scenarioNode);
 
-            string scenarioName = scenarioNode["scenarioName"]!.GetValue<string>();
+            string scenarioName = scenarioNode["scenarioName"]?.GetValue<string>() ?? Path.GetFileName(scenarioFile);
             Scenario scenario = new(scenarioName);
 
             JsonArray jsonActions = scenarioNode["actions"]!.AsArray();
@@ -44,11 +44,11 @@ namespace WorkerHarness.Core
                 JsonNode actionNode = jsonActions[i]!;
                 
                 // find the type of action 
-                if (actionNode["type"] == null)
+                if (actionNode["actionType"] == null)
                 {
                     throw new MissingFieldException("Missing an action type in the scenario file");
                 }
-                string actionType = actionNode["type"]!.GetValue<string>();
+                string actionType = actionNode["actionType"]!.GetValue<string>();
 
                 // select action provider based on the type of action
                 var actionProvider = _actionProviders.FirstOrDefault(p => string.Equals(p.Type, actionType, StringComparison.OrdinalIgnoreCase));
@@ -66,11 +66,6 @@ namespace WorkerHarness.Core
 
         private static void ValidateScenario(JsonNode scenarioNode)
         {
-            if (scenarioNode["scenarioName"] == null)
-            {
-                throw new MissingFieldException($"Missing the 'scenarioName' property in the scenario file.");
-            }
-
             if (scenarioNode["actions"] == null || scenarioNode["actions"] is not JsonArray)
             {
                 throw new MissingFieldException($"Missing the 'actions' array in the scenario file");
