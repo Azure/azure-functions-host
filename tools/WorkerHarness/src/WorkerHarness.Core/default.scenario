@@ -2,7 +2,7 @@
   "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger and http trigger",
   "actions": [
     {
-      "type": "default",
+      "type": "rpc",
       "name": "Validating that the language worker is ready ...",
       "timeout": 10000,
       "messages": [
@@ -31,7 +31,7 @@
       "delay": 2000
     },
     {
-      "type": "default",
+      "type": "rpc",
       "name": "Exchanging capabilities/initial data with workers...",
       "timeout": 10000,
       "messages": [
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "type": "Default",
+      "type": "rpc",
       "name": "Loading queue-trigger function...",
       "timeout": 10000,
       "messages": [
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "type": "Default",
+      "type": "rpc",
       "name": "Invoking a queue-trigger function ...",
       "timeout": 10000,
       "messages": [

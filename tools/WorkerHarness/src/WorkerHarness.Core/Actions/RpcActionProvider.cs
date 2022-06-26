@@ -10,7 +10,7 @@ namespace WorkerHarness.Core
     /// <summary>
     /// Default implemenation of IActionProvider
     /// </summary>
-    public class DefaultActionProvider : IActionProvider
+    public class RpcActionProvider : IActionProvider
     {
         private readonly IValidatorFactory _validatorFactory;
 
@@ -26,9 +26,9 @@ namespace WorkerHarness.Core
 
         private readonly IActionWriter _actionWriter;
 
-        public string Type => ActionType.Default;
+        public string Type => ActionType.Rpc;
 
-        public DefaultActionProvider(IValidatorFactory validatorFactory, 
+        public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatch matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableManager variableManager,
@@ -53,9 +53,9 @@ namespace WorkerHarness.Core
         public IAction Create(JsonNode actionNode)
         {
             // 1. create a DefaultActionData that encapsulate info about an action
-            DefaultActionData actionData = CreateDefaultActionData(actionNode);
+            RpcActionData actionData = CreateDefaultActionData(actionNode);
             // 2. create a DefaultAction object
-            return new DefaultAction(_validatorFactory,
+            return new RpcAction(_validatorFactory,
                                      _matchService,
                                      _rpcMessageProvider, 
                                      actionData,
@@ -70,15 +70,15 @@ namespace WorkerHarness.Core
         /// </summary>
         /// <param name="actionNode" cref="JsonNode"></param>
         /// <returns>a DefaultActionData</returns>
-        private DefaultActionData CreateDefaultActionData(JsonNode actionNode)
+        private RpcActionData CreateDefaultActionData(JsonNode actionNode)
         {
             JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
             serializerOptions.Converters.Add(new JsonStringEnumConverter());
-            DefaultActionData? actionData = JsonSerializer.Deserialize<DefaultActionData>(actionNode, serializerOptions)!;
+            RpcActionData? actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions)!;
 
             if (actionData == null)
             {
-                throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(DefaultActionData)} object");
+                throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(RpcActionData)} object");
             }
 
             // iterate over 'messages' array and populate actionData.IncomingMessages list and actionData.OutgoingMessages list

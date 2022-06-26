@@ -9,7 +9,7 @@ namespace WorkerHarness.Core
     /// <summary>
     /// Encapsulate information about an action
     /// </summary>
-    internal class DefaultActionData
+    internal class RpcActionData
     {
         // the type of an action
         public string Type { get; set; } = string.Empty;
