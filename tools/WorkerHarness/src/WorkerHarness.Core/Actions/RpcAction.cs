@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class DefaultAction : IAction
+    internal class RpcAction : IAction
     {
         // _validatorManager is responsible for validating message.
         private readonly IValidatorFactory _validatorFactory;
@@ -24,7 +24,7 @@ namespace WorkerHarness.Core
         private readonly IGrpcMessageProvider _grpcMessageProvider;
 
         // _actionData encapsulates data for each action in the Scenario file.
-        private readonly DefaultActionData _actionData;
+        private readonly RpcActionData _actionData;
 
         // _variableManager evaluates all registered expressions once the variable values are available.
         private readonly IVariableManager _variableManager;
@@ -38,10 +38,10 @@ namespace WorkerHarness.Core
         // _actionWriter writes action execution results to appropriate medium.
         private readonly IActionWriter _actionWriter;
 
-        internal DefaultAction(IValidatorFactory validatorFactory, 
+        internal RpcAction(IValidatorFactory validatorFactory, 
             IMatch matchService,
             IGrpcMessageProvider grpcMessageProvider, 
-            DefaultActionData actionData,
+            RpcActionData actionData,
             IVariableManager variableManager,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel,
@@ -210,7 +210,7 @@ namespace WorkerHarness.Core
                 // in message.Match, update any default variable '$.' to '$.{messageId}'
                 foreach (var matchingCriteria in message.Match)
                 {
-                    matchingCriteria.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Expected, message.Id);
+                    matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, message.Id);
 
                     matchingCriteria.ConstructExpression();
 
@@ -221,7 +221,7 @@ namespace WorkerHarness.Core
                 foreach (var validator in message.Validators)
                 {
                     //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
-                    validator.Expected = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Expected, message.Id);
+                    validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
 
                     validator.ConstructExpression();
 

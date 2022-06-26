@@ -51,7 +51,7 @@ namespace WorkerHarness
                 .AddSingleton<IVariableManager, VariableManager>()
                 .AddSingleton<IActionWriter, ConsoleWriter>()
                 .AddSingleton<IMatch, StringMatch>()
-                .AddSingleton<IActionProvider, DefaultActionProvider>()
+                .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
                 .AddSingleton<IWorkerHarnessExecutor, DefaultWorkerHarnessExecutor>()
                 .AddSingleton<GrpcServiceChannel>(s =>

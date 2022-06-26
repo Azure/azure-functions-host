@@ -9,6 +9,6 @@ namespace WorkerHarness.Core
     internal class ActionType
     {
         public static string Delay = "delay";
-        public static string Default = "default";
+        public static string Rpc = "rpc";
     }
 }
