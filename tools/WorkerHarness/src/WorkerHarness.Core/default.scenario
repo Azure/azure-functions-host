@@ -1,16 +1,16 @@
 {
-  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger and http trigger",
+  "scenarioName": "scenario with 1 rpc action",
   "actions": [
     {
-      "type": "rpc",
-      "name": "Validating that the language worker is ready ...",
+      "actionType": "rpc",
+      "actionName": "Initialize worker, load a queue-trigger function, and invoke it",
       "timeout": 10000,
       "messages": [
         {
           "id": "message_1",
-          "contentCase": "StartStream",
+          "messageType": "StartStream",
           "direction": "Incoming",
-          "match": [
+          "matchingCriteria": [
             {
               "query": "$.ContentCase",
               "expected": "StartStream"
@@ -20,32 +20,27 @@
             {
               "type": "regex",
               "query": "$.StartStream.WorkerId",
-              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+              "expected": ".+"
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "delay",
-      "delay": 2000
-    },
-    {
-      "type": "rpc",
-      "name": "Exchanging capabilities/initial data with workers...",
-      "timeout": 10000,
-      "messages": [
-        {
-          "id": "message_1",
-          "contentCase": "WorkerInitRequest",
-          "direction": "Outgoing",
-          "content": {}
         },
         {
           "id": "message_2",
-          "contentCase": "WorkerInitResponse",
+          "messageType": "WorkerInitRequest",
+          "direction": "Outgoing",
+          "payload": {
+            "Capabilities": {},
+            "HostVersion": "4.3.2.18186",
+            "FunctionAppDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",
+            "WorkerDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",
+            "LogCategories": {}
+          }
+        },
+        {
+          "id": "message_3",
+          "messageType": "WorkerInitResponse",
           "direction": "Incoming",
-          "match": [
+          "matchingCriteria": [
             {
               "query": "$.ContentCase",
               "expected": "WorkerInitResponse"
@@ -58,19 +53,12 @@
               "expected": "Success"
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "rpc",
-      "name": "Loading queue-trigger function...",
-      "timeout": 10000,
-      "messages": [
+        },
         {
-          "id": "message_1",
-          "contentCase": "FunctionLoadRequest",
+          "id": "message_4",
+          "messageType": "FunctionLoadRequest",
           "direction": "Outgoing",
-          "content": {
+          "payload": {
             "FunctionId": "function1",
             "Metadata": {
               "ScriptFile": "FunctionApp1.dll",
@@ -86,10 +74,10 @@
           }
         },
         {
-          "id": "message_2",
-          "contentCase": "FunctionLoadResponse",
+          "id": "message_5",
+          "messageType": "FunctionLoadResponse",
           "direction": "Incoming",
-          "match": [
+          "matchingCriteria": [
             {
               "query": "$.FunctionLoadResponse.FunctionId",
               "expected": "${message_1}.FunctionLoadRequest.FunctionId"
@@ -102,20 +90,12 @@
               "expected": "Success"
             }
           ]
-        }
-
-      ]
-    },
-    {
-      "type": "rpc",
-      "name": "Invoking a queue-trigger function ...",
-      "timeout": 10000,
-      "messages": [
+        },
         {
-          "id": "message_1",
-          "contentCase": "InvocationRequest",
+          "id": "message_6",
+          "messageType": "InvocationRequest",
           "direction": "Outgoing",
-          "content": {
+          "payload": {
             "FunctionId": "function1",
             "InputData": [
               {
@@ -125,7 +105,6 @@
                 }
               }
             ],
-
             "TraceContext": {}
           },
           "setVariables": {
@@ -133,10 +112,10 @@
           }
         },
         {
-          "id": "message_2",
-          "contentCase": "InvocationResponse",
+          "id": "message_7",
+          "messageType": "InvocationResponse",
           "direction": "Incoming",
-          "match": [
+          "matchingCriteria": [
             {
               "query": "$.InvocationResponse.InvocationId",
               "expected": "@{invocationId_1}"
