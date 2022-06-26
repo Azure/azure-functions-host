@@ -59,10 +59,10 @@ namespace WorkerHarness.Core
         }
 
         // Type of action, type "Default" in this case
-        public string Type { get => _actionData.Type; }
+        public string Type { get => _actionData.ActionType; }
 
         // Displayed name of the action
-        public string Name { get => _actionData.Name; }
+        public string Name { get => _actionData.ActionName; }
 
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
@@ -75,24 +75,26 @@ namespace WorkerHarness.Core
 
         public async Task ExecuteAsync()
         {
-            _actionWriter.WriteActionName(Name);
+            //_actionWriter.WriteActionName(Name);
 
-            // create grpc messages to send to Grpc
-            ProcessOutgoingMessages();
+            //// create grpc messages to send to Grpc
+            //ProcessOutgoingMessages();
 
-            // process incoming message's match criteria and validators
-            ProcessIncomingMessages();
+            //// process incoming message's match criteria and validators
+            //ProcessIncomingMessages();
 
-            // push grpc outgoing message to the _channel
-            await SendToGrpcAsync();
+            //// push grpc outgoing message to the _channel
+            //await SendToGrpcAsync();
 
-            // listen and process any StreamingMessage from _channel
-            await ReceiveFromGrpcAsync();
+            //// listen and process any StreamingMessage from _channel
+            //await ReceiveFromGrpcAsync();
 
-            // clear all variables stored in _variableManager to get a clean state for the next action
-            _variableManager.Clear();
+            //// clear all variables stored in _variableManager to get a clean state for the next action
+            //_variableManager.Clear();
 
-            _actionWriter.WriteActionEnding();
+            //_actionWriter.WriteActionEnding();
+
+            throw new NotImplementedException();
         }
 
         private async Task ReceiveFromGrpcAsync()
@@ -165,31 +167,31 @@ namespace WorkerHarness.Core
         /// 
         /// </summary>
         /// <exception cref="NullReferenceException"></exception>
-        private void ProcessOutgoingMessages()
-        {
+        //private void ProcessOutgoingMessages()
+        //{
 
-            foreach (OutgoingMessage message in _actionData.OutgoingMessages)
-            {
-                // create a StreamingMessage that will be sent to a language worker
-                StreamingMessage streamingMessage = _grpcMessageProvider.Create(message.ContentCase, message.Content);
+        //    foreach (OutgoingMessage message in _actionData.OutgoingMessages)
+        //    {
+        //        // create a StreamingMessage that will be sent to a language worker
+        //        StreamingMessage streamingMessage = _grpcMessageProvider.Create(message.ContentCase, message.Content);
 
-                // resolve "SetVariables" property
-                VariableHelper.ResolveVariableMap(message.SetVariables, message.Id, streamingMessage);
+        //        // resolve "SetVariables" property
+        //        VariableHelper.ResolveVariableMap(message.SetVariables, message.Id, streamingMessage);
 
-                // add the variables inside "SetVariables" to VariableManager
-                if (message.SetVariables != null)
-                {
-                    foreach (KeyValuePair<string, string> variable in message.SetVariables)
-                    {
-                        _variableManager.AddVariable(variable.Key, variable.Value);
-                    }
-                }
+        //        // add the variables inside "SetVariables" to VariableManager
+        //        if (message.SetVariables != null)
+        //        {
+        //            foreach (KeyValuePair<string, string> variable in message.SetVariables)
+        //            {
+        //                _variableManager.AddVariable(variable.Key, variable.Value);
+        //            }
+        //        }
 
-                _variableManager.AddVariable(message.Id, streamingMessage);
+        //        _variableManager.AddVariable(message.Id, streamingMessage);
 
-                _grpcOutgoingMessages.Add(streamingMessage);
-            }
-        }
+        //        _grpcOutgoingMessages.Add(streamingMessage);
+        //    }
+        //}
 
         /// <summary>
         /// Register incoming messages that are to be validated against actual grpc messages.
@@ -202,34 +204,34 @@ namespace WorkerHarness.Core
         ///     the property of another message.
         ///     
         /// </summary>
-        private void ProcessIncomingMessages()
-        {
-            //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-            foreach (IncomingMessage message in _actionData.IncomingMessages)
-            {
-                // in message.Match, update any default variable '$.' to '$.{messageId}'
-                foreach (var matchingCriteria in message.Match)
-                {
-                    matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, message.Id);
+        //private void ProcessIncomingMessages()
+        //{
+        //    //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
+        //    foreach (IncomingMessage message in _actionData.IncomingMessages)
+        //    {
+        //        // in message.Match, update any default variable '$.' to '$.{messageId}'
+        //        foreach (var matchingCriteria in message.Match)
+        //        {
+        //            matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, message.Id);
 
-                    matchingCriteria.ConstructExpression();
+        //            matchingCriteria.ConstructExpression();
 
-                    _variableManager.Subscribe(matchingCriteria);
-                }
+        //            _variableManager.Subscribe(matchingCriteria);
+        //        }
 
-                // in message.Validators, update any default variable '$.' to '$.{messageId}'
-                foreach (var validator in message.Validators)
-                {
-                    //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
-                    validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
+        //        // in message.Validators, update any default variable '$.' to '$.{messageId}'
+        //        foreach (var validator in message.Validators)
+        //        {
+        //            //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
+        //            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
 
-                    validator.ConstructExpression();
+        //            validator.ConstructExpression();
 
-                    _variableManager.Subscribe(validator);
-                }
+        //            _variableManager.Subscribe(validator);
+        //        }
 
-                _unmatchedMessages.Add(message);
-            }
-        }
+        //        _unmatchedMessages.Add(message);
+        //    }
+        //}
     }
 }

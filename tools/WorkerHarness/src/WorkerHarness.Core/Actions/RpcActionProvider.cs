@@ -26,7 +26,7 @@ namespace WorkerHarness.Core
 
         private readonly IActionWriter _actionWriter;
 
-        public string Type => ActionType.Rpc;
+        public string Type => ActionTypes.Rpc;
 
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatch matchService,
@@ -53,7 +53,7 @@ namespace WorkerHarness.Core
         public IAction Create(JsonNode actionNode)
         {
             // 1. create a DefaultActionData that encapsulate info about an action
-            RpcActionData actionData = CreateDefaultActionData(actionNode);
+            RpcActionData actionData = CreateRpcActionData(actionNode);
             // 2. create a DefaultAction object
             return new RpcAction(_validatorFactory,
                                      _matchService,
@@ -70,92 +70,25 @@ namespace WorkerHarness.Core
         /// </summary>
         /// <param name="actionNode" cref="JsonNode"></param>
         /// <returns>a DefaultActionData</returns>
-        private RpcActionData CreateDefaultActionData(JsonNode actionNode)
+        private static RpcActionData CreateRpcActionData(JsonNode actionNode)
         {
+            ValidateRpcActionNode(actionNode);
+
             JsonSerializerOptions serializerOptions = new() { PropertyNameCaseInsensitive = true };
-            serializerOptions.Converters.Add(new JsonStringEnumConverter());
-            RpcActionData? actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions)!;
 
-            if (actionData == null)
-            {
-                throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(RpcActionData)} object");
-            }
-
-            // iterate over 'messages' array and populate actionData.IncomingMessages list and actionData.OutgoingMessages list
-            if (actionNode["messages"] == null || actionNode["messages"] is not JsonArray)
-            {
-                throw new MissingFieldException($"Missing the 'messages' array in an action");
-            }
-
-            JsonArray jsonMessages = actionNode["messages"]!.AsArray();
-            for (int i = 0; i < jsonMessages.Count; i++)
-            {
-                JsonNode? jsonMessage = jsonMessages[i];
-                ValidateMessage(jsonMessage);
-
-                string messageDirection = jsonMessage!["direction"]!.ToString().ToLower();
-                if (messageDirection == "incoming")
-                {
-                    ValidateIncomingMessage(jsonMessage);
-                    actionData.IncomingMessages.Add(JsonSerializer.Deserialize<IncomingMessage>(jsonMessage, serializerOptions)!);
-                }
-                else if (messageDirection == "outgoing")
-                {
-                    ValidateOutgoingMessage(jsonMessage);
-                    actionData.OutgoingMessages.Add(JsonSerializer.Deserialize<OutgoingMessage>(jsonMessage, serializerOptions)!);
-                }
-                else
-                {
-                    throw new InvalidDataException("Invalid value for the direction property");
-                }
-            }
+            RpcActionData actionData = JsonSerializer.Deserialize<RpcActionData>(actionNode, serializerOptions) ??
+                 throw new InvalidOperationException($"Unable to deserialize a {typeof(JsonNode)} object to a {typeof(RpcActionData)} object");
 
             return actionData;
         }
 
-        // TODO: write private method to check the required fields for incoming message and outgoing message
-        private void ValidateMessage(JsonNode? message)
+        private static void ValidateRpcActionNode(JsonNode actionNode)
         {
-            if (message == null || message is not JsonObject)
+            if (actionNode["messages"] == null || actionNode["messages"] is not JsonArray)
             {
-                throw new InvalidDataException($"The 'messages' array must contain non-null json object");
-            }
-
-            if (message["contentCase"] == null)
-            {
-                throw new MissingFieldException($"Missing 'contentCase' property in a message object");
-            }
-
-            if (message["direction"] == null)
-            {
-                throw new MissingFieldException($"Missing 'direction' property in a message object");
+                throw new InvalidDataException($"Missing the \"messages\" array in an Rpc action");
             }
         }
 
-        private void ValidateIncomingMessage(JsonNode message)
-        {
-            if (message["match"] == null || message["match"] is not JsonArray)
-            {
-                throw new InvalidDataException("Missing the 'match' array in an 'incoming' message object");
-            }
-
-            if (message["validators"] == null || message["validators"] is not JsonArray)
-            {
-                throw new InvalidDataException("Missing the 'validators' array in an 'incoming' message object");
-            }
-        }
-
-        private void ValidateOutgoingMessage(JsonNode message)
-        {
-            if (message["content"] == null || message["content"] is not JsonObject)
-            {
-                throw new InvalidDataException("Missing the 'content' object in an 'outgoing' message object");
-            }
-        }
-
-        public IAction Create(IDictionary<string, string> context)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

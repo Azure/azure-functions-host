@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class ActionType
+    internal class ActionTypes
     {
         public static string Delay = "delay";
         public static string Rpc = "rpc";

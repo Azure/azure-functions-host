@@ -9,7 +9,7 @@ namespace WorkerHarness.Core
 {
     public class DelayActionProvider : IActionProvider
     {
-        public string Type => ActionType.Delay;
+        public string Type => ActionTypes.Delay;
 
         public IAction Create(JsonNode actionNode)
         {
