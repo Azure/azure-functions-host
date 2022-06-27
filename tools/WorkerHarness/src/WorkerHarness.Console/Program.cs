@@ -14,7 +14,7 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
-            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\b.scenario";
+            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\a.scenario";
 
             var serviceProvider = SetupDI();
             var harnessExecutor = serviceProvider.GetService<IWorkerHarnessExecutor>();
@@ -50,7 +50,7 @@ namespace WorkerHarness
                 .AddSingleton<IValidatorFactory, ValidatorFactory>()
                 .AddSingleton<IVariableObservable, VariableManager>()
                 .AddSingleton<IActionWriter, ConsoleWriter>()
-                .AddSingleton<IMatch, StringMatch>()
+                .AddSingleton<IMatcher, StringMatcher>()
                 .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
                 .AddSingleton<IWorkerHarnessExecutor, DefaultWorkerHarnessExecutor>()

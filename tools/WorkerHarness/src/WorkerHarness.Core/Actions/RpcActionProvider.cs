@@ -14,7 +14,7 @@ namespace WorkerHarness.Core
     {
         private readonly IValidatorFactory _validatorFactory;
 
-        private readonly IMatch _matchService;
+        private readonly IMatcher _matchService;
 
         private readonly IGrpcMessageProvider _rpcMessageProvider;
 
@@ -29,7 +29,7 @@ namespace WorkerHarness.Core
         public string Type => ActionTypes.Rpc;
 
         public RpcActionProvider(IValidatorFactory validatorFactory, 
-            IMatch matchService,
+            IMatcher matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableObservable variableManager,
             GrpcServiceChannel channel,
