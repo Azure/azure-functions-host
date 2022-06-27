@@ -72,13 +72,13 @@ namespace WorkerHarness.Core
             WriteConsoleInGreen("Success");
         }
 
-        public void WriteUnmatchedMessages(IncomingMessage message)
+        public void WriteUnmatchedMessages(RpcActionMessage message)
         {
-            Console.Write($"\nReceiving a {message.ContentCase} message that fulfills the matching criteria ... ");
+            Console.Write($"\nReceiving a {message.MessageType} message that fulfills the matching criteria ... ");
             WriteConsoleInRed("Error");
 
             Console.Write($"\nThe matching criteria:");
-            foreach (var match in message.Match)
+            foreach (var match in message.MatchingCriteria)
             {
                 Console.Write($"\n{match.Query}: {match.Expected}");
             }

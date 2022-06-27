@@ -28,13 +28,7 @@
           "id": "message_2",
           "messageType": "WorkerInitRequest",
           "direction": "Outgoing",
-          "payload": {
-            "Capabilities": {},
-            "HostVersion": "4.3.2.18186",
-            "FunctionAppDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",
-            "WorkerDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",
-            "LogCategories": {}
-          }
+          "payload": {}
         },
         {
           "id": "message_3",

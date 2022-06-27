@@ -14,7 +14,7 @@ namespace WorkerHarness.Core
 
         void WriteMatchedMessage(StreamingMessage message);
 
-        void WriteUnmatchedMessages(IncomingMessage message);
+        void WriteUnmatchedMessages(RpcActionMessage message);
 
         void WriteActionEnding();
     }

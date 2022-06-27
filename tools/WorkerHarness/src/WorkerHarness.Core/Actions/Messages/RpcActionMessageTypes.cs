@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    internal class RpcActionMessageType
+    internal class RpcActionMessageTypes
     {
         public static string Incoming = "incoming";
 
