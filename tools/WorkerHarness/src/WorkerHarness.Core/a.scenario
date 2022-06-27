@@ -1,0 +1,156 @@
+{
+  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger and http trigger",
+  "actions": [
+    {
+      "actionType": "rpc",
+      "actionName": "Validating that the language worker is ready ...",
+      "timeout": 5000,
+      "messages": [
+        {
+          "id": "message_1",
+          "messageType": "StartStream",
+          "direction": "Incoming",
+          "matchingCriteria": [
+            {
+              "query": "$.ContentCase",
+              "expected": "StartStream"
+            }
+          ],
+          "validators": [
+            {
+              "type": "regex",
+              "query": "$.StartStream.WorkerId",
+              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "actionType": "delay",
+      "delay": 2000
+    },
+    {
+      "actionType": "rpc",
+      "actionName": "Exchanging capabilities/initial data with workers...",
+      "timeout": 5000,
+      "messages": [
+        {
+          "id": "message_1",
+          "messageType": "WorkerInitRequest",
+          "direction": "Outgoing",
+          "payload": {}
+        },
+        {
+          "id": "message_2",
+          "messageType": "WorkerInitResponse",
+          "direction": "Incoming",
+          "matchingCriteria": [
+            {
+              "query": "$.ContentCase",
+              "expected": "WorkerInitResponse"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.WorkerInitResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "actionType": "rpc",
+      "actionName": "Loading queue-trigger function...",
+      "timeout": 5000,
+      "messages": [
+        {
+          "id": "message_1",
+          "messageType": "FunctionLoadRequest",
+          "direction": "Outgoing",
+          "payload": {
+            "FunctionId": "function1",
+            "Metadata": {
+              "ScriptFile": "FunctionApp1.dll",
+              "EntryPoint": "FunctionApp1.SimpleQueueTrigger.Run",
+              "Name": "SimpleQueueTrigger",
+              "Bindings": {
+                "myQueueItem": {
+                  "type": "queueTrigger",
+                  "dataType": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "message_2",
+          "messageType": "FunctionLoadResponse",
+          "direction": "Incoming",
+          "matchingCriteria": [
+            {
+              "query": "$.FunctionLoadResponse.FunctionId",
+              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.FunctionLoadResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+
+      ]
+    },
+    {
+      "actionType": "rpc",
+      "actionName": "Invoking a queue-trigger function ...",
+      "timeout": 5000,
+      "messages": [
+        {
+          "id": "message_1",
+          "messageType": "InvocationRequest",
+          "direction": "Outgoing",
+          "payload": {
+            "FunctionId": "function1",
+            "InputData": [
+              {
+                "name": "myQueueItem",
+                "data": {
+                  "string": "Hello, Emma. QueueTrigger works"
+                }
+              }
+            ],
+
+            "TraceContext": {}
+          },
+          "setVariables": {
+            "invocationId_1": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_2",
+          "messageType": "InvocationResponse",
+          "direction": "Incoming",
+          "matchingCriteria": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_1}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

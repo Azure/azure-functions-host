@@ -67,16 +67,9 @@ namespace WorkerHarness.Core
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
 
-        // Placeholder that stores StreamingMessage to be sent to Grpc Layer
-        //private readonly IList<StreamingMessage> _grpcOutgoingMessages = new List<StreamingMessage>();
-
-        // Placeholder that stores IncomingMessage to be matched and validated against messages from Grpc Layer.
-        //private readonly IList<IncomingMessage> _unmatchedMessages = new List<IncomingMessage>();
-
         public async Task ExecuteAsync()
         {
             _actionWriter.WriteActionName(Name);
-
 
             var numberOfProcessedMessages = 0; // processed message means it has been sent or validated
 
@@ -86,36 +79,40 @@ namespace WorkerHarness.Core
 
             foreach (RpcActionMessage rpcActionMessage in _actionData.Messages)
             {
+                Task task;
+
                 if (string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Outgoing, StringComparison.OrdinalIgnoreCase))
                 {
-                    Task sendTask = SendToGrpcAsync(rpcActionMessage, tokenSource.Token);
-
-                    Task finishedTask = await Task.WhenAny(new Task[] { timeoutTask, sendTask});
-                    if (finishedTask.Id == timeoutTask.Id)
-                    {
-                        tokenSource.Cancel();
-                        break;
-                    }
-
+                    task = SendToGrpcAsync(rpcActionMessage, tokenSource.Token);
                 }
                 else if (string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Incoming, StringComparison.OrdinalIgnoreCase))
                 {
-                    Task receiveTask = ReceiveFromGrpcAsync(rpcActionMessage, tokenSource.Token);
-                    
-                    Task finishedTask = await Task.WhenAny(new Task[] { timeoutTask, receiveTask });
-                    if (finishedTask.Id == timeoutTask.Id)
-                    {
-                        tokenSource.Cancel();
-                        break;
-                    }
+                    task = ReceiveFromGrpcAsync(rpcActionMessage, tokenSource.Token);
                 }
                 else
                 {
                     throw new InvalidDataException($"Invalid Rpc message's direction {rpcActionMessage.Direction}");
                 }
 
+                Task finishedTask = await Task.WhenAny(new Task[] { timeoutTask, task });
+
+                if (finishedTask.IsFaulted)
+                {
+                    throw finishedTask.Exception ?? new AggregateException();
+                }
+
+                if (finishedTask.Id == timeoutTask.Id)
+                {
+                    tokenSource.Cancel();
+                    break;
+                }
+
+
                 numberOfProcessedMessages++;
             }
+
+            // clear all variables stored in _variableManager to get a clean state for the next action
+            _variableManager.Clear();
 
             // if timeout occurs, and not all messages in _actionData.Messages are processed, then write failure
             if (numberOfProcessedMessages < _actionData.Messages.Count())
@@ -140,10 +137,10 @@ namespace WorkerHarness.Core
             {
                 StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync(cancellationToken);
 
-                bool messageTypeMatched = string.Equals(rpcActionMessage.MessageType, grpcMsg.ContentCase.ToString(), StringComparison.OrdinalIgnoreCase);
-                bool matchingCriteriaMet = rpcActionMessage.DependenciesResolved() && _matchService.MatchAll(rpcActionMessage.MatchingCriteria, grpcMsg);
+                bool messageTypeMatched() => string.Equals(rpcActionMessage.MessageType, grpcMsg.ContentCase.ToString(), StringComparison.OrdinalIgnoreCase);
+                bool matchingCriteriaMet() => rpcActionMessage.DependenciesResolved() && _matchService.MatchAll(rpcActionMessage.MatchingCriteria, grpcMsg);
 
-                if (messageTypeMatched && matchingCriteriaMet)
+                if (messageTypeMatched() && matchingCriteriaMet())
                 {
                     receivedMatchingMessageFromGrpcLayer = true;
 
@@ -164,11 +161,6 @@ namespace WorkerHarness.Core
                     _actionWriter.WriteMatchedMessage(grpcMsg);
 
                 }
-                else
-                {
-                    await _inboundChannel.Writer.WriteAsync(grpcMsg, cancellationToken);
-                }
-
             }
         }
 
@@ -221,141 +213,5 @@ namespace WorkerHarness.Core
             _actionWriter.WriteSentMessage(streamingMessage);
         }
 
-        //private async Task ReceiveFromGrpcAsync()
-        //{
-        //    var timeout = Task.Run(() => Thread.Sleep(Timeout));
-        //    while (!timeout.IsCompleted && _unmatchedMessages.Any())
-        //    {
-        //        StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync();
-
-        //        // filter _unvalidatedMessages for those with same ContentCase and fullfills the matching criteria
-        //        IEnumerable<IncomingMessage> matches = _unmatchedMessages.Where(msg => msg.ContentCase.ToLower() == grpcMsg.ContentCase.ToString().ToLower())
-        //            .Where(msg => msg.DependenciesResolved() && _matchService.MatchAll(msg.Match, grpcMsg));
-
-        //        if (matches.Any())
-        //        {
-        //            IncomingMessage matchMsg = matches.First();
-        //            _unmatchedMessages.Remove(matchMsg);
-
-        //            foreach (var matchingCriteria in matchMsg.Match)
-        //            {
-        //                _actionWriter.Match.Add(matchingCriteria);
-        //            }
-
-        //            // validate the match
-        //            foreach (var validationContext in matchMsg.Validators)
-        //            {
-        //                string validatorType = validationContext.Type.ToLower();
-        //                IValidator validator = _validatorFactory.Create(validatorType);
-        //                bool validated = validator.Validate(validationContext, grpcMsg);
-
-        //                _actionWriter.ValidationResults.Add(validationContext, validated);
-        //            }
-
-        //            _actionWriter.WriteMatchedMessage(grpcMsg);
-
-        //            // register grpcMsg as a variable in _variableManager
-        //            _variableManager.AddVariable(matchMsg.Id, grpcMsg);
-
-        //        }
-        //        else
-        //        {
-        //            await _inboundChannel.Writer.WriteAsync(grpcMsg);
-        //        }
-        //    }
-
-        //    // if there are any unmatched messages, write them
-        //    if (_unmatchedMessages.Any())
-        //    {
-        //        foreach (IncomingMessage msg in _unmatchedMessages)
-        //        {
-        //            _actionWriter.WriteUnmatchedMessages(msg);
-        //        }
-        //    }
-
-        //}
-
-        //private async Task SendToGrpcAsync()
-        //{
-        //    foreach (StreamingMessage message in _grpcOutgoingMessages)
-        //    {
-        //        await _outboundChannel.Writer.WriteAsync(message);
-        //        _actionWriter.WriteSentMessage(message);
-        //    }
-        //}
-
-        /// <summary>
-        /// Create StreamingMessage objects for each action in the scenario file.
-        /// Add them to the _grpcOutgoingMessages to be sent to Grpc Service layer later.
-        /// If users set any variables, resolve those variables.
-        /// 
-        /// </summary>
-        /// <exception cref="NullReferenceException"></exception>
-        //private void ProcessOutgoingMessages()
-        //{
-
-        //    foreach (OutgoingMessage message in _actionData.OutgoingMessages)
-        //    {
-        //        // create a StreamingMessage that will be sent to a language worker
-        //        StreamingMessage streamingMessage = _grpcMessageProvider.Create(message.ContentCase, message.Content);
-
-        //        // resolve "SetVariables" property
-        //        VariableHelper.ResolveVariableMap(message.SetVariables, message.Id, streamingMessage);
-
-        //        // add the variables inside "SetVariables" to VariableManager
-        //        if (message.SetVariables != null)
-        //        {
-        //            foreach (KeyValuePair<string, string> variable in message.SetVariables)
-        //            {
-        //                _variableManager.AddVariable(variable.Key, variable.Value);
-        //            }
-        //        }
-
-        //        _variableManager.AddVariable(message.Id, streamingMessage);
-
-        //        _grpcOutgoingMessages.Add(streamingMessage);
-        //    }
-        //}
-
-        /// <summary>
-        /// Register incoming messages that are to be validated against actual grpc messages.
-        /// 
-        /// Subscribe variable expressions (if any) mentioned in the scenario file.
-        /// Variable expressions are allowed in:
-        ///     - Expected field in the Match property: this feature allows user to identify an incoming message based on
-        ///     the property of another message, which enable dependency between messages
-        ///     - Expected field in the Validators property: this feature allows user to validate an incoming message based on
-        ///     the property of another message.
-        ///     
-        /// </summary>
-        //private void ProcessIncomingMessages()
-        //{
-        //    //JsonSerializerOptions options = new JsonSerializerOptions() { WriteIndented = true };
-        //    foreach (IncomingMessage message in _actionData.IncomingMessages)
-        //    {
-        //        // in message.Match, update any default variable '$.' to '$.{messageId}'
-        //        foreach (var matchingCriteria in message.Match)
-        //        {
-        //            matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, message.Id);
-
-        //            matchingCriteria.ConstructExpression();
-
-        //            _variableManager.Subscribe(matchingCriteria);
-        //        }
-
-        //        // in message.Validators, update any default variable '$.' to '$.{messageId}'
-        //        foreach (var validator in message.Validators)
-        //        {
-        //            //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
-        //            validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, message.Id);
-
-        //            validator.ConstructExpression();
-
-        //            _variableManager.Subscribe(validator);
-        //        }
-
-        //        _unmatchedMessages.Add(message);
-        //    }
-        //}
     }
 }
