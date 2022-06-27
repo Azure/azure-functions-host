@@ -27,7 +27,7 @@ namespace WorkerHarness.Core
         private readonly RpcActionData _actionData;
 
         // _variableManager evaluates all registered expressions once the variable values are available.
-        private readonly IVariableManager _variableManager;
+        private readonly IVariableObservable _variableManager;
 
         // _inboundChannel stores messages from Grpc Layer. These messages are yet matched or validated.
         private readonly Channel<StreamingMessage> _inboundChannel;
@@ -42,7 +42,7 @@ namespace WorkerHarness.Core
             IMatch matchService,
             IGrpcMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
-            IVariableManager variableManager,
+            IVariableObservable variableManager,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel,
             IActionWriter actionWriter

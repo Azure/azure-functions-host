@@ -1,9 +1,6 @@
-﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -11,7 +8,7 @@ using System.Text.Json.Nodes;
 namespace WorkerHarness.Core
 {
     /// <summary>
-    /// Many helper methods to validate and resolve variable expressions.
+    /// Contain helper methods to work with variable expressions.
     /// </summary>
     internal static class VariableHelper
     {
@@ -53,7 +50,7 @@ namespace WorkerHarness.Core
         /// <returns></returns>
         public static string ResolveStringVariable(string variableName, string variableValue, string expression)
         {
-            string variableNamePattern = "@{" + variableName + "}";
+            string variableNamePattern = @"@\{" + variableName + @"\}";
             string newExpression = Regex.Replace(expression, variableNamePattern, variableValue);
 
             return newExpression;
@@ -63,7 +60,6 @@ namespace WorkerHarness.Core
         /// Given a valid 'expression' and a variable name and value, resolve the expression
         /// Caller must make sure that the 'expression' is valid and all string variables have been resolved before calling this method.
         /// E.g., ${variableName}.Property1.Subproperty
-        /// 
         /// </summary>
         /// <param name="variableName">Name of the variable</param>
         /// <param name="variableValue">Value of the variable</param>
@@ -79,7 +75,9 @@ namespace WorkerHarness.Core
 
             string jsonString = JsonSerializer.Serialize(variableValue);
             JsonNode jsonNode = JsonNode.Parse(jsonString) ?? throw new InvalidOperationException($"Failed to convert a {typeof(string)} object to a {typeof(JsonNode)} object");
-            string[] properties = Regex.Replace(expression, objectVariablePattern, string.Empty).Split(".");
+
+            string objectNamePattern = @"\$\{" + variableName + @"\}\.";
+            string[] properties = Regex.Replace(expression, objectNamePattern, string.Empty).Split(".");
 
             // recursively index into jsonNode until all properties have been traversed
             object evaluatedResult = RecursiveIndex(jsonNode, properties, 0);

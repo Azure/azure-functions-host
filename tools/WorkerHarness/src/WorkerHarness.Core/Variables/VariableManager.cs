@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace WorkerHarness.Core
 {
-    public class VariableManager : IVariableManager
+    public class VariableManager : IVariableObservable
     {
-        // _variables maps variable name to variable value
-        private IDictionary<string, object> _variables;
+        // maps variable name to variable value
+        private readonly IDictionary<string, object> _variables;
 
-        // _expressions store registered Expression object
-        private IList<Expression> _expressions;
+        // _expressions store subscribed Expression object
+        private readonly IList<Expression> _expressions;
 
         public VariableManager()
         {
@@ -26,9 +21,8 @@ namespace WorkerHarness.Core
         /// Allow an Expression object to subscribe. 
         /// The expression object is first evaluated using the availabe variables.
         /// If it still have unresolved dependency, then add it to the _expression list
-        /// 
         /// </summary>
-        /// <param name="expression"></param>
+        /// <param name="expression" cref="Expression"></param>
         public void Subscribe(Expression expression)
         {
             // if expression has dependency that is available, resolve it immediately
@@ -48,16 +42,10 @@ namespace WorkerHarness.Core
         /// Add variable name and value.
         /// All subscribed expressions will be notified and evaluated.
         /// </summary>
-        /// <param name="variableName"></param>
-        /// <param name="variableValue"></param>
-        /// <exception cref="InvalidDataException">throw when a variable value is of type Expression</exception>
+        /// <param name="variableName" cref="string"></param>
+        /// <param name="variableValue" cref="object"></param>
         public void AddVariable(string variableName, object variableValue)
         {
-            if (variableValue is Expression)
-            {
-                throw new InvalidDataException($"A variable value cannot be a {typeof(Expression)} object");
-            }
-
             // add the name/value pair to _variables
             if (!_variables.TryAdd(variableName, variableValue))
             {
@@ -76,6 +64,9 @@ namespace WorkerHarness.Core
             }
         }
 
+        /// <summary>
+        /// Clear all stored variables and reset the state
+        /// </summary>
         public void Clear()
         {
             _variables.Clear();
