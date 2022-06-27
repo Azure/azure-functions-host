@@ -1,14 +1,8 @@
-﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
@@ -58,7 +52,7 @@ namespace WorkerHarness.Core
             _actionWriter = actionWriter;
         }
 
-        // Type of action, type "Default" in this case
+        // Type of action
         public string Type { get => _actionData.ActionType; }
 
         // Displayed name of the action
