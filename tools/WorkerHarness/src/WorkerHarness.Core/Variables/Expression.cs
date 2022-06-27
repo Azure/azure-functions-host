@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
 
 namespace WorkerHarness.Core
 {
+    /// <summary>
+    /// Defines an expression
+    /// </summary>
     public abstract class Expression
     {
+        /// <summary>
+        /// Inheriting class must implement this method to become an Expression
+        /// </summary>
         public abstract void ConstructExpression();
 
         // the value of the expression; could contain an object variable name ${...} and several string variable names @{...}
@@ -19,32 +21,20 @@ namespace WorkerHarness.Core
 
         public bool Resolved => _resolved;
 
-        // a dependency here is the name of the variable that the expression uses
+        // contains variable dependencies in an expression
         private IList<string> _dependencies = new List<string>();
 
         // an object variable that the expression may depend on.
         private object? _objectVariable;
 
-
         /// <summary>
-        /// constructor for an Expression object. Assume that an expression has been validated before being passed to the constructor
+        /// Set a given string to be an Expression
         /// </summary>
-        /// <param name="expression" cref="string">a valid expression</param>
-        //public Expression(string expression)
-        //{
-        //    _expression = expression;
-
-        //    // use VariableHelper to extract the variable name
-        //    _dependencies = VariableHelper.ExtractVariableNames(_expression);
-
-        //    _resolved = !_dependencies.Any();
-        //}
-
+        /// <param name="expression"></param>
         protected void SetExpression(string expression)
         {
             _expression = expression;
 
-            // use VariableHelper to extract the variable name
             _dependencies = VariableHelper.ExtractVariableNames(_expression);
 
             _resolved = !_dependencies.Any();
@@ -71,8 +61,10 @@ namespace WorkerHarness.Core
 
                 // attemp to resolve the object variable in _expression
                 _expression = VariableHelper.ResolveObjectVariable(variableName, _objectVariable, _expression);
+
                 // _resolved is true if the expression contains no variables
                 _resolved = !VariableHelper.ContainVariables(_expression);
+
                 // discard the _objectVariable if _resolved
                 _objectVariable = _resolved ? null : _objectVariable;
             }
@@ -81,10 +73,10 @@ namespace WorkerHarness.Core
         }
 
         /// <summary>
-        /// return true and set value if the expression is resolved, false otherwise.
+        /// Output the fully evaluated expression if all dependencies are resolved.
         /// </summary>
         /// <param name="value"></param>
-        /// <returns></returns>
+        /// <returns>true if all dependencies are resolved, false otherwise</returns>
         public bool TryEvaluate(out string? value)
         {
             if (_resolved)

@@ -48,7 +48,7 @@ namespace WorkerHarness
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IGrpcMessageProvider, GrpcMessageProvider>()
                 .AddSingleton<IValidatorFactory, ValidatorFactory>()
-                .AddSingleton<IVariableManager, VariableManager>()
+                .AddSingleton<IVariableObservable, VariableManager>()
                 .AddSingleton<IActionWriter, ConsoleWriter>()
                 .AddSingleton<IMatch, StringMatch>()
                 .AddSingleton<IActionProvider, RpcActionProvider>()

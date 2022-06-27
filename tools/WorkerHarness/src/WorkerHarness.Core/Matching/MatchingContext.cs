@@ -1,4 +1,7 @@
-﻿namespace WorkerHarness.Core
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+namespace WorkerHarness.Core
 {
     /// <summary>
     /// Encapsulate the criteria to match a Message to a Grpc StreamingMessage
@@ -14,6 +17,9 @@
         // The expected value of the property being queried
         public string Expected { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Set Expected property to be an expression
+        /// </summary>
         public override void ConstructExpression()
         {
             SetExpression(Expected);

@@ -18,7 +18,7 @@ namespace WorkerHarness.Core
 
         private readonly IGrpcMessageProvider _rpcMessageProvider;
 
-        private readonly IVariableManager _variableManager;
+        private readonly IVariableObservable _variableManager;
 
         private readonly Channel<StreamingMessage> _inboundChannel;
 
@@ -31,7 +31,7 @@ namespace WorkerHarness.Core
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatch matchService,
             IGrpcMessageProvider rpcMessageProvider,
-            IVariableManager variableManager,
+            IVariableObservable variableManager,
             GrpcServiceChannel channel,
             IActionWriter actionWriter)
         {
