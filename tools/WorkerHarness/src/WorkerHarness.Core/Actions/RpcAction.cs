@@ -18,7 +18,7 @@ namespace WorkerHarness.Core
         private readonly IValidatorFactory _validatorFactory;
 
         // _matchService decides if an incoming grpc message matches our criteria.
-        private readonly IMatch _matchService;
+        private readonly IMatcher _matchService;
 
         // _grpcMessageProvider create the right StreamingMessage object.
         private readonly IGrpcMessageProvider _grpcMessageProvider;
@@ -39,7 +39,7 @@ namespace WorkerHarness.Core
         private readonly IActionWriter _actionWriter;
 
         internal RpcAction(IValidatorFactory validatorFactory, 
-            IMatch matchService,
+            IMatcher matchService,
             IGrpcMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
             IVariableObservable variableManager,

@@ -1,20 +1,17 @@
-﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
     /// <summary>
-    /// provide matching service that uses string comparison
+    /// Provides a matching service that uses string comparison
     /// </summary>
-    public class StringMatch : IMatch
+    public class StringMatcher : IMatcher
     {
         private readonly string objectVariablePattern = @"^(((\$\{)([^\{\}]+)(\}\.*))|(\$\.))";
 
