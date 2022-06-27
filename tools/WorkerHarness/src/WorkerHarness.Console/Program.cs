@@ -14,7 +14,7 @@ namespace WorkerHarness
     {
         public static async Task Main(string[] args)
         {
-            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\default.scenario";
+            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\b.scenario";
 
             var serviceProvider = SetupDI();
             var harnessExecutor = serviceProvider.GetService<IWorkerHarnessExecutor>();

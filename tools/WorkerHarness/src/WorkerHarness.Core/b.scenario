@@ -74,7 +74,7 @@
           "matchingCriteria": [
             {
               "query": "$.FunctionLoadResponse.FunctionId",
-              "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+              "expected": "${message_4}.FunctionLoadRequest.FunctionId"
             }
           ],
           "validators": [
