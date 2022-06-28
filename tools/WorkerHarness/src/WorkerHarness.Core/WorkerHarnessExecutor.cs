@@ -61,16 +61,16 @@ namespace WorkerHarness.Core
             switch (result.Status)
             {
                 case StatusCode.Success:
-                    _logger.LogInformation("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
+                    _logger.LogInformation("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 case StatusCode.Error:
-                    _logger.LogError("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
+                    _logger.LogError("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 case StatusCode.Timeout:
-                    _logger.LogError("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
+                    _logger.LogError("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 default:
-                    _logger.LogInformation("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
+                    _logger.LogInformation("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
             }
 
