@@ -86,9 +86,8 @@ namespace WorkerHarness.Core
 
             Task finishedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(sendTask, receiveTask));
 
-            if (finishedTask.Id == timeoutTask.Id)
+            if (finishedTask.Id == timeoutTask.Id) // timeout occur
             {
-                // timeout occur
                 executionStatus = StatusCode.Timeout;
                 tokenSource.Cancel();
             }
@@ -203,61 +202,6 @@ namespace WorkerHarness.Core
             string taskAction = string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Incoming.ToString(), StringComparison.OrdinalIgnoreCase) ? "Validate" : "Send";
             string taskResultMessage = $"{taskAction} {rpcActionMessage.MessageType} message ... {status}";
             return taskResultMessage;
-        }
-
-        private Task<bool> CreateGrpcTask(RpcActionMessage rpcActionMessage, CancellationToken cancellationToken)
-        {
-            Task<bool> task;
-
-            if (string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Outgoing, StringComparison.OrdinalIgnoreCase))
-            {
-                task = SendToGrpcAsync(rpcActionMessage, cancellationToken);
-            }
-            else if (string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Incoming, StringComparison.OrdinalIgnoreCase))
-            {
-                task = ReceiveFromGrpcAsync(rpcActionMessage, cancellationToken);
-            }
-            else
-            {
-                throw new InvalidDataException($"Invalid Rpc message's direction {rpcActionMessage.Direction}");
-            }
-
-            return task;
-        }
-
-        private async Task<bool> ReceiveFromGrpcAsync(RpcActionMessage rpcActionMessage, CancellationToken cancellationToken)
-        {
-            RegisterExpressionsInRpcActionMessage(rpcActionMessage);
-
-            bool allValidated = true;
-
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                StreamingMessage grpcMsg = await _inboundChannel.Reader.ReadAsync(cancellationToken);
-
-                bool messageTypeMatched() => string.Equals(rpcActionMessage.MessageType, grpcMsg.ContentCase.ToString(), StringComparison.OrdinalIgnoreCase);
-                bool matchingCriteriaMet() => rpcActionMessage.DependenciesResolved() && _matchService.MatchAll(rpcActionMessage.MatchingCriteria, grpcMsg);
-
-                if (messageTypeMatched() && matchingCriteriaMet())
-                {
-                    // validate the match
-                    foreach (var validationContext in rpcActionMessage.Validators)
-                    {
-                        string validatorType = validationContext.Type.ToLower();
-                        IValidator validator = _validatorFactory.Create(validatorType);
-                        bool validated = validator.Validate(validationContext, grpcMsg);
-
-                        allValidated = allValidated && validated;
-                    }
-
-                    // register grpcMsg as a variable in _variableManager
-                    _variableManager.AddVariable(rpcActionMessage.Id, grpcMsg);
-
-                    break;
-                }
-            }
-
-            return allValidated;
         }
 
         private void RegisterExpressionsInRpcActionMessage(RpcActionMessage rpcActionMessage)
