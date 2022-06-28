@@ -1,6 +1,8 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using Grpc.Core.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 
@@ -11,17 +13,17 @@ namespace WorkerHarness.Core
         private readonly WorkerDescription _workerDescription;
         private readonly IWorkerProcessBuilder _workerProcessBuilder;
         private readonly IScenarioParser _scenarioParser;
-        private readonly IActionWriter _actionWriter;
+        private readonly ILogger<DefaultWorkerHarnessExecutor> _logger;
 
         public DefaultWorkerHarnessExecutor(IOptions<WorkerDescription> workerDescription,
             IWorkerProcessBuilder workerProcessBuilder,
             IScenarioParser scenarioParser,
-            IActionWriter actionWriter)
+            ILogger<DefaultWorkerHarnessExecutor> logger)
         {
             _workerDescription = workerDescription.Value;
             _workerProcessBuilder = workerProcessBuilder;
             _scenarioParser = scenarioParser;
-            _actionWriter = actionWriter;
+            _logger = logger;
         }
 
         public async Task<bool> Start(string scenarioFile)
@@ -59,25 +61,24 @@ namespace WorkerHarness.Core
             switch (result.Status)
             {
                 case StatusCode.Success:
-                    _actionWriter.WriteSuccess($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogInformation($"{result.ActionType}: {result.ActionName} ... {result.Status}");
                     break;
                 case StatusCode.Error:
-                    _actionWriter.WriteError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
                     break;
                 case StatusCode.Timeout:
-                    _actionWriter.WriteError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
                     break;
                 default:
-                    _actionWriter.WriteInformation($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogInformation($"{result.ActionType}: {result.ActionName} ... {result.Status}");
                     break;
             }
 
             foreach (string message in result.Messages)
             {
-                _actionWriter.WriteInformation(message);
+                _logger.LogInformation(message);
             }
 
-            _actionWriter.WriteInformation(string.Empty);
         }
     }
 }

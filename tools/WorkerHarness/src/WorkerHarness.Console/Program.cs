@@ -7,6 +7,7 @@ using Channels = System.Threading.Channels;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace WorkerHarness
 {
@@ -73,6 +74,7 @@ namespace WorkerHarness
                     workerDescription.WorkerDirectory = workerDirectory;
                     workerDescription.Language = language;
                 })
+                .AddLogging(c => { c.AddConsole(); })
                 .BuildServiceProvider();
 
             return serviceProvider;
