@@ -1,5 +1,5 @@
 {
-  "scenarioName": "Dotnet worker initialization and function invocation with a queue trigger and http trigger",
+  "scenarioName": "scenario with several rpc actions",
   "actions": [
     {
       "actionType": "rpc",
@@ -10,7 +10,7 @@
           "id": "message_1",
           "messageType": "StartStream",
           "direction": "Incoming",
-          "matchingCriteria": [
+          "matchingCriteria": [ 
             {
               "query": "$.ContentCase",
               "expected": "StartStream"
@@ -20,7 +20,7 @@
             {
               "type": "regex",
               "query": "$.StartStream.WorkerId",
-              "expected": "^([0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})$"
+              "expected": ".+"
             }
           ]
         }
@@ -103,7 +103,6 @@
             }
           ]
         }
-
       ]
     },
     {
@@ -140,6 +139,45 @@
             {
               "query": "$.InvocationResponse.InvocationId",
               "expected": "@{invocationId_1}"
+            }
+          ],
+          "validators": [
+            {
+              "type": "string",
+              "query": "$.InvocationResponse.Result.Status",
+              "expected": "Success"
+            }
+          ]
+        },
+        {
+          "id": "message_3",
+          "messageType": "InvocationRequest",
+          "direction": "Outgoing",
+          "payload": {
+            "FunctionId": "function1",
+            "InputData": [
+              {
+                "name": "myQueueItem",
+                "data": {
+                  "string": "Hello, Emma. QueueTrigger works"
+                }
+              }
+            ],
+
+            "TraceContext": {}
+          },
+          "setVariables": {
+            "invocationId_2": "$.InvocationRequest.InvocationId"
+          }
+        },
+        {
+          "id": "message_4",
+          "messageType": "InvocationResponse",
+          "direction": "Incoming",
+          "matchingCriteria": [
+            {
+              "query": "$.InvocationResponse.InvocationId",
+              "expected": "@{invocationId_2}"
             }
           ],
           "validators": [
