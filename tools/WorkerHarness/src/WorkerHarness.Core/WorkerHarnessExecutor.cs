@@ -61,24 +61,26 @@ namespace WorkerHarness.Core
             switch (result.Status)
             {
                 case StatusCode.Success:
-                    _logger.LogInformation($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogInformation("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 case StatusCode.Error:
-                    _logger.LogError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogError("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 case StatusCode.Timeout:
-                    _logger.LogError($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogError("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
                 default:
-                    _logger.LogInformation($"{result.ActionType}: {result.ActionName} ... {result.Status}");
+                    _logger.LogInformation("{ActionType}: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
                     break;
             }
 
             foreach (string message in result.Messages)
             {
-                _logger.LogInformation(message);
+                _logger.LogInformation("{Message}", message);
             }
 
+            // sleep for 1000 miliseconds to push all logs to the console
+            Thread.Sleep(1000);
         }
     }
 }
