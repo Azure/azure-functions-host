@@ -80,7 +80,7 @@ namespace WorkerHarness.Core
             }
 
             // wait for timeoutTask, SendGrpc, and ReceiveGrpc with cancellation token
-            Task timeoutTask = Task.Run(() => Thread.Sleep(Timeout));
+            Task timeoutTask = Task.Delay(Timeout); // use Task.Delay
             Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, concurrentDictionary, tokenSource.Token);
             Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, concurrentDictionary, tokenSource.Token);
 
