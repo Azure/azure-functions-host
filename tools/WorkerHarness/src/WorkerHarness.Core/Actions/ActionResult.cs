@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 
 namespace WorkerHarness.Core
 {
-    enum StatusCode
+    public enum StatusCode
     {
         Success,
-        Error
+        Error,
+        Timeout
     }
 
-    internal class ActionResult
+    public class ActionResult
     {
         public string ActionType { get; set; }
 
@@ -20,7 +21,7 @@ namespace WorkerHarness.Core
 
         public StatusCode Status { get; set; }
 
-        public IEnumerable<string> Messages { get; set; }
+        public IList<string> Messages { get; set; }
 
         public ActionResult(string actionType, string actionName)
         {

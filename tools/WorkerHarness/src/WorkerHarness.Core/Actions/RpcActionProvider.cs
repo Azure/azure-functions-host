@@ -24,16 +24,13 @@ namespace WorkerHarness.Core
 
         private readonly Channel<StreamingMessage> _outboundChannel;
 
-        private readonly IActionWriter _actionWriter;
-
         public string Type => ActionTypes.Rpc;
 
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatcher matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableObservable variableManager,
-            GrpcServiceChannel channel,
-            IActionWriter actionWriter)
+            GrpcServiceChannel channel)
         {
             _validatorFactory = validatorFactory;
             _matchService = matchService;
@@ -41,7 +38,6 @@ namespace WorkerHarness.Core
             _variableManager = variableManager;
             _inboundChannel = channel.InboundChannel;
             _outboundChannel = channel.OutboundChannel;
-            _actionWriter = actionWriter;
         }
 
         /// <summary>
@@ -61,8 +57,7 @@ namespace WorkerHarness.Core
                                      actionData,
                                      _variableManager,
                                      _inboundChannel,
-                                     _outboundChannel,
-                                     _actionWriter);
+                                     _outboundChannel);
         }
 
         /// <summary>
