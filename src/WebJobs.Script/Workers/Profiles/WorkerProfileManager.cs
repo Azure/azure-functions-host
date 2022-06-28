@@ -16,15 +16,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
     {
         private readonly ILogger _logger;
         private readonly IEnumerable<IWorkerProfileConditionProvider> _conditionProviders;
-        private Dictionary<string, List<WorkerDescriptionProfile>> _profiles;
-        private string _activeProfile;
+        private static Dictionary<string, List<WorkerDescriptionProfile>> _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
+        private static string _activeProfile = string.Empty;
 
         public WorkerProfileManager(ILogger logger, IEnumerable<IWorkerProfileConditionProvider> conditionProviders)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _conditionProviders = conditionProviders ?? throw new ArgumentNullException(nameof(conditionProviders));
-            _profiles = new Dictionary<string, List<WorkerDescriptionProfile>>();
-            _activeProfile = string.Empty;
         }
 
         /// <inheritdoc />
@@ -42,6 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (profile.EvaluateConditions())
                     {
+                        _logger?.LogInformation($"Conditions evaluated succesfully for profile with name: {profile.Name} and ID: {profile.ProfileId}");
                         evaluatedProfile = profile;
                         return true;
                     }
@@ -89,6 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                profileId = profile.ProfileId;
             }
+            _logger?.LogInformation($"Active profile: {_activeProfile} Evaluated profile: {profileId}");
             return _activeProfile.Equals(profileId);
         }
     }
