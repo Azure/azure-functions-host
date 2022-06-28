@@ -8,7 +8,7 @@ namespace WorkerHarness.Core
 {
     internal class DelayAction : IAction
     {
-        private int _milisecondsDelay;
+        private readonly int _milisecondsDelay;
 
         internal DelayAction(int milisecondsDelay)
         {
@@ -19,10 +19,16 @@ namespace WorkerHarness.Core
             _milisecondsDelay = milisecondsDelay;
         }
 
-        public async Task ExecuteAsync()
+        public async Task<ActionResult> ExecuteAsync()
         {
-            Console.WriteLine($"Delaying for {_milisecondsDelay}");
             await Task.Delay(_milisecondsDelay);
+
+            ActionResult result = new(ActionTypes.Delay, $"delay for {_milisecondsDelay} miliseconds") 
+            { 
+                Status = StatusCode.Success 
+            };
+
+            return result;
         }
     }
 }

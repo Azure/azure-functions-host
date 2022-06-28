@@ -2,20 +2,27 @@
 
 namespace WorkerHarness.Core
 {
+    /// <summary>
+    /// Provide an abstraction to write action messages
+    /// </summary>
     public interface IActionWriter
     {
-        IList<MatchingContext> Match { get; }
+        /// <summary>
+        /// Write success message
+        /// </summary>
+        /// <param name="message"></param>
+        void WriteSuccess(string message);
 
-        IDictionary<ValidationContext, bool> ValidationResults { get; }
+        /// <summary>
+        /// Write error message
+        /// </summary>
+        /// <param name="message"></param>
+        void WriteError(string message);
 
-        void WriteActionName(string name);
-
-        void WriteSentMessage(StreamingMessage message);
-
-        void WriteMatchedMessage(StreamingMessage message);
-
-        void WriteUnmatchedMessages(RpcActionMessage message);
-
-        void WriteActionEnding();
+        /// <summary>
+        /// Write information message
+        /// </summary>
+        /// <param name="message"></param>
+        void WriteInformation(string message);
     }
 }
