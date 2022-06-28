@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 namespace WorkerHarness.Core
@@ -57,62 +58,147 @@ namespace WorkerHarness.Core
 
         public async Task<ActionResult> ExecuteAsync()
         {
-            ActionResult result = new(Type, Name);
-
-            var numberOfProcessedMessages = 0;
+            ActionResult actionResult = new(Type, Name);
 
             CancellationTokenSource tokenSource = new();
 
-            Task timeoutTask = Task.Run(() => Thread.Sleep(Timeout));
-
             StatusCode executionStatus = StatusCode.Success;
 
-            foreach (RpcActionMessage rpcActionMessage in _actionData.Messages)
+            // get a list of RpcActionMessage objects whose direction is outgoing
+            IEnumerable<RpcActionMessage> outgoingRpcMessages = _actionData.Messages
+                .Where(msg => string.Equals(msg.Direction, RpcActionMessageTypes.Outgoing, StringComparison.OrdinalIgnoreCase));
+
+            // get a list of RpcActionMessage object whose direction is incoming
+            IEnumerable<RpcActionMessage> incomingRpcMessages = _actionData.Messages
+                .Where(msg => string.Equals(msg.Direction, RpcActionMessageTypes.Incoming, StringComparison.OrdinalIgnoreCase));
+
+            // create a concurrent dictionary to map the rpcActionMessage to its status
+            ConcurrentDictionary<RpcActionMessage, StatusCode> concurrentDictionary = new(); 
+            foreach(RpcActionMessage msg in _actionData.Messages)
             {
-                Task<bool> task = CreateGrpcTask(rpcActionMessage, tokenSource.Token);
-                
-                Task finishedTask = await Task.WhenAny(new Task[] { timeoutTask, task });
-
-                if (finishedTask.Exception != null)
-                {
-                    throw finishedTask.Exception;
-                }
-
-                if (finishedTask.Id == timeoutTask.Id)
-                {
-                    tokenSource.Cancel();
-
-                    executionStatus = StatusCode.Timeout;
-                    result.Messages.Add(CreateGrpcTaskMessage(rpcActionMessage, executionStatus));
-                    result.Messages.Add($"Processed {numberOfProcessedMessages}/{_actionData.Messages.Count()} messages");
-
-                    break;
-                }
-
-                if (!await task)
-                {
-                    executionStatus = StatusCode.Error;
-                    result.Messages.Add(CreateGrpcTaskMessage(rpcActionMessage, StatusCode.Error));
-                }
-                else
-                {
-                    result.Messages.Add(CreateGrpcTaskMessage(rpcActionMessage, StatusCode.Success));
-                }
-
-                numberOfProcessedMessages++;
-
+                concurrentDictionary.TryAdd(msg, StatusCode.Timeout);
             }
+
+            // wait for timeoutTask, SendGrpc, and ReceiveGrpc with cancellation token
+            Task timeoutTask = Task.Run(() => Thread.Sleep(Timeout));
+            Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, concurrentDictionary, tokenSource.Token);
+            Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, concurrentDictionary, tokenSource.Token);
+
+            Task finishedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(sendTask, receiveTask));
+
+            if (finishedTask.Id == timeoutTask.Id)
+            {
+                // timeout occur
+                executionStatus = StatusCode.Timeout;
+                tokenSource.Cancel();
+            }
+            else
+            {
+                executionStatus = await sendTask && await receiveTask ? StatusCode.Success : StatusCode.Error;
+            }
+
+            // use concurrentDictionary to write message to actionResult
+            var dictionaryEnumerator = concurrentDictionary.GetEnumerator();
+            while (dictionaryEnumerator.MoveNext())
+            {
+                var dictionaryEntry = dictionaryEnumerator.Current;
+                string message = CreateActionResultMessage(dictionaryEntry.Key, dictionaryEntry.Value);
+                actionResult.Messages.Add(message);
+            }
+
+            actionResult.Status = executionStatus;
 
             // clear all variables stored in _variableManager to get a clean state for the next action
             _variableManager.Clear();
 
-            // if timeout occurs, and not all messages in _actionData.Messages are processed, then write failure
-            result.Status = executionStatus;
-
-            return result;
+            return actionResult;
         }
 
-        private static string CreateGrpcTaskMessage(RpcActionMessage rpcActionMessage, StatusCode status)
+        private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages, 
+            ConcurrentDictionary<RpcActionMessage, StatusCode> concurrentDictionary,CancellationToken token)
+        {
+            RegisterExpressions(incomingRpcMessages);
+
+            bool allMessagesValidated = true;
+
+            IList<RpcActionMessage> unprocessedRpcMessages = incomingRpcMessages.ToList();
+
+            while (!token.IsCancellationRequested && unprocessedRpcMessages.Any())
+            {
+                StreamingMessage streamingMessage = await _inboundChannel.Reader.ReadAsync(token);
+
+                // filter through the unprocessedRpcMessages to see if there is any match
+                var matchedRpcMesseages = unprocessedRpcMessages
+                    .Where(msg => string.Equals(streamingMessage.ContentCase.ToString(), msg.MessageType, StringComparison.OrdinalIgnoreCase))
+                    .Where(msg => msg.DependenciesResolved() && _matchService.MatchAll(msg.MatchingCriteria, streamingMessage));
+
+                if (matchedRpcMesseages.Any())
+                {
+                    RpcActionMessage rpcActionMessage = matchedRpcMesseages.First();
+                    unprocessedRpcMessages.Remove(rpcActionMessage);
+
+                    // validate streamingMessage against the validators in rpcActionMessage
+                    bool validated = true;
+                    foreach (var validationContext in rpcActionMessage.Validators)
+                    {
+                        string validatorType = validationContext.Type.ToLower();
+                        IValidator validator = _validatorFactory.Create(validatorType);
+                        bool validationResult = validator.Validate(validationContext, streamingMessage);
+
+                        validated = validated && validationResult;
+                    }
+
+                    // update the status of the rpcActionMesage
+                    StatusCode status = validated ? StatusCode.Success : StatusCode.Error;
+                    if (!concurrentDictionary.TryUpdate(rpcActionMessage, status, StatusCode.Timeout))
+                    {
+                        throw new InvalidOperationException($"Unable to update the status of a {typeof(RpcActionMessage)} in a {typeof(ConcurrentDictionary<RpcActionMessage, StatusCode>)}");
+                    }
+
+                    allMessagesValidated = allMessagesValidated && validated;
+
+                    // register grpcMsg as a variable in _variableManager
+                    _variableManager.AddVariable(rpcActionMessage.Id, streamingMessage);
+
+                }
+            }
+
+            return allMessagesValidated;
+        }
+
+        private void RegisterExpressions(IEnumerable<RpcActionMessage> incomingRpcMessages)
+        {
+            foreach (RpcActionMessage rpcActionMessage in incomingRpcMessages)
+            {
+                RegisterExpressionsInRpcActionMessage(rpcActionMessage);
+            }
+        }
+
+        private async Task<bool> SendToGrpcAsync(IEnumerable<RpcActionMessage> outgoingRpcMessages, 
+            ConcurrentDictionary<RpcActionMessage, StatusCode> concurrentDictionary, CancellationToken token)
+        {
+            bool allSent = true;
+
+            var enumerator = outgoingRpcMessages.GetEnumerator();
+            while (!token.IsCancellationRequested && enumerator.MoveNext())
+            {
+                var rpcActionMessage = enumerator.Current;
+                var taskResult = await SendToGrpcAsync(rpcActionMessage, token);
+
+                // update the status of rpcActionMessage in concurrentDictionary
+                StatusCode status = taskResult ? StatusCode.Success : StatusCode.Error;
+                if (!concurrentDictionary.TryUpdate(rpcActionMessage, status, StatusCode.Timeout))
+                {
+                    throw new InvalidOperationException($"Unable to update the status of a {typeof(RpcActionMessage)} in a {typeof(ConcurrentDictionary<RpcActionMessage, StatusCode>)}");
+                }
+
+                allSent = allSent && taskResult;
+            }
+
+            return allSent;
+        }
+
+        private static string CreateActionResultMessage(RpcActionMessage rpcActionMessage, StatusCode status)
         {
             string taskAction = string.Equals(rpcActionMessage.Direction, RpcActionMessageTypes.Incoming.ToString(), StringComparison.OrdinalIgnoreCase) ? "Validate" : "Send";
             string taskResultMessage = $"{taskAction} {rpcActionMessage.MessageType} message ... {status}";
