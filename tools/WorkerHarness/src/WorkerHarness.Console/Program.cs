@@ -93,7 +93,6 @@ namespace WorkerHarness
                 .AddSingleton<IGrpcMessageProvider, GrpcMessageProvider>()
                 .AddSingleton<IValidatorFactory, ValidatorFactory>()
                 .AddSingleton<IVariableObservable, VariableManager>()
-                .AddSingleton<IActionWriter, ConsoleWriter>()
                 .AddSingleton<IMatcher, StringMatcher>()
                 .AddSingleton<IActionProvider, RpcActionProvider>()
                 .AddSingleton<IActionProvider, DelayActionProvider>()
