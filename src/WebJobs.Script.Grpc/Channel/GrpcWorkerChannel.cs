@@ -909,7 +909,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 WorkerTerminate = workerTerminate
             });
 
-            WorkerProcess.StopProcessGracefully();
+            WorkerProcess.WaitForProcessTermination();
         }
 
         public async Task DrainInvocationsAsync()
