@@ -271,9 +271,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Management.LinuxSpecialization
 
             fileSystem.File.Copy(packageFilePath, filePath, true);
 
-            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was copied from {packageFilePath} to {filePath}.");
+            _logger.LogInformation($"{nameof(CopyPackageFile)} was successful. {packageFileName} was not copied. {packageFilePath} was returned.");
 
-            return filePath;
+            return packageFilePath;
         }
 
         private void CopyPackageFileFailed(string message)
