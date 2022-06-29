@@ -43,8 +43,6 @@ namespace WorkerHarness.Core
                 valid = false;
             }
 
-            Task.Delay(500).Wait();
-
             return valid;
         }
     }
