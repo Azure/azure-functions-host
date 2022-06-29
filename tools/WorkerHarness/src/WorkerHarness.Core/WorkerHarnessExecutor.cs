@@ -82,8 +82,6 @@ namespace WorkerHarness.Core
                 _logger.LogInformation("{Message}", message);
             }
 
-            // sleep for 1000 miliseconds to push all logs to the console
-            Thread.Sleep(1000);
         }
     }
 }
