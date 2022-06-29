@@ -8,7 +8,7 @@ namespace WorkerHarness.Core
     /// such as the language type, the executable path for that worker,
     /// the worker binary file location and the worker directory
     /// </summary>
-    public class WorkerDescription
+    public class HarnessOptions
     {
         public string? DefaultExecutablePath { get; set; }
 

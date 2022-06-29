@@ -11,18 +11,15 @@ namespace WorkerHarness.Core
         /// Build an instance of a worker process
         /// </summary>
         /// <param name="workerDescription">a WorkerDescription object that contains path info about a language worker</param>
-        /// <param name="workerId">a language worker Id</param>
-        /// <param name="requestId">a request Id</param>
-        /// <returns></returns>
-        /// <exception cref="MissingMemberException"></exception>
-        public Process Build(WorkerDescription workerDescription)
+        /// <returns cref="Process"></returns>
+        public Process Build(HarnessOptions workerOptions)
         {
             string workerId = Guid.NewGuid().ToString();
             string requestId = Guid.NewGuid().ToString();
-            string workerExecutable = workerDescription.WorkerExecutable ?? throw new MissingMemberException("The default worker path is null");
+            string workerExecutable = workerOptions.WorkerExecutable!;
             string arguments = $"{workerExecutable} --host {WorkerProcessConstants.DefaultHostUri} --port {WorkerProcessConstants.DefaultPort} --workerId {workerId} --requestId {requestId} --grpcMaxMessageLength {WorkerProcessConstants.GrpcMaxMessageLength}";
         
-            string languageExecutable = workerDescription.LanguageExecutable ?? throw new MissingMemberException("Missing the language executable path");
+            string languageExecutable = workerOptions.LanguageExecutable!;
 
             var startInfo = new ProcessStartInfo(languageExecutable)
             {
@@ -31,7 +28,7 @@ namespace WorkerHarness.Core
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 ErrorDialog = false,
-                WorkingDirectory = workerDescription.WorkerDirectory,
+                WorkingDirectory = workerOptions.WorkerDirectory,
                 Arguments = arguments
             };
 

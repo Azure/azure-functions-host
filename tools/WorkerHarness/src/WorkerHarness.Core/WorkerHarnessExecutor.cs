@@ -10,12 +10,12 @@ namespace WorkerHarness.Core
 {
     public class DefaultWorkerHarnessExecutor : IWorkerHarnessExecutor
     {
-        private readonly WorkerDescription _workerDescription;
+        private readonly HarnessOptions _workerDescription;
         private readonly IWorkerProcessBuilder _workerProcessBuilder;
         private readonly IScenarioParser _scenarioParser;
         private readonly ILogger<DefaultWorkerHarnessExecutor> _logger;
 
-        public DefaultWorkerHarnessExecutor(IOptions<WorkerDescription> workerDescription,
+        public DefaultWorkerHarnessExecutor(IOptions<HarnessOptions> workerDescription,
             IWorkerProcessBuilder workerProcessBuilder,
             IScenarioParser scenarioParser,
             ILogger<DefaultWorkerHarnessExecutor> logger)

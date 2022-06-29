@@ -23,7 +23,7 @@ namespace WorkerHarness
             ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
             // validate user input
-            IOptions<WorkerDescription> harnessOptions = serviceProvider.GetRequiredService<IOptions<WorkerDescription>>()!;
+            IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
 
             if (!ValidUserArguments(harnessOptions.Value, logger))
             {
@@ -48,7 +48,7 @@ namespace WorkerHarness
 
         }
 
-        private static bool ValidUserArguments(WorkerDescription harnessOptions, ILogger logger)
+        private static bool ValidUserArguments(HarnessOptions harnessOptions, ILogger logger)
         {
             bool valid = true;
 
@@ -110,7 +110,7 @@ namespace WorkerHarness
                     return new GrpcServiceChannel(Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions),
                         Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions));
                 })
-                .Configure<WorkerDescription>(config)
+                .Configure<HarnessOptions>(config)
                 .AddLogging(c => { c.AddConsole(); })
                 .BuildServiceProvider();
 

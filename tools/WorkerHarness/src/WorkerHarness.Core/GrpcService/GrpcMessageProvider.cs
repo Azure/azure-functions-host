@@ -13,13 +13,13 @@ namespace WorkerHarness.Core
 {
     public class GrpcMessageProvider : IGrpcMessageProvider
     {
-        private readonly WorkerDescription _workerDescription;
+        private readonly HarnessOptions _workerOptions;
 
         private readonly JsonSerializerOptions _serializerOptions;
 
-        public GrpcMessageProvider(IOptions<WorkerDescription> workerDescription)
+        public GrpcMessageProvider(IOptions<HarnessOptions> workerOptions)
         {
-            _workerDescription = workerDescription.Value;
+            _workerOptions = workerOptions.Value;
 
             _serializerOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
             _serializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -168,13 +168,13 @@ namespace WorkerHarness.Core
             // if the user does not specify the FunctionAppDirectory, use the WorkerDirectory value in the _workerDescription object
             if (string.IsNullOrEmpty(workerInitRequest.FunctionAppDirectory))
             {
-                workerInitRequest.FunctionAppDirectory = _workerDescription.WorkerDirectory;
+                workerInitRequest.FunctionAppDirectory = _workerOptions.WorkerDirectory;
             }
 
             // if the user does not specify the WorkerDirectory, use the WorkerDirectory value in the _workerDescription object
             if (string.IsNullOrEmpty(workerInitRequest.WorkerDirectory))
             {
-                workerInitRequest.WorkerDirectory = _workerDescription.WorkerDirectory;
+                workerInitRequest.WorkerDirectory = _workerOptions.WorkerDirectory;
             }
 
             // if the user does not specify the HostVersion, use the HostVersion constant
