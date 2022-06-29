@@ -1,59 +1,27 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.CommandLine;
 using WorkerHarness.Core;
 using Channels = System.Threading.Channels;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace WorkerHarness
 {
     public class Program
     {
-        public static async Task<int> Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            var executableFileOption = new Option<string>(
-                name: "--workerExecutable",
-                description: "The absolute path of a worker executable")
-            { IsRequired = true };
-
-            var workerDirectoryOption = new Option<string>(
-                name: "--workerDirectory",
-                description: "The absolute path of a worker directory")
-            { IsRequired = true }; ;
-
-            var languageOption = new Option<string>(
-                name: "--language",
-                description: "The worker language",
-                getDefaultValue: () => string.Empty);
-
-            var scenarioOption = new Option<string>(
-                name: "--scenario",
-                description: "The absolute path of a scenario file")
-            { IsRequired = true }; ;
-
-            var rootCommand = new RootCommand("Execute a scenario file to test a language worker");
-
-            rootCommand.AddOption(scenarioOption);
-            rootCommand.AddOption(executableFileOption);
-            rootCommand.AddOption(workerDirectoryOption);
-            rootCommand.AddOption(languageOption);
-
-            rootCommand.SetHandler(async (scenarioFile, executableFile, workerDirectory, language) =>
-            {
-                await ExecuteWorkerHarness(scenarioFile, executableFile, workerDirectory, language);
-            }, scenarioOption, executableFileOption, workerDirectoryOption, languageOption);
-
-            return await rootCommand.InvokeAsync(args);
-
+            await ExecuteWorkerHarness(args);
         }
 
-        private static async Task ExecuteWorkerHarness(string scenarioFile, string workerExecutable, string workerDirectory, string language)
+        private static async Task ExecuteWorkerHarness(string[] args)
         {
-            var serviceProvider = SetupDependencyInjection(workerExecutable, workerDirectory, language);
+            var serviceProvider = SetupDependencyInjection(args);
+
             var harnessExecutor = serviceProvider.GetService<IWorkerHarnessExecutor>();
 
             var channel = serviceProvider.GetService<GrpcServiceChannel>()!;
@@ -68,12 +36,17 @@ namespace WorkerHarness
             };
             server.Start();
 
-            await harnessExecutor!.Start(scenarioFile);
+            // TODO: remove the scenarioFile parameter the start method
+            await harnessExecutor!.Start(string.Empty);
         }
 
-        private static IServiceProvider SetupDependencyInjection(string workerExecutable, string workerDirectory, string language)
+        private static IServiceProvider SetupDependencyInjection(string[] args)
         {
-            var serviceProvider = new ServiceCollection()
+            IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
+                .AddCommandLine(args);
+            IConfiguration config = configurationBuilder.Build();
+
+            IServiceProvider serviceProvider = new ServiceCollection()
                 .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IGrpcMessageProvider, GrpcMessageProvider>()
@@ -96,13 +69,7 @@ namespace WorkerHarness
                     return new GrpcServiceChannel(Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions),
                         Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions));
                 })
-                .Configure<WorkerDescription>(workerDescription =>
-                {
-                    workerDescription.DefaultExecutablePath = Path.Combine(WorkerConstants.ProgramFilesFolder, WorkerConstants.DotnetFolder, WorkerConstants.DotnetExecutableFileName);
-                    workerDescription.DefaultWorkerPath = workerExecutable;
-                    workerDescription.WorkerDirectory = workerDirectory;
-                    workerDescription.Language = language;
-                })
+                .Configure<WorkerDescription>(config)
                 .AddLogging(c => { c.AddConsole(); })
                 .BuildServiceProvider();
 

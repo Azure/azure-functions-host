@@ -31,6 +31,8 @@ namespace WorkerHarness.Core
 
             Process myProcess = _workerProcessBuilder.Build(_workerDescription);
 
+            scenarioFile = _workerDescription.ScenarioFile ?? throw new ArgumentException("missing the scenario file");
+
             Scenario scenario = _scenarioParser.Parse(scenarioFile);
 
             try
