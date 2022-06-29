@@ -37,7 +37,7 @@ namespace WorkerHarness
             server.Start();
 
             // TODO: remove the scenarioFile parameter the start method
-            await harnessExecutor!.Start(string.Empty);
+            await harnessExecutor!.Start();
         }
 
         private static IServiceProvider SetupDependencyInjection(string[] args)
@@ -59,7 +59,7 @@ namespace WorkerHarness
                 .AddSingleton<IWorkerHarnessExecutor, DefaultWorkerHarnessExecutor>()
                 .AddSingleton<GrpcServiceChannel>(s =>
                 {
-                    Channels.UnboundedChannelOptions outputOptions = new Channels.UnboundedChannelOptions
+                    Channels.UnboundedChannelOptions outputOptions = new()
                     {
                         SingleWriter = false,
                         SingleReader = true,
