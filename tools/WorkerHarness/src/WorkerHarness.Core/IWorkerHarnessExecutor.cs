@@ -9,10 +9,9 @@ namespace WorkerHarness.Core
     public interface IWorkerHarnessExecutor
     {
         /// <summary>
-        /// Given a path to a scenario file, create a scenario object and execute it
+        /// create a scenario object and execute actions in the scenario object
         /// </summary>
-        /// <param name="scenarioFile"></param>
         /// <returns></returns>
-        Task<bool> Start(string scenarioFile);
+        Task<bool> Start();
     }
 }
