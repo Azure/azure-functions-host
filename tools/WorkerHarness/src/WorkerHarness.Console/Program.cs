@@ -8,24 +8,32 @@ using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace WorkerHarness
 {
     public class Program
     {
-        public static async Task Main(string[] args)
-        {
-            await ExecuteWorkerHarness(args);
-        }
+        private static readonly string UserOptionErrorMessage = "Invalid or missing --{0} argument";
 
-        private static async Task ExecuteWorkerHarness(string[] args)
+        public static async Task Main(string[] args)
         {
             var serviceProvider = SetupDependencyInjection(args);
 
-            var harnessExecutor = serviceProvider.GetService<IWorkerHarnessExecutor>();
+            ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
-            var channel = serviceProvider.GetService<GrpcServiceChannel>()!;
+            // validate user input
+            IOptions<WorkerDescription> harnessOptions = serviceProvider.GetRequiredService<IOptions<WorkerDescription>>()!;
 
+            if (!ValidUserArguments(harnessOptions.Value, logger))
+            {
+                return;
+            }
+
+            // run WorkerHarness
+            var harnessExecutor = serviceProvider.GetRequiredService<IWorkerHarnessExecutor>();
+
+            var channel = serviceProvider.GetRequiredService<GrpcServiceChannel>()!;
 
             GrpcService grpcService = new(channel.InboundChannel, channel.OutboundChannel);
 
@@ -36,8 +44,41 @@ namespace WorkerHarness
             };
             server.Start();
 
-            // TODO: remove the scenarioFile parameter the start method
-            await harnessExecutor!.Start();
+            await harnessExecutor.Start();
+
+        }
+
+        private static bool ValidUserArguments(WorkerDescription harnessOptions, ILogger logger)
+        {
+            bool valid = true;
+
+            if (string.IsNullOrEmpty(harnessOptions.ScenarioFile) || !File.Exists(harnessOptions.ScenarioFile))
+            {
+                logger.LogError(UserOptionErrorMessage, "scenarioFile");
+                valid = false;
+            }
+
+            if (string.IsNullOrEmpty(harnessOptions.WorkerExecutable) || !File.Exists(harnessOptions.WorkerExecutable))
+            {
+                logger.LogError(UserOptionErrorMessage, "workerExecutable");
+                valid = false;
+            }
+
+            if (string.IsNullOrEmpty(harnessOptions.LanguageExecutable) || !File.Exists(harnessOptions.LanguageExecutable))
+            {
+                logger.LogError(UserOptionErrorMessage, "languageExecutable");
+                valid = false;
+            }
+
+            if (string.IsNullOrEmpty(harnessOptions.WorkerDirectory) || !Directory.Exists(harnessOptions.WorkerDirectory))
+            {
+                logger.LogError(UserOptionErrorMessage, "workerDirectory");
+                valid = false;
+            }
+
+            Task.Delay(500).Wait();
+
+            return valid;
         }
 
         private static IServiceProvider SetupDependencyInjection(string[] args)
