@@ -7,6 +7,6 @@ namespace WorkerHarness.Core
 {
     public interface IWorkerProcessBuilder
     {
-        Process Build(WorkerDescription workerDescription);
+        Process Build(HarnessOptions workerOptions);
     }
 }
