@@ -14,19 +14,18 @@ namespace WorkerHarness
 {
     public class Program
     {
-        private static readonly string UserOptionErrorMessage = "Invalid or missing --{0} argument";
-
         public static async Task Main(string[] args)
         {
-            var serviceProvider = SetupDependencyInjection(args);
-
-            ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+            ServiceProvider serviceProvider = SetupDependencyInjection(args);
 
             // validate user input
             IOptions<HarnessOptions> harnessOptions = serviceProvider.GetRequiredService<IOptions<HarnessOptions>>()!;
 
-            if (!ValidUserArguments(harnessOptions.Value, logger))
+            IHarnessOptionsValidate harnessValidate = serviceProvider.GetRequiredService<IHarnessOptionsValidate>();
+
+            if (!harnessValidate.Validate(harnessOptions.Value)) 
             {
+                serviceProvider.Dispose();
                 return;
             }
 
@@ -46,48 +45,18 @@ namespace WorkerHarness
 
             await harnessExecutor.Start();
 
+            serviceProvider.Dispose();
+
+            return;
         }
 
-        private static bool ValidUserArguments(HarnessOptions harnessOptions, ILogger logger)
-        {
-            bool valid = true;
-
-            if (string.IsNullOrEmpty(harnessOptions.ScenarioFile) || !File.Exists(harnessOptions.ScenarioFile))
-            {
-                logger.LogError(UserOptionErrorMessage, "scenarioFile");
-                valid = false;
-            }
-
-            if (string.IsNullOrEmpty(harnessOptions.WorkerExecutable) || !File.Exists(harnessOptions.WorkerExecutable))
-            {
-                logger.LogError(UserOptionErrorMessage, "workerExecutable");
-                valid = false;
-            }
-
-            if (string.IsNullOrEmpty(harnessOptions.LanguageExecutable) || !File.Exists(harnessOptions.LanguageExecutable))
-            {
-                logger.LogError(UserOptionErrorMessage, "languageExecutable");
-                valid = false;
-            }
-
-            if (string.IsNullOrEmpty(harnessOptions.WorkerDirectory) || !Directory.Exists(harnessOptions.WorkerDirectory))
-            {
-                logger.LogError(UserOptionErrorMessage, "workerDirectory");
-                valid = false;
-            }
-
-            Task.Delay(500).Wait();
-
-            return valid;
-        }
-
-        private static IServiceProvider SetupDependencyInjection(string[] args)
+        private static ServiceProvider SetupDependencyInjection(string[] args)
         {
             IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
                 .AddCommandLine(args);
             IConfiguration config = configurationBuilder.Build();
 
-            IServiceProvider serviceProvider = new ServiceCollection()
+            ServiceProvider serviceProvider = new ServiceCollection()
                 .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IGrpcMessageProvider, GrpcMessageProvider>()
@@ -109,6 +78,7 @@ namespace WorkerHarness
                     return new GrpcServiceChannel(Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions),
                         Channels.Channel.CreateUnbounded<StreamingMessage>(outputOptions));
                 })
+                .AddSingleton<IHarnessOptionsValidate, HarnessOptionsValidate>()
                 .Configure<HarnessOptions>(config)
                 .AddLogging(c => { c.AddConsole(); })
                 .BuildServiceProvider();

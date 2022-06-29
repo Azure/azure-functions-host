@@ -4,16 +4,10 @@
 namespace WorkerHarness.Core
 {
     /// <summary>
-    /// WorkerDescription encapsulates information about a language worker
-    /// such as the language type, the executable path for that worker,
-    /// the worker binary file location and the worker directory
+    /// Encapsulates required user arguments 
     /// </summary>
     public class HarnessOptions
     {
-        public string? DefaultExecutablePath { get; set; }
-
-        public string? DefaultWorkerPath { get; set; }
-
         /// <summary>
         /// Full path of the directory that contains the worker executable file
         /// </summary>
