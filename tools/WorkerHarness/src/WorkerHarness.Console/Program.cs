@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Extensions.Options;
+using System.CommandLine;
 using WorkerHarness.Core;
 using Channels = System.Threading.Channels;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
@@ -13,11 +13,47 @@ namespace WorkerHarness
 {
     public class Program
     {
-        public static async Task Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
-            var scenarioFile = @"C:\Dev\azure-functions-host\tools\WorkerHarness\src\WorkerHarness.Core\a.scenario";
+            var executableFileOption = new Option<string>(
+                name: "--workerExecutable",
+                description: "The absolute path of a worker executable")
+            { IsRequired = true };
 
-            var serviceProvider = SetupDI();
+            var workerDirectoryOption = new Option<string>(
+                name: "--workerDirectory",
+                description: "The absolute path of a worker directory")
+            { IsRequired = true }; ;
+
+            var languageOption = new Option<string>(
+                name: "--language",
+                description: "The worker language",
+                getDefaultValue: () => string.Empty);
+
+            var scenarioOption = new Option<string>(
+                name: "--scenario",
+                description: "The absolute path of a scenario file")
+            { IsRequired = true }; ;
+
+            var rootCommand = new RootCommand("Execute a scenario file to test a language worker");
+
+            rootCommand.AddOption(scenarioOption);
+            rootCommand.AddOption(executableFileOption);
+            rootCommand.AddOption(workerDirectoryOption);
+            rootCommand.AddOption(languageOption);
+
+            rootCommand.SetHandler(async (scenarioFile, executableFile, workerDirectory, language) =>
+            {
+                await ExecuteWorkerHarness(scenarioFile, executableFile, workerDirectory, language);
+            }, scenarioOption, executableFileOption, workerDirectoryOption, languageOption);
+
+            return await rootCommand.InvokeAsync(args);
+
+        }
+
+        private static async Task ExecuteWorkerHarness(string scenarioFile, string workerExecutable, string workerDirectory, string language)
+        {
+            var serviceProvider = SetupDependencyInjection(workerExecutable, workerDirectory, language);
             var harnessExecutor = serviceProvider.GetService<IWorkerHarnessExecutor>();
 
             var channel = serviceProvider.GetService<GrpcServiceChannel>()!;
@@ -35,15 +71,8 @@ namespace WorkerHarness
             await harnessExecutor!.Start(scenarioFile);
         }
 
-
-        private static IServiceProvider SetupDI()
+        private static IServiceProvider SetupDependencyInjection(string workerExecutable, string workerDirectory, string language)
         {
-            //setup our DI
-
-            var workerDirectory = "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0";
-            var workerFile = @"C:\temp\FunctionApp1\FunctionApp1\bin\Debug\net6.0\FunctionApp1.dll";
-            var language = "dotnet-isolated";
-
             var serviceProvider = new ServiceCollection()
                 .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
@@ -70,7 +99,7 @@ namespace WorkerHarness
                 .Configure<WorkerDescription>(workerDescription =>
                 {
                     workerDescription.DefaultExecutablePath = Path.Combine(WorkerConstants.ProgramFilesFolder, WorkerConstants.DotnetFolder, WorkerConstants.DotnetExecutableFileName);
-                    workerDescription.DefaultWorkerPath = workerFile;
+                    workerDescription.DefaultWorkerPath = workerExecutable;
                     workerDescription.WorkerDirectory = workerDirectory;
                     workerDescription.Language = language;
                 })
