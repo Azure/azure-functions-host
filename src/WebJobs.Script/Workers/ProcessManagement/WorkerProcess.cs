@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 if (Process != null)
                 {
-                    if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds))
+                    if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
                     {
                         _workerProcessLogger.LogInformation($"Worker process has not exited despite waiting for {WorkerConstants.WorkerTerminateGracePeriodInSeconds} ms");
                     }
