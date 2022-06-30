@@ -207,28 +207,23 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 
         public void WaitForProcessTermination()
         {
-            try
+            if (Process != null)
             {
-                if (Process != null)
+                if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
                 {
-                    if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
-                    {
-                        _workerProcessLogger.LogInformation($"Worker process has not exited despite waiting for {WorkerConstants.WorkerTerminateGracePeriodInSeconds} ms");
-                    }
+                    _workerProcessLogger.LogInformation($"Host waiting for {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds grace period for graceful termination of worker process.");
                 }
-            }
-            catch (Exception exc)
-            {
-                _workerProcessLogger?.LogDebug(exc, "Exception in worker termination.");
-                //ignore
             }
         }
 
         public void Dispose()
         {
+            Disposing = true;
+            // best effort process disposal
             try
             {
                 _eventSubscription?.Dispose();
+                _processRegistry.Close();
 
                 if (Process != null)
                 {
