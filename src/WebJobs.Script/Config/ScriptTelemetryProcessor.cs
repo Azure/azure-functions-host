@@ -23,7 +23,6 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         {
             // Only process if exception is thrown by user code (if IsUserException is true).
             if (item is ExceptionTelemetry exceptionTelemetry
-               // && EnableUserExceptionFeatureFlag(exceptionTelemetry?.Exception)
                 && exceptionTelemetry?.Exception?.InnerException is RpcException rpcException
                 && (rpcException?.IsUserException).GetValueOrDefault())
             {
