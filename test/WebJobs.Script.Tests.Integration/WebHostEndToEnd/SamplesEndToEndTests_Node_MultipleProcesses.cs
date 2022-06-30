@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(15));
 
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
 
@@ -91,7 +92,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 timeoutTasks.Add(_fixture.Host.HttpClient.SendAsync(request));
             }
             var results = await Task.WhenAll(timeoutTasks);
-            foreach(var timeoutResult in results)
+            await Task.Delay(TimeSpan.FromSeconds(15));
+            foreach (var timeoutResult in results)
             {
                 Assert.Equal(HttpStatusCode.InternalServerError, timeoutResult.StatusCode);  // Confirm response code after timeout (10 seconds)
             }

@@ -45,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             Assert.True(javaProcessesBefore.Count() > 0);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(15));
             await HttpTrigger_Java_Get_Succeeds();
             IEnumerable<int> javaProcessesAfter = Process.GetProcessesByName("java").Select(p => p.Id);
             Assert.True(javaProcessesAfter.Count() > 0);
