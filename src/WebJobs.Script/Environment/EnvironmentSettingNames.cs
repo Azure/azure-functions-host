@@ -56,6 +56,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string AzureFilesContentShare = "WEBSITE_CONTENTSHARE";
         public const string AzureWebsiteRuntimeSiteName = "WEBSITE_DEPLOYMENT_ID";
         public const string FunctionsRuntimeScaleMonitoringEnabled = "FUNCTIONS_RUNTIME_SCALE_MONITORING_ENABLED";
+        public const string FunctionsAdminIsolationEnabled = "FUNCTIONS_ADMIN_ISOLATION_ENABLED";
         public const string AzureWebsiteStartupContextCache = "WEBSITE_FUNCTIONS_STARTUPCONTEXT_CACHE";
         public const string AzureWebJobsFeatureFlags = "AzureWebJobsFeatureFlags";
         public const string CloudName = "WEBSITE_CLOUD_NAME";

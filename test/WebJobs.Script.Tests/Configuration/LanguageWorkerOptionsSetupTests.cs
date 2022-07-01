@@ -24,15 +24,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             var configurationBuilder = new ConfigurationBuilder()
                 .Add(new ScriptEnvironmentVariablesConfigurationSource());
 
-            var profileConditionProvider = new WorkerProfileConditionProvider(new TestLogger<WorkerProfileConditionProvider>(), testEnvironment);
-            var profileConditionManager = new WorkerProfileManager(new TestLogger<WorkerProfileManager>(), new[] { profileConditionProvider });
-
             var configuration = configurationBuilder.Build();
             if (!string.IsNullOrEmpty(workerRuntime))
             {
                 testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionWorkerRuntimeSettingName, workerRuntime);
             }
-            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, profileConditionManager, new TestMetricsLogger());
+            LanguageWorkerOptionsSetup setup = new LanguageWorkerOptionsSetup(configuration, NullLoggerFactory.Instance, testEnvironment, new TestMetricsLogger());
             LanguageWorkerOptions options = new LanguageWorkerOptions();
             setup.Configure(options);
             if (string.IsNullOrEmpty(workerRuntime))
