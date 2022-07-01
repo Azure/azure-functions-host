@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Microsoft.Azure.WebJobs.Script.Description;
@@ -13,6 +14,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     public interface IRpcWorkerChannel : IWorkerChannel
     {
         IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers { get; }
+
+        Process Process { get; }
 
         bool IsChannelReadyForInvocations();
 

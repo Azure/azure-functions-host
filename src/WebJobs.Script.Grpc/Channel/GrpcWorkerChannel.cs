@@ -131,6 +131,14 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _state = RpcWorkerChannelState.Default;
         }
 
+        public Process Process
+        {
+            get
+            {
+                return (_rpcWorkerProcess as RpcWorkerProcess).Process;
+            }
+        }
+
         public string Id => _workerId;
 
         public IDictionary<string, BufferBlock<ScriptInvocationContext>> FunctionInputBuffers => _functionInputBuffers;

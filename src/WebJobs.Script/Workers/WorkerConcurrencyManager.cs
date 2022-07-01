@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
@@ -28,12 +30,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private readonly IApplicationLifetime _applicationLifetime;
 
         private IOptions<WorkerConcurrencyOptions> _workerConcurrencyOptions;
-        private IFunctionInvocationDispatcher _functionInvocationDispatcher;
+        private RpcFunctionInvocationDispatcher _functionInvocationDispatcher;
         private System.Timers.Timer _timer;
         private System.Timers.Timer _activationTimer;
         private ValueStopwatch _addWorkerStopwatch = ValueStopwatch.StartNew();
         private ValueStopwatch _logStateStopWatch = ValueStopwatch.StartNew();
         private TimeSpan _activationTimerInterval = TimeSpan.FromMinutes(5);
+        private IHostProcessMonitor _hostProcessMonitor;
         private bool _disposed = false;
 
         public WorkerConcurrencyManager(
@@ -42,6 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             IOptions<WorkerConcurrencyOptions> workerConcurrencyOptions,
             IFunctionsHostingConfiguration functionsHostingConfigurations,
             IApplicationLifetime applicationLifetime,
+            IHostProcessMonitor hostProcessMonitor,
             ILoggerFactory loggerFactory)
         {
             _functionInvocationDispatcherFactory = functionInvocationDispatcherFactory ?? throw new ArgumentNullException(nameof(functionInvocationDispatcherFactory));
@@ -49,6 +53,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _workerConcurrencyOptions = workerConcurrencyOptions;
             _functionsHostingConfigurations = functionsHostingConfigurations;
             _applicationLifetime = applicationLifetime;
+            _hostProcessMonitor = hostProcessMonitor;
             _logger = loggerFactory?.CreateLogger(LogCategories.Concurrency);
         }
 
@@ -70,12 +75,21 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 || workerRuntime == RpcWorkerConstants.PowerShellLanguageWorkerName
                 || workerRuntime == RpcWorkerConstants.PythonLanguageWorkerName)
                 {
-                    _functionInvocationDispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
+                    IFunctionInvocationDispatcher dispatcher = _functionInvocationDispatcherFactory.GetFunctionDispatcher();
 
-                    if (_functionInvocationDispatcher is HttpFunctionInvocationDispatcher)
+                    if (dispatcher is HttpFunctionInvocationDispatcher)
                     {
                         _logger.LogDebug($"Http dynamic worker concurrency is not supported.");
                         return Task.CompletedTask;
+                    }
+                    else
+                    {
+                        _functionInvocationDispatcher = dispatcher as RpcFunctionInvocationDispatcher;
+                        if (dispatcher == null)
+                        {
+                            _logger.LogDebug($"Unexpected function invocation dispatcher");
+                            return Task.CompletedTask;
+                        }
                     }
                     if (!string.IsNullOrEmpty(_environment.GetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerProcessCountSettingName)))
                     {
@@ -123,7 +137,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 var workerStatuses = await _functionInvocationDispatcher.GetWorkerStatusesAsync();
 
-                if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.GetElapsedTime()))
+                if (NewWorkerIsRequired(workerStatuses, _addWorkerStopwatch.GetElapsedTime())
+                    && IsEnoughMemory(Process.GetCurrentProcess().PrivateMemorySize64, (await _functionInvocationDispatcher.GetAllWorkerChannelsAsync()).Select(x => x.Process.PrivateMemorySize64)))
                 {
                     await _functionInvocationDispatcher.StartWorkerChannel();
                     _addWorkerStopwatch = ValueStopwatch.StartNew();
@@ -137,7 +152,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             _timer.Start();
         }
 
-        private void OnActivationTimer(object sender, System.Timers.ElapsedEventArgs e)
+        private async void OnActivationTimer(object sender, System.Timers.ElapsedEventArgs e)
         {
             if (_disposed)
             {
@@ -157,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     // if the feature was activated by FunctionsHostingConfiguration and then disabled - shutdown the host
                     _logger.LogDebug($"Dynamic worker concurrency monitoring is disabled after activation. Shutting down Functions Host.");
-                    _functionInvocationDispatcher.ShutdownAsync();
+                    await _functionInvocationDispatcher.ShutdownAsync();
                     _applicationLifetime.StopApplication();
                     return;
                 }
@@ -282,6 +297,24 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
         public void Dispose()
         {
             Dispose(true);
+        }
+
+        internal bool IsEnoughMemory(long hostProcessSize, IEnumerable<long> workerChanellSizes)
+        {
+            if (_hostProcessMonitor.TotalAvailableMemoryBytes <= 0)
+            {
+                return true;
+            }
+
+            // Checking memory before adding a new worker
+            long maxWorkerSize = workerChanellSizes.Max();
+            long currentMemoryConsumption = workerChanellSizes.Sum() + hostProcessSize;
+            if (currentMemoryConsumption + maxWorkerSize > _hostProcessMonitor.TotalAvailableMemoryBytes * 0.8)
+            {
+                _logger.LogError($"Starting new language worker canceled: TotalMemory={_hostProcessMonitor.TotalAvailableMemoryBytes}, MaxWorkerSize={maxWorkerSize}, currentMemoryConsumption={currentMemoryConsumption}");
+                return false;
+            }
+            return true;
         }
 
         internal class WorkerStatusDetails
