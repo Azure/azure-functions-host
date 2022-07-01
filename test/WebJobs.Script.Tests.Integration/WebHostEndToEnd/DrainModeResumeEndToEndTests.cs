@@ -56,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             drainStatus = JsonConvert.DeserializeObject<DrainModeStatus>(responseString);
 
             Assert.Equal(DrainModeState.Disabled, drainStatus.State);
-            await Task.Delay(TimeSpan.FromSeconds(15));
 
             // Validate HttpTrigger function is still working
             response = await SamplesTestHelpers.InvokeHttpTrigger(this, "HttpTrigger");

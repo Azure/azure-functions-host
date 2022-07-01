@@ -306,7 +306,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesBefore = Process.GetProcessesByName("node").Select(p => p.Id);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
-            await Task.Delay(TimeSpan.FromSeconds(15));
 
             await HttpTrigger_Get_Succeeds();
             // wait for orphaned jobhost instance to be disposed
