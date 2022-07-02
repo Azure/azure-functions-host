@@ -41,9 +41,7 @@ namespace WorkerHarness.Core
 
                 foreach (IAction action in scenario.Actions)
                 {
-                    ActionResult result = await action.ExecuteAsync();
-
-                    //ShowActionResult(result);
+                    await action.ExecuteAsync();
                     
                 }
 
@@ -57,31 +55,6 @@ namespace WorkerHarness.Core
 
                 return false;
             }
-        }
-
-        private void ShowActionResult(ActionResult result)
-        {
-            switch (result.Status)
-            {
-                case StatusCode.Success:
-                    _logger.LogInformation("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
-                    break;
-                case StatusCode.Error:
-                    _logger.LogError("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
-                    break;
-                case StatusCode.Timeout:
-                    _logger.LogError("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
-                    break;
-                default:
-                    _logger.LogInformation("{ActionType} action: {ActionName} ... {Status}", result.ActionType, result.ActionName, result.Status);
-                    break;
-            }
-
-            foreach (string message in result.Messages)
-            {
-                _logger.LogInformation("{Message}", message);
-            }
-
         }
     }
 }

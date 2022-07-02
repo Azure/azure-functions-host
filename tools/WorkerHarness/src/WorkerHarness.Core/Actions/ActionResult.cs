@@ -10,10 +10,6 @@ namespace WorkerHarness.Core
     {
         Success,
         Failure,
-
-        // TODO: to delete
-        Error,
-        Timeout
     }
 
     internal enum Error
@@ -22,16 +18,6 @@ namespace WorkerHarness.Core
         Message_Not_Sent_Error,
         Message_Not_Received_Error,
         Validation_Error,
-    }
-
-    internal class ActionState
-    {
-        public StatusCode Status { get; set; }
-
-        public Error Error { get; set; }
-
-        public string Message { get; set; } = string.Empty;
-
     }
 
     internal static class ActionConstants
@@ -52,22 +38,4 @@ namespace WorkerHarness.Core
 
     }
 
-    public class ActionResult
-    {
-        // TODO: delete
-        public string ActionType { get; set; }
-        // TODO: delete
-        public string ActionName { get; set; }
-        // TODO: delete
-        public StatusCode Status { get; set; }
-        // TODO: delete
-        public IList<string> Messages { get; set; }
-        // TODO: delete
-        public ActionResult(string actionType, string actionName)
-        {
-            ActionType = actionType;
-            ActionName = actionName;
-            Messages = new List<string>();
-        }
-    }
 }

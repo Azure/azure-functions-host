@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
+using Microsoft.Extensions.Logging;
 
 namespace WorkerHarness.Core
 {
@@ -10,25 +7,24 @@ namespace WorkerHarness.Core
     {
         private readonly int _milisecondsDelay;
 
-        internal DelayAction(int milisecondsDelay)
+        private readonly ILogger<DelayAction> _logger;
+
+        internal DelayAction(int milisecondsDelay, ILogger<DelayAction> logger)
         {
             if (_milisecondsDelay < -1)
             {
                 throw new ArgumentOutOfRangeException($"Cannot except delay time less than -1");
             }
             _milisecondsDelay = milisecondsDelay;
+            _logger = logger;
         }
 
-        public async Task<ActionResult> ExecuteAsync()
+        public async Task ExecuteAsync()
         {
             await Task.Delay(_milisecondsDelay);
 
-            ActionResult result = new(ActionTypes.Delay, $"delay for {_milisecondsDelay} miliseconds") 
-            { 
-                Status = StatusCode.Success 
-            };
+            _logger.LogInformation("delay for {0} miliseconds", _milisecondsDelay);
 
-            return result;
         }
     }
 }
