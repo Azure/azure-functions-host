@@ -28,5 +28,7 @@ namespace WorkerHarness.Core
         /// </summary>
         public string? LanguageExecutable { get; set; }
 
+        public bool Verbose { get; set; } = false;
+
     }
 }
