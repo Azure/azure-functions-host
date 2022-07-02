@@ -63,9 +63,8 @@ namespace WorkerHarness.Core
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
 
-        public async Task<ActionResult> ExecuteAsync()
+        public async Task ExecuteAsync()
         {
-            ActionResult actionResult = new(Type, Name);
 
             CancellationTokenSource tokenSource = new();
 
@@ -108,7 +107,6 @@ namespace WorkerHarness.Core
 
             _variableManager.Clear();
 
-            return actionResult;
         }
 
         private void DisplayRpcActionResult(StatusCode executionStatus, ConcurrentDictionary<RpcActionMessage, Error> concurrentDictionary)
