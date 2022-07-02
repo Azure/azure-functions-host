@@ -53,7 +53,7 @@ namespace WorkerHarness
         private static ServiceProvider SetupDependencyInjection(string[] args)
         {
             IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
-                .AddCommandLine(args);
+                .AddJsonFile("harness.settings.json");
             IConfiguration config = configurationBuilder.Build();
 
             ServiceProvider serviceProvider = new ServiceCollection()
