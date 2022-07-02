@@ -1,5 +1,6 @@
 ﻿using Grpc.Core;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -24,13 +25,16 @@ namespace WorkerHarness.Core
 
         private readonly Channel<StreamingMessage> _outboundChannel;
 
+        private readonly ILoggerFactory _loggerFactory;
+
         public string Type => ActionTypes.Rpc;
 
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatcher matchService,
             IGrpcMessageProvider rpcMessageProvider,
             IVariableObservable variableManager,
-            GrpcServiceChannel channel)
+            GrpcServiceChannel channel,
+            ILoggerFactory loggerFactory)
         {
             _validatorFactory = validatorFactory;
             _matchService = matchService;
@@ -38,6 +42,7 @@ namespace WorkerHarness.Core
             _variableManager = variableManager;
             _inboundChannel = channel.InboundChannel;
             _outboundChannel = channel.OutboundChannel;
+            _loggerFactory = loggerFactory;
         }
 
         /// <summary>
@@ -52,12 +57,13 @@ namespace WorkerHarness.Core
             RpcActionData actionData = CreateRpcActionData(actionNode);
             // 2. create a DefaultAction object
             return new RpcAction(_validatorFactory,
-                                     _matchService,
-                                     _rpcMessageProvider, 
-                                     actionData,
-                                     _variableManager,
-                                     _inboundChannel,
-                                     _outboundChannel);
+                                _matchService,
+                                _rpcMessageProvider, 
+                                actionData,
+                                _variableManager,
+                                _inboundChannel,
+                                _outboundChannel,
+                                _loggerFactory.CreateLogger<RpcAction>());
         }
 
         /// <summary>

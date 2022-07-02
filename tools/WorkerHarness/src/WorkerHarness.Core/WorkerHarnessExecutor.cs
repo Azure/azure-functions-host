@@ -43,7 +43,7 @@ namespace WorkerHarness.Core
                 {
                     ActionResult result = await action.ExecuteAsync();
 
-                    ShowActionResult(result);
+                    //ShowActionResult(result);
                     
                 }
 
