@@ -31,17 +31,13 @@ namespace WorkerHarness.Core
         // _outboundChannel stores messages that will be consumed by Grpc Layer and sent to the language worker.
         private readonly Channel<StreamingMessage> _outboundChannel;
 
-        // _logger displays messages to user in the console
-        private readonly ILogger<RpcAction> _logger;
-
         internal RpcAction(IValidatorFactory validatorFactory, 
             IMatcher matchService,
             IGrpcMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
             IVariableObservable variableManager,
             Channel<StreamingMessage> inboundChannel,
-            Channel<StreamingMessage> outboundChannel,
-            ILogger<RpcAction> logger)
+            Channel<StreamingMessage> outboundChannel)
         {
             _validatorFactory = validatorFactory;
             _matchService = matchService;
@@ -50,7 +46,6 @@ namespace WorkerHarness.Core
             _variableManager = variableManager;
             _inboundChannel = inboundChannel;
             _outboundChannel = outboundChannel;
-            _logger = logger;
         }
 
         // Type of action
@@ -62,12 +57,11 @@ namespace WorkerHarness.Core
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
 
-        public async Task ExecuteAsync()
+        public async Task<ActionResult> ExecuteAsync()
         {
-
             CancellationTokenSource tokenSource = new();
 
-            StatusCode executionStatus = StatusCode.Success;
+            StatusCode executionStatus;
 
             // get a list of RpcActionMessage objects whose direction is outgoing
             IEnumerable<RpcActionMessage> outgoingRpcMessages = _actionData.Messages
@@ -98,32 +92,30 @@ namespace WorkerHarness.Core
                 executionStatus = await sendTask && await receiveTask ? StatusCode.Success : StatusCode.Failure;
             }
             
-            DisplayRpcActionResult(executionStatus, statusMap);
+            ActionResult actionResult = CreateActionResult(executionStatus, statusMap);
 
             _variableManager.Clear();
 
+            return actionResult;
         }
 
-        private void DisplayRpcActionResult(StatusCode executionStatus, ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap)
+        private ActionResult CreateActionResult(StatusCode executionStatus, ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap)
         {
-            if (executionStatus == StatusCode.Success)
+            ActionResult result = new()
             {
-                _logger.LogInformation("Action \"{0}\" succeeds", _actionData.ActionName);
-            }
-            else
-            {
-                string userMessage = $"Action \"{_actionData.ActionName}\" fails";
-                _logger.LogError(userMessage);
+                Status = executionStatus,
+                Message = executionStatus == StatusCode.Success ? $"Action \"{Name}\" succeeds" : $"Action \"{Name}\" fails"
+            };
 
-                var dictionaryEnumerator = statusMap.GetEnumerator();
-                while (dictionaryEnumerator.MoveNext())
-                {
-                    RpcActionError error = dictionaryEnumerator.Current.Value;
-                    string message = $"[{error.Type}]: {error.ConciseMessage}\n{error.Advice}";
-                    _logger.LogError(message);
-                }
+            var dictionaryEnumerator = statusMap.GetEnumerator();
+            while (dictionaryEnumerator.MoveNext())
+            {
+                RpcActionError error = dictionaryEnumerator.Current.Value;
+                result.ErrorMessages.Add($"[{error.Type}]: {error.ConciseMessage}\n{error.Advice}");
+                result.VerboseErrorMessages.Add($"[{error.Type}]: {error.VerboseMessage}\n{error.Advice}");
             }
 
+            return result;
         }
 
         private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages, 
