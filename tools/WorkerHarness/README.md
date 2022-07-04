@@ -59,6 +59,15 @@ The structure of an **rpc** action:
 * **timeout** (optional): the amount of time in **_miliseconds_** to execute an **rpc** action. Default to 5000 ms.
 * **messages** (required): a list of messages to send to and receive + validate from the language worker.
 
+```
+{
+    "actionType": "rpc",
+    "actionName": "a demo Rpc action",
+    "timeout": 10000,
+    "messages": [...]
+}
+```
+
 ### Messages:
 Because Worker Harness communicates with the language worker via gRPC, all messages must have a **messageType** property, which indicates the type of [StreamingMessage][StreamingMessage]. The [StreamingMessage][StreamingMessage] class is defined in the Harness's [proto file][harness proto], which mirrors the [proto file][host proto] in the host.
 
@@ -195,7 +204,41 @@ The default object variable is used in both __queries__ above. The Worker Harnes
 
 The `${message_1}.FunctionLoadRequest.FunctionId` expression contains an object variable `${message_1}`. The Harness will look up the `message_1` variable in memory and recursively index into it to find the `FunctionId` property.
 
+### Order of Messages in an Rpc Action
+An __Rpc__ action sends to and receives messages from the language worker asynchronously, which means that the order of messages in the __messages__ property is not guaranteed. 
 
+In a real host - worker interaction, the worker fires a message in response to a request from the host. In order to emulate this order or dependency between 2 messages, users can leverage the __id__ property, __setVariables__ property, and variable - expression capability when creating a scenario.
+
+For instance, a language developer wants to create a scenario where the host sends an [InvocationRequest][InvocationRequest] message to a worker, and validates that the worker reply with an [InvocationResponse][InvocationResponse] message. An __Rpc__ action for this scenario would look like the following.
+```
+{
+    "actionType": "rpc",
+    "actionName": "send an invocation request and validate the invocation response",
+    "messages": [
+        {
+            "direction": "outgoing",
+            "messageType": "InvocationRequest",
+            "content": {...},
+            "setVariables": [{
+                "invocationId_1": "$.InvocationRequest.InvocationId"
+            }]
+        },
+        {
+            "direction": "incoming",
+            "messageType": "InvocationResponse",
+            "matchingCriteria": [{
+                "query": "$.InvocationResponse.InvocationId",
+                "expected": "@{invocationId_1}"
+            }],
+            "validators": [{
+                "query": "$.InvocationResponse.Result.Status",
+                "expected": "Success"
+            }]
+        }
+    ]
+}
+```
+This __Rpc__ action validates that an 'InvocationResponse' message with the same 'InvocationId' has been fired by the language worker in response to an "InvocationResponse" message.
 
 ## Delay Action
 
