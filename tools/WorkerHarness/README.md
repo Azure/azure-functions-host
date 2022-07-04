@@ -80,9 +80,15 @@ Messages are characterized by **direction** property: the **outgoing** direction
 ```
 Given this **outgoing** message, the Worker Harness will construct a StreamingMessage of type [InvocationRequest][InvocationRequest] whose content is the value of the **payload** property, and then send it to language worker.
 
-The harness will keep this [InvocationRequest][InvocationRequest] StreamingMessage in memory and map it to an identifier. Users have the option to choose an identifier by using the **id** property. If the **id** property is excluded, the harness will use a random GUID value.
+The harness will keep this InvocationRequest message in memory and map it to an identifier. Users have the option to choose an identifier by using the **id** property. If the **id** property is excluded, the harness will use a random GUID value.
 
-It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with a matching 'InvocationId' with the [above message](#outgoing-message). When users construct the matching criteria for the [InvocationResponse][InvocationResponse] message, they can reference the above message by using the 'message_1' **id** as a variable. 
+It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with the same 'InvocationId' with the above InvocationRequest message. When constructing the matching criteria for the InvocationResponse message, they reference the above message by using the 'message_1' **id** as a variable. 
+
+In summary, an **outgoing** rpc message has:
+- **direction** (required): outgoing.
+- **messageType** (required): the type of [StreamingMessage][StreamingMessage] to send via gRPC to language worker.
+- **payload** (required): the content of [StreamingMessage][StreamingMessage] to send via gRPC to language worker.
+- **id** (optional): a user-assigned identifier of the [StreamingMessage][StreamingMessage].
 
 See [Incoming Message](#incoming-message) to learn how to construct matching criteria and validators to validate an **incoming** message. 
 
