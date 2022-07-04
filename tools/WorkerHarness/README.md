@@ -241,6 +241,16 @@ For instance, a language developer wants to create a scenario where the host sen
 This __Rpc__ action validates that an 'InvocationResponse' message with the same 'InvocationId' has been fired by the language worker in response to an "InvocationResponse" message.
 
 ## Delay Action
+The __Delay__ action delays the exection of a scenario for a certain period of time. A __Delay__ action includes the following properties:
+- __actionType__: delay
+- __delay__: the amount of time in __*miliseconds*__ to delay.
+```
+{
+    "actionType": "delay",
+    "delay": 2000
+}
+```
+
 
 [harness proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto
 
