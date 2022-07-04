@@ -114,13 +114,13 @@ See [Variables and Expressions](#variables) to learn how to use variable and var
 ```
 During the execution of an **rpc** action, the Worker Harness will listen to all incoming [StreamingMessage][StreamingMessage] sent by the language worker. By default, the Harness will filter incoming messages based on the **messageType** property. If the **matchingCriteria** and **validators** properties are excluded, the Worker Harness will declare success if it receives a message of type **messageType** from the language worker.
 
- __matchingCriteria:__ 
+ __MatchingCriteria:__ 
 
 Users can apply stricter filters by using the **matchingCriteria** property. Each criterion inside the **matchingCriteria** list contains a **query** string and an **expected** string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the incoming message to match. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
 
 In the above incoming - message example, the `"$.ContentCase"` **query** tells the Harness to query any incoming 'WorkerInitRequest' message for a 'ContentCase' property. It then compares the string value of the 'ContentCase' property to the string literal `"WorkerInitResponse"` in the __expected__ property. If they are equal, the Harness has received a matched message from the language worker and will validate the matched message if there are any __validators__. If they are not equal, the Harness will discard this 'WorkerInitRequest' message and continue to wait for a matched message. If no matched message is received within the **timeout** period, the Harness will declare a [Message_Not_Received_Error][Message_Not_Received_Error].
 
- __validators:__
+ __Validators:__
 
 Users validate a matched message by using the __validators__ property. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the matched message to validate. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
 
@@ -132,7 +132,28 @@ In the above incoming - message example, a string validator tells the Worker Har
 
 > Since both regular expression and string comparison work on string literal, the Worker Harness requires the variable expressions in the __query__ and __expected__ property to evaluate to string values. If they evaluate to objects, the Harness will throw an exception. This requirement applies to both __matchingCriteria__ and __validators__.
 
-### 
+In summary, an __incoming__ rpc message has the following properties:
+- __direction__ (required): incoming.
+- __messageType__ (required): the type of [StreamingMessage][StreamingMessage] to receive from the language worker via gRPC.
+- __matchingCriteria__ (optional): a list of additional matching criteria to filter [StreamingMessage][StreamingMessage] from the language worker.
+- __validators__ (optional): a list of validators to validate a matched [StreamingMessage][StreamingMessage].
+- __id__ (optional): a user-assigned identifier of the matched [StreamingMessage][StreamingMessage].
+
+### SetVariables
+An __Rpc__ action remembers the [StreamingMessage][StreamingMessage] that it sends to and receives from the language worker. Users can assign these messages a variable name by setting the __id__ property. Later, they can use these messages as object variable in an expression (see [Variables and Expressions](#variables-and-expressions)). 
+
+Additionally, users can use the __setVariables__ property to declare a variable and initialize it to be the value of any property within a message.
+```
+{
+    "direction": "Outgoing",
+    "messageType": "InvocationRequest",
+    ...
+    "setVariables": {
+        "invocationId_1": "$.InvocationRequest.InvocationId"
+    }
+}
+```
+In this example, an `invocationId_1` variable is set to be the value of the 'InvocationId' of the 'InvocationRequest' message. The __Rpc__ action that execute this message will store this variable in memory until timeout. 
 
 ### Variables and Expressions:
 The Worker Harness supports two types of variables: 
