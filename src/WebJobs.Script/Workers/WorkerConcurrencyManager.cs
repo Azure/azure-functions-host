@@ -311,7 +311,7 @@ LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency=
             long currentMemoryConsumption = workerChanellSizes.Sum() + hostProcessSize;
             if (currentMemoryConsumption + maxWorkerSize > _hostProcessMonitor.TotalAvailableMemoryBytes * 0.8)
             {
-                _logger.LogError($"Starting new language worker canceled: TotalMemory={_hostProcessMonitor.TotalAvailableMemoryBytes}, MaxWorkerSize={maxWorkerSize}, currentMemoryConsumption={currentMemoryConsumption}");
+                _logger.LogDebug($"Starting new language worker canceled: TotalMemory={_hostProcessMonitor.TotalAvailableMemoryBytes}, MaxWorkerSize={maxWorkerSize}, currentMemoryConsumption={currentMemoryConsumption}");
                 return false;
             }
             return true;
