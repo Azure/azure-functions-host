@@ -36,6 +36,7 @@ cd .\src\WorkerHarness.Console\bin\Debug\net6.0\
 ```
 dotnet run --project="src\WorkerHarness.Console"
 ```
+The Worker Harness will spin up a language worker process just like a real Functions host instance and then execute a scenario.
 
 # Scenario
 A scenario consists of a list of **actions**. A **scenarioName** is optional.
@@ -49,7 +50,7 @@ An **action** is a unit of work to be executed by the Worker Harness. Users spec
 * **actionType** (required): the type of action.
 * **actionName** (optional): the name of the action.
 
-Additional properties may be required depending on the type of action. Currently, Worker Harness supports 2 types of actions: **rpc** and **delay**.
+Additional properties may be required depending on the type of action. Currently, Worker Harness supports 2 types of actions: [**Rpc**](#rpc-action) and [**Delay**](#delay-action).
 
 ## Rpc Action
 An **rpc** action sends messages to and validates message from a language worker through gRPC. Users indicate the content of the messages to send to worker and specify which messages to receive from worker and how to validate them.
@@ -59,7 +60,7 @@ The structure of an **rpc** action:
 * **messages** (required): a list of messages to send to and receive + validate from the language worker.
 
 ### Messages:
-Because Worker Harness communicates with the language worker via gRPC, all messages must have a **messageType** type property, which indicates the type of [StreamingMessage][StreamingMessage] defined in Harness's [proto file][harness proto]. The Harness's [proto file][harness proto] mirrors the [proto file][host proto] in the host.
+Because Worker Harness communicates with the language worker via gRPC, all messages must have a **messageType** property, which indicates the type of [StreamingMessage][StreamingMessage]. The [StreamingMessage][StreamingMessage] class is defined in the Harness's [proto file][harness proto], which mirrors the [proto file][host proto] in the host.
 
 Messages are characterized by **direction** property: the **outgoing** direction tells the Harness to *construct + send* a message to worker, while the **incoming** direction tells the Harness to *receive + validate* a message from worker.
 
@@ -82,9 +83,9 @@ Given this **outgoing** message, the Worker Harness will construct a StreamingMe
 
 The harness will keep this InvocationRequest message in memory and map it to an identifier. Users have the option to choose an identifier by using the **id** property. If the **id** property is excluded, the harness will use a random GUID value.
 
-It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with the same 'InvocationId' with the above InvocationRequest message. When constructing the matching criteria for the InvocationResponse message, they reference the above message by using the 'message_1' **id** as a variable. 
+It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with the same 'InvocationId' with the above InvocationRequest message. When constructing the matching criteria for an InvocationResponse message, users reference the above message by using the 'message_1' **id** as a variable. 
 
-In summary, an **outgoing** rpc message has:
+In summary, an **outgoing** rpc message has the following properties:
 - **direction** (required): outgoing.
 - **messageType** (required): the type of [StreamingMessage][StreamingMessage] to send via gRPC to language worker.
 - **payload** (required): the content of [StreamingMessage][StreamingMessage] to send via gRPC to language worker.
@@ -98,21 +99,81 @@ See [Variables and Expressions](#variables) to learn how to use variable and var
 ```
 {
     "direction": "Incoming",
-    "messageType": "InvocationResponse",
+    "messageType": "WorkerInitResponse",
     "matchingCriteria": [{
-        "query": "$.InvocationResponse.InvocationId",
-        "expected": "${message_1}.InvocationRequest.InvocationId"
+        "query": "$.ContentCase",
+        "expected": "WorkerInitResponse"
     }],
     "validators": [{
         "type": "string",
-        "query": "$.InvocationResponse.Result.Status",
+        "query": "$.WorkerInitResponse.Result.Status",
         "expected": "Success"
     }],
-    "id": "message_2"
+    "id": "message_2",
 }
 ```
+During the execution of an **rpc** action, the Worker Harness will listen to all incoming [StreamingMessage][StreamingMessage] sent by the language worker. By default, the Harness will filter incoming messages based on the **messageType** property. If the **matchingCriteria** and **validators** properties are excluded, the Worker Harness will declare success if it receives a message of type **messageType** from the language worker.
+
+ __matchingCriteria:__ 
+
+Users can apply stricter filters by using the **matchingCriteria** property. Each criterion inside the **matchingCriteria** list contains a **query** string and an **expected** string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the incoming message to match. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
+
+In the above incoming - message example, the `"$.ContentCase"` **query** tells the Harness to query any incoming 'WorkerInitRequest' message for a 'ContentCase' property. It then compares the string value of the 'ContentCase' property to the string literal `"WorkerInitResponse"` in the __expected__ property. If they are equal, the Harness has received a matched message from the language worker and will validate the matched message if there are any __validators__. If they are not equal, the Harness will discard this 'WorkerInitRequest' message and continue to wait for a matched message. If no matched message is received within the **timeout** period, the Harness will declare a [Message_Not_Received_Error][Message_Not_Received_Error].
+
+ __validators:__
+
+Users validate a matched message by using the __validators__ property. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the matched message to validate. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
+
+There are two types of __validator__: _regex_ and _string_. 
+- If a _regex_ validator is used, then the Harness will use regular expression matching to validate the __query__ string. The __expected__ string should be a regular expression. See [Regular Expression Language - Quick Reference](https://docs.microsoft.com/en-us/dotnet/standard/base-types/regular-expression-language-quick-reference). 
+- If a _string_ validator is used, the Harness will use string comparison to validate the __query__ string. The __expected__ string should be a string literal. A validator is default to be a _string_ validator if the **type** property is omitted.
+
+In the above incoming - message example, a string validator tells the Worker Harness to query into the 'Status' property of a matched 'WorkerInitResponse' message and compare it to the `"Success"` string literal. If the string comparison returns equal, the validation succeeds. Otherwise, the Worker Harness will declare a [Validation_Error][Validation_Error].
+
+> Since both regular expression and string comparison work on string literal, the Worker Harness requires the variable expressions in the __query__ and __expected__ property to evaluate to string values. If they evaluate to objects, the Harness will throw an exception. This requirement applies to both __matchingCriteria__ and __validators__.
+
+### 
 
 ### Variables and Expressions:
+The Worker Harness supports two types of variables: 
+- object variable: `${...}`
+- string variable: `@{...}`
+
+Each variable expression contains __*one and only one*__ object variable. The object variable must be __*at the beginning*__ of each expression. 
+- `${message_1}.InvocationRequest.InvocationId` is valid.
+- `${A}.${B}.C` is invalid because it contains 2 object variabless
+- `A.${B}.C` is invalid because the object variable is not at the start of the expression.
+
+There is no limit to the number of string expression.
+- `${obj_var}.@{str_var_1}.@{str_var_2}` is valid.
+
+Nested expressions are not allowed to avoid complexity.
+- `${${object}}`, `${@{object}}`, `@{${object}}` are invalid.
+
+The Worker Harness supports the default object variable `$.`. If an expression uses `$.`, the enclosing message is the implicit object variable. 
+
+```
+{
+    "direction": "Incoming",
+    "messageType": "FunctionLoadResponse",
+    "matchingCriteria": [{
+        "query": "$.FunctionLoadResponse.FunctionId",
+        "expected": "${message_1}.FunctionLoadRequest.FunctionId"
+    }],
+    "validators": [{
+        "type": "string",
+        "query": "$.FunctionLoadResponse.Result.Status",
+        "expected": "Success"
+    }],
+    "id": "message_2",
+}
+```
+The default object variable is used in both __queries__ above. The Worker Harness, after receiving a 'FunctionLoadResponse' message from the language worker, will use the message as an object variable for both __queries__.
+- `$.FunctionLoadResponse.FunctionId`: the Harness will recursively index into the 'FunctionLoadResponse' property, then 'FunctionId' property of the message.
+- `$.FunctionLoadResponse.Result.Status`: the Harness will recursively index into the 'FunctionLoadResponse' property, then 'Result' property, then finally the 'Status' property of the message.
+
+The `${message_1}.FunctionLoadRequest.FunctionId` expression contains an object variable `${message_1}`. The Harness will look up the `message_1` variable in memory and recursively index into it to find the `FunctionId` property.
+
 
 
 ## Delay Action
@@ -126,3 +187,9 @@ See [Variables and Expressions](#variables) to learn how to use variable and var
 [InvocationRequest]: https://github.com/Azure/azure-functions-host/blob/3358f2b665da51a491dd40d59da287348febe9eb/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto#L321
 
 [InvocationResponse]: https://github.com/Azure/azure-functions-host/blob/3358f2b665da51a491dd40d59da287348febe9eb/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto#L375
+
+<!--- TODO: Replace with real links --->
+[Message_Not_Received_Error]: https://github.com/azure/azure-functions-host
+
+<!--- TODO: Replace with real links --->
+[Validation_Error]: https://github.com/azure/azure-functions-host
