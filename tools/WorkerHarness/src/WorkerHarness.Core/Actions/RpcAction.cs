@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
-using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
@@ -163,9 +162,9 @@ namespace WorkerHarness.Core
                             {
                                 Type = RpcErrorCode.Validation_Error,
                                 ConciseMessage = string.Format(RpcErrorConstants.ValidationFailed, rpcActionMessage.MessageType),
+                                VerboseMessage = string.Format(RpcErrorConstants.ValidationFailedVerbose, rpcActionMessage.MessageType, streamingMessage.Serialize()),
                                 Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.ValidationFailedLink)
                             };
-                            error.VerboseMessage = $"{error.ConciseMessage}\n{streamingMessage.Serialize()}";
 
                             statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
                         }
@@ -186,7 +185,7 @@ namespace WorkerHarness.Core
                         {
                             Type = RpcErrorCode.Message_Not_Received_Error,
                             ConciseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
-                            VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
+                            VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize()),
                             Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink)
                         };
 
@@ -249,7 +248,7 @@ namespace WorkerHarness.Core
                     {
                         Type = RpcErrorCode.Message_Not_Sent_Error,
                         ConciseMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType),
-                        VerboseMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType),
+                        VerboseMessage = string.Format(RpcErrorConstants.MessageNotSentVerbose, rpcActionMessage.MessageType, Timeout),
                         Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotSentLink)
                     };
 
