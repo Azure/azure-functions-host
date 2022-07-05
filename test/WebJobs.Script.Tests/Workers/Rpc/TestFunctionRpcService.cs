@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         private string _workerId;
         private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
         private ChannelWriter<InboundGrpcEvent> _inboundWriter;
-        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action> _handlers = new ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action>();
+        private ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>> _handlers = new ConcurrentDictionary<StreamingMessage.ContentOneofCase, Action<OutboundGrpcEvent>>();
 
         public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
@@ -36,15 +36,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action callback)
+        public void OnMessage(StreamingMessage.ContentOneofCase messageType, Action<OutboundGrpcEvent> callback)
             => _handlers.AddOrUpdate(messageType, callback, (messageType, oldValue) => oldValue + callback);
 
         public void AutoReply(StreamingMessage.ContentOneofCase messageType)
         {
             // apply standard default responses
-            Action callback = messageType switch
+            Action<OutboundGrpcEvent> callback = messageType switch
             {
-                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => PublishFunctionEnvironmentReloadResponseEvent,
+                StreamingMessage.ContentOneofCase.FunctionEnvironmentReloadRequest => _ => PublishFunctionEnvironmentReloadResponseEvent(),
                 _ => null,
             };
             if (callback is not null)
@@ -53,14 +53,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             }
         }
 
-        private void OnMessage(StreamingMessage.ContentOneofCase messageType)
+        private void OnMessage(OutboundGrpcEvent message)
         {
-            if (_handlers.TryRemove(messageType, out var action))
+            if (_handlers.TryRemove(message.MessageType, out var action))
             {
                 try
                 {
-                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, messageType, action?.Method?.Name);
-                    action?.Invoke();
+                    _logger.LogDebug("[service] invoking auto-reply for {0}, {1}: {2}", _workerId, message.MessageType, action?.Method?.Name);
+                    action?.Invoke(message);
                 }
                 catch (Exception ex)
                 {
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                         _logger.LogDebug("[service] received {0}, {1}", evt.WorkerId, evt.MessageType);
                         _logger.LogInformation(expectedLogMsg);
 
-                        OnMessage(evt.MessageType);
+                        OnMessage(evt);
                     }
                 }
             }
