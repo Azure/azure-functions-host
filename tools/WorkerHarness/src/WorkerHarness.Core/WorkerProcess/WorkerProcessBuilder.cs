@@ -3,24 +3,16 @@
 
 using System.Diagnostics;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.WorkerProcess
 {
     public class WorkerProcessBuilder : IWorkerProcessBuilder
     {
-        /// <summary>
-        /// Build an instance of a worker process
-        /// </summary>
-        /// <param name="workerDescription">a WorkerDescription object that contains path info about a language worker</param>
-        /// <returns cref="Process"></returns>
-        public Process Build(HarnessOptions workerOptions)
+        public Process Build(string languageExecutable, string workerExecutable, string workerDirectory)
         {
-            string workerId = Guid.NewGuid().ToString();
+            string workerId = WorkerConstants.WorkerId;
             string requestId = Guid.NewGuid().ToString();
-            string workerExecutable = workerOptions.WorkerExecutable!;
-            string arguments = $"{workerExecutable} --host {WorkerProcessConstants.DefaultHostUri} --port {WorkerProcessConstants.DefaultPort} --workerId {workerId} --requestId {requestId} --grpcMaxMessageLength {WorkerProcessConstants.GrpcMaxMessageLength}";
+            string arguments = $"{workerExecutable} --host {HostConstants.DefaultHostUri} --port {HostConstants.DefaultPort} --workerId {workerId} --requestId {requestId} --grpcMaxMessageLength {HostConstants.GrpcMaxMessageLength}";
         
-            string languageExecutable = workerOptions.LanguageExecutable!;
-
             var startInfo = new ProcessStartInfo(languageExecutable)
             {
                 RedirectStandardOutput = true,
@@ -28,7 +20,7 @@ namespace WorkerHarness.Core
                 CreateNoWindow = true,
                 UseShellExecute = false,
                 ErrorDialog = false,
-                WorkingDirectory = workerOptions.WorkerDirectory,
+                WorkingDirectory = workerDirectory,
                 Arguments = arguments
             };
 
