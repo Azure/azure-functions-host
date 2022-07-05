@@ -45,5 +45,10 @@ namespace Microsoft.WebJobs.Script.Tests
         /// These are Linux container environment specific tests.
         /// </summary>
         public const string ContainerInstanceTests = "ContainerInstanceTests";
+
+        /// <summary>
+        /// Tests for the AdminIsolation feature.
+        /// </summary>
+        public const string AdminIsolationTests = "AdminIsolationTests";
     }
 }

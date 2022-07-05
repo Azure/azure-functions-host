@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
+using Microsoft.WebJobs.Script.Tests;
 using Xunit;
 using static Microsoft.Azure.WebJobs.Script.EnvironmentSettingNames;
 
@@ -12,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class EnvironmentExtensionsTests
     {
         [Fact]
-        public void GetEffectiveCoresCount_RetrunsExpectedResult()
+        public void GetEffectiveCoresCount_ReturnsExpectedResult()
         {
             TestEnvironment env = new TestEnvironment();
             Assert.Equal(Environment.ProcessorCount, EnvironmentExtensions.GetEffectiveCoresCount(env));
@@ -25,6 +26,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
             env.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteSku, ScriptConstants.DynamicSku);
             env.SetEnvironmentVariable(EnvironmentSettingNames.RoleInstanceId, "dw0SmallDedicatedWebWorkerRole_hr0HostRole-0-VM-1");
             Assert.Equal(Environment.ProcessorCount, EnvironmentExtensions.GetEffectiveCoresCount(env));
+        }
+
+        [Fact]
+        [Trait(TestTraits.Group, TestTraits.AdminIsolationTests)]
+        public void IsAdminIsolationEnabled_ReturnsExpectedResult()
+        {
+            TestEnvironment env = new TestEnvironment();
+            Assert.False(EnvironmentExtensions.IsAdminIsolationEnabled(env));
+
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "0");
+            Assert.False(EnvironmentExtensions.IsAdminIsolationEnabled(env));
+
+            env.SetEnvironmentVariable(EnvironmentSettingNames.FunctionsAdminIsolationEnabled, "1");
+            Assert.True(EnvironmentExtensions.IsAdminIsolationEnabled(env));
         }
 
         [Theory]

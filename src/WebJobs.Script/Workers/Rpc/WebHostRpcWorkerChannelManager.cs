@@ -9,6 +9,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Script.Diagnostics;
 using Microsoft.Azure.WebJobs.Script.Eventing;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,13 +27,20 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly ILoggerFactory _loggerFactory = null;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
         private readonly IMetricsLogger _metricsLogger;
+        private readonly IWorkerProfileManager _profileManager;
         private string _workerRuntime;
         private Action _shutdownStandbyWorkerChannels;
         private IConfiguration _config;
 
         private ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>> _workerChannels = new ConcurrentDictionary<string, Dictionary<string, TaskCompletionSource<IRpcWorkerChannel>>>(StringComparer.OrdinalIgnoreCase);
 
-        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager, IEnvironment environment, ILoggerFactory loggerFactory, IRpcWorkerChannelFactory rpcWorkerChannelFactory, IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions, IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions, IConfiguration config)
+        public WebHostRpcWorkerChannelManager(IScriptEventManager eventManager,
+                                              IEnvironment environment,
+                                              ILoggerFactory loggerFactory,
+                                              IRpcWorkerChannelFactory rpcWorkerChannelFactory,
+                                              IOptionsMonitor<ScriptApplicationHostOptions> applicationHostOptions,
+                                              IMetricsLogger metricsLogger, IOptionsMonitor<LanguageWorkerOptions> languageWorkerOptions,
+                                              IConfiguration config)
         {
             _environment = environment ?? throw new ArgumentNullException(nameof(environment));
             _eventManager = eventManager;
@@ -43,7 +51,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             _applicationHostOptions = applicationHostOptions;
             _lanuageworkerOptions = languageWorkerOptions;
             _config = config ?? throw new ArgumentNullException(nameof(config));
-
+            var conditionProviders = new List<IWorkerProfileConditionProvider>
+            {
+                new WorkerProfileConditionProvider(_logger, _environment)
+            };
+            _profileManager = new WorkerProfileManager(_logger, conditionProviders);
             _shutdownStandbyWorkerChannels = ScheduleShutdownStandbyChannels;
             _shutdownStandbyWorkerChannels = _shutdownStandbyWorkerChannels.Debounce(milliseconds: 5000);
         }
@@ -137,6 +149,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 // Restart worker process if custom languageWorkers:[runtime]:arguments are passed in
                 var workerArguments = _config.GetSection($"{RpcWorkerConstants.LanguageWorkersSectionName}:{workerRuntime}:{WorkerConstants.WorkerDescriptionArguments}").Value;
                 if (!string.IsNullOrEmpty(workerArguments))
+                {
+                    return false;
+                }
+
+                // If a profile evaluates to true and was not previously loaded, restart worker process
+                if (!_profileManager.IsCorrectProfileLoaded(workerRuntime))
                 {
                     return false;
                 }
