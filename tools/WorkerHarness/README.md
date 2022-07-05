@@ -94,7 +94,7 @@ Given this **outgoing** message, the Worker Harness will construct a StreamingMe
 
 The harness will keep this InvocationRequest message in memory and map it to an identifier. Users have the option to choose an identifier by using the **id** property. If the **id** property is excluded, the harness will use a random GUID value.
 
-It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with the same 'InvocationId' with the above InvocationRequest message. When constructing the matching criteria for an InvocationResponse message, users reference the above message by using the 'message_1' **id** as a variable. 
+It is recommended to have an **id** property if users want to reference a message later. For instance, users may want to validate that the language worker has sent an [InvocationResponse][InvocationResponse] message with the same 'InvocationId' with the above InvocationRequest message. When constructing the __matchingCriteria__ for an [incoming](#incoming-message) InvocationResponse message, users can use 'message_1' as a [variable](#variables-and-expressions). 
 
 In summary, an **outgoing** rpc message has the following properties:
 - **direction** (required): outgoing.
@@ -102,9 +102,6 @@ In summary, an **outgoing** rpc message has the following properties:
 - **payload** (required): the content of [StreamingMessage][StreamingMessage] to send via gRPC to language worker.
 - **id** (optional): a user-assigned identifier of the [StreamingMessage][StreamingMessage].
 
-See [Incoming Message](#incoming-message) to learn how to construct matching criteria and validators to validate an **incoming** message. 
-
-See [Variables and Expressions](#variables) to learn how to use variable and variable expressions.
 
 #### **Incoming Message**:
 ```
