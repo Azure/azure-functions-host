@@ -273,6 +273,13 @@ Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info 
 - How to fix the error <br>
 Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the [StreamingMessage] that meets the __matchingCriteria__ but fails the __validators__. Inspecting the content of the [StreamingMessage] can help developers discover where and how a bug occurs.
 
+## Message_Not_Sent_Error
+- Cause <br>
+This error occurs when the Worker Harness fails to send an __outgoing__ message to the language worker before __timeout__ occurs.
+Please refer to [Rpc Action: Outgoing Message](#outgoing-message) for more info.
+
+- How to fix the error<br>
+Consider increase the action's __timeout__ so that the Worker Harness has enough time to construct a [StreamingMessage] from the __payload__ and sends it to the language worker.
 
 [harness proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto
 
