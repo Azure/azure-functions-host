@@ -163,7 +163,7 @@ namespace WorkerHarness.Core
                             {
                                 Type = RpcErrorCode.Validation_Error,
                                 ConciseMessage = string.Format(RpcErrorConstants.ValidationFailed, rpcActionMessage.MessageType),
-                                Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorCode.Validation_Error, RpcErrorConstants.ValidationFailedLink)
+                                Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.ValidationFailedLink)
                             };
                             error.VerboseMessage = $"{error.ConciseMessage}\n{streamingMessage.Serialize()}";
 
@@ -187,7 +187,7 @@ namespace WorkerHarness.Core
                             Type = RpcErrorCode.Message_Not_Received_Error,
                             ConciseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
                             VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
-                            Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorCode.Message_Not_Received_Error, RpcErrorConstants.MessageNotReceivedLink)
+                            Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink)
                         };
 
                         statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
@@ -250,7 +250,7 @@ namespace WorkerHarness.Core
                         Type = RpcErrorCode.Message_Not_Sent_Error,
                         ConciseMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType),
                         VerboseMessage = string.Format(RpcErrorConstants.MessageNotSent, rpcActionMessage.MessageType),
-                        Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorCode.Message_Not_Sent_Error, RpcErrorConstants.MessageNotSentLink)
+                        Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotSentLink)
                     };
 
                     statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
