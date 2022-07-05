@@ -28,7 +28,10 @@ namespace WorkerHarness.Core
         /// </summary>
         public string? LanguageExecutable { get; set; }
 
-        public bool Verbose { get; set; } = false;
+        /// <summary>
+        /// Optional flag to display verbose error messages to users
+        /// </summary>
+        public bool DisplayVerboseError { get; set; } = false;
 
     }
 }
