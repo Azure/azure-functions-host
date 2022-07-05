@@ -4,7 +4,7 @@ Worker Harness is a tool that validates a scenario against a language worker. La
 Worker Harness is a Console Application. Clone the [Azure/azure-functions-host](https://github.com/Azure/azure-functions-host/) repos to your local machine and open it in Terminal or Command Prompt. Then use the `cd .\tools\WorkerHarness\` command to open the *WorkerHarness* folder.
 
 ## User Inputs
-*Worker Harness* requires the following inputs from users
+### Requires Inputs:
 - A scenario file. This file follows **Json** format and contains a list of actions to validate against a language worker. The [Scenario](#scenario) section explains the available actions and how to put them together to create a scenario.
 - A language executable. E.g. python.exe, dotnet.exe, node.exe, etc.
 - A worker executable. This is the worker executable file of your Functions App.
@@ -21,6 +21,8 @@ Put the paths to those requirements in *src\WorkerHarness.Console\harness.settin
 }
 ```
 
+### Optional Flags:
+- DisplayVerboseError: `true`/`false`. If true, the Worker Harness displays verbose error messages. The content of a verbose error message depends on the error type. See [Errors](#errors) for more info. The flag is set to `false` by default.
 
 ## How to Run
 Make sure you are in the *azure-functions-host\tools\WorkerHarness* directory
@@ -251,6 +253,26 @@ The __Delay__ action delays the exection of a scenario for a certain period of t
 }
 ```
 
+# Errors
+
+## Message_Not_Received_Error
+- Cause <br>
+This error occurs when the language worker never emits the message of type __messageType__ that meets the __matchingCriteria__ in an rpc action. <br>
+Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __matchingCriteria__ property.
+
+-  How to fix the error<br>
+Consider increase the action's __timeout__ if you expects some delay before the worker emits the mesage.<br>
+Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the __messageType__ and __matchingCriteria__ of the message that is expected but never received from worker. <br>
+Check your language worker's logic. The error could indicate that your worker has a bug that never fires the expected message.
+
+## Validation_Error
+- Cause<br>
+This error occurs when the language worker has emitted the expected message that meets the __matchingCriteria__ but fails at least one of the __validators__. <br>
+Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info on the __validators__ property.
+
+- How to fix the error <br>
+Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the [StreamingMessage] that meets the __matchingCriteria__ but fails the __validators__. Inspecting the content of the [StreamingMessage] can help developers discover where and how a bug occurs.
+
 
 [harness proto]: https://github.com/Azure/azure-functions-host/blob/features/harness/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto
 
@@ -262,8 +284,6 @@ The __Delay__ action delays the exection of a scenario for a certain period of t
 
 [InvocationResponse]: https://github.com/Azure/azure-functions-host/blob/3358f2b665da51a491dd40d59da287348febe9eb/tools/WorkerHarness/src/WorkerHarness.Core/Protos/FunctionRpc.proto#L375
 
-<!--- TODO: Replace with real links --->
-[Message_Not_Received_Error]: https://github.com/azure/azure-functions-host
+[Message_Not_Received_Error]: #messagenotreceivederror
 
-<!--- TODO: Replace with real links --->
-[Validation_Error]: https://github.com/azure/azure-functions-host
+[Validation_Error]: #validationerror
