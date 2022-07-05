@@ -262,7 +262,7 @@ Please refer to [Rpc Action: Incoming Message](#incoming-message) for more info 
 
 -  How to fix the error<br>
 Consider increase the action's __timeout__ if you expects some delay before the worker emits the mesage.<br>
-Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the __messageType__ and __matchingCriteria__ of the message that is expected but never received from worker. <br>
+Consider turning on the [DisplayVerboseError](#optional-flags) flag. The Worker Harness will shows the expected message that is never received from worker. <br>
 Check your language worker's logic. The error could indicate that your worker has a bug that never fires the expected message.
 
 ## Validation_Error
