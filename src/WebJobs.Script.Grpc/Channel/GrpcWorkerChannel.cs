@@ -74,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         private TaskCompletionSource<bool> _reloadTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<bool> _workerInitTask = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         private TaskCompletionSource<List<RawFunctionMetadata>> _functionsIndexingTask = new TaskCompletionSource<List<RawFunctionMetadata>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(10);
+        private TimeSpan _functionLoadTimeout = TimeSpan.FromMinutes(1);
         private bool _isSharedMemoryDataTransferEnabled;
 
         private System.Timers.Timer _timer;
@@ -367,12 +367,22 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             _workerChannelLogger.LogDebug("Received WorkerInitResponse. Worker process initialized");
             _initMessage = initEvent.Message.WorkerInitResponse;
             _workerChannelLogger.LogDebug($"Worker capabilities: {_initMessage.Capabilities}");
+
+            if (_initMessage.WorkerMetadata != null)
+            {
+                _initMessage.UpdateWorkerMetadata(_workerConfig);
+                var workerMetadata = _initMessage.WorkerMetadata.ToString();
+                _metricsLogger.LogEvent(MetricEventNames.WorkerMetadata, functionName: null, workerMetadata);
+                _workerChannelLogger.LogDebug($"Worker metadata: {workerMetadata}");
+            }
+
             if (_initMessage.Result.IsFailure(out Exception exc))
             {
                 HandleWorkerInitError(exc);
                 _workerInitTask.TrySetResult(false);
                 return;
             }
+
             _state = _state | RpcWorkerChannelState.Initialized;
             _workerCapabilities.UpdateCapabilities(_initMessage.Capabilities);
             _isSharedMemoryDataTransferEnabled = IsSharedMemoryDataTransferEnabled();
@@ -401,30 +411,30 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
         {
             if (_functions != null)
             {
-                var count = _functions.Count();
-                if (functionTimeout.HasValue)
-                {
-                    _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
-
-                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, _functionLoadTimeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
-                }
-                else
-                {
-                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, TimeSpan.Zero, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
-                }
-
                 // Load Request is also sent for disabled function as it is invocable using the portal and admin endpoints
                 // Loading disabled functions at the end avoids unnecessary performance issues. Refer PR #5072 and commit #38b57883be28524fa6ee67a457fa47e96663094c
                 _functions = _functions.OrderBy(metadata => metadata.IsDisabled());
 
                 // Check if the worker supports this feature
-                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.AcceptsListOfFunctionLoadRequests));
+                bool capabilityEnabled = !string.IsNullOrEmpty(_workerCapabilities.GetCapabilityState(RpcWorkerConstants.SupportsLoadResponseCollection));
+                TimeSpan timeout = TimeSpan.Zero;
+                if (functionTimeout.HasValue)
+                {
+                    _functionLoadTimeout = functionTimeout.Value > _functionLoadTimeout ? functionTimeout.Value : _functionLoadTimeout;
+                    timeout = _functionLoadTimeout;
+                }
+
+                var count = _functions.Count();
                 if (capabilityEnabled)
                 {
+                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponseCollection, timeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponseCollection), HandleWorkerFunctionLoadError);
+
                     SendFunctionLoadRequestCollection(_functions, managedDependencyOptions);
                 }
                 else
                 {
+                    RegisterCallbackForNextGrpcMessage(MsgType.FunctionLoadResponse, timeout, count, msg => LoadResponse(msg.Message.FunctionLoadResponse), HandleWorkerFunctionLoadError);
+
                     foreach (FunctionMetadata metadata in _functions)
                     {
                         SendFunctionLoadRequest(metadata, managedDependencyOptions);
@@ -569,6 +579,16 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             // associate the invocation input buffer with the function
             var disposableLink = _functionInputBuffers[loadResponse.FunctionId].LinkTo(invokeBlock);
             _inputLinks.Add(disposableLink);
+        }
+
+        internal void LoadResponse(FunctionLoadResponseCollection loadResponseCollection)
+        {
+            _workerChannelLogger.LogDebug("Received FunctionLoadResponseCollection with number of functions: '{count}'.", loadResponseCollection.FunctionLoadResponses.Count);
+
+            foreach (FunctionLoadResponse loadResponse in loadResponseCollection.FunctionLoadResponses)
+            {
+                LoadResponse(loadResponse);
+            }
         }
 
         internal async Task SendInvocationRequest(ScriptInvocationContext context)

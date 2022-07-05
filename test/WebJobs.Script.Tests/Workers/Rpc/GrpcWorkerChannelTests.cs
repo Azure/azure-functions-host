@@ -430,7 +430,19 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         [Fact]
         public async Task SendLoadRequestCollection_PublishesOutboundEvents()
         {
-            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.AcceptsListOfFunctionLoadRequests, "true" } });
+            await CreateDefaultWorkerChannel(capabilities: new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(new Dictionary<string, string>() { { RpcWorkerConstants.SupportsLoadResponseCollection, "true" } });
 
             _metricsLogger.ClearCollections();
             IEnumerable<FunctionMetadata> functionMetadata = GetTestFunctionsList("node");
@@ -441,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             ShowOutput(traces);
             var functionLoadLogs = traces.Where(m => string.Equals(m.FormattedMessage, _expectedLogMsg));
             AreExpectedMetricsGenerated();
-            Assert.Equal(2, functionLoadLogs.Count());
+            Assert.Equal(3, functionLoadLogs.Count());
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Sending FunctionLoadRequestCollection with number of functions:'{0}'", functionMetadata.ToList().Count))));
         }
 
@@ -576,9 +588,87 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             await Task.Delay(500);
             var traces = _logger.GetLogMessages();
             ShowOutput(traces);
+
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "FunctionInvocationBuffer TestFunctionId1");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "FunctionInvocationBuffer TestFunctionId2");
             Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.")), "FunctionLoadResponse TestFunctionId1");
+        }
+
+        [Fact]
+        public async Task ReceivesInboundEvent_Failed_FunctionLoadResponses()
+        {
+            await CreateDefaultWorkerChannel();
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
+            _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
+                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
+                            new StatusResult() { Status = StatusResult.Types.Status.Failure });
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js1' with function id: 'TestFunctionId1'.")), "fail TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Worker failed to load function: 'js2' with function id: 'TestFunctionId2'.")), "fail TestFunctionId2");
+        }
+
+        [Fact]
+        public async Task ReceivesInboundEvent_FunctionLoadResponses()
+        {
+            await CreateDefaultWorkerChannel();
+            IDictionary<string, string> capabilities = new Dictionary<string, string>()
+            {
+                { RpcWorkerConstants.SupportsLoadResponseCollection, "1" }
+            };
+
+            StartStream startStream = new StartStream()
+            {
+                WorkerId = _workerId
+            };
+
+            StreamingMessage startStreamMessage = new StreamingMessage()
+            {
+                StartStream = startStream
+            };
+
+            GrpcEvent rpcEvent = new GrpcEvent(_workerId, startStreamMessage);
+            _workerChannel.SendWorkerInitRequest(rpcEvent);
+            _testFunctionRpcService.PublishWorkerInitResponseEvent(capabilities);
+
+            var functionMetadatas = GetTestFunctionsList("node");
+            _workerChannel.SetupFunctionInvocationBuffers(functionMetadatas);
+            _workerChannel.SendFunctionLoadRequests(null, TimeSpan.FromMinutes(1));
+            _testFunctionRpcService.PublishFunctionLoadResponsesEvent(
+                            new List<string>() { "TestFunctionId1", "TestFunctionId2" },
+                            new StatusResult() { Status = StatusResult.Types.Status.Success });
+
+            await Task.Delay(500);
+            var traces = _logger.GetLogMessages();
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js1' with functionId: 'TestFunctionId1'")), "setup TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Setting up FunctionInvocationBuffer for function: 'js2' with functionId: 'TestFunctionId2'")), "setup TestFunctionId2");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, string.Format("Received FunctionLoadResponseCollection with number of functions: '{0}'.", functionMetadatas.ToList().Count))), "recv FunctionLoadResponseCollection");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js1' with functionId: 'TestFunctionId1'.")), "rev TestFunctionId1");
+            Assert.True(traces.Any(m => string.Equals(m.FormattedMessage, "Received FunctionLoadResponse for function: 'js2' with functionId: 'TestFunctionId2'.")), "rev TestFunctionId2");
         }
 
         [Fact]

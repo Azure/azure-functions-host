@@ -17,7 +17,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 {
     public class TestFunctionRpcService
     {
-        private IScriptEventManager _eventManager;
         private ILogger _logger;
         private string _workerId;
         private IDictionary<string, IDisposable> _outboundEventSubscriptions = new Dictionary<string, IDisposable>();
@@ -26,7 +25,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
 
         public TestFunctionRpcService(IScriptEventManager eventManager, string workerId, TestLogger logger, string expectedLogMsg = "")
         {
-            _eventManager = eventManager;
             _logger = logger;
             _workerId = workerId;
             if (eventManager.TryGetGrpcChannels(workerId, out var inbound, out var outbound))
@@ -188,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Write(responseMessage);
         }
 
-        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null)
+        public void PublishWorkerInitResponseEvent(IDictionary<string, string> capabilities = null, WorkerMetadata workerMetadata = null)
         {
             StatusResult statusResult = new StatusResult()
             {
@@ -203,6 +201,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             if (capabilities != null)
             {
                 initResponse.Capabilities.Add(capabilities);
+            }
+
+            if (workerMetadata != null)
+            {
+                initResponse.WorkerMetadata = workerMetadata;
             }
 
             StreamingMessage responseMessage = new StreamingMessage()

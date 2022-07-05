@@ -51,7 +51,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 return false;
             }
 
-            _logger.LogDebug($"Evaluating EnvironmentCondition with value '{value}' and expression '{Expression}'");
+            _logger.LogDebug($"Evaluating EnvironmentCondition with name: '{Name}', value: '{value}' and expression: '{Expression}'");
 
             return _regex.IsMatch(value);
         }
