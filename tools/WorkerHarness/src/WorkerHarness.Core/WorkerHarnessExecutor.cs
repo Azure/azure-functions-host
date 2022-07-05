@@ -73,7 +73,7 @@ namespace WorkerHarness.Core
                 case StatusCode.Failure:
                     _logger.LogError(actionResult.Message);
 
-                    IEnumerable<string> messages = _harnessOptions.Verbose ? actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
+                    IEnumerable<string> messages = _harnessOptions.DisplayVerboseError ? actionResult.VerboseErrorMessages : actionResult.ErrorMessages;
                     foreach (string message in messages)
                     {
                         _logger.LogError(message);
