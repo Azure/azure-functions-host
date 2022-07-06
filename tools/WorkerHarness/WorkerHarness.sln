@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkerHarness.Console", "sr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkerHarness.Core", "src\WorkerHarness.Core\WorkerHarness.Core.csproj", "{E80A4AC8-F409-4A38-8E6D-F2ED88481399}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{58D970F9-231E-4852-8FCD-3EF5519AEA3D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorkerHarness.Core.Tests", "test\WorkerHarness.Core.Tests\WorkerHarness.Core.Tests.csproj", "{85034AF6-124F-4F4A-AA94-186F1355359B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,6 +27,10 @@ Global
 		{E80A4AC8-F409-4A38-8E6D-F2ED88481399}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E80A4AC8-F409-4A38-8E6D-F2ED88481399}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E80A4AC8-F409-4A38-8E6D-F2ED88481399}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85034AF6-124F-4F4A-AA94-186F1355359B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85034AF6-124F-4F4A-AA94-186F1355359B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85034AF6-124F-4F4A-AA94-186F1355359B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85034AF6-124F-4F4A-AA94-186F1355359B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -30,6 +38,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F1EF96E8-5027-468F-9049-DD6395CE1DEC} = {CAD2C7C9-57BF-4754-831B-E3EE8A9188DC}
 		{E80A4AC8-F409-4A38-8E6D-F2ED88481399} = {CAD2C7C9-57BF-4754-831B-E3EE8A9188DC}
+		{85034AF6-124F-4F4A-AA94-186F1355359B} = {58D970F9-231E-4852-8FCD-3EF5519AEA3D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B765B44E-CB9C-48DF-8588-C14E0A02AEAB}
