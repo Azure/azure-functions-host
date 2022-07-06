@@ -4,6 +4,7 @@
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core
 {
@@ -74,9 +75,23 @@ namespace WorkerHarness.Core
             ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap = new(); 
 
             // wait for timeoutTask, SendGrpc, and ReceiveGrpc with cancellation token
-            Task timeoutTask = Task.Delay(Timeout); // use Task.Delay
             Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, statusMap, tokenSource.Token);
             Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, statusMap, tokenSource.Token);
+
+            //tokenSource.CancelAfter(Timeout);
+
+            //bool[] results = await Task.WhenAll(sendTask, receiveTask);
+
+            //if (results[0] && results[1])
+            //{
+            //    executionStatus = StatusCode.Success;
+            //} 
+            //else
+            //{
+            //    executionStatus = StatusCode.Failure;
+            //}
+
+            Task timeoutTask = Task.Delay(Timeout);
 
             Task finishedTask = await Task.WhenAny(timeoutTask, Task.WhenAll(sendTask, receiveTask));
 
@@ -90,10 +105,12 @@ namespace WorkerHarness.Core
             {
                 executionStatus = await sendTask && await receiveTask ? StatusCode.Success : StatusCode.Failure;
             }
-            
+
             ActionResult actionResult = CreateActionResult(executionStatus, statusMap);
 
             _variableManager.Clear();
+
+            tokenSource.Dispose();
 
             return actionResult;
         }
@@ -125,6 +142,8 @@ namespace WorkerHarness.Core
             bool allValidated = true;
 
             IList<RpcActionMessage> unprocessedRpcMessages = incomingRpcMessages.ToList();
+
+            //var timeout = Task.Run(() => Task.Delay(Timeout).Wait());
 
             while (!token.IsCancellationRequested && unprocessedRpcMessages.Any())
             {
@@ -169,6 +188,9 @@ namespace WorkerHarness.Core
                             statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
                         }
 
+                        // setVariables
+                        SetVariables(rpcActionMessage, streamingMessage);
+
                         // register grpcMsg as a variable in _variableManager
                         _variableManager.AddVariable(rpcActionMessage.Id, streamingMessage);
 
@@ -178,22 +200,21 @@ namespace WorkerHarness.Core
                 catch (OperationCanceledException)
                 {
                     allValidated = false;
-
-                    foreach (RpcActionMessage rpcActionMessage in unprocessedRpcMessages)
-                    {
-                        RpcActionError error = new()
-                        {
-                            Type = RpcErrorCode.Message_Not_Received_Error,
-                            ConciseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
-                            VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize()),
-                            Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink)
-                        };
-
-                        statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
-                    }
-
                     break;
                 }
+            }
+
+            foreach (RpcActionMessage rpcActionMessage in unprocessedRpcMessages)
+            {
+                RpcActionError error = new()
+                {
+                    Type = RpcErrorCode.Message_Not_Received_Error,
+                    ConciseMessage = string.Format(RpcErrorConstants.MessageNotReceived, rpcActionMessage.MessageType),
+                    VerboseMessage = string.Format(RpcErrorConstants.MessageNotReceivedVerbose, rpcActionMessage.MessageType, rpcActionMessage.Serialize()),
+                    Advice = string.Format(RpcErrorConstants.GeneralErrorAdvice, RpcErrorConstants.MessageNotReceivedLink)
+                };
+
+                statusMap.AddOrUpdate(rpcActionMessage, error, (key, value) => error);
             }
 
             return allValidated;
@@ -203,11 +224,11 @@ namespace WorkerHarness.Core
         {
             foreach (RpcActionMessage rpcActionMessage in incomingRpcMessages)
             {
-                RegisterExpressionsInRpcActionMessage(rpcActionMessage);
+                RegisterExpressions(rpcActionMessage);
             }
         }
 
-        private void RegisterExpressionsInRpcActionMessage(RpcActionMessage rpcActionMessage)
+        private void RegisterExpressions(RpcActionMessage rpcActionMessage)
         {
             foreach (var matchingCriteria in rpcActionMessage.MatchingCriteria)
             {
@@ -273,17 +294,7 @@ namespace WorkerHarness.Core
                 await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
 
                 // set variables
-                if (rpcActionMessage.SetVariables != null)
-                {
-                    // resolve "SetVariables" property
-                    VariableHelper.ResolveVariableMap(rpcActionMessage.SetVariables, rpcActionMessage.Id, streamingMessage);
-
-                    // add the variables inside "SetVariables" to VariableManager
-                    foreach (KeyValuePair<string, string> variable in rpcActionMessage.SetVariables)
-                    {
-                        _variableManager.AddVariable(variable.Key, variable.Value);
-                    }
-                }
+                SetVariables(rpcActionMessage, streamingMessage);
 
                 _variableManager.AddVariable(rpcActionMessage.Id, streamingMessage);
 
@@ -295,6 +306,30 @@ namespace WorkerHarness.Core
             }
 
             return succeeded;
+        }
+
+        private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage)
+        {
+            if (rpcActionMessage.SetVariables == null)
+            {
+                return;
+            }
+
+            IDictionary<string, string> variableSettings = rpcActionMessage.SetVariables!;
+            foreach (KeyValuePair<string, string> setting in variableSettings)
+            {
+                string variableName = setting.Key;
+                string query = setting.Value;
+
+                try
+                {
+                    _variableManager.AddVariable(variableName, streamingMessage.Query(query));
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new ArgumentException($"Scenario input error: \"SetVariables\" property contains invalid query", ex);
+                }
+            }
         }
 
     }
