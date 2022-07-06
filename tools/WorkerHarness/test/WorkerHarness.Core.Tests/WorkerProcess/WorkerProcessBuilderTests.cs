@@ -26,7 +26,7 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             Assert.AreEqual(process.StartInfo.FileName, languageExecutable);
             Assert.AreEqual(process.StartInfo.WorkingDirectory, workerDirectory);
             Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            Assert.IsTrue(process.StartInfo.Arguments.Contains(workerExecutable));
+            StringAssert.Contains(process.StartInfo.Arguments, workerExecutable);
         }
 
         [TestMethod]
@@ -44,9 +44,9 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             // Assert
             Assert.IsNotNull(process.StartInfo);
             Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            Assert.IsTrue(process.StartInfo.Arguments.Contains(hostUri));
-            Assert.IsTrue(process.StartInfo.Arguments.Contains(port));
-            Assert.IsTrue(process.StartInfo.Arguments.Contains(grpcMaxMessageLength));
+            StringAssert.Contains(process.StartInfo.Arguments, hostUri);
+            StringAssert.Contains(process.StartInfo.Arguments, port);
+            StringAssert.Contains(process.StartInfo.Arguments, grpcMaxMessageLength);
         }
 
         [TestMethod]
@@ -62,7 +62,7 @@ namespace WorkerHarness.Core.Tests.WorkerProcess
             // Assert
             Assert.IsNotNull(process.StartInfo);
             Assert.IsTrue(!string.IsNullOrEmpty(process.StartInfo.Arguments));
-            Assert.IsTrue(process.StartInfo.Arguments.Contains(workerId));
+            StringAssert.Contains(process.StartInfo.Arguments, workerId);
         }
     }
 }
