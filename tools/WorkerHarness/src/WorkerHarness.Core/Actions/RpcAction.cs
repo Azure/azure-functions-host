@@ -232,7 +232,7 @@ namespace WorkerHarness.Core
         {
             foreach (var matchingCriteria in rpcActionMessage.MatchingCriteria)
             {
-                matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, rpcActionMessage.Id);
+                //matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, rpcActionMessage.Id);
 
                 matchingCriteria.ConstructExpression();
 
@@ -242,7 +242,7 @@ namespace WorkerHarness.Core
             // in message.Validators, update any default variable '$.' to '$.{messageId}'
             foreach (var validator in rpcActionMessage.Validators)
             {
-                validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, rpcActionMessage.Id);
+                //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, rpcActionMessage.Id);
 
                 validator.ConstructExpression();
 
