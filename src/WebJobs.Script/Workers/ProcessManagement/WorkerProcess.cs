@@ -223,7 +223,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             try
             {
                 _eventSubscription?.Dispose();
-                _processRegistry.Close();
+                //_processRegistry.Close();
 
                 if (Process != null)
                 {
@@ -248,6 +248,44 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _processRegistry.Close();
             }
         }
+
+        /*
+        public void Dispose()
+        {
+            Disposing = true;
+            // best effort process disposal
+            // try
+            // {
+            _eventSubscription?.Dispose();
+
+            //if (Process != null)
+            // {
+                // if (!Process.HasExited)
+                // {
+            Process.Kill();
+            _processRegistry.Close();
+
+            //if (!Process.WaitForExit(processExitTimeoutInMilliseconds))
+            //{
+            //    _workerProcessLogger.LogWarning($"Worker process has not exited despite waiting for {processExitTimeoutInMilliseconds} ms");
+            //}
+            // }
+            // Process.Dispose();
+        //}
+        // _processRegistry.Close();
+        /*
+        }
+        catch (Exception exc)
+        {
+            _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
+            //ignore
+        }
+        finally
+        {
+            _processRegistry.Close();
+        }
+        */
+        //}
 
         internal void OnHostStart(HostStartEvent evt)
         {

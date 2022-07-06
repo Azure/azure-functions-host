@@ -505,17 +505,19 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                         // If we are running in development mode with core tools, do not overlap the restarts.
                         // Overlapping restarts are problematic when language worker processes are listening
                         // to the same debug port
-                        if (ShouldEnforceSequentialRestart())
-                        {
-                            stopTask = Orphan(previousHost, cancellationToken);
-                            await stopTask;
-                            startTask = UnsynchronizedStartHostAsync(activeOperation);
+                        //if (ShouldEnforceSequentialRestart())
+                        //{
+                        stopTask = Orphan(previousHost, cancellationToken);
+                        await stopTask;
+                        startTask = UnsynchronizedStartHostAsync(activeOperation);
+                        /*
                         }
                         else
                         {
                             startTask = UnsynchronizedStartHostAsync(activeOperation);
                             stopTask = Orphan(previousHost, cancellationToken);
                         }
+                        */
 
                         await startTask;
                     }
