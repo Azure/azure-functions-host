@@ -62,7 +62,9 @@ namespace WorkerHarness.Core.Validators
                 string query = context.Query;
                 string queryResult = message.Query(query);
 
-                return string.Equals(queryResult, context.Expected, StringComparison.Ordinal);
+                context.TryEvaluate(out string? expected);
+
+                return string.Equals(queryResult, expected, StringComparison.Ordinal);
             }
             catch (ArgumentException ex)
             {
