@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 {
                     if (profile.EvaluateConditions())
                     {
-                        _logger?.LogInformation($"Conditions evaluated succesfully for profile with name: {profile.Name} and ID: {profile.ProfileId}");
+                        _logger.LogInformation($"Conditions evaluated succesfully for profile with name: {profile.Name} and ID: {profile.ProfileId}");
                         evaluatedProfile = profile;
                         return true;
                     }
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (GetEvaluatedProfile(defaultWorkerDescription.Language, out WorkerDescriptionProfile profile))
             {
-                _logger?.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
+                _logger.LogInformation($"Worker initialized with profile - {profile.Name}, Profile ID {profile.ProfileId} from worker config.");
                 _activeProfile = profile.ProfileId;
                 workerDescription = profile.ApplyProfile(defaultWorkerDescription);
                 return;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                profileId = profile.ProfileId;
             }
-            _logger?.LogInformation($"Active profile: {_activeProfile} Evaluated profile: {profileId}");
+            _logger.LogInformation($"Active profile: {_activeProfile} Evaluated profile: {profileId}");
             return _activeProfile.Equals(profileId);
         }
     }
