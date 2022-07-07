@@ -124,13 +124,19 @@ During the execution of an **rpc** action, the Worker Harness will listen to all
 
  __MatchingCriteria:__ 
 
-Users can apply stricter filters by using the **matchingCriteria** property. Each criterion inside the **matchingCriteria** list contains a **query** string and an **expected** string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the incoming message to match. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
+Users can apply stricter filters by using the **matchingCriteria** property. The __matchingCriteria__ is a list of objects with 2 properties:
+- __query__: a query starts with `$.` followed by the properties of the message that users want to index into. E.g. if a StreamingMessage has the following payload, then the query `$.WorkerInitResponse.Result.Status` will return the string `"Failure"`.
+```
+{"WorkerInitResponse": { "Result": { "Status": "Failure" } } }
+```
 
-In the above incoming - message example, the `"$.ContentCase"` **query** tells the Harness to query any incoming 'WorkerInitRequest' message for a 'ContentCase' property. It then compares the string value of the 'ContentCase' property to the string literal `"WorkerInitResponse"` in the __expected__ property. If they are equal, the Harness has received a matched message from the language worker and will validate the matched message if there are any __validators__. If they are not equal, the Harness will discard this 'WorkerInitRequest' message and continue to wait for a matched message. If no matched message is received within the **timeout** period, the Harness will declare a [Message_Not_Received_Error][Message_Not_Received_Error].
+- __expected__: this is the value that the __query__ will be compare to. The expected string can be either a variable or a string literal.
+
+In the above incoming message, the Worker Harness will query any incoming message for the `"$.ContentCase"` property, then compare the value of the property to the expected string literal `"WorkerInitResponse"`. If they are equal, the message is a match. The Worker Harness will start validating the message against the __validators__ list. If they are not equal, the Harness will continue to wait for a matched message. If no matched message is received within the **timeout** period, the Harness will declare a [Message_Not_Received_Error][Message_Not_Received_Error]. 
 
  __Validators:__
 
-Users validate a matched message by using the __validators__ property. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string. The **query** string is a variable expression (see [Variables and Expressions](#variables-and-expressions)) that tells the Harness which property of the matched message to validate. The **expected** string is the value that the **query** will compare to. The **expected** string can be a variable expression or a string literal. 
+Users validate a matched message against the __validators__ list. Similar to __matchingCriteria__, each validator has a __query__ string and an __expected__ string.  
 
 There are two types of __validator__: _regex_ and _string_. 
 - If a _regex_ validator is used, then the Harness will use regular expression matching to validate the __query__ string. The __expected__ string should be a regular expression. See [Regular Expression Language - Quick Reference](https://docs.microsoft.com/en-us/dotnet/standard/base-types/regular-expression-language-quick-reference). 
@@ -138,7 +144,7 @@ There are two types of __validator__: _regex_ and _string_.
 
 In the above incoming - message example, a string validator tells the Worker Harness to query into the 'Status' property of a matched 'WorkerInitResponse' message and compare it to the `"Success"` string literal. If the string comparison returns equal, the validation succeeds. Otherwise, the Worker Harness will declare a [Validation_Error][Validation_Error].
 
-> Since both regular expression and string comparison work on string literal, the Worker Harness requires the variable expressions in the __query__ and __expected__ property to evaluate to string values. If they evaluate to objects, the Harness will throw an exception. This requirement applies to both __matchingCriteria__ and __validators__.
+> Since both regular expression and string comparison work on string literal, the Worker Harness requires the __query__ and __expected__ property to evaluate to string values. If they evaluate to objects, the Harness will throw an exception. This requirement applies to both __matchingCriteria__ and __validators__.
 
 In summary, an __incoming__ rpc message has the following properties:
 - __direction__ (required): incoming.
@@ -154,7 +160,7 @@ Additionally, users can use the __setVariables__ property to declare a variable 
 
 Each entry in the __setVariables__ property has:
 - variable name: the name of the variable that the Harness stores in memory during the execution of an action.
-- query: the query to tell which property of the message to set the variable to.
+- query: the query to tell which property of the message to set the variable to; follow the same syntax as the __query__ property in __matchingCriteria__ and __validators__.
 
 E.g. `"$.InvocationRequest.InvocationId"` would tell the Harness to index into the `InvocationRequest` property to find the `InvocationId` value and assign it to the variable named `"invocationId_1"`.
 
