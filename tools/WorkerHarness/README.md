@@ -151,6 +151,13 @@ In summary, an __incoming__ rpc message has the following properties:
 An __Rpc__ action remembers the [StreamingMessage][StreamingMessage] that it sends to and receives from the language worker. Users can assign these messages a variable name by setting the __id__ property. Later, they can use these messages as object variable in an expression (see [Variables and Expressions](#variables-and-expressions)). 
 
 Additionally, users can use the __setVariables__ property to declare a variable and initialize it to be the value of any property within a message.
+
+Each entry in the __setVariables__ property has:
+- variable name: the name of the variable that the Harness stores in memory during the execution of an action.
+- query: the query to tell which property of the message to set the variable to.
+
+E.g. `"$.InvocationRequest.InvocationId"` would tell the Harness to index into the `InvocationRequest` property to find the `InvocationId` value and assign it to the variable named `"invocationId_1"`.
+
 ```
 {
     "direction": "Outgoing",
@@ -161,7 +168,7 @@ Additionally, users can use the __setVariables__ property to declare a variable 
     }
 }
 ```
-In this example, an `invocationId_1` variable is set to be the value of the 'InvocationId' of the 'InvocationRequest' message. The __Rpc__ action that execute this message will store this variable in memory until timeout. 
+
 
 ### Variables and Expressions:
 The Worker Harness supports two types of variables: 
