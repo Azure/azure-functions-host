@@ -3,6 +3,7 @@
 
 using WorkerHarness.Core.WorkerProcess;
 using System.Diagnostics;
+using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness.Core.Tests.WorkerProcess
 {
