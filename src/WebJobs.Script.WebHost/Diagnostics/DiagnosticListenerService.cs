@@ -28,16 +28,18 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
             _logger = logger;
             _listenerSubscriptions = new Dictionary<string, IDisposable>();
 
+            SetDebugState();
+
             if (standbyOptions.CurrentValue.InStandbyMode)
             {
-                _standbyChangeHandler = standbyOptions.OnChange(o => SubscribeListeners());
+                _standbyChangeHandler = standbyOptions.OnChange(o => SetDebugState());
             }
         }
 
+        private static void SetDebugState() => _debugTraceEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDebugTracing);
+
         private void SubscribeListeners()
         {
-            _debugTraceEnabled = FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableDebugTracing);
-
             if (_allListenersSubscription != null)
             {
                 _allListenersSubscription.Dispose();
@@ -126,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 }
                 else
                 {
-                    _logger.LogDebug("Listener '{listener}' emitted event '{eventName}': {payload}", _listenerName, kvp.Key, kvp.Value);
+                    _logger.LogDebug("Diagnostic source '{source}' emitted event '{eventName}': {payload}", _listenerName, kvp.Key, kvp.Value);
                 }
             }
         }

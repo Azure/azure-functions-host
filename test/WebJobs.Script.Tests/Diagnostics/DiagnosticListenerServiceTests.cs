@@ -146,7 +146,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             Assert.True(source.IsEnabled(eventName));
         }
 
-        private static string GetEventMessge(string listenerName, string eventName, string payload)
-            => $"Listener '{listenerName}' emitted event '{eventName}': {payload}";
+        private static string GetEventMessge(string source, string eventName, string payload)
+            => $"Diagnostic source '{source}' emitted event '{eventName}': {payload}";
     }
 }
