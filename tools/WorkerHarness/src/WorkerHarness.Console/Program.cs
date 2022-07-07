@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using WorkerHarness.Core.WorkerProcess;
+using WorkerHarness.Core.Commons;
 
 namespace WorkerHarness
 {
