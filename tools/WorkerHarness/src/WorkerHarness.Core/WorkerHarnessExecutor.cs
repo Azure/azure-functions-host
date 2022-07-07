@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using WorkerHarness.Core.Options;
 using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core

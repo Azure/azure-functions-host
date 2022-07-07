@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Options
 {
     /// <summary>
     /// Provides an abtraction to validate a HarnessOptions object

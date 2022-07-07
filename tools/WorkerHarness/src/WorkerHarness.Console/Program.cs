@@ -1,7 +1,6 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using WorkerHarness.Core;
 using Channels = System.Threading.Channels;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Grpc.Core;
@@ -9,8 +8,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using WorkerHarness.Core;
 using WorkerHarness.Core.WorkerProcess;
 using WorkerHarness.Core.Commons;
+using WorkerHarness.Core.Options;
 
 namespace WorkerHarness
 {

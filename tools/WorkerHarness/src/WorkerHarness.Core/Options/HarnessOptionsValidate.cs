@@ -3,7 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Options
 {
     public class HarnessOptionsValidate : IHarnessOptionsValidate
     {

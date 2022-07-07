@@ -127,7 +127,7 @@ During the execution of an **rpc** action, the Worker Harness will listen to all
 Users can apply stricter filters by using the **matchingCriteria** property. The __matchingCriteria__ is a list of objects with 2 properties:
 - __query__: a query starts with `$.` followed by the properties of the message that users want to index into. E.g. if a StreamingMessage has the following payload, then the query `$.WorkerInitResponse.Result.Status` will return the string `"Failure"`.
 ```
-{"WorkerInitResponse": { "Result": { "Status": "Failure" } } }
+    {"WorkerInitResponse": { "Result": { "Status": "Failure" } } }
 ```
 
 - __expected__: this is the value that the __query__ will be compare to. The expected string can be either a variable or a string literal.
