@@ -10,7 +10,7 @@ namespace WorkerHarness.Core.Variables
     public interface IVariableObservable
     {
         // allow an Expression to subscribe
-        void Subscribe(ExpressionTemplate expression);
+        void Subscribe(IExpression expression);
 
         // add a new variable and notify all subscribed expressions
         void AddVariable(string variableName, object variableValue);

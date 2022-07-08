@@ -8,68 +8,83 @@ namespace WorkerHarness.Core.Variables
         // maps variable name to variable value
         private readonly IDictionary<string, object> _variables;
 
-        // _expressions store subscribed Expression object
-        private readonly IList<ExpressionTemplate> _expressions;
+        // store subscribed Expression object
+        private readonly IList<IExpression> _expressions;
+
+        // exception messages
+        internal static string DuplicateVariableMessage = "A variable with a name \"{0}\" has already exisited in the Variable dictionary";
 
         public VariableManager()
         {
             _variables = new Dictionary<string, object>();
-            _expressions = new List<ExpressionTemplate>();
+            _expressions = new List<IExpression>();
+        }
+
+        // constructor for unit testing
+        internal VariableManager(IDictionary<string, object> variables, IList<IExpression> expressions)
+        {
+            _variables = variables;
+            _expressions = expressions;
         }
 
         /// <summary>
-        /// Allow an Expression object to subscribe. 
+        /// Allow an IExpression object to subscribe. 
         /// The expression object is first evaluated using the availabe variables.
-        /// If it still have unresolved dependency, then add it to the _expression list
+        /// If it still have unresolved dependency, keep it in the _expressions list
         /// </summary>
-        /// <param name="expression" cref="ExpressionTemplate"></param>
-        public void Subscribe(ExpressionTemplate expression)
+        /// <param name="expression" cref="ExpressionBase"></param>
+        public void Subscribe(IExpression expression)
         {
-            // if expression has dependency that is available, resolve it immediately
+            bool expressionResolved = expression.TryEvaluate(out string? _);
+            if (expressionResolved) return;
+
             foreach (KeyValuePair<string, object> variable in _variables)
             {
                 expression.TryResolve(variable.Key, variable.Value);
             }
 
-            // if expression still has dependency, add it the _expressions list
-            if (!expression.Resolved)
+            expressionResolved = expression.TryEvaluate(out string? _);
+            if (!expressionResolved)
             {
                 _expressions.Add(expression);
             }
         }
 
         /// <summary>
-        /// Add variable name and value.
-        /// All subscribed expressions will be notified and evaluated.
+        /// Add variable. Notify all subscribed expressions.
         /// </summary>
         /// <param name="variableName" cref="string"></param>
         /// <param name="variableValue" cref="object"></param>
         public void AddVariable(string variableName, object variableValue)
         {
-            // add the name/value pair to _variables
             if (!_variables.TryAdd(variableName, variableValue))
             {
-                throw new InvalidOperationException($"A variable with a name \"{variableName}\" has already exisited in the Global Variable dictionary");
-            } 
+                throw new InvalidDataException(string.Format(DuplicateVariableMessage, variableName));
+            }
 
-            // update all the expressions that may depend on this variable
-            foreach (ExpressionTemplate expression in _expressions)
+            HashSet<IExpression> expressionsToRemove = new();
+            foreach (IExpression expression in _expressions)
             {
                 bool resolved = expression.TryResolve(variableName, variableValue);
-                // if the expression is resolved, removed it from the _expressions list
                 if (resolved)
                 {
-                    _expressions.Remove(expression);
+                    expressionsToRemove.Add(expression);
                 }
+            }
+
+            foreach (IExpression expression in expressionsToRemove)
+            {
+                _expressions.Remove(expression);
             }
         }
 
         /// <summary>
-        /// Clear all stored variables and reset the state
+        /// Clear all stored variables and reset the state.
         /// </summary>
         public void Clear()
         {
             _variables.Clear();
+            _expressions.Clear();
         }
     }
 
