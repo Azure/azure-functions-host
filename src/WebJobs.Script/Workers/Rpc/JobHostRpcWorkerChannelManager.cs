@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     internal class JobHostRpcWorkerChannelManager : IJobHostRpcWorkerChannelManager
     {
         private readonly ILogger _logger;
-        private ConcurrentDictionary<string, IRpcWorkerChannelHolder> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelHolder>();
+        private ConcurrentDictionary<string, IRpcWorkerChannelDictionary> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelDictionary>();
 
         public JobHostRpcWorkerChannelManager(ILoggerFactory loggerFactory)
         {
@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void AddChannel(IRpcWorkerChannel channel, string language)
         {
-            if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
+            if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
             {
                 channels.TryAdd(channel.Id, channel);
             }
             else
             {
-                _channels.TryAdd(language, new IRpcWorkerChannelHolder
+                _channels.TryAdd(language, new IRpcWorkerChannelDictionary
                 {
                     [channel.Id] = channel,
                 });
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             foreach (string language in _channels.Keys)
             {
-                if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
+                if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
                 {
                     if (channels.TryRemove(channelId, out IRpcWorkerChannel rpcChannel))
                     {
@@ -57,14 +57,14 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             foreach (string language in _channels.Keys)
             {
-                if (_channels.TryRemove(language, out IRpcWorkerChannelHolder channels))
+                if (_channels.TryRemove(language, out IRpcWorkerChannelDictionary removedChannels))
                 {
-                    foreach (var rpcWorkerChannel in channels.Values)
+                    foreach (var removedChannel in removedChannels.Values)
                     {
-                        if (channels.TryRemove(rpcWorkerChannel.Id, out IRpcWorkerChannel _))
+                        if (removedChannels.TryRemove(removedChannel.Id, out IRpcWorkerChannel _))
                         {
-                            _logger.LogDebug("Disposing language worker channel with id:{workerId}", rpcWorkerChannel.Id);
-                            (rpcWorkerChannel as IDisposable)?.Dispose();
+                            _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+                            (removedChannel as IDisposable)?.Dispose();
                         }
                     }
                 }
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             {
                 return GetChannels();
             }
-            else if (_channels.TryGetValue(language, out IRpcWorkerChannelHolder channels))
+            else if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
             {
                 return channels.Values;
             }
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             List<IRpcWorkerChannel> rpcWorkerChannels = new List<IRpcWorkerChannel>();
             foreach (string language in _channels.Keys)
             {
-                _channels.TryGetValue(language, out IRpcWorkerChannelHolder channels);
+                _channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels);
                 rpcWorkerChannels.AddRange(channels.Values);
             }
             return rpcWorkerChannels;

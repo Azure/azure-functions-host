@@ -1,16 +1,16 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.WebJobs.Script.Description;
-using Microsoft.Azure.WebJobs.Script.WebHost.Management;
-using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs.Script.Description;
+using Microsoft.Azure.WebJobs.Script.WebHost.Management;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using WebJobs.Script.Tests;
 using Xunit;
 
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     {
 
         /// <summary>
-        /// Runs tests with multiple language provider funtion.
+        /// Runs tests with multiple language provider function.
         /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_MultipleLanguageProviders()
@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         /// <summary>
-        /// Runs tests with Java language provider funtion.
+        /// Runs tests with Java language provider function.
         /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_SingleJavaLanguageProviders()
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         /// <summary>
-        /// Runs tests with Node language provider funtion.
+        /// Runs tests with Node language provider function.
         /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_SingleJavascriptLanguageProviders()
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         }
 
         /// <summary>
-        /// Runs tests with no language provider funtion.
+        /// Runs tests with no language provider function.
         /// </summary>
         [Fact]
         public async Task CodelessFunction_CanUse_NoLanguageProviders()
@@ -248,7 +248,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
             public ImmutableDictionary<string, ImmutableArray<string>> FunctionErrors { get; }
 
             /// <summary>
-            /// Gets the funtion metadata.
+            /// Gets the function metadata.
             /// </summary>
             /// <returns></returns>
             public Task<ImmutableArray<FunctionMetadata>> GetFunctionMetadataAsync()

@@ -23,6 +23,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class RpcFunctionInvocationDispatcher : IFunctionInvocationDispatcher
     {
+        private static readonly int MultiLanguageDefaultPrcocessCount = 1;
+
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
         private readonly IRpcWorkerChannelFactory _rpcWorkerChannelFactory;
@@ -111,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                return 1;
+                return MultiLanguageDefaultPrcocessCount;
             }
             if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
@@ -138,21 +140,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             }
         }
 
-        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, string language)
-        {
-            var rpcWorkerChannel = _rpcWorkerChannelFactory.Create(_scriptOptions.RootScriptPath, language, _metricsLogger, attemptCount, _workerConfigs);
-            _jobHostLanguageWorkerChannelManager.AddChannel(rpcWorkerChannel, language);
-            await rpcWorkerChannel.StartWorkerProcessAsync();
-            _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", language, rpcWorkerChannel.Id);
-
-            // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
-            if (!_workerIndexing)
-            {
-                rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
-                rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-                SetFunctionDispatcherStateToInitializedAndLog();
-            }
-        }
+        internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, string language) =>
+            await InitializeJobhostLanguageWorkerChannelAsync(attemptCount, new[] { language });
 
         internal async Task InitializeJobhostLanguageWorkerChannelAsync(int attemptCount, IEnumerable<string> languages)
         {
@@ -163,14 +152,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 await rpcWorkerChannel.StartWorkerProcessAsync();
                 _logger.LogDebug("Adding jobhost language worker channel for runtime: {language}. workerId:{id}", language, rpcWorkerChannel.Id);
 
-                // if the worker is indexing, we will not have function metadata yet so we cannot perform these next three lines
+                // if the worker is indexing, we will not have function metadata yet. So, we cannot set up invocation buffers or send load requests
                 if (!_workerIndexing)
                 {
                     rpcWorkerChannel.SetupFunctionInvocationBuffers(_functions);
                     rpcWorkerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
                 }
             }
-            SetFunctionDispatcherStateToInitializedAndLog();
+            if (!_workerIndexing)
+            {
+                SetFunctionDispatcherStateToInitializedAndLog();
+            }
         }
 
         private void SetFunctionDispatcherStateToInitializedAndLog()
@@ -188,13 +180,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                 _logger.LogDebug("Creating new webhost language worker channel for runtime:{workerRuntime}.", language);
                 IRpcWorkerChannel workerChannel = await _webHostLanguageWorkerChannelManager.InitializeChannelAsync(language);
 
-                // if the worker is indexing, we will not have function metadata yet so we cannot perform the next two lines
+                // if the worker is indexing, we will not have function metadata yet. So, we cannot set up invocation buffers or send load requests
                 if (!_workerIndexing)
                 {
                     workerChannel.SetupFunctionInvocationBuffers(_functions);
                     workerChannel.SendFunctionLoadRequests(_managedDependencyOptions.Value, _scriptOptions.FunctionTimeout);
-                    SetFunctionDispatcherStateToInitializedAndLog();
                 }
+            }
+            if (!_workerIndexing)
+            {
+                SetFunctionDispatcherStateToInitializedAndLog();
             }
         }
 

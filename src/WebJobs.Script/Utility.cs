@@ -677,9 +677,9 @@ namespace Microsoft.Azure.WebJobs.Script
             return !string.IsNullOrEmpty(functionMetadata.Language) && functionMetadata.Language.Equals(workerRuntime, StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, IList<RpcWorkerConfig> workerConfig)
+        internal static bool IsFunctionMetadataLanguageSupportedByWorkerRuntime(FunctionMetadata functionMetadata, IList<RpcWorkerConfig> workerConfigs)
         {
-            return !string.IsNullOrEmpty(functionMetadata.Language) && workerConfig.Select(wc => wc.Description.Language).Contains(functionMetadata.Language);
+            return !string.IsNullOrEmpty(functionMetadata.Language) && workerConfigs.Select(wc => wc.Description.Language).Contains(functionMetadata.Language);
         }
 
         public static bool IsDotNetLanguageFunction(string functionLanguage)

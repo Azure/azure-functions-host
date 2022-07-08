@@ -8,7 +8,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
     /// <summary>
     /// Class to hold list of <see cref="IRpcWorkerChannel"/>
     /// </summary>
-    internal class IRpcWorkerChannelHolder : ConcurrentDictionary<string, IRpcWorkerChannel>
+    internal class IRpcWorkerChannelDictionary : ConcurrentDictionary<string, IRpcWorkerChannel>
     {
     }
 }
