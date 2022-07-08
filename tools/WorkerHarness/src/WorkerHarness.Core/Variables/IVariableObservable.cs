@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Variables
 {
     /// <summary>
     /// interface that will allow an Expression object to subscribe to variable-addition events
@@ -10,7 +10,7 @@ namespace WorkerHarness.Core
     public interface IVariableObservable
     {
         // allow an Expression to subscribe
-        void Subscribe(Expression expression);
+        void Subscribe(ExpressionTemplate expression);
 
         // add a new variable and notify all subscribed expressions
         void AddVariable(string variableName, object variableValue);

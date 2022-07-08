@@ -12,6 +12,7 @@ using WorkerHarness.Core;
 using WorkerHarness.Core.WorkerProcess;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Options;
+using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness
 {

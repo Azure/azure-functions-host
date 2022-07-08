@@ -3,42 +3,50 @@
 
 using WorkerHarness.Core.Commons;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Variables
 {
     /// <summary>
     /// Defines an expression
     /// </summary>
-    public abstract class Expression
+    public abstract class ExpressionTemplate
     {
         /// <summary>
-        /// Inheriting class must implement this method to become an Expression
+        /// Inheriting class must implement this method. Inside the method, call SetExpression().
         /// </summary>
         public abstract void ConstructExpression();
 
         // the value of the expression; could contain an object variable name ${...} and several string variable names @{...}
         private string _expression = string.Empty;
+        public string Expression => _expression;
 
         // true if all variables within _expression has been resolve
         private bool _resolved = false;
-
         public bool Resolved => _resolved;
 
         // contains variable dependencies in an expression
         private IList<string> _dependencies = new List<string>();
+        public IList<string> Dependencies => _dependencies;
 
         // an object variable that the expression may depend on.
-        private object? _objectVariable;
+        private KeyValuePair<string, object>? _objectVariable;
 
         /// <summary>
         /// Set a given string to be an Expression
         /// </summary>
         /// <param name="expression"></param>
-        protected void SetExpression(string expression)
+        protected internal void SetExpression(string expression)
         {
+            try
+            {
+                VariableHelper.ValidateVariableExpression(expression);
+            }
+            catch (InvalidDataException ex)
+            {
+                throw new ArgumentException(string.Concat($"Invalid expression: {expression}. ", ex.Message));
+            }
+
             _expression = expression;
-
             _dependencies = VariableHelper.ExtractVariableNames(_expression);
-
             _resolved = !_dependencies.Any();
         }
 
@@ -47,6 +55,7 @@ namespace WorkerHarness.Core
         /// </summary>
         /// <param name="variableName" cref="string">variable name</param>
         /// <param name="variableValue" cref="string">variable value</param>
+        /// <returns>true if the expression is fully resolved</returns>
         public bool TryResolve(string variableName, object variableValue)
         {
             // update the expression with the variable 
@@ -58,17 +67,20 @@ namespace WorkerHarness.Core
                 }
                 else // if the variable is an object variable, buffer it
                 {
-                    _objectVariable = variableValue;
+                    _objectVariable = new(variableName, variableValue);
                 }
 
                 // attemp to resolve the object variable in _expression
-                _expression = VariableHelper.ResolveObjectVariable(variableName, _objectVariable, _expression);
+                _expression = VariableHelper.ResolveObjectVariable(_objectVariable?.Key ?? string.Empty, _objectVariable?.Value, _expression);
 
                 // _resolved is true if the expression contains no variables
                 _resolved = !VariableHelper.ContainVariables(_expression);
 
                 // discard the _objectVariable if _resolved
                 _objectVariable = _resolved ? null : _objectVariable;
+
+                // remove variableName from _dependencies
+                _dependencies.Remove(variableName);
             }
 
             return _resolved;

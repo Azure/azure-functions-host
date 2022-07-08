@@ -153,7 +153,7 @@ namespace WorkerHarness.Core.Tests.Commons
         public void ExtractVariableNames_ValidExpressionWithStringAndObjectVariables_ReturnListOfString()
         {
             // Arrange
-            string expression = "${corgi}.@{beagle}.AmericanShortHair.@{frenchies}";
+            string expression = "${corgi}.@{beagle}.AmericanShortHair.@{frenchies}.@{beagle}";
             IList<string> expected = new List<string>() { "corgi", "beagle", "frenchies" };
 
             // Act
@@ -161,6 +161,7 @@ namespace WorkerHarness.Core.Tests.Commons
 
             // Assert
             Assert.IsTrue(actual.Any());
+            Assert.AreEqual(expected.Count, actual.Count);
             foreach (string doggie in expected)
             {
                 Assert.IsTrue(actual.Contains(doggie));
@@ -282,6 +283,22 @@ namespace WorkerHarness.Core.Tests.Commons
             string variableName = "MoodPredictor";
             object variableValue = CreateWeatherForecastObject();
             string expression = "${WeatherForecast}.Location";
+            string expected = expression;
+
+            // Act
+            string actual = VariableHelper.ResolveObjectVariable(variableName, variableValue, expression);
+
+            // Assert
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void ResolveObjectVariable_ExpressionThatHasStringVariable_ReturnSameExpression()
+        {
+            // Arrange
+            string variableName = "WeatherForecast";
+            object variableValue = CreateWeatherForecastObject();
+            string expression = "${WeatherForecast}.@{attribute}";
             string expected = expression;
 
             // Act
