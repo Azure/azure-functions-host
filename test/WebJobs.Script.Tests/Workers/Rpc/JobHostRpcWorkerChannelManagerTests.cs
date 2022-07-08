@@ -1,7 +1,10 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -88,6 +91,40 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             Assert.Equal(_workerChannelJava1.Object, _jobHostRpcWorkerChannelManager.GetChannels("java").First());
             Assert.Equal(_workerChannelPs1.Object, _jobHostRpcWorkerChannelManager.GetChannels("powershell").First());
             Assert.Equal(_workerChannelJs1.Object, _jobHostRpcWorkerChannelManager.GetChannels("node").First());
+        }
+
+        /// <summary>
+        /// Tests <see cref="JobHostRpcWorkerChannelManager.AddChannel(IRpcWorkerChannel, string)"/> Concurrency.
+        /// </summary>
+        [Fact]
+        public void TestAddChannelConcurrency()
+        {
+            for (int j = 0; j < 100; j++)
+            {
+                _jobHostRpcWorkerChannelManager.ShutdownChannels();
+                List<Thread> startedThreads = new List<Thread>();
+                for (int i = 0; i < 100; i++)
+                {
+                    Thread addChannelThread = new Thread(new ThreadStart(Create100Channels));
+                    addChannelThread.Start();
+                    startedThreads.Add(addChannelThread);
+                }
+                startedThreads.ForEach(thread => thread.Join());
+                Assert.Equal(10000, _jobHostRpcWorkerChannelManager.GetChannels().Count());
+            }
+        }
+
+        /// <summary>
+        /// Creates and adds 100 random worker channels to <see cref="JobHostRpcWorkerChannelManager"/> instance.
+        /// </summary>
+        private void Create100Channels()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                Mock<IRpcWorkerChannel> workerChannelJs = new Mock<IRpcWorkerChannel>();
+                workerChannelJs.Setup(wc => wc.Id).Returns(Guid.NewGuid().ToString());
+                _jobHostRpcWorkerChannelManager.AddChannel(workerChannelJs.Object, "java");
+            }
         }
 
         /// <summary>

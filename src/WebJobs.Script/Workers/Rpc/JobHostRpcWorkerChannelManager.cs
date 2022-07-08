@@ -22,16 +22,19 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void AddChannel(IRpcWorkerChannel channel, string language)
         {
-            if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
+            lock (_channels)
             {
-                channels.TryAdd(channel.Id, channel);
-            }
-            else
-            {
-                _channels.TryAdd(language, new IRpcWorkerChannelDictionary
+                if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
                 {
-                    [channel.Id] = channel,
-                });
+                    channels.TryAdd(channel.Id, channel);
+                }
+                else
+                {
+                    _channels.TryAdd(language, new IRpcWorkerChannelDictionary
+                    {
+                        [channel.Id] = channel,
+                    });
+                }
             }
         }
 

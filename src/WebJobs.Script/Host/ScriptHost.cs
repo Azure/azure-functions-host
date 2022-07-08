@@ -156,6 +156,8 @@ namespace Microsoft.Azure.WebJobs.Script
                 }));
 
             _functionDataCache = functionDataCache;
+
+            _environment.IsMultiLanguageRuntimeEnvironment(true);
         }
 
         public event EventHandler HostInitializing;
