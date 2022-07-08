@@ -387,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                });
+                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 

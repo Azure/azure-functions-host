@@ -3,6 +3,7 @@
 - My change description (#PR)
 -->
 
+- Surface exception type and details from out-of-proc user code to App Insights (#8314)
 - Updated Java Worker Version to [2.3.1](https://github.com/Azure/azure-functions-java-worker/releases/tag/2.3.1)
 
 **Release sprint:** Sprint 123
