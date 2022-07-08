@@ -36,5 +36,33 @@ namespace WorkerHarness.Core.Tests.Matching
             // Assert
             Assert.AreEqual(expected, matchingContext.Expression);
         }
+
+        [TestMethod]
+        [DataRow("${dog}.${cat}.A")]
+        [DataRow("dog.${cat}.A")]
+        [DataRow("dog.${cat}.A")]
+        [DataRow("${@{animal_type}}.A")]
+        public void ConstructExpression_ExpectedIsInvalidExpression_ThrowArgumentException(string expected)
+        {
+            // Arrange
+            MatchingContext matchingContext = new()
+            {
+                Expected = expected
+            };
+
+            // Act
+            try
+            {
+                matchingContext.ConstructExpression();
+            }
+            //Assert
+            catch (ArgumentException ex)
+            {
+                StringAssert.Contains(ex.Message, "Failed to construct an expression from the expected value");
+                return;
+            }
+
+            Assert.Fail($"The expected {typeof(ArgumentException)} exception is not thrown");
+        }
     }
 }
