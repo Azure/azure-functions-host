@@ -67,7 +67,7 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
     {
         public Build[] Value { get; set; }
     }
-    
+
     public class Build
     {
         public int Id { get; set; }
@@ -80,10 +80,10 @@ namespace WebJobs.Script.Tests.Perf.Dashboard
         public Artifact[] Value { get; set; }
     }
 
-   public class Artifact
-   {
-        public ArtifactResource Resource { get; set; } 
-   }
+    public class Artifact
+    {
+        public ArtifactResource Resource { get; set; }
+    }
 
     public class ArtifactResource
     {

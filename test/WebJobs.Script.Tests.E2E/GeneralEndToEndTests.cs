@@ -90,10 +90,10 @@ namespace WebJobs.Script.Tests.EndToEnd
                 await Task.WhenAll(responseTasks);
 
                 bool requestsSucceeded = responseTasks.TrueForAll(t =>
-                 {
-                     t.Result.EnsureSuccessStatusCode();
-                     return string.Equals("Pong", t.Result.Content.ReadAsStringAsync().Result);
-                 });
+                {
+                    t.Result.EnsureSuccessStatusCode();
+                    return string.Equals("Pong", t.Result.Content.ReadAsStringAsync().Result);
+                });
 
                 _fixture.Assert.True(requestsSucceeded);
             }
@@ -160,11 +160,11 @@ namespace WebJobs.Script.Tests.EndToEnd
         }
 
         // Assumes we have a valid function name.
-        // Function names are case-insensitive, case-preserving. 
-        // Table storage is case-sensitive. So need to normalize case to use as table keys. 
-        // Normalize must be one-to-one to avoid collisions. 
-        // Escape any non-alphanumeric characters so that we 
-        //  a) have a valid rowkey name 
+        // Function names are case-insensitive, case-preserving.
+        // Table storage is case-sensitive. So need to normalize case to use as table keys.
+        // Normalize must be one-to-one to avoid collisions.
+        // Escape any non-alphanumeric characters so that we
+        //  a) have a valid rowkey name
         //  b) don't have characeters that conflict with separators in the row key (like '-')
         public static string NormalizeFunctionName(string functionName)
         {

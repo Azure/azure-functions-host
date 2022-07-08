@@ -118,7 +118,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public const string CorsAllowedOrigins = "CORS_ALLOWED_ORIGINS";
         public const string CorsSupportCredentials = "CORS_SUPPORT_CREDENTIALS";
 
-       // EasyAuth settings
+        // EasyAuth settings
         public const string EasyAuthClientId = "WEBSITE_AUTH_CLIENT_ID";
         public const string EasyAuthSigningKey = "WEBSITE_AUTH_SIGNING_KEY";
 

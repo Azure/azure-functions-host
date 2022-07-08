@@ -1,7 +1,7 @@
 ﻿public static object Run(string input)
 {
-    return new 
+    return new
     {
         text = "Hello from C#! " + input
-    }; 
+    };
 }

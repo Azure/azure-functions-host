@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _optionsMonitor = TestHelpers.CreateOptionsMonitor(applicationHostOptions);
             IRpcWorkerChannel testLanguageWorkerChannel = new TestRpcWorkerChannel(Guid.NewGuid().ToString(), RpcWorkerConstants.NodeLanguageWorkerName);
             _mockLanguageWorkerChannelManager.Setup(m => m.InitializeChannelAsync(It.IsAny<string>()))
-                                             .Returns(Task.FromResult<IRpcWorkerChannel>(testLanguageWorkerChannel));
+                                            .Returns(Task.FromResult<IRpcWorkerChannel>(testLanguageWorkerChannel));
         }
 
         [Fact]

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly string[] FileTypes = { ".csx", ".cs" };
         private static readonly Encoding UTF8WithNoBOM = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static readonly Lazy<InteractiveAssemblyLoader> AssemblyLoader
-          = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
+        = new Lazy<InteractiveAssemblyLoader>(() => new InteractiveAssemblyLoader(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly OptimizationLevel _optimizationLevel;
         private readonly IFunctionMetadataResolver _metadataResolver;

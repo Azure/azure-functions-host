@@ -10,8 +10,8 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {{
         ///    &quot;scriptFile&quot;:&quot;{0}&quot;,
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
                 return ResourceManager.GetString("DotNetFunctionJson", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to using System.Net;
         ///using Microsoft.AspNetCore.Mvc;
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Properties {
         ///        {
         ///            log.Info(&quot;Test&quot;);
         ///
-        ///            return Task.FromResult&lt;IActionResult&gt;(new OkObjectResult(&quot;Hello from .NET&quot;));        
+        ///            return Task.FromResult&lt;IActionResult&gt;(new OkObjectResult(&quot;Hello from .NET&quot;));
         ///        }
         ///
         ///        public string OtherMethod()

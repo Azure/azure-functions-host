@@ -134,7 +134,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                 }
             }
         }
-        
+
         public async Task WaitForSite()
         {
             _logger.LogInformation("Waiting for site...");
@@ -162,7 +162,7 @@ namespace WebJobs.Script.Tests.EndToEnd.Shared
                     }
                 }
                 while (attempts < attemptsCount);
-                
+
             }
 
             throw new InvalidOperationException($"Wait for site timeout: {delay.TotalSeconds * 5} seconds.");

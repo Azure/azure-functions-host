@@ -770,8 +770,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             try
             {
                 var module = instance?.Services.GetServices<ITelemetryModule>()
-                                      .SingleOrDefault(m => m is DependencyTrackingTelemetryModule)
-                                      as IDisposable;
+                                    .SingleOrDefault(m => m is DependencyTrackingTelemetryModule)
+                                    as IDisposable;
 
                 module?.Dispose();
 

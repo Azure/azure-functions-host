@@ -99,20 +99,20 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Host
             var functions = new Collection<string> { timeoutFunctionName };
 
             return new TestFunctionHost(
-                 path,
-                 Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions"),
-                 configureWebHostServices: b =>
-                 {
-                     b.AddSingleton<IHostedService>(_ => _disposedService);
-                 },
-                 configureScriptHostWebJobsBuilder: b =>
-                 {
-                     b.Services.Configure<ScriptJobHostOptions>(o =>
-                     {
-                         o.Functions = functions;
-                         o.FunctionTimeout = TimeSpan.FromSeconds(3);
-                     });
-                 });
+                path,
+                Path.Combine(TestHelpers.FunctionsTestDirectory, "Logs", Guid.NewGuid().ToString(), @"Functions"),
+                configureWebHostServices: b =>
+                {
+                    b.AddSingleton<IHostedService>(_ => _disposedService);
+                },
+                configureScriptHostWebJobsBuilder: b =>
+                {
+                    b.Services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.Functions = functions;
+                        o.FunctionTimeout = TimeSpan.FromSeconds(3);
+                    });
+                });
         }
 
         private class TestDisposable : IHostedService, IDisposable

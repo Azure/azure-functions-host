@@ -54,9 +54,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             ErrorEventsThreshold = 3;
 
             _workerErrorSubscription = _eventManager.OfType<HttpWorkerErrorEvent>()
-               .Subscribe(WorkerError);
+                .Subscribe(WorkerError);
             _workerRestartSubscription = _eventManager.OfType<HttpWorkerRestartEvent>()
-               .Subscribe(WorkerRestart);
+                .Subscribe(WorkerRestart);
         }
 
         // For tests

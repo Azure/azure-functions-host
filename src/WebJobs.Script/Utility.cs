@@ -507,8 +507,8 @@ namespace Microsoft.Azure.WebJobs.Script
             object scopeValue = null;
             if (scopeProps != null && scopeProps.Count > 0 &&
                 (scopeProps.TryGetValue(ScopeKeys.FunctionName, out scopeValue) ||
-                 scopeProps.TryGetValue("functionName", out scopeValue) ||
-                 scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue)) && scopeValue != null)
+                scopeProps.TryGetValue("functionName", out scopeValue) ||
+                scopeProps.TryGetValue(LogConstants.NameKey, out scopeValue)) && scopeValue != null)
             {
                 functionName = scopeValue.ToString();
             }

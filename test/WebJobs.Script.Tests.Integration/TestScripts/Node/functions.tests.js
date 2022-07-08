@@ -129,7 +129,7 @@ describe('http', () => {
         it('get', () => {
             expect(req.get('test')).to.equal('val');
         });
-        
+
         it('get upper', () => {
             expect(req.get('TEST')).to.equal('val');
         });
@@ -285,7 +285,7 @@ describe('functions', () => {
                     { name: "metricB", value: 2.4, properties: { customProp: "customValue" } }
                 ]);
                 done();
-            });            
+            });
         });
 
         it('done passes data to binder', () => {

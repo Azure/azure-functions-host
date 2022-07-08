@@ -200,8 +200,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void LoggerProviders_ConsoleEnabled_IfDevelopmentEnvironment()
         {
             var hostBuilder = new HostBuilder()
-                 .UseEnvironment(EnvironmentName.Development)
-                 .ConfigureDefaultTestWebScriptHost();
+                .UseEnvironment(EnvironmentName.Development)
+                .ConfigureDefaultTestWebScriptHost();
 
             using (IHost host = hostBuilder.Build())
             {
@@ -220,13 +220,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void LoggerProviders_ConsoleEnabled_InConfiguration()
         {
             var hostBuilder = new HostBuilder()
-                 .ConfigureAppConfiguration(c =>
-                 {
-                     c.AddInMemoryCollection(new Dictionary<string, string>
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
                     {
                         { ConfigurationPath.Combine(_loggingPath, "Console", "IsEnabled"), "True" }
                     });
-                 })
+                })
                 .ConfigureDefaultTestWebScriptHost();
 
             using (IHost host = hostBuilder.Build())
@@ -246,14 +246,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void LoggerProviders_ApplicationInsights()
         {
             var hostBuilder = new HostBuilder()
-               .ConfigureAppConfiguration(c =>
-               {
-                   c.AddInMemoryCollection(new Dictionary<string, string>
-                  {
+                .ConfigureAppConfiguration(c =>
+                {
+                    c.AddInMemoryCollection(new Dictionary<string, string>
+                {
                         { "APPINSIGHTS_INSTRUMENTATIONKEY", "some_key" }
-                  });
-               })
-              .ConfigureDefaultTestWebScriptHost();
+                });
+                })
+            .ConfigureDefaultTestWebScriptHost();
 
             using (IHost host = hostBuilder.Build())
             {
@@ -278,16 +278,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             bool isAzureMonitorEnabled = false;
 
             var hostBuilder = new HostBuilder()
-              .ConfigureDefaultTestWebScriptHost()
-              .ConfigureServices(s =>
-              {
-                  TestEnvironment environment = new TestEnvironment();
-                  environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "something.azurewebsites.net");
-                  environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, azureMonitorEnabledValue);
-                  s.AddSingleton<IEnvironment>(environment);
+            .ConfigureDefaultTestWebScriptHost()
+            .ConfigureServices(s =>
+            {
+                TestEnvironment environment = new TestEnvironment();
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteHostName, "something.azurewebsites.net");
+                environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureMonitorCategories, azureMonitorEnabledValue);
+                s.AddSingleton<IEnvironment>(environment);
 
-                  isAzureMonitorEnabled = environment.IsAzureMonitorEnabled();
-              });
+                isAzureMonitorEnabled = environment.IsAzureMonitorEnabled();
+            });
 
             using (IHost host = hostBuilder.Build())
             {

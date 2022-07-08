@@ -6,8 +6,8 @@ using Microsoft.Azure.WebJobs.Script.Diagnostics;
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 {
     /**
-     * This decorator is required to enforce a single instance of WebHostMetricsLogger across webhost and jobhost and also not letting it get disposed during jobhost restarts. The host DI implementation disposes of registered instances, which is a behavior that cannot be changed.
-     */
+    * This decorator is required to enforce a single instance of WebHostMetricsLogger across webhost and jobhost and also not letting it get disposed during jobhost restarts. The host DI implementation disposes of registered instances, which is a behavior that cannot be changed.
+    */
     internal class NonDisposableMetricsLogger : IMetricsLogger
     {
         private readonly IMetricsLogger _metricsLogger;

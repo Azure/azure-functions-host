@@ -27,7 +27,7 @@ function Upload-FileToAzureStorageContainer {
 
     $container.CloudBlobContainer.Uri.AbsoluteUri
     if ($container) {
-        $filesToUpload = Get-ChildItem $sourceFileRootDirectory -Recurse -File       
+        $filesToUpload = Get-ChildItem $sourceFileRootDirectory -Recurse -File
 
         foreach ($x in $filesToUpload) {
             $contentType = [System.Web.MimeMapping]::GetMimeMapping($x)

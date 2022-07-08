@@ -20,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IServiceProvider _serviceProvider;
 
         public RpcWorkerProcessFactory(IRpcServer rpcServer,
-                                       IScriptEventManager eventManager,
-                                       ILoggerFactory loggerFactory,
-                                       IWorkerProcessFactory defaultWorkerProcessFactory,
-                                       IProcessRegistry processRegistry,
-                                       IWorkerConsoleLogSource consoleLogSource,
-                                       IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
+                                        IScriptEventManager eventManager,
+                                        ILoggerFactory loggerFactory,
+                                        IWorkerProcessFactory defaultWorkerProcessFactory,
+                                        IProcessRegistry processRegistry,
+                                        IWorkerConsoleLogSource consoleLogSource,
+                                        IMetricsLogger metricsLogger,
+                                        IServiceProvider serviceProvider)
         {
             _loggerFactory = loggerFactory;
             _eventManager = eventManager;

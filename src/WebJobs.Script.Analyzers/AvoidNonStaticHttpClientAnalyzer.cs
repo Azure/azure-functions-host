@@ -11,7 +11,7 @@ namespace Microsoft.Azure.Functions.Analyzers
 {
     /// <summary>
     /// AZF0002: Use static HttpClient
-    /// 
+    ///
     /// Cause:
     /// An local declaration that happens inside a Function method, instantiates an HttpClient
     /// </summary>

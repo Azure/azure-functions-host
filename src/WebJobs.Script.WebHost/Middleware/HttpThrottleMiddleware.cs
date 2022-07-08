@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         public async Task Invoke(HttpContext httpContext, IOptions<HttpOptions> httpOptions, HttpRequestQueue requestQueue, HostPerformanceManager performanceManager, IMetricsLogger metricsLogger)
         {
             if (httpOptions.Value.DynamicThrottlesEnabled &&
-               ((DateTime.UtcNow - _lastPerformanceCheck) > _performanceCheckInterval))
+                ((DateTime.UtcNow - _lastPerformanceCheck) > _performanceCheckInterval))
             {
                 // only check host status periodically
                 Collection<string> exceededCounters = new Collection<string>();

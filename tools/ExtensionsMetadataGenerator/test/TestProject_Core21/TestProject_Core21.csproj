@@ -11,5 +11,5 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.4" />
   </ItemGroup>
-  
+
 </Project>

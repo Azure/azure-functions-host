@@ -6,12 +6,12 @@ if (-not $bypassPackaging) {
     "Signing disabled. Skipping signing process."
     exit 0;
   }
-  
+
   Install-Module -Name AzureRM -AllowClobber -Scope CurrentUser
 
   # Only sign the ExtensionsMetadataGenerator
   New-Item -ItemType Directory -Force -Path "$directoryPath\..\buildoutput\signing"
-  Compress-Archive $directoryPath\..\buildoutput\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg $directoryPath\..\buildoutput\signing\tosign.zip  
+  Compress-Archive $directoryPath\..\buildoutput\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg $directoryPath\..\buildoutput\signing\tosign.zip
   Remove-Item $directoryPath\..\buildoutput\Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator*.nupkg
 
   $ctx = New-AzureStorageContext $env:FILES_ACCOUNT_NAME $env:FILES_ACCOUNT_KEY

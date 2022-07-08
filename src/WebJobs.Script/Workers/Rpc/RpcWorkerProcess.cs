@@ -22,17 +22,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly string _workerDirectory;
 
         internal RpcWorkerProcess(string runtime,
-                                       string workerId,
-                                       string rootScriptPath,
-                                       Uri serverUri,
-                                       RpcWorkerConfig rpcWorkerConfig,
-                                       IScriptEventManager eventManager,
-                                       IWorkerProcessFactory processFactory,
-                                       IProcessRegistry processRegistry,
-                                       ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource,
-                                       IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
+                                        string workerId,
+                                        string rootScriptPath,
+                                        Uri serverUri,
+                                        RpcWorkerConfig rpcWorkerConfig,
+                                        IScriptEventManager eventManager,
+                                        IWorkerProcessFactory processFactory,
+                                        IProcessRegistry processRegistry,
+                                        ILogger workerProcessLogger,
+                                        IWorkerConsoleLogSource consoleLogSource,
+                                        IMetricsLogger metricsLogger,
+                                        IServiceProvider serviceProvider)
             : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, rpcWorkerConfig.Description.UseStdErrorStreamForErrorsOnly)
         {
             _runtime = runtime;

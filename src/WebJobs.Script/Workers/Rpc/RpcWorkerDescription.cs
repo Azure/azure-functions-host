@@ -199,8 +199,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             ValidateDefaultWorkerPathFormatters(systemRuntimeInformation);
 
             DefaultWorkerPath = DefaultWorkerPath.Replace(RpcWorkerConstants.OSPlaceholder, os.ToString())
-                             .Replace(RpcWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
-                             .Replace(RpcWorkerConstants.RuntimeVersionPlaceholder, DefaultRuntimeVersion);
+                            .Replace(RpcWorkerConstants.ArchitecturePlaceholder, architecture.ToString())
+                            .Replace(RpcWorkerConstants.RuntimeVersionPlaceholder, DefaultRuntimeVersion);
         }
 
         internal void FormatArgumentsIfNeeded(ILogger logger)

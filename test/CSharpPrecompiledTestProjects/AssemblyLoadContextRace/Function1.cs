@@ -41,7 +41,7 @@ namespace AssemblyLoadContextRace
                     t.Join();
                 }
 
-                // Now, make sure the assemblies match, signifying that the race was fixed and we 
+                // Now, make sure the assemblies match, signifying that the race was fixed and we
                 // always load the host's version.
                 var functionAssembly = context.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=12.0.3.0"));
                 var defaultAssembly = AssemblyLoadContext.Default.LoadFromAssemblyName(new AssemblyName("Newtonsoft.Json, Version=12.0.3.0"));

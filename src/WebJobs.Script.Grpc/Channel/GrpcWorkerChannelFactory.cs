@@ -50,18 +50,18 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.LanguageWorkerChannel.{runtime}.{workerId}");
             IWorkerProcess rpcWorkerProcess = _rpcWorkerProcessFactory.Create(workerId, runtime, scriptRootPath, languageWorkerConfig);
             return new GrpcWorkerChannel(
-                         workerId,
-                         _eventManager,
-                         languageWorkerConfig,
-                         rpcWorkerProcess,
-                         workerLogger,
-                         metricsLogger,
-                         attemptCount,
-                         _environment,
-                         _applicationHostOptions,
-                         _sharedMemoryManager,
-                         _functionDataCache,
-                         _workerConcurrencyOptions);
+                        workerId,
+                        _eventManager,
+                        languageWorkerConfig,
+                        rpcWorkerProcess,
+                        workerLogger,
+                        metricsLogger,
+                        attemptCount,
+                        _environment,
+                        _applicationHostOptions,
+                        _sharedMemoryManager,
+                        _functionDataCache,
+                        _workerConcurrencyOptions);
         }
     }
 }

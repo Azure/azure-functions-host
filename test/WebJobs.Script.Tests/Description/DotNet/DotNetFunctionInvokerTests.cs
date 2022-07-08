@@ -396,8 +396,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var testBinding = new Mock<FunctionBinding>(null, new BindingMetadata() { Name = "TestBinding", Type = "blob" }, FileAccess.Write);
 
                 var invoker = new DotNetFunctionInvoker(dependencies.Host, metadata, new Collection<FunctionBinding>(),
-                  new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
-                  new DotNetCompilationServiceFactory(null), dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>(), metadataResolver.Object);
+                new Collection<FunctionBinding> { testBinding.Object }, new FunctionEntryPointResolver(),
+                new DotNetCompilationServiceFactory(null), dependencies.LoggerFactory, dependencies.MetricsLogger, new Collection<IScriptBindingProvider>(), metadataResolver.Object);
 
                 await invoker.RestorePackagesAsync(true);
 

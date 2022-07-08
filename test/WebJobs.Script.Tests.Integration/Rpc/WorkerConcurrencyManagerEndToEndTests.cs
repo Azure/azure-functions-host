@@ -60,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 try
                 {
                     _scriptEventManager.Publish(scriptEvent);
-                } 
+                }
                 catch (ObjectDisposedException)
                 {
                     // Do no throw ObjectDisposedException

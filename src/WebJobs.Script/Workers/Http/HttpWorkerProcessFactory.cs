@@ -20,13 +20,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly IServiceProvider _serviceProvider;
 
         public HttpWorkerProcessFactory(IScriptEventManager eventManager,
-                                       ILoggerFactory loggerFactory,
-                                       IWorkerProcessFactory defaultWorkerProcessFactory,
-                                       IProcessRegistry processRegistry,
-                                       IWorkerConsoleLogSource consoleLogSource,
-                                       IEnvironment environment,
-                                       IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
+                                        ILoggerFactory loggerFactory,
+                                        IWorkerProcessFactory defaultWorkerProcessFactory,
+                                        IProcessRegistry processRegistry,
+                                        IWorkerConsoleLogSource consoleLogSource,
+                                        IEnvironment environment,
+                                        IMetricsLogger metricsLogger,
+                                        IServiceProvider serviceProvider)
         {
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _eventManager = eventManager ?? throw new ArgumentNullException(nameof(eventManager));

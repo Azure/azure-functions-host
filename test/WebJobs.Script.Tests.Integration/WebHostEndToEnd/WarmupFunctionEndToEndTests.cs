@@ -86,16 +86,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var provider = new HostFunctionMetadataProvider(optionsMonitor, NullLogger<HostFunctionMetadataProvider>.Instance, new TestMetricsLogger());
 
                 var builder = AspNetCore.WebHost.CreateDefaultBuilder()
-                   .UseStartup<Startup>()
-                   .ConfigureServices(services =>
-                   {
-                       services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
-                       services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
-                       services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
-                       services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
+                    .UseStartup<Startup>()
+                    .ConfigureServices(services =>
+                    {
+                        services.Replace(new ServiceDescriptor(typeof(IOptions<ScriptApplicationHostOptions>), new OptionsWrapper<ScriptApplicationHostOptions>(HostOptions)));
+                        services.Replace(new ServiceDescriptor(typeof(ISecretManagerProvider), new TestSecretManagerProvider(new TestSecretManager())));
+                        services.Replace(new ServiceDescriptor(typeof(IOptionsMonitor<ScriptApplicationHostOptions>), optionsMonitor));
+                        services.Replace(new ServiceDescriptor(typeof(IFunctionMetadataProvider), provider));
 
-                       services.SkipDependencyValidation();
-                   });
+                        services.SkipDependencyValidation();
+                    });
 
                 // TODO: https://github.com/Azure/azure-functions-host/issues/4876
                 _testServer = new TestServer(builder);

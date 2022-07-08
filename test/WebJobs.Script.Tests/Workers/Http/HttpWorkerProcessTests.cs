@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Http
                 Arguments = new WorkerProcessArguments() { ExecutablePath = "test" },
                 Description = new HttpWorkerDescription()
                 {
-                   WorkingDirectory = @"c:\testDir"
+                    WorkingDirectory = @"c:\testDir"
                 }
             };
             _settingsManager = ScriptSettingsManager.Instance;

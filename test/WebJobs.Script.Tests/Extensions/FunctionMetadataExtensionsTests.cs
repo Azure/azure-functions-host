@@ -15,23 +15,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Extensions
     public class FunctionMetadataExtensionsTests
     {
         private static readonly string _sampleBindingsJson = $@"{{
-          ""bindings"": [
+        ""bindings"": [
             {{
-              ""authLevel"": ""function"",
-              ""type"": ""httpTrigger"",
-              ""direction"": ""in"",
-              ""name"": ""req"",
-              ""methods"" : [
+            ""authLevel"": ""function"",
+            ""type"": ""httpTrigger"",
+            ""direction"": ""in"",
+            ""name"": ""req"",
+            ""methods"" : [
                 ""get"",
                 ""post""
-              ]
+            ]
             }},
             {{
-              ""type"": ""http"",
-              ""direction"": ""out"",
-              ""name"": ""res""
+            ""type"": ""http"",
+            ""direction"": ""out"",
+            ""name"": ""res""
             }}
-          ]
+        ]
         }}
         ";
 

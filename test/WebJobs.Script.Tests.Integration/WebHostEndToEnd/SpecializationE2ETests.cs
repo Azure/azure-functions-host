@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-             };
+            };
 
             _environment = new TestEnvironment(settings);
             _loggerProvider = new TestLoggerProvider();
@@ -188,7 +188,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
                 // Before the fix, when we issued the 100 requests, they would all enter the ThreadPool queue and
                 // a new thread would be taken from the thread pool every 500ms, resulting in thread starvation.
-                // After the fix, we should only be losing one (but other operations may also be using a thread, so 
+                // After the fix, we should only be losing one (but other operations may also be using a thread, so
                 // we'll leave a little wiggle-room).
                 int precision = 3;
                 Assert.True(workerThreads >= originalWorkerThreads - precision, $"Available ThreadPool threads should not have decreased by more than {precision}. Actual: {workerThreads}. Original: {originalWorkerThreads}.");
@@ -385,7 +385,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         }
 
         /// <summary>
-        /// This scenario tests that storage can still be used 
+        /// This scenario tests that storage can still be used
         /// </summary>
         [Fact]
         public async Task Specialization_CustomStartupRemovesAzureWebJobsStorage()
@@ -579,7 +579,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IEnvironment>(_environment);
 
-                    // Ensure that we don't have a race between the timer and the 
+                    // Ensure that we don't have a race between the timer and the
                     // request for triggering specialization.
                     s.AddSingleton<IStandbyManager, InfiniteTimerStandbyManager>();
 
@@ -606,7 +606,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 IConfiguration configuration, IScriptWebHostEnvironment webHostEnvironment, IEnvironment environment,
                 IOptionsMonitor<ScriptApplicationHostOptions> options, ILogger<StandbyManager> logger, HostNameProvider hostNameProvider, IApplicationLifetime applicationLifetime)
                 : base(scriptHostManager, rpcWorkerChannelManager, configuration, webHostEnvironment, environment, options,
-                      logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
+                    logger, hostNameProvider, applicationLifetime, TimeSpan.FromMilliseconds(-1), new TestMetricsLogger())
             {
             }
         }

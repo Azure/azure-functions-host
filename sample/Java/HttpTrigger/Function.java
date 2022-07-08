@@ -13,7 +13,7 @@ import com.microsoft.azure.functions.*;
  * Accept defaults for rest of the identifiers
  * Run mvn clean package
  */
-public class Function {   
+public class Function {
     @FunctionName("HttpTrigger")
     public HttpResponseMessage run(
             @HttpTrigger(name = "req", methods = {HttpMethod.GET, HttpMethod.POST}, authLevel = AuthorizationLevel.FUNCTION) HttpRequestMessage<Optional<String>> request,

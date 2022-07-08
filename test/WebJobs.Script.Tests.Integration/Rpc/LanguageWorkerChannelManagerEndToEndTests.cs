@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             Fixture = fixture;
             _rpcWorkerChannelManager = (IWebHostRpcWorkerChannelManager) fixture.Host.Services.GetService(typeof(IWebHostRpcWorkerChannelManager));
-            
+
         }
 
         public TestFixture Fixture { get; set; }

@@ -148,7 +148,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             private static void CreateFunctionMetadata(string path, string scriptFilePath, string entrypoint = "TestFunction.Function.Run")
             {
                 File.WriteAllText(Path.Combine(path, "function.json"),
-                     string.Format(Resources.DotNetFunctionJson, scriptFilePath, entrypoint));
+                    string.Format(Resources.DotNetFunctionJson, scriptFilePath, entrypoint));
             }
         }
     }

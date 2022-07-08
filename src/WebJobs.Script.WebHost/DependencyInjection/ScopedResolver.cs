@@ -50,9 +50,9 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.DependencyInjection
             }
 
             var resolver = scopedContext.With(r => rules.WithUnknownServiceResolvers(request =>
-              {
-                  return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType), setup: _rootScopeFactorySetup);
-              })) as Container;
+            {
+                return new DelegateFactory(_ => scopedRoot.ServiceProvider.GetService(request.ServiceType), setup: _rootScopeFactorySetup);
+            })) as Container;
 
             var scope = new ServiceScope(resolver, scopedRoot);
 

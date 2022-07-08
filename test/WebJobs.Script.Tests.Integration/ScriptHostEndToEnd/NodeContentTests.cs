@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             Assert.Null(nodeChannel);
         }
 
-        // Get response with default ObjectResult content negotiation enabled 
+        // Get response with default ObjectResult content negotiation enabled
         protected Task<string> ResponseWithConneg<Req>(Req content, string contentType, string expectedContentType = null)
         {
             return CreateTest(content, contentType, true, expectedContentType);

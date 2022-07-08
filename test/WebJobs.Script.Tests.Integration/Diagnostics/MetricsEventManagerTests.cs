@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                     lock (_syncLock)
                     {
                         _functionExecutionEventArguments.Add(new FunctionExecutionEventArguments(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success));
-                    }      
+                    }
                 });
 
             _events = new List<SystemMetricEvent>();

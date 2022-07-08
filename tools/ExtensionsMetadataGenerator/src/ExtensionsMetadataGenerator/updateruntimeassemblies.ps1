@@ -1,6 +1,6 @@
 # Update runtime assemblies based on current host definitions
 
-$json = Get-Content '..\..\..\..\src\WebJobs.Script\runtimeassemblies.json' -raw 
+$json = Get-Content '..\..\..\..\src\WebJobs.Script\runtimeassemblies.json' -raw
 $json = $json -replace '(?m)(?<=^([^"]|"[^"]*")*)//.*' -replace '(?ms)/\*.*?\*/'
 
 $runtimeAssembliesJson = $json | ConvertFrom-Json

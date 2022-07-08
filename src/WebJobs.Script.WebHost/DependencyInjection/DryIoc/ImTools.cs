@@ -63,7 +63,7 @@ namespace ImTools
             public static readonly T[] Value = new T[0];
         }
 
-        /// <summary>Returns singleton empty array of provided type.</summary> 
+        /// <summary>Returns singleton empty array of provided type.</summary>
         /// <typeparam name="T">Array item type.</typeparam> <returns>Empty array.</returns>
         public static T[] Empty<T>() => EmptyArray<T>.Value;
 
@@ -113,7 +113,7 @@ namespace ImTools
         public static T[] Append<T>(this IEnumerable<T> source, IEnumerable<T> other) =>
             source.ToArrayOrSelf().Append(other.ToArrayOrSelf());
 
-        /// <summary>Returns new array with <paramref name="value"/> appended, 
+        /// <summary>Returns new array with <paramref name="value"/> appended,
         /// or <paramref name="value"/> at <paramref name="index"/>, if specified.
         /// If source array could be null or empty, then single value item array will be created despite any index.</summary>
         /// <typeparam name="T">Array item type.</typeparam>
@@ -165,7 +165,7 @@ namespace ImTools
             return -1;
         }
 
-        /// <summary>Produces new array without item at specified <paramref name="index"/>. 
+        /// <summary>Produces new array without item at specified <paramref name="index"/>.
         /// Will return <paramref name="source"/> array if index is out of bounds, or source is null/empty.</summary>
         /// <typeparam name="T">Type of array item.</typeparam>
         /// <param name="source">Input array.</param> <param name="index">Index if item to remove.</param>
@@ -454,7 +454,7 @@ namespace ImTools
             return results;
         }
 
-        /// <summary>Maps all items from source to result collection. 
+        /// <summary>Maps all items from source to result collection.
         /// If possible uses fast array Map otherwise Enumerable.Select.</summary>
         /// <typeparam name="T">Source item type</typeparam> <typeparam name="R">Result item type</typeparam>
         /// <param name="source">Source items</param> <param name="map">Function to convert item from source to result.</param>
@@ -554,8 +554,8 @@ namespace ImTools
         /// <param name="original">Original ref.</param> <returns>New ref to original value.</returns>
         public static Ref<T> NewRef<T>(this Ref<T> original) where T : class => Of(original.Value);
 
-        /// <summary>First, it evaluates new value using <paramref name="getNewValue"/> function. 
-        /// Second, it checks that original value is not changed. 
+        /// <summary>First, it evaluates new value using <paramref name="getNewValue"/> function.
+        /// Second, it checks that original value is not changed.
         /// If it is changed it will retry first step, otherwise it assigns new value and returns original (the one used for <paramref name="getNewValue"/>).</summary>
         /// <typeparam name="T">Type of value to swap.</typeparam>
         /// <param name="value">Reference to change to new value</param>
@@ -606,7 +606,7 @@ namespace ImTools
         }
     }
 
-    /// <summary>Immutable Key-Value pair. It is reference type (could be check for null), 
+    /// <summary>Immutable Key-Value pair. It is reference type (could be check for null),
     /// which is different from System value type <see cref="KeyValuePair{TKey,TValue}"/>.
     /// In addition provides <see cref="Equals"/> and <see cref="GetHashCode"/> implementations.</summary>
     /// <typeparam name="K">Type of Key.</typeparam><typeparam name="V">Type of Value.</typeparam>
@@ -628,12 +628,12 @@ namespace ImTools
 
         /// <inheritdoc />
         public StringBuilder Print(StringBuilder s, Func<StringBuilder, object, StringBuilder> printer) =>
-             s.Append("KV(").Do(k => Key == null ? k : printer(k, Key))
-              .Append(", ").Do(r => Value == null ? r : printer(r, Value))
-              .Append(')');
+            s.Append("KV(").Do(k => Key == null ? k : printer(k, Key))
+            .Append(", ").Do(r => Value == null ? r : printer(r, Value))
+            .Append(')');
 
         /// <summary>Creates nice string view.</summary><returns>String representation.</returns>
-        public override string ToString() => 
+        public override string ToString() =>
             Print(new StringBuilder(), (s, x) => s.Append(x)).ToString();
 
         /// <summary>Returns true if both key and value are equal to corresponding key-value of other object.</summary>
@@ -641,8 +641,8 @@ namespace ImTools
         {
             var other = obj as KV<K, V>;
             return other != null
-                   && (ReferenceEquals(other.Key, Key) || Equals(other.Key, Key))
-                   && (ReferenceEquals(other.Value, Value) || Equals(other.Value, Value));
+                    && (ReferenceEquals(other.Key, Key) || Equals(other.Key, Key))
+                    && (ReferenceEquals(other.Value, Value) || Equals(other.Value, Value));
         }
 
         /// <summary>Combines key and value hash code</summary>
@@ -791,7 +791,7 @@ namespace ImTools
         }
 
         /// <summary>Maps the items from the first list to the result list.</summary>
-        /// <typeparam name="T">source item type.</typeparam> 
+        /// <typeparam name="T">source item type.</typeparam>
         /// <typeparam name="R">result item type.</typeparam>
         /// <param name="source">input list.</param> <param name="map">converter func.</param>
         /// <returns>result list.</returns>
@@ -801,7 +801,7 @@ namespace ImTools
         }
 
         /// <summary>Maps the items from the first list to the result list with item index.</summary>
-        /// <typeparam name="T">source item type.</typeparam> 
+        /// <typeparam name="T">source item type.</typeparam>
         /// <typeparam name="R">result item type.</typeparam>
         /// <param name="source">input list.</param> <param name="map">converter func.</param>
         /// <returns>result list.</returns>
@@ -810,8 +810,8 @@ namespace ImTools
             return source.To(ImList<R>.Empty, (it, i, _) => _.Prep(map(it, i))).Reverse();
         }
 
-        /// <summary>Copies list to array.</summary> 
-        /// <param name="source">list to convert.</param> 
+        /// <summary>Copies list to array.</summary>
+        /// <param name="source">list to convert.</param>
         /// <returns>Array with list items.</returns>
         public static T[] ToArray<T>(this ImList<T> source)
         {
@@ -901,7 +901,7 @@ namespace ImTools
             return false;
         }
 
-        /// <summary>Returns all sub-trees enumerated from left to right.</summary> 
+        /// <summary>Returns all sub-trees enumerated from left to right.</summary>
         /// <returns>Enumerated sub-trees or empty if tree is empty.</returns>
         public IEnumerable<ImMap<V>> Enumerate()
         {
@@ -930,7 +930,7 @@ namespace ImTools
 
         /// <summary>Removes or updates value for specified key, or does nothing if key is not found.
         /// Based on Eric Lippert http://blogs.msdn.com/b/ericlippert/archive/2008/01/21/immutability-in-c-part-nine-academic-plus-my-avl-tree-implementation.aspx </summary>
-        /// <param name="key">Key to look for.</param> 
+        /// <param name="key">Key to look for.</param>
         /// <returns>New tree with removed or updated value.</returns>
         public ImMap<V> Remove(int key) =>
             RemoveImpl(key);
@@ -1083,7 +1083,7 @@ namespace ImTools
         #endregion
     }
 
-    /// <summary>Immutable http://en.wikipedia.org/wiki/AVL_tree 
+    /// <summary>Immutable http://en.wikipedia.org/wiki/AVL_tree
     /// where node key is the hash code of <typeparamref name="K"/>.</summary>
     public sealed class ImHashMap<K, V>
     {
@@ -1114,7 +1114,7 @@ namespace ImTools
         /// <summary>Returns true if tree is empty.</summary>
         public bool IsEmpty => Height == 0;
 
-        /// <summary>Returns new tree with added key-value. 
+        /// <summary>Returns new tree with added key-value.
         /// If value with the same key is exist then the value is replaced.</summary>
         /// <param name="key">Key to add.</param><param name="value">Value to add.</param>
         /// <returns>New tree with added or updated key-value.</returns>
@@ -1130,7 +1130,7 @@ namespace ImTools
         public ImHashMap<K, V> AddOrUpdate(K key, V value, Update<V> update) =>
             AddOrUpdate(key.GetHashCode(), key, value, update);
 
-        /// <summary>Looks for <paramref name="key"/> and replaces its value with new <paramref name="value"/>, or 
+        /// <summary>Looks for <paramref name="key"/> and replaces its value with new <paramref name="value"/>, or
         /// runs custom update handler (<paramref name="update"/>) with old and new value to get the updated result.</summary>
         /// <param name="key">Key to look for.</param>
         /// <param name="value">New value to replace key value with.</param>
@@ -1210,7 +1210,7 @@ namespace ImTools
 
         /// <summary>Removes or updates value for specified key, or does nothing if key is not found.
         /// Based on Eric Lippert http://blogs.msdn.com/b/ericlippert/archive/2008/01/21/immutability-in-c-part-nine-academic-plus-my-avl-tree-implementation.aspx </summary>
-        /// <param name="key">Key to look for.</param> 
+        /// <param name="key">Key to look for.</param>
         /// <returns>New tree with removed or updated value.</returns>
         public ImHashMap<K, V> Remove(K key) =>
             Remove(key.GetHashCode(), key);
@@ -1419,7 +1419,7 @@ namespace ImTools
             return this;
         }
 
-        private ImHashMap<K, V> With(ImHashMap<K, V> left, ImHashMap<K, V> right) => 
+        private ImHashMap<K, V> With(ImHashMap<K, V> left, ImHashMap<K, V> right) =>
             left == Left && right == Right ? this : new ImHashMap<K, V>(_data, left, right);
 
         internal ImHashMap<K, V> Remove(int hash, K key, bool ignoreKey = false)

@@ -66,12 +66,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             // The tests can pull the logger from a specific host if they need to.
             var services = new ServiceCollection()
-               .AddLogging(l =>
-               {
-                   l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
-                   l.AddFilter(_ => true);
-               })
-               .BuildServiceProvider();
+                .AddLogging(l =>
+                {
+                    l.Services.AddSingleton<ILoggerProvider, TestLoggerProvider>();
+                    l.AddFilter(_ => true);
+                })
+                .BuildServiceProvider();
 
             var host = new Mock<IHost>();
 
@@ -363,10 +363,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 .Returns(hostB.Object);
 
             _hostService = new WebJobsScriptHostService(
-               _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
-               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
-               _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-               new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager());
+                _monitor, hostBuilder.Object, NullLoggerFactory.Instance,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+                new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager());
 
             Task startTask = _hostService.StartAsync(CancellationToken.None);
 
@@ -433,7 +433,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.Contains(allLogMessages,
                 m => m.FormattedMessage != null &&
-                     m.FormattedMessage.Contains("ScriptHost disposed"));
+                    m.FormattedMessage.Contains("ScriptHost disposed"));
         }
 
         [Fact]
@@ -451,10 +451,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             _loggerFactory.AddProvider(_webHostLoggerProvider);
 
             _hostService = new WebJobsScriptHostService(
-               _monitor, hostBuilder.Object, _loggerFactory,
-               _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
-               _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
-               new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager());
+                _monitor, hostBuilder.Object, _loggerFactory,
+                _mockScriptWebHostEnvironment.Object, _mockEnvironment.Object,
+                _hostPerformanceManager, _healthMonitorOptions, metricsLogger,
+                new Mock<IApplicationLifetime>().Object, _mockConfig, new TestScriptEventManager());
 
             // Simulate a call to specialize coming from the PlaceholderSpecializationMiddleware. This
             // can happen before we ever start the service, which could create invalid state.

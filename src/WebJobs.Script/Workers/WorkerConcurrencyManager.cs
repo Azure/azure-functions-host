@@ -261,7 +261,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 }
             }
 
-            return $@"Worker process stats: ProcessId={desc.WorkerId}, Overloaded={desc.IsOverloaded} 
+            return $@"Worker process stats: ProcessId={desc.WorkerId}, Overloaded={desc.IsOverloaded}
 LatencyHistory=({formattedLatencyHistory}), AvgLatency={latencyAvg}, MaxLatency={latencyMax}";
         }
 

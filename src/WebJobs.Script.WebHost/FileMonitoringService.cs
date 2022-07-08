@@ -195,7 +195,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
                     _logger.LogDebug("Debug file watch initialized.");
 
                     _diagnosticModeFileWatcher = new AutoRecoveringFileSystemWatcher(_hostLogPath, ScriptConstants.DiagnosticSentinelFileName,
-                           includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
+                            includeSubdirectories: false, changeTypes: WatcherChangeTypes.Created | WatcherChangeTypes.Changed);
                     _diagnosticModeFileWatcher.Changed += OnDiagnosticModeFileChanged;
                     _logger.LogDebug("Diagnostic file watch initialized.");
                 }

@@ -8,7 +8,7 @@ function AcquireLease($blob) {
   } catch {
     Write-Host "  Error: $_"
     return $null
-  } 
+  }
 }
 
 # use this for tracking metadata in lease blobs
@@ -27,7 +27,7 @@ $storageContext = New-AzStorageContext -ConnectionString $connectionString
 While($true) {
   $blobs = Get-AzStorageBlob -Context $storageContext -Container "ci-locks"
   $token = $null
-  
+
   # shuffle the blobs for random ordering
   $blobs = $blobs | Sort-Object {Get-Random}
 
@@ -35,9 +35,9 @@ While($true) {
   Foreach ($blob in $blobs) {
     $name = $blob.Name
     $leaseStatus = $blob.ICloudBlob.Properties.LeaseStatus
-    
+
     Write-Host "  ${name}: $leaseStatus"
-    
+
     if ($leaseStatus -eq "Locked") {
       continue
     }
@@ -61,13 +61,13 @@ While($true) {
       break
     } else {
       Write-Host "  Lease not acquired on $name."
-    }    
+    }
   }
-  
+
   if ($token -ne $null) {
     break
   }
-  
+
   $delay = 30
   Write-Host "No lease acquired. Waiting $delay seconds to try again. This run cannot begin until it acquires a lease on a CI test environment."
   Start-Sleep -s $delay

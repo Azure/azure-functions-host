@@ -13,7 +13,7 @@ open Microsoft.Azure.WebJobs.Host
 let MyAsyncMethod() = async { do! Async.Sleep 500 }
 
 let Run(req: HttpRequestMessage ) =
-   async { 
+   async {
     // DO NOT modify this RunSynchronously as we want the test to run with it in place to ensure it won't cause a deadlock.
     do MyAsyncMethod() |> Async.RunSynchronously
 

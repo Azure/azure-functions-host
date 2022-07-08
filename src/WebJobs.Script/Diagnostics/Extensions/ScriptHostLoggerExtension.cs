@@ -89,10 +89,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             "Host started ({ms}ms)");
 
         private static readonly Action<ILogger, Exception> _addingDescriptorProviderForHttpWorker =
-           LoggerMessage.Define(
-           LogLevel.Debug,
-           new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
-           "Adding Function descriptor provider for HttpWorker.");
+            LoggerMessage.Define(
+            LogLevel.Debug,
+            new EventId(414, nameof(AddingDescriptorProviderForHttpWorker)),
+            "Adding Function descriptor provider for HttpWorker.");
 
         private static readonly Action<ILogger, string, Exception> _stoppingScriptHost =
             LoggerMessage.Define<string>(
@@ -101,22 +101,22 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             "Stopping ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _stoppedScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(416, nameof(StoppedScriptHost)),
-          "Stopped ScriptHost instance '{hostInstanceId}'.");
+        LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(416, nameof(StoppedScriptHost)),
+        "Stopped ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _disposingScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(417, nameof(DisposingScriptHost)),
-          "Disposing ScriptHost instance '{hostInstanceId}'.");
+        LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(417, nameof(DisposingScriptHost)),
+        "Disposing ScriptHost instance '{hostInstanceId}'.");
 
         private static readonly Action<ILogger, string, Exception> _disposedScriptHost =
-          LoggerMessage.Define<string>(
-          LogLevel.Debug,
-          new EventId(418, nameof(DisposedScriptHost)),
-          "Disposed ScriptHost instance '{hostInstanceId}'.");
+        LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(418, nameof(DisposedScriptHost)),
+        "Disposed ScriptHost instance '{hostInstanceId}'.");
 
         public static void HostIdIsSet(this ILogger logger)
         {

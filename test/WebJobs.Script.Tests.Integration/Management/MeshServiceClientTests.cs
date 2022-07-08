@@ -38,17 +38,17 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                   string.Equals("cifs", formData["operation"]) &&
-                   string.Equals(targetPath, formData["targetPath"]);
+                    string.Equals("cifs", formData["operation"]) &&
+                    string.Equals(targetPath, formData["targetPath"]);
         }
 
         private static bool IsMountFuseRequest(HttpRequestMessage request, string filePath, string targetPath)
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                   string.Equals("squashfs", formData["operation"]) &&
-                   string.Equals(filePath, formData["filePath"]) &&
-                   string.Equals(targetPath, formData["targetPath"]);
+                    string.Equals("squashfs", formData["operation"]) &&
+                    string.Equals(filePath, formData["filePath"]) &&
+                    string.Equals(targetPath, formData["targetPath"]);
         }
 
         private static bool IsPublishExecutionStatusRequest(HttpRequestMessage request, params ContainerFunctionExecutionActivity[] expectedActivities)
@@ -184,9 +184,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             return string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                   string.Equals("bind-mount", formData["operation"]) &&
-                   string.Equals(filePath, formData["sourcePath"]) &&
-                   string.Equals(targetPath, formData["targetPath"]);
+                    string.Equals("bind-mount", formData["operation"]) &&
+                    string.Equals(filePath, formData["sourcePath"]) &&
+                    string.Equals(targetPath, formData["targetPath"]);
         }
 
         [Fact]
@@ -255,7 +255,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         {
             var formData = request.Content.ReadAsFormDataAsync().Result;
             var matchesOperation = string.Equals(MeshInitUri, request.RequestUri.AbsoluteUri) &&
-                     string.Equals(MeshServiceClient.AddFES, formData["operation"]);
+                    string.Equals(MeshServiceClient.AddFES, formData["operation"]);
             return expectedActivities.Aggregate(matchesOperation, (current, activity) => current && formData["content"].Contains(activity.FunctionName));
         }
 

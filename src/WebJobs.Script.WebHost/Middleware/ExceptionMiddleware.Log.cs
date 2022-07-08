@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Middleware
         private static class Logger
         {
             private static readonly Action<ILogger, Exception> _responseStarted =
-               LoggerMessage.Define(LogLevel.Debug, new EventId(1, nameof(ResponseStarted)), "The response has already started, the status code will not be modified.");
+                LoggerMessage.Define(LogLevel.Debug, new EventId(1, nameof(ResponseStarted)), "The response has already started, the status code will not be modified.");
 
             private static readonly Action<ILogger, Exception> _unhandledHostError =
                 LoggerMessage.Define(LogLevel.Error, new EventId(2, nameof(UnhandledHostError)), "An unhandled host error has occurred.");

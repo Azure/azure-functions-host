@@ -9,4 +9,4 @@ http.createServer(function (req, res) {
   res.writeHead(200, {"Content-Type": "application/json"});
   var json = JSON.stringify({ functionName : req.url.replace("/","")});
   res.end(json);
-}).listen(port); 
+}).listen(port);

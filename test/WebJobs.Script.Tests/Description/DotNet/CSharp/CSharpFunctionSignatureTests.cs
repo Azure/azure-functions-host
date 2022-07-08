@@ -150,7 +150,7 @@ namespace Test.Function2
             var references = new MetadataReference[] { MetadataReference.CreateFromFile(typeof(string).Assembly.Location) };
 
             var compilation1 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test1", references: references)
-                   .AddSyntaxTrees(tree1));
+                    .AddSyntaxTrees(tree1));
 
             var compilation2 = new Script.Description.CSharpCompilation(CodeAnalysis.CSharp.CSharpCompilation.Create("test2", references: references)
                 .AddSyntaxTrees(tree2));
@@ -172,7 +172,7 @@ public static void Run(string id, out string output)
 
             // Diferent formatting, qualified name, not using alias
             var function2 = @"using System;
-public static void Run( System.String id , 
+public static void Run( System.String id ,
 out String output )
 {
     string result = string.Empty;
@@ -194,7 +194,7 @@ public static void Run(Test id, out string output)
     output = string.Empty;
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";
@@ -215,10 +215,10 @@ public class Test
 using System.Collections.Generic;
 public static void Run(string id, ICollection<Test> test1)
 {
-    
+
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";
@@ -242,7 +242,7 @@ public static Test Run(string id)
     return null;
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";
@@ -266,7 +266,7 @@ public static List<Test> Run(string id)
     return null;
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";
@@ -288,10 +288,10 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 public static void Run(string id, ICollection<Task<Test>> test1)
 {
-    
+
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";
@@ -313,10 +313,10 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 public static void Run(string id, int test1)
 {
-    
+
 }
 
-public class Test 
+public class Test
 {
     public string Id { get; set; }
 }";

@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var errorLog = await WaitForTraceAsync(log =>
             {
                 return log.Category == LogCategories.CreateFunctionCategory("TableIn") &&
-                       log.Exception is FunctionInvocationException;
+                        log.Exception is FunctionInvocationException;
             });
 
             Assert.Equal("An invalid parameter value was specified for filter parameter 'Status'.", errorLog.Exception.InnerException.Message);
@@ -405,15 +405,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             string logEntry = null;
 
             await TestHelpers.Await(() =>
-           {
-               // search the logs for token "TestResult:" and parse the following JSON
-               var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
-               if (logs != null)
-               {
-                   logEntry = logs.Select(p => p.FormattedMessage).SingleOrDefault(p => p != null && p.Contains("TestResult:"));
-               }
-               return logEntry != null;
-           });
+            {
+                // search the logs for token "TestResult:" and parse the following JSON
+                var logs = Fixture.Host.GetScriptHostLogMessages(LogCategories.CreateFunctionUserCategory(functionName));
+                if (logs != null)
+                {
+                    logEntry = logs.Select(p => p.FormattedMessage).SingleOrDefault(p => p != null && p.Contains("TestResult:"));
+                }
+                return logEntry != null;
+            });
 
             int idx = logEntry.IndexOf("{");
             logEntry = logEntry.Substring(idx);

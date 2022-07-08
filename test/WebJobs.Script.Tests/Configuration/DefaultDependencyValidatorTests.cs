@@ -120,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
                 }, userMessageCallback: () => loggerProvider.GetLog());
 
                 invalidServicesMessage = loggerProvider.GetAllLogMessages()
-                   .FirstOrDefault(m => m.Category.EndsWith(nameof(DependencyValidator)));
+                    .FirstOrDefault(m => m.Category.EndsWith(nameof(DependencyValidator)));
 
                 await host.StopAsync();
             }

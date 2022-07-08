@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Filters
         {
             if (_factory == null)
             {
-               _factory = ActivatorUtilities.CreateFactory(typeof(RunningHostCheckAttribute), Type.EmptyTypes);
+                _factory = ActivatorUtilities.CreateFactory(typeof(RunningHostCheckAttribute), Type.EmptyTypes);
             }
 
             var hostCheckFilter = (RunningHostCheckAttribute)_factory(serviceProvider, null);

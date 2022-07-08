@@ -299,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var config = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string>
                 {
-                   [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{languageWorkerName}:{WorkerConstants.WorkerDescriptionArguments}"] = argument
+                    [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{languageWorkerName}:{WorkerConstants.WorkerDescriptionArguments}"] = argument
                 })
                 .Build();
             _rpcWorkerChannelManager = new WebHostRpcWorkerChannelManager(_eventManager, _testEnvironment, _loggerFactory, _rpcWorkerChannelFactory, _optionsMonitor, testMetricsLogger, _workerOptionsMonitor, config);

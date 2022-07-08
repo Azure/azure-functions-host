@@ -60,10 +60,10 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
             "Unable to update the debug sentinel file.");
 
         private static readonly Action<ILogger, string, string, Exception> _addExtensionBundleConfiguration =
-           LoggerMessage.Define<string, string>(
-               LogLevel.Information,
-               new EventId(208, nameof(AddingExtensionBundleConfiguration)),
-               "Adding bundle configuration to default host configuration: {newLine}{bundleConfiguration}");
+            LoggerMessage.Define<string, string>(
+                LogLevel.Information,
+                new EventId(208, nameof(AddingExtensionBundleConfiguration)),
+                "Adding bundle configuration to default host configuration: {newLine}{bundleConfiguration}");
 
         public static void HostConfigApplied(this ILogger logger)
         {

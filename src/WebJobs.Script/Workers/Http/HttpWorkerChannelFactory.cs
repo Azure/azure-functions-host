@@ -34,13 +34,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             ILogger workerLogger = _loggerFactory.CreateLogger($"Worker.HttpWorkerChannel.{workerId}");
             IWorkerProcess httpWorkerProcess = _httpWorkerProcessFactory.Create(workerId, scriptRootPath, _httpWorkerOptions);
             return new HttpWorkerChannel(
-                         workerId,
-                         _eventManager,
-                         httpWorkerProcess,
-                         _httpWorkerService,
-                         workerLogger,
-                         metricsLogger,
-                         attemptCount);
+                        workerId,
+                        _eventManager,
+                        httpWorkerProcess,
+                        _httpWorkerService,
+                        workerLogger,
+                        metricsLogger,
+                        attemptCount);
         }
     }
 }

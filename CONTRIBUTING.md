@@ -11,7 +11,7 @@ If you have questions about Azure Functions, we encourage you to reach out to th
  - For all questions and technical help, [our Q&A forums](https://docs.microsoft.com/en-us/answers/questions/topics/single/25345.html) are an easy place to have a conversation with our engineering team.
  - For questions which fit the Stack Overflow format ("*how* does this work?"), we monitor the [azure-functions](http://stackoverflow.com/questions/tagged/azure-functions) tag.
  - You can also tweet/follow [@AzureFunctions](https://twitter.com/azurefunctions).
- 
+
 While we do our best to help out in a timely basis, we don't have any promise around the above resources. If you need an SLA on support from us, it's recommended you invest in an [Azure Support plan](https://azure.microsoft.com/en-us/support/options/).
 
 ## Issues & feature requests
@@ -51,7 +51,7 @@ Before filing an issue, please check that it doesn't already exist. If you're no
 
 ## Running locally (Visual Studio) (v2+)
 
-First thing you'll want to try is to run the Function host locally. 
+First thing you'll want to try is to run the Function host locally.
 1. Set the WebJobs.Script.WebHost to the startup project
 2. Change the debug configuration to "WebJobs.Script.WebHost.Core"
 3. Add `AzureWebJobsScriptRoot` setting pointing at your test project

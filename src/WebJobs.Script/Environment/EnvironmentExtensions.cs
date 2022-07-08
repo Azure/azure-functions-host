@@ -90,15 +90,15 @@ namespace Microsoft.Azure.WebJobs.Script
         public static bool ZipDeploymentAppSettingsExist(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteZipDeployment)) ||
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteAltZipDeployment)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureWebsiteRunFromPackage)) ||
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(ScmRunFromPackage));
         }
 
         public static bool AzureFilesAppSettingsExist(this IEnvironment environment)
         {
             return !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesConnectionString)) &&
-                   !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
+                    !string.IsNullOrEmpty(environment.GetEnvironmentVariable(AzureFilesContentShare));
         }
 
         public static bool IsCoreTools(this IEnvironment environment)

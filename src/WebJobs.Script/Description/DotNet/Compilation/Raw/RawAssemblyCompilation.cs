@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         }
 
         async Task<object> ICompilation.EmitAsync(CancellationToken cancellationToken)
-             => await EmitAsync(cancellationToken);
+            => await EmitAsync(cancellationToken);
 
         public Task<DotNetCompilationResult> EmitAsync(CancellationToken cancellationToken)
         {

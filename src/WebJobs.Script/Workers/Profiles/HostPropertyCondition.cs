@@ -78,17 +78,17 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         {
             if (string.IsNullOrEmpty(Name))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Name)} cannot be empty.");
             }
 
             if (!Enum.GetNames(typeof(HostProperty)).Any(x => x.ToLower().Contains(Name.ToLower())))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Name)} is not a valid host property name.");
             }
 
             if (string.IsNullOrEmpty(Expression))
             {
-               throw new ValidationException($"HostPropertyCondition {nameof(Expression)} cannot be empty.");
+                throw new ValidationException($"HostPropertyCondition {nameof(Expression)} cannot be empty.");
             }
 
             try
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             catch
             {
-              throw new ValidationException($"HostPropertyCondition {nameof(Expression)} must be a valid regular expression.");
+            throw new ValidationException($"HostPropertyCondition {nameof(Expression)} must be a valid regular expression.");
             }
         }
     }

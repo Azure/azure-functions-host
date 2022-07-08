@@ -373,9 +373,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             return new RpcWorkerDescription()
             {
                 Extensions = new List<string>()
-                 {
-                     { extension }
-                 },
+                {
+                    { extension }
+                },
                 Language = language,
                 WorkerDirectory = "testDir",
                 WorkerIndexing = workerIndexing.ToString()
@@ -502,7 +502,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var httpClient = handler == null ? new HttpClient() : new HttpClient(handler);
             var mockFactory = new Mock<IHttpClientFactory>();
             mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
-                 .Returns(httpClient);
+                .Returns(httpClient);
             return mockFactory.Object;
         }
 

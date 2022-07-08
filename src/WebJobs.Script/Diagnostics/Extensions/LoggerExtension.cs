@@ -27,9 +27,9 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 "Unable to find or download extension bundle");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingExtensionBundle =
-           LoggerMessage.Define<string>(LogLevel.Information,
-               new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
-               "Loading extension bundle from {path}");
+            LoggerMessage.Define<string>(LogLevel.Information,
+                new EventId(303, nameof(ScriptStartUpLoadingExtensionBundle)),
+                "Loading extension bundle from {path}");
 
         private static readonly Action<ILogger, string, Exception> _scriptStartUpLoadingStartUpExtension =
             LoggerMessage.Define<string>(LogLevel.Information,
@@ -137,14 +137,14 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
                 "Forwarding httpTrigger invocation for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerSendingInvocation =
-           LoggerMessage.Define<string, Guid>(LogLevel.Debug,
-               new EventId(329, nameof(CustomHandlerSendingInvocation)),
-               "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
+            LoggerMessage.Define<string, Guid>(LogLevel.Debug,
+                new EventId(329, nameof(CustomHandlerSendingInvocation)),
+                "Sending invocation for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, string, Guid, Exception> _customHandlerReceivedInvocationResponse =
-           LoggerMessage.Define<string, Guid>(LogLevel.Debug,
-               new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
-               "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
+            LoggerMessage.Define<string, Guid>(LogLevel.Debug,
+                new EventId(330, nameof(CustomHandlerReceivedInvocationResponse)),
+                "Received invocation response for function: '{functionName}' invocationId: '{invocationId}'");
 
         private static readonly Action<ILogger, Exception> _jobHostFunctionTimeoutNotSet =
             LoggerMessage.Define(LogLevel.Information,

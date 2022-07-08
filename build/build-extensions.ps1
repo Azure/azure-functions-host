@@ -1,6 +1,6 @@
 param (
-  [string]$buildNumber = "0",  
-  [string]$suffix = "",  
+  [string]$buildNumber = "0",
+  [string]$suffix = "",
   [string]$hashesForHardlinksFile = "hashesForHardlinks.txt"
 )
 
@@ -21,16 +21,16 @@ Write-Host "MajorMinorVersion is '$majorMinorVersion'. Patch version is '$patchV
 function ZipContent([string] $sourceDirectory, [string] $target)
 {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    
+
     Write-Host "======================================"
     Write-Host "Zipping $sourceDirectory into $target"
-      
+
     if (Test-Path $target) {
       Remove-Item $target
     }
     Add-Type -assembly "system.io.compression.filesystem"
     [IO.Compression.ZipFile]::CreateFromDirectory($sourceDirectory, $target)
-    
+
     Write-Host "Done zipping $target. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
@@ -40,7 +40,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $runtimeSuffix = ".$targetRid"
     $ridSwitch = ""
-    
+
     $publishTarget = "$buildOutput\publish\$targetRid"
     $symbolsTarget = "$buildOutput\symbols\$targetRid"
 
@@ -60,7 +60,7 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host ""
     Write-Host "dotnet $cmd"
     Write-Host ""
-    
+
     & dotnet $cmd
 
     if ($LASTEXITCODE -ne 0)
@@ -72,8 +72,8 @@ function BuildRuntime([string] $targetRid, [bool] $isSelfContained) {
     Write-Host "Moving symbols to $symbolsTarget"
     New-Item -Itemtype directory -path $symbolsTarget -Force > $null
     Move-Item -Path $publishTarget\*.pdb -Destination $symbolsTarget -Force > $null
-    Write-Host ""    
-    CleanOutput "$publishTarget"        
+    Write-Host ""
+    CleanOutput "$publishTarget"
     Write-Host ""
     Write-Host "Done building $targetRid. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
@@ -92,11 +92,11 @@ function GetFolderSizeInMb([string] $rootPath) {
 function CleanOutput([string] $rootPath) {
     Write-Host "Cleaning build output under $rootPath"
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
-    
+
     Write-Host "  Removing any linux and osx runtimes"
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\linux" -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force "$privateSiteExtensionPath\$bitness\runtimes\osx" -ErrorAction SilentlyContinue
-    
+
     Write-Host "  Removing python worker"
     Remove-Item -Recurse -Force "$rootPath\workers\python" -ErrorAction SilentlyContinue
 
@@ -105,7 +105,7 @@ function CleanOutput([string] $rootPath) {
     Get-ChildItem "$rootPath\workers\powershell" -Directory -ErrorAction SilentlyContinue |
       ForEach-Object { Get-ChildItem "$($_.FullName)\runtimes" -Directory -Exclude $keepRuntimes } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-    
+
     Write-Host "  Current size: $(GetFolderSizeInMb $rootPath) Mb"
 }
 
@@ -116,7 +116,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     $baseVersion = "$majorMinorVersion.0"
     $baseZipPath = "$buildOutput\BaseZipDirectory"
     $baseExtractedPath = "$buildOutput\BaseZipDirectory\Extracted"
-    
+
     # Try to download base version
     New-Item -Itemtype "directory" -path "$baseZipPath" -Force > $null
     New-Item -Itemtype "directory" -path "$baseExtractedPath" -Force > $null
@@ -128,7 +128,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
 
     # Extract zip
     Expand-Archive -LiteralPath "$baseZipPath\Functions.$majorMinorVersion.0.zip" -DestinationPath "$baseExtractedPath"
-    
+
     # Create directory for patch
     $zipOutput = "$buildOutput\ZippedPatchSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
@@ -142,7 +142,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
       $lineContents = $line.Split(" ")
       $hashKey = $lineContents[1].Split(":")[1]
       $hashValue = $lineContents[0].Split(":")[1]
-  
+
       $hashForBase.Add($hashKey, $hashValue)
     }
 
@@ -152,7 +152,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
       $lineContents = $line.Split(" ")
       $hashKey = $lineContents[1].Split(":")[1]
       $hashValue = $lineContents[0].Split(":")[1]
-  
+
       $hashForPatched.Add($hashKey, $hashValue)
     }
 
@@ -160,7 +160,7 @@ function CreatePatchedSiteExtension([string] $siteExtensionPath) {
     $informationJson = New-Object System.Collections.ArrayList
     foreach($key in $hashForPatched.Keys) {
       $infoKeyValuePairs = @{}
-      
+
       # If key doesn't exist in base, or if the keys exists but their hashes don't match, copy over.
       if((!$hashForBase.ContainsKey($key)) -or ($hashForPatched[$key] -ne $hashForBase[$key])) {
         $filePath = $key.Replace(".\","")
@@ -211,23 +211,23 @@ function CreateSiteExtensions() {
     # The official site extension needs to be nested inside a folder with its version.
     # Not using the suffix (eg: '-ci') here as it may not work correctly in a private stamp
     $officialSiteExtensionPath = "$siteExtensionPath\$extensionVersion"
-    
+
     Write-Host "======================================"
     Write-Host "Copying build to temp directory to prepare for zipping official site extension."
     Copy-Item -Path $buildOutput\publish\win-x86\ -Destination $officialSiteExtensionPath\32bit -Force -Recurse > $null
     Copy-Item -Path $buildOutput\publish\win-x64 -Destination $officialSiteExtensionPath\64bit -Force -Recurse > $null
     Copy-Item -Path $officialSiteExtensionPath\32bit\applicationHost.xdt -Destination $officialSiteExtensionPath -Force > $null
-    Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers" 
+    Write-Host "  Deleting workers directory: $officialSiteExtensionPath\32bit\workers"
     Remove-Item -Recurse -Force "$officialSiteExtensionPath\32bit\workers" -ErrorAction SilentlyContinue
     Write-Host "  Moving workers directory: $officialSiteExtensionPath\64bit\workers to $officialSiteExtensionPath\workers"
-    Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
-     
+    Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers"
+
     # This goes in the root dir
     Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
-    
+
     #This needs to be removed post Ant 99 as it's a temporary workaround
     New-Item "$siteExtensionPath\$extensionVersion.hardlinksCreated" > $null
-    
+
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
@@ -238,7 +238,7 @@ function CreateSiteExtensions() {
     Write-Host "Done generating hashes for hard links into $siteExtensionPath/$extensionVersion"
     Write-Host "======================================"
     Write-Host
-    
+
     $zipOutput = "$buildOutput\SiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.$extensionVersion$runtimeSuffix.zip"
@@ -257,9 +257,9 @@ function CreateSiteExtensions() {
       Write-Host "======================================"
       Write-Host
     }
-    
-    Remove-Item $siteExtensionPath -Recurse -Force > $null    
-    
+
+    Remove-Item $siteExtensionPath -Recurse -Force > $null
+
     Write-Host "======================================"
     $stopwatch.Reset()
     Write-Host "Copying build to temp directory to prepare for zipping private site extension."
@@ -268,11 +268,11 @@ function CreateSiteExtensions() {
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"
     Write-Host ""
-    
+
     $zipOutput = "$buildOutput\PrivateSiteExtension"
     New-Item -Itemtype directory -path $zipOutput -Force > $null
     ZipContent $siteExtensionPath "$zipOutput\Functions.Private.$extensionVersion.win-x32.inproc.zip"
-    
+
     Remove-Item $siteExtensionPath -Recurse -Force > $null
 }
 

@@ -66,9 +66,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
         internal static void ValidateSecret(string secret, ulong seed)
         {
             Assert.True(IdentifiableSecrets.ValidateBase64Key(secret,
-                                                              seed,
-                                                              SecretGenerator.AzureFunctionsSignature,
-                                                              encodeForUrl: true));
+                                                            seed,
+                                                            SecretGenerator.AzureFunctionsSignature,
+                                                            encodeForUrl: true));
 
             // Strictly speaking, these tests shouldn't be required, failure
             // would indicate a bug in the Microsoft.Security.Utilities API itself
@@ -99,16 +99,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 }
 
                 Assert.False(IdentifiableSecrets.ValidateBase64Key(secret,
-                                                                  testSeed,
-                                                                  SecretGenerator.AzureFunctionsSignature,
-                                                                  encodeForUrl: true));
+                                                                testSeed,
+                                                                SecretGenerator.AzureFunctionsSignature,
+                                                                encodeForUrl: true));
             }
 
             // Validate that validation fails for an incorrect signature.
             Assert.False(IdentifiableSecrets.ValidateBase64Key(secret,
-                                                  seed,
-                                                  "XXXX",
-                                                  encodeForUrl: true));
+                                                seed,
+                                                "XXXX",
+                                                encodeForUrl: true));
         }
     }
 }

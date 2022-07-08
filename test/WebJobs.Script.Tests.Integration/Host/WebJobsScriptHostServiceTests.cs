@@ -54,10 +54,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
 
             _mockApplicationLifetime = new Mock<IApplicationLifetime>(MockBehavior.Loose);
             _mockApplicationLifetime.Setup(p => p.StopApplication())
-               .Callback(() =>
-               {
-                   _shutdownCalled = true;
-               });
+                .Callback(() =>
+                {
+                    _shutdownCalled = true;
+                });
 
             _mockEnvironment = new Mock<IEnvironment>();
             var mockServiceProvider = new Mock<IServiceProvider>(MockBehavior.Strict);
@@ -289,54 +289,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Host
             int buildCalls = 0;
 
             using (var testHost = new TestFunctionHost(TestScriptPath, TestLogPath,
-              configureWebHostServices: services =>
-              {
-                  services.Configure<LoggerFilterOptions>(o =>
-                  {
-                      o.MinLevel = LogLevel.Debug;
-                  });
+            configureWebHostServices: services =>
+            {
+                services.Configure<LoggerFilterOptions>(o =>
+                {
+                    o.MinLevel = LogLevel.Debug;
+                });
 
-                  services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
+                services.AddSingleton<IEnvironment>(_mockEnvironment.Object);
 
-                  services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>
-                  {
-                      b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new string[0]);
+                services.AddSingleton<IConfigureBuilder<IWebJobsBuilder>>(new DelegatedConfigureBuilder<IWebJobsBuilder>(b =>
+                {
+                    b.Services.Configure<ScriptJobHostOptions>(o => o.Functions = new string[0]);
 
-                      b.Services.Configure<LoggerFilterOptions>(o =>
-                      {
-                          o.MinLevel = LogLevel.Debug;
-                      });
-                  }));
+                    b.Services.Configure<LoggerFilterOptions>(o =>
+                    {
+                        o.MinLevel = LogLevel.Debug;
+                    });
+                }));
 
-                  services.AddSingleton<IScriptHostBuilder>(s =>
-                  {
-                      var appHostOptions = s.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
-                      var rootServiceScopeFactory = s.GetService<IServiceScopeFactory>();
+                services.AddSingleton<IScriptHostBuilder>(s =>
+                {
+                    var appHostOptions = s.GetService<IOptionsMonitor<ScriptApplicationHostOptions>>();
+                    var rootServiceScopeFactory = s.GetService<IServiceScopeFactory>();
 
-                      IHost Intercept(IScriptHostBuilder builder, bool skipHostStartup, bool skipHostConfigurationParsing)
-                      {
-                          // We want the the repro to be:
-                          // 1. Succeeds, running.
-                          // 2. Restart, this host fails while starting.
-                          // 3. Restart, this host succeeds.
-                          // 4+. All fail, meaning the restart from #2 never succeeds.
-                          buildCalls++;
-                          if (buildCalls == 2 || buildCalls >= 4)
-                          {
-                              var mockHost = new Mock<IHost>();
-                              mockHost
+                    IHost Intercept(IScriptHostBuilder builder, bool skipHostStartup, bool skipHostConfigurationParsing)
+                    {
+                        // We want the the repro to be:
+                        // 1. Succeeds, running.
+                        // 2. Restart, this host fails while starting.
+                        // 3. Restart, this host succeeds.
+                        // 4+. All fail, meaning the restart from #2 never succeeds.
+                        buildCalls++;
+                        if (buildCalls == 2 || buildCalls >= 4)
+                        {
+                            var mockHost = new Mock<IHost>();
+                            mockHost
                                 .Setup(p => p.StartAsync(It.IsAny<CancellationToken>()))
                                 .Throws(new HostInitializationException());
 
-                              return mockHost.Object;
-                          }
+                            return mockHost.Object;
+                        }
 
-                          return builder.BuildHost(skipHostStartup, skipHostConfigurationParsing);
-                      }
+                        return builder.BuildHost(skipHostStartup, skipHostConfigurationParsing);
+                    }
 
-                      return new InterceptingScriptHostBuilder(appHostOptions, s, rootServiceScopeFactory, Intercept);
-                  });
-              }))
+                    return new InterceptingScriptHostBuilder(appHostOptions, s, rootServiceScopeFactory, Intercept);
+                });
+            }))
             {
                 var scriptHostService = testHost.WebHostServices.GetService<IScriptHostManager>() as WebJobsScriptHostService;
 

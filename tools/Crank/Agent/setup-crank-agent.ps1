@@ -183,7 +183,7 @@ function ScheduleCrankAgentStart {
         EnsureDirectoryExists -Path $functionAppsPath
         $helloAppPath = Join-Path -Path $functionAppsPath -ChildPath 'HelloApp'
         EnsureDirectoryExists -Path $helloAppPath
-        
+
         & "$PSScriptRoot/Linux/Docker/run.sh"
     } else {
         Write-Verbose 'Scheduling crank-agent start...'

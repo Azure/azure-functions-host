@@ -69,11 +69,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
 
             string properties = null;
             _mockEventGenerator.Setup(p => p.LogAzureMonitorDiagnosticLogEvent(LogLevel.Debug, _websiteHostName, AzureMonitorDiagnosticLogger.AzureMonitorOperationName, AzureMonitorDiagnosticLogger.AzureMonitorCategoryName, _regionName, It.IsAny<string>()))
-                  .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
-                  {
-                      // Store off the properties for later validation
-                      properties = p;
-                  });
+                .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
+                {
+                    // Store off the properties for later validation
+                    properties = p;
+                });
 
             using (CreateScope(activityId: activityId, functionName: _functionName, functionInvocationId: functionInvocationId))
             {
@@ -117,11 +117,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
 
             string properties = null;
             _mockEventGenerator.Setup(p => p.LogAzureMonitorDiagnosticLogEvent(LogLevel.Error, _websiteHostName, AzureMonitorDiagnosticLogger.AzureMonitorOperationName, AzureMonitorDiagnosticLogger.AzureMonitorCategoryName, _regionName, It.IsAny<string>()))
-                  .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
-                  {
-                      // Store off the properties for later validation
-                      properties = p;
-                  });
+                .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
+                {
+                    // Store off the properties for later validation
+                    properties = p;
+                });
 
             // use no scope
             using (CreateScope())
@@ -169,11 +169,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Eventing
 
             string properties = null;
             _mockEventGenerator.Setup(p => p.LogAzureMonitorDiagnosticLogEvent(LogLevel.Error, _websiteHostName, AzureMonitorDiagnosticLogger.AzureMonitorOperationName, AzureMonitorDiagnosticLogger.AzureMonitorCategoryName, _regionName, It.IsAny<string>()))
-                  .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
-                  {
-                      // Store off the properties for later validation
-                      properties = p;
-                  });
+                .Callback<LogLevel, string, string, string, string, string>((t, r, o, c, l, p) =>
+                {
+                    // Store off the properties for later validation
+                    properties = p;
+                });
 
             using (CreateScope(functionName: _functionName, functionInvocationId: functionInvocationId))
             {

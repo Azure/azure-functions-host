@@ -18,7 +18,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
   </PropertyGroup>
-  
+
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.39.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.20.0" />
@@ -35,7 +35,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebJobs.Script\WebJobs.Script.csproj" />
   </ItemGroup>
-  
+
   <ItemGroup>
      <Protobuf Include=".\azure-functions-language-worker-protobuf\src\proto\**\*.proto" GrpcServices="server" ProtoRoot=".\azure-functions-language-worker-protobuf\src\proto" />
   </ItemGroup>

@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     return Path.GetFileName(p.Path) == fileName &&
                         (p.FileVersion != oldFile.FileVersion ||
-                         p.AssemblyVersion != oldFile.AssemblyVersion);
+                        p.AssemblyVersion != oldFile.AssemblyVersion);
                 });
 
                 if (newFile != null)

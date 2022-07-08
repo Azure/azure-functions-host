@@ -321,8 +321,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             workerDescription.ApplyDefaultsAndValidate(Directory.GetCurrentDirectory(), testLogger);
             Assert.Equal(defaultExecutablePath, workerDescription.DefaultExecutablePath);
             Assert.True(testLogger.GetLogMessages().Any(message => message.Level == LogLevel.Warning
-                                                                   && message.FormattedMessage.Contains(defaultExecutablePath)
-                                                                   && message.FormattedMessage.Contains(expectedExecutablePath)));
+                                                                    && message.FormattedMessage.Contains(defaultExecutablePath)
+                                                                    && message.FormattedMessage.Contains(expectedExecutablePath)));
         }
 
         [Theory]
@@ -384,10 +384,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 Language = "python"
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
@@ -440,10 +440,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 SanitizeRuntimeVersionRegex = sanitizeRuntimeVersionRegex
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
@@ -477,10 +477,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultRuntimeVersion = "3.7"
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
@@ -513,10 +513,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultRuntimeVersion = "3.7"
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
@@ -543,10 +543,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultRuntimeVersion = "3.5"
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");
@@ -580,10 +580,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
                 DefaultRuntimeVersion = "3.7" // Ignore this if environment is set
             };
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                  .AddInMemoryCollection(new Dictionary<string, string>
-                  {
-                      ["languageWorker"] = "test"
-                  });
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    ["languageWorker"] = "test"
+                });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");

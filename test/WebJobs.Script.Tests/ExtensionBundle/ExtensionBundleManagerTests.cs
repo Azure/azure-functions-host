@@ -463,8 +463,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 if (request.RequestUri.AbsolutePath.EndsWith("index.json"))
                 {
                     response.Content = _statusCodeForIndexJson == HttpStatusCode.OK
-                                       ? new StringContent("[ \"2.0.0\", \"2.0.1\", \"2.0.0\" ]")
-                                       : null;
+                                        ? new StringContent("[ \"2.0.0\", \"2.0.1\", \"2.0.0\" ]")
+                                        : null;
                     response.StatusCode = _statusCodeForIndexJson;
                     return response;
                 }
@@ -472,8 +472,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ExtensionBundle
                 if (request.RequestUri.AbsolutePath.Contains($"{BundleId}.{_version}"))
                 {
                     response.Content = _statusCodeForZipFile == HttpStatusCode.OK
-                                       ? GetBundleZip()
-                                       : null;
+                                        ? GetBundleZip()
+                                        : null;
                     response.StatusCode = _statusCodeForZipFile;
                 }
                 else

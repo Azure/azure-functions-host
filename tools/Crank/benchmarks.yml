@@ -68,10 +68,10 @@ profiles:
     variables:
       serverUri: http://{{ CrankAgentAppVm }}
       serverPort: 5000
-    jobs: 
+    jobs:
       application:
-        endpoints: 
+        endpoints:
           - "http://{{ CrankAgentAppVm }}:5010"
       load:
-        endpoints: 
+        endpoints:
           - "http://{{ CrankAgentLoadVm }}:5010"

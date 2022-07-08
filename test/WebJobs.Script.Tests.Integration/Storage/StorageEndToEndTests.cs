@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Storage
             {
             }
 
-            // TODO: Metadata installation of storage packages does not currently work as expected as the 
+            // TODO: Metadata installation of storage packages does not currently work as expected as the
             // test host installs the extension by default and this may lead to mismatches.
             //protected override ExtensionPackageReference[] GetExtensionsToInstall()
             //{

@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script
         public HostConfigurationException(string message, Exception inner) : base(message, inner) { }
 
         protected HostConfigurationException(
-          System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+        System.Runtime.Serialization.SerializationInfo info,
+        System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 }

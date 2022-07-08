@@ -29,14 +29,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
-                       ItExpr.Is<HttpRequestMessage>(request =>
-                       request.Method == HttpMethod.Post &&
-                       request.RequestUri.AbsoluteUri.Equals(
-                           $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={ownerId}&duration=5&renewDeadline=10")),
-                       ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-                       {
-                           StatusCode = status
-                       });
+                        ItExpr.Is<HttpRequestMessage>(request =>
+                        request.Method == HttpMethod.Post &&
+                        request.RequestUri.AbsoluteUri.Equals(
+                            $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={ownerId}&duration=5&renewDeadline=10")),
+                        ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                        {
+                            StatusCode = status
+                        });
 
             var httpClient = new HttpClient(handlerMock.Object);
 
@@ -70,14 +70,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
-                       ItExpr.Is<HttpRequestMessage>(request =>
-                       request.Method == HttpMethod.Post &&
-                       request.RequestUri.AbsoluteUri.Equals(
-                           $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={instanceId}&duration=5&renewDeadline=10")),
-                       ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-                       {
-                           StatusCode = HttpStatusCode.OK
-                       });
+                        ItExpr.Is<HttpRequestMessage>(request =>
+                        request.Method == HttpMethod.Post &&
+                        request.RequestUri.AbsoluteUri.Equals(
+                            $"{TestHttpLeaderEndpoint}/lock/acquire?name={lockId}&owner={instanceId}&duration=5&renewDeadline=10")),
+                        ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                        {
+                            StatusCode = HttpStatusCode.OK
+                        });
 
             var httpClient = new HttpClient(handlerMock.Object);
 
@@ -120,14 +120,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
-                       ItExpr.Is<HttpRequestMessage>(request =>
-                              request.Method == HttpMethod.Get &&
-                              request.RequestUri.AbsoluteUri.Equals($"{TestHttpLeaderEndpoint}/lock?name={lockId}")),
-                       ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
-                       {
-                           StatusCode = status,
-                           Content = new StringContent(JsonConvert.SerializeObject(expectedLockHandle))
-                       });
+                        ItExpr.Is<HttpRequestMessage>(request =>
+                            request.Method == HttpMethod.Get &&
+                            request.RequestUri.AbsoluteUri.Equals($"{TestHttpLeaderEndpoint}/lock?name={lockId}")),
+                        ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
+                        {
+                            StatusCode = status,
+                            Content = new StringContent(JsonConvert.SerializeObject(expectedLockHandle))
+                        });
 
             var httpClient = new HttpClient(handlerMock.Object);
 
@@ -159,7 +159,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 new KubernetesClient(_environment.Object, httpClient), ScriptSettingsManager.Instance);
 
             await Assert.ThrowsAsync<ArgumentNullException>(() => lockManager.GetLockOwnerAsync(
-                "", lockId, new CancellationToken()));    
+                "", lockId, new CancellationToken()));
         }
 
         [Theory]
@@ -177,7 +177,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var inputLock = new KubernetesLockHandle() { LockId = lockId, Owner = ownerId };
 
             await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                   lockManager.ReleaseLockAsync(inputLock, new CancellationToken()));
+                    lockManager.ReleaseLockAsync(inputLock, new CancellationToken()));
         }
 
 

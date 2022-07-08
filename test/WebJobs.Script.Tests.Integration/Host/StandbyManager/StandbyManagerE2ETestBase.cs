@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var uniqueTestRootPath = Path.Combine(_testRootPath, testDirName, Guid.NewGuid().ToString());
             var scriptRootPath = Path.Combine(uniqueTestRootPath, "wwwroot");
 
-            FileUtility.EnsureDirectoryExists(scriptRootPath);          
+            FileUtility.EnsureDirectoryExists(scriptRootPath);
 
             _loggerProvider = new TestLoggerProvider();
             _metricsLogger = new TestMetricsLogger();

@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
                 {
                     // No methods were found, throw a compilation exception with the appropriate code and message
                     throw CreateCompilationException(DotNetConstants.MissingFunctionEntryPointCompilationCode,
-                       "Missing function entry point", Resources.DotNetFunctionEntryPointRulesMessage);
+                        "Missing function entry point", Resources.DotNetFunctionEntryPointRulesMessage);
                 }
             }
 
@@ -79,8 +79,8 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static T GetNamedMethod<T>(IEnumerable<T> methods, string methodName, StringComparison stringComparison) where T : IMethodReference
         {
             var namedMethods = methods
-                       .Where(m => m.IsPublic && string.Compare(m.Name, methodName, stringComparison) == 0)
-                       .ToList();
+                        .Where(m => m.IsPublic && string.Compare(m.Name, methodName, stringComparison) == 0)
+                        .ToList();
 
             // If we have single method that matches the provided name, use it.
             if (namedMethods.Count == 1)

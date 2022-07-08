@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resolver = new FunctionEntryPointResolver();
 
             CompilationErrorException exc = Assert.Throws(typeof(CompilationErrorException), () => resolver.GetFunctionEntryPoint(new[]
-             {
+            {
                 new TestMethodReference("Run", false),
                 new TestMethodReference("PrivateMethodName", false)
             })) as CompilationErrorException;
@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resolver = new FunctionEntryPointResolver();
 
             CompilationErrorException exc = Assert.Throws(typeof(CompilationErrorException), () => resolver.GetFunctionEntryPoint(new[]
-             {
+            {
                 new TestMethodReference("Run", true),
                 new TestMethodReference("Run", true),
                 new TestMethodReference("Run", true)
@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resolver = new FunctionEntryPointResolver("NamedMethod");
 
             var method = resolver.GetFunctionEntryPoint(new[]
-           {
+            {
                 new TestMethodReference("NamedMethod", true),
                 new TestMethodReference("Run", true),
                 new TestMethodReference("Run", true),
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var resolver = new FunctionEntryPointResolver("NamedMethod");
 
             CompilationErrorException exc = Assert.Throws(typeof(CompilationErrorException), () => resolver.GetFunctionEntryPoint(new[]
-             {
+            {
                 new TestMethodReference("Method1", true),
                 new TestMethodReference("Method2", true),
                 new TestMethodReference("NamedMethod", false)

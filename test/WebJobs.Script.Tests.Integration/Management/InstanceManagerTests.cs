@@ -119,7 +119,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                 p => Assert.Equal("AzureFilesConnectionString IsNullOrEmpty: True. AzureFilesContentShare: IsNullOrEmpty True", p),
                 p => Assert.StartsWith("Triggering specialization", p));
 
-            // calling again should return false, since we have 
+            // calling again should return false, since we have
             // already marked the container as specialized.
             _loggerProvider.ClearAllLogMessages();
             result = _instanceManager.StartAssignment(context);
@@ -976,12 +976,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             var runFromPackageHandler = new Mock<IRunFromPackageHandler>(MockBehavior.Strict);
             runFromPackageHandler.Setup(r => r.MountAzureFileShare(context)).Returns(Task.FromResult(true));
-            
+
             runFromPackageHandler
                 .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), true,
                     false)).ReturnsAsync(false); // return false to trigger failure
 
-            // 2nd attempt 
+            // 2nd attempt
             runFromPackageHandler
                 .Setup(r => r.ApplyBlobPackageContext(It.IsAny<RunFromPackageContext>(), It.IsAny<string>(), false,
                     true)).ReturnsAsync(true);
@@ -1188,8 +1188,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
             handlerMock.Protected().Setup<Task<HttpResponseMessage>>("SendAsync",
                 ItExpr.Is<HttpRequestMessage>(request => request.Method == HttpMethod.Post
-                                                         && request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
-                                                         && request.Content != null),
+                                                        && request.RequestUri.AbsoluteUri.Equals(msiEndpoint)
+                                                        && request.Content != null),
                 ItExpr.IsAny<CancellationToken>()).ReturnsAsync(new HttpResponseMessage
                 {
                     StatusCode = httpStatusCode

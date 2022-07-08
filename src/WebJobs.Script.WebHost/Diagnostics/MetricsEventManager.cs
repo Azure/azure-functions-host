@@ -539,15 +539,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
                 List<FunctionMetrics> metricsEventsList = GetMetricsQueueSnapshot();
 
                 var aggregatedEventsPerFunction = from item in metricsEventsList
-                                                  group item by item.FunctionName into functionGroups
-                                                  select new
-                                                  {
-                                                      FunctionName = functionGroups.Key,
-                                                      StartedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
-                                                      FailedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
-                                                      SucceededCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
-                                                      TotalExectionTimeInMs = Convert.ToUInt64(functionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
-                                                  };
+                                                group item by item.FunctionName into functionGroups
+                                                select new
+                                                {
+                                                    FunctionName = functionGroups.Key,
+                                                    StartedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Started)),
+                                                    FailedCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Failed)),
+                                                    SucceededCount = Convert.ToUInt64(functionGroups.Count(x => x.ExecutionStage == ExecutionStage.Succeeded)),
+                                                    TotalExectionTimeInMs = Convert.ToUInt64(functionGroups.Sum(x => Convert.ToDecimal(x.ExecutionTimeInMS)))
+                                                };
 
                 foreach (var functionEvent in aggregatedEventsPerFunction)
                 {

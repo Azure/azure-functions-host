@@ -30,10 +30,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 Mock<TestSecretManager> manager = base.BuildSecretManager();
 
                 manager.Setup(s => s.GetHostSecretsAsync())
-                 .ReturnsAsync(() => new HostSecretsInfo
-                 {
-                     MasterKey = MasterKey
-                 });
+                .ReturnsAsync(() => new HostSecretsInfo
+                {
+                    MasterKey = MasterKey
+                });
 
                 return manager;
             }

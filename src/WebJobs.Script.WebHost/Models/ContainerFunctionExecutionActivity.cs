@@ -35,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Models
         protected bool Equals(ContainerFunctionExecutionActivity other)
         {
             return string.Equals(FunctionName, other.FunctionName) && ExecutionStage == other.ExecutionStage &&
-                   string.Equals(TriggerType, other.TriggerType) && Success == other.Success;
+                    string.Equals(TriggerType, other.TriggerType) && Success == other.Success;
         }
 
         public override bool Equals(object obj)

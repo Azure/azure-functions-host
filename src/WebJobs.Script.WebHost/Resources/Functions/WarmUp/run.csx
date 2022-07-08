@@ -20,7 +20,7 @@ public static async Task<IActionResult> Run(HttpRequest req, ILogger log)
     dynamic data = JsonConvert.DeserializeObject(requestBody);
     name = name ?? data?.name ?? "";
 
-    
+
     HashSet<Guid> hashSet = new HashSet<Guid>();
     hashSet.Add(Guid.NewGuid());
     hashSet.Add(Guid.NewGuid());

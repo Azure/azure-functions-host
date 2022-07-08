@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
                 var workerConfig = _workerConfigs.Where(c => c.Description.Language.Equals(_workerRuntime, StringComparison.InvariantCultureIgnoreCase))
-                                                 .FirstOrDefault();
+                                                .FirstOrDefault();
                 if (workerConfig != null)
                 {
                     return _environment.IsWorkerDynamicConcurrencyEnabled() ? _workerConcurrencyOptions.Value.MaxWorkerCount : workerConfig.CountOptions.ProcessCount;

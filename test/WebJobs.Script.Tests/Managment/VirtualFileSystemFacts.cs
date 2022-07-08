@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
                             .Returns(dir);
             var fileInfoFactory = new Mock<IFileInfoFactory>();
             fileInfoFactory.Setup(f => f.FromFileName(It.IsAny<string>()))
-                           .Returns(fileInfo);
+                            .Returns(fileInfo);
 
             var pathBase = new Mock<PathBase>();
             pathBase.Setup(p => p.GetFullPath(It.IsAny<string>()))

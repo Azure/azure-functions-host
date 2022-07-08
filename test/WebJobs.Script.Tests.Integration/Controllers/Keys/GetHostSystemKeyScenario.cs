@@ -65,14 +65,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Controllers
                 Mock<TestSecretManager> manager = base.BuildSecretManager();
 
                 manager.Setup(s => s.GetHostSecretsAsync())
-                 .ReturnsAsync(() => new HostSecretsInfo
-                 {
-                     MasterKey = MasterKey,
-                     SystemKeys = new Dictionary<string, string>
-                     {
-                         { KeyName, KeyValue }
-                     }
-                 });
+                .ReturnsAsync(() => new HostSecretsInfo
+                {
+                    MasterKey = MasterKey,
+                    SystemKeys = new Dictionary<string, string>
+                    {
+                        { KeyName, KeyValue }
+                    }
+                });
 
                 return manager;
             }

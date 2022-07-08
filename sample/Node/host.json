@@ -10,7 +10,7 @@
     },
     "functionTimeout": "00:00:10",
     "logging": {
-        "fileLoggingMode": "always"        
+        "fileLoggingMode": "always"
     },
     "extensions": {
         "sendGrid": {

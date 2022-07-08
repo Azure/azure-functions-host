@@ -36,7 +36,7 @@ namespace WebJobs.Script.PerformanceMeter
 
             var credentials = new TokenCredentials(result.Result.AccessToken);
             _client = new ComputeManagementClient(credentials);
-            _client.SubscriptionId = Settings.SiteSubscriptionId;   
+            _client.SubscriptionId = Settings.SiteSubscriptionId;
         }
 
         public async Task ExecuteAsync(Options options)

@@ -9,7 +9,7 @@ public static Mail Run(Order order, TraceWriter log)
 
     var message = new Mail
     {
-        Subject = $"Thanks for your order (#{order.OrderId})!"        
+        Subject = $"Thanks for your order (#{order.OrderId})!"
     };
 
     Content content = new Content
@@ -18,6 +18,6 @@ public static Mail Run(Order order, TraceWriter log)
         Value = $"{order.CustomerName}, your order ({order.OrderId}) is being processed!"
     };
     message.AddContent(content);
-  
+
     return message;
 }

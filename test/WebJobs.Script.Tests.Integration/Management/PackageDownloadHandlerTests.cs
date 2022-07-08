@@ -311,7 +311,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             var expectedMetricName = isWarmupRequest
                 ? MetricEventNames.LinuxContainerSpecializationZipDownloadWarmup
                 : MetricEventNames.LinuxContainerSpecializationZipDownload;
-            
+
             var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
             if (isWarmupRequest)
@@ -396,7 +396,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
         private static bool IsZipDownloadRequest(HttpRequestMessage httpRequestMessage, string filePath)
         {
             return httpRequestMessage.Method == HttpMethod.Get &&
-                   string.Equals(filePath, httpRequestMessage.RequestUri.AbsoluteUri);
+                    string.Equals(filePath, httpRequestMessage.RequestUri.AbsoluteUri);
         }
 
         private static Mock<IFileSystem> GetFileSystem()

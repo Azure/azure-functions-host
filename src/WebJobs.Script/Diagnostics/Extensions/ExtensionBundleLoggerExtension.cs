@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.Diagnostics.Extensions
 
         public static void ExtractingBundleZip(this ILogger logger, string bundlePath)
         {
-             _extractingBundleZip(logger, bundlePath, null);
+            _extractingBundleZip(logger, bundlePath, null);
         }
 
         public static void ZipExtractionComplete(this ILogger logger)

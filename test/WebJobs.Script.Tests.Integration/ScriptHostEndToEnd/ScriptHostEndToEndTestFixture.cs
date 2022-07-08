@@ -119,54 +119,54 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             TestHelpers.ClearFunctionLogs("ListenerStartupException");
 
             Host = new HostBuilder()
-               .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
-               {
-                   webjobsBuilder.AddAzureStorage();
+                .ConfigureDefaultTestWebScriptHost(webjobsBuilder =>
+                {
+                    webjobsBuilder.AddAzureStorage();
 
-                   // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
-                   // it needs to change the services during its lifetime.
-                   webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
-               },
-               o =>
-               {
-                   o.ScriptPath = _rootPath;
-                   o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
-               },
-               runStartupHostedServices: true)
-               .ConfigureServices(services =>
-               {
-                   services.Configure<ScriptJobHostOptions>(o =>
-                   {
-                       o.FileLoggingMode = FileLoggingMode.Always;
+                    // This needs to added manually at the ScriptHost level, as although FunctionMetadataManager is available through WebHost,
+                    // it needs to change the services during its lifetime.
+                    webjobsBuilder.Services.AddSingleton<IFunctionMetadataManager, FunctionMetadataManager>();
+                },
+                o =>
+                {
+                    o.ScriptPath = _rootPath;
+                    o.LogPath = TestHelpers.GetHostLogFileDirectory().Parent.FullName;
+                },
+                runStartupHostedServices: true)
+                .ConfigureServices(services =>
+                {
+                    services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.FileLoggingMode = FileLoggingMode.Always;
 
-                       if (_functions != null)
-                       {
-                           o.Functions = _functions;
-                       }
-                   });               
+                        if (_functions != null)
+                        {
+                            o.Functions = _functions;
+                        }
+                    });
 
-                   // Shared memory data transfer
-                   if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                   {
-                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
-                   }
-                   else
-                   {
-                       services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
-                   }
-                   services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
-                   if (_addWorkerConcurrency)
-                   {
-                       services.AddSingleton<IScriptEventManager, WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager>();
-                   }
+                    // Shared memory data transfer
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    {
+                        services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorWindows>();
+                    }
+                    else
+                    {
+                        services.AddSingleton<IMemoryMappedFileAccessor, MemoryMappedFileAccessorUnix>();
+                    }
+                    services.AddSingleton<ISharedMemoryManager, SharedMemoryManager>();
+                    if (_addWorkerConcurrency)
+                    {
+                        services.AddSingleton<IScriptEventManager, WorkerConcurrencyManagerEndToEndTests.TestScriptEventManager>();
+                    }
 
-                   ConfigureServices(services);
-               })
-               .ConfigureLogging(b =>
-               {
-                   b.AddProvider(LoggerProvider);
-               })
-               .Build();
+                    ConfigureServices(services);
+                })
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(LoggerProvider);
+                })
+                .Build();
 
             JobHost = Host.GetScriptHost();
 

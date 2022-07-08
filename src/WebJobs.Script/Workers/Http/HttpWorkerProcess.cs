@@ -22,16 +22,16 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
         private readonly IEnvironment _environment;
 
         internal HttpWorkerProcess(string workerId,
-                                       string rootScriptPath,
-                                       HttpWorkerOptions httpWorkerOptions,
-                                       IScriptEventManager eventManager,
-                                       IWorkerProcessFactory processFactory,
-                                       IProcessRegistry processRegistry,
-                                       ILogger workerProcessLogger,
-                                       IWorkerConsoleLogSource consoleLogSource,
-                                       IEnvironment environment,
-                                       IMetricsLogger metricsLogger,
-                                       IServiceProvider serviceProvider)
+                                        string rootScriptPath,
+                                        HttpWorkerOptions httpWorkerOptions,
+                                        IScriptEventManager eventManager,
+                                        IWorkerProcessFactory processFactory,
+                                        IProcessRegistry processRegistry,
+                                        ILogger workerProcessLogger,
+                                        IWorkerConsoleLogSource consoleLogSource,
+                                        IEnvironment environment,
+                                        IMetricsLogger metricsLogger,
+                                        IServiceProvider serviceProvider)
             : base(eventManager, processRegistry, workerProcessLogger, consoleLogSource, metricsLogger, serviceProvider, httpWorkerOptions.Description.UseStdErrorStreamForErrorsOnly)
         {
             _processFactory = processFactory;
@@ -76,8 +76,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Http
                 {
                     _workerProcessLogger.LogDebug("Assigning execute permissions to file: {filePath}", filePath);
                     fileInfo.FileAccessPermissions |= FileAccessPermissions.UserExecute |
-                                                      FileAccessPermissions.GroupExecute |
-                                                      FileAccessPermissions.OtherExecute;
+                                                    FileAccessPermissions.GroupExecute |
+                                                    FileAccessPermissions.OtherExecute;
                 }
             }
             catch (Exception ex)

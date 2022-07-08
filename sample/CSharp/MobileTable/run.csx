@@ -3,7 +3,7 @@
     return new Item
     {
         Text = "Hello from C#! " + input
-    };    
+    };
 }
 
 public class Item

@@ -42,15 +42,15 @@ namespace Microsoft.Azure.WebJobs.Script.Config
         public bool IsElasticPremiumSku => WebsiteSku == ScriptConstants.ElasticPremiumSku;
 
         public virtual string AzureWebsiteInstanceId
-         {
-             get
-             {
-                 string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
-                     ?? Utility.GetStableHash(Environment.MachineName).ToString("X").PadLeft(32, '0');
+        {
+            get
+            {
+                string instanceId = GetSetting(EnvironmentSettingNames.AzureWebsiteInstanceId)
+                    ?? Utility.GetStableHash(Environment.MachineName).ToString("X").PadLeft(32, '0');
 
-                 return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
-             }
-         }
+                return instanceId.Substring(0, Math.Min(instanceId.Length, 32));
+            }
+        }
 
         public virtual string ApplicationInsightsInstrumentationKey
         {

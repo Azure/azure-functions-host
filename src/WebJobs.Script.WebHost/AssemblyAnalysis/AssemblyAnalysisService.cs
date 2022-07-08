@@ -100,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.AssemblyAnalyzer
             _cancellationTokenSource = new CancellationTokenSource();
 
             _analysisTask = Task.Delay(TimeSpan.FromMinutes(1), _cancellationTokenSource.Token)
-               .ContinueWith(t => AnalyzeFunctionAssemblies());
+                .ContinueWith(t => AnalyzeFunctionAssemblies());
         }
 
         private void AnalyzeFunctionAssemblies()

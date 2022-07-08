@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 { EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1" },
                 { EnvironmentSettingNames.AzureWebsiteContainerReady, null },
-             };
+            };
 
             var environment = new TestEnvironment(settings);
             var loggerProvider = new TestLoggerProvider();
@@ -58,7 +58,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 {
                     s.AddSingleton<IEnvironment>(environment);
 
-                    // Simulate the environment becoming specialized after these options have been 
+                    // Simulate the environment becoming specialized after these options have been
                     // initialized with standby paths.
                     s.AddOptions<ScriptApplicationHostOptions>()
                         .PostConfigure<IEnvironment>((o, e) =>
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var server = new TestServer(builder);
             var client = server.CreateClient();
 
-            // Force the specialization middleware to run       
+            // Force the specialization middleware to run
             HttpResponseMessage response = await InvokeFunction(client);
             response.EnsureSuccessStatusCode();
 

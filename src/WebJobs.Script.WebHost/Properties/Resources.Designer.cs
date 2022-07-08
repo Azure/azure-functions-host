@@ -10,8 +10,8 @@
 
 namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Two or more function apps are sharing the same secrets ({0}).
         /// </summary>
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("ErrorSameSecrets", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Repository has more than {0} non-decryptable secrets backups ({1}). {2}.
         /// </summary>
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("ErrorTooManySecretBackups", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Executed HTTP request: {{
         ///  requestId: &quot;{mS_ActivityId}&quot;,
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("ExecutedHttpRequest", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Executing HTTP request: {{
         ///  requestId: &quot;{mS_ActivityId}&quot;,
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("ExecutingHttpRequest", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
@@ -126,7 +126,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("FunctionSecretsSchemaV0", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;definitions&quot;: {
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("FunctionSecretsSchemaV1", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;type&quot;: &quot;object&quot;,
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("HostSecretsSchemaV0", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {
         ///    &quot;definitions&quot;: {
@@ -211,7 +211,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("HostSecretsSchemaV1", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Starting host specialization.
         /// </summary>
@@ -220,7 +220,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("HostSpecializationTrace", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; for &apos;{2}&apos; {3}..
         /// </summary>
@@ -229,7 +229,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceAddOrUpdateFunctionSecret", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Function (&apos;{0}&apos;) secrets do not exist. Generating secrets..
         /// </summary>
@@ -238,7 +238,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceFunctionSecretGeneration", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Host secrets do not exist. Generating secrets..
         /// </summary>
@@ -247,7 +247,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceHostSecretGeneration", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Secret &apos;{0}&apos; for &apos;{1}&apos; {2}..
         /// </summary>
@@ -256,7 +256,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceKeysApiSecretChange", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Master key {0}.
         /// </summary>
@@ -265,7 +265,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceMasterKeyCreatedOrUpdated", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Non-decryptable function (&apos;{0}&apos;) secrets detected. Refreshing secrets. Exception: {1}..
         /// </summary>
@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceNonDecryptedFunctionSecretRefresh", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Non-decryptable host secrets detected. Refreshing secrets. Exception: {0}..
         /// </summary>
@@ -283,7 +283,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceNonDecryptedHostSecretRefresh", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {0} secret &apos;{1}&apos; deleted..
         /// </summary>
@@ -292,7 +292,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceSecretDeleted", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Stale function (&apos;{0}&apos;) secrets detected. Refreshing secrets..
         /// </summary>
@@ -301,7 +301,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceStaleFunctionSecretRefresh", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Stale host secrets detected. Refreshing secrets..
         /// </summary>
@@ -310,7 +310,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Properties {
                 return ResourceManager.GetString("TraceStaleHostSecretRefresh", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to GET requests for this resource via the hostruntime extensions API are not authorized. Please use an alternate first class ARM API..
         /// </summary>

@@ -184,7 +184,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         /// <returns> bool if string in was in proper assembly representation format. </returns>
         public static bool IsAssemblyReferenceFormat(string assemblyFormatString)
         {
-           return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
+            return assemblyFormatString != null && assemblyFormatString.StartsWith(AssemblyNamePrefix);
         }
 
         /// <summary>

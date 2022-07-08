@@ -69,7 +69,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             request.Host = new HostString("functions.com", 80);
             request.Path = "/api/functions/function1";
             request.QueryString = new QueryString("?action=throw");
-            
+
             var arguments = new Dictionary<string, object>()
             {
                 { "req", request }

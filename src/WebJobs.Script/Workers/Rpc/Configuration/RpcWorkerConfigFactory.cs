@@ -29,10 +29,10 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private Dictionary<string, RpcWorkerConfig> _workerDescriptionDictionary = new Dictionary<string, RpcWorkerConfig>();
 
         public RpcWorkerConfigFactory(IConfiguration config,
-                                      ILogger logger,
-                                      ISystemRuntimeInformation systemRuntimeInfo,
-                                      IEnvironment environment,
-                                      IMetricsLogger metricsLogger)
+                                    ILogger logger,
+                                    ISystemRuntimeInformation systemRuntimeInfo,
+                                    IEnvironment environment,
+                                    IMetricsLogger metricsLogger)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -301,8 +301,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         internal void ReadLanguageWorkerFile(string workerPath)
         {
             if (_environment.IsPlaceholderModeEnabled() &&
-                 !string.IsNullOrEmpty(_workerRuntime) &&
-                 File.Exists(workerPath))
+                !string.IsNullOrEmpty(_workerRuntime) &&
+                File.Exists(workerPath))
             {
                 // Read lanaguage worker file to avoid disk reads during specialization. This is only to page-in bytes.
                 File.ReadAllBytes(workerPath);

@@ -107,7 +107,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             loggerFactory.AddProvider(loggerProvider);
 
             var instanceController = new InstanceController(null, null, loggerFactory, null);
-        
+
             var actionResult = instanceController.GetHttpHealthStatus();
             var okResult = actionResult as OkResult;
 
@@ -230,7 +230,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
         {
             var environment = new TestEnvironment();
             environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "1");
-            
+
             var loggerFactory = new LoggerFactory();
             var loggerProvider = new TestLoggerProvider();
             loggerFactory.AddProvider(loggerProvider);
@@ -260,7 +260,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
             };
 
             environment.SetEnvironmentVariable(EnvironmentSettingNames.ContainerEncryptionKey, containerEncryptionKey);
-            
+
             await instanceController.Assign(encryptedHostAssignmentContext);
 
             instanceManager.Verify(i => i.ValidateContext(It.IsAny<HostAssignmentContext>()),

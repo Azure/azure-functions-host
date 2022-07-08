@@ -888,7 +888,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             await ApiHubTestHelper.AssertTextUpdatedAsync(
                 textArgValue, ApiHubTestHelper.EntityId5);
         }
-        
+
 #endif
         public class TestFixture : EndToEndTestFixture
         {

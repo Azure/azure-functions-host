@@ -18,9 +18,9 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         private readonly IMetricsLogger _metricsLogger;
 
         public LanguageWorkerOptionsSetup(IConfiguration configuration,
-                                          ILoggerFactory loggerFactory,
-                                          IEnvironment environment,
-                                          IMetricsLogger metricsLogger)
+                                        ILoggerFactory loggerFactory,
+                                        IEnvironment environment,
+                                        IMetricsLogger metricsLogger)
         {
             if (loggerFactory is null)
             {

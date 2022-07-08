@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
             return principal.HasClaim(c => c.Type == SecurityConstants.AuthLevelClaimType
                         && (c.Value == nameof(AuthorizationLevel.Admin)
                             || (c.Value == levelString && (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
-                           ));
+                            ));
         }
     }
 }

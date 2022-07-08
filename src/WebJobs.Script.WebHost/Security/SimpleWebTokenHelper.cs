@@ -125,10 +125,10 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security
             var parsedToken = data
                 // token = key1=value1;key2=value2
                 .Split(';', StringSplitOptions.RemoveEmptyEntries)
-                 // ["key1=value1", "key2=value2"]
-                 .Select(v => v.Split('=', StringSplitOptions.RemoveEmptyEntries))
-                 // [["key1", "value1"], ["key2", "value2"]]
-                 .ToDictionary(k => k[0], v => v[1]);
+                // ["key1=value1", "key2=value2"]
+                .Select(v => v.Split('=', StringSplitOptions.RemoveEmptyEntries))
+                // [["key1", "value1"], ["key2", "value2"]]
+                .ToDictionary(k => k[0], v => v[1]);
 
             return parsedToken.ContainsKey("exp") && systemClock.UtcNow.UtcDateTime < new DateTime(long.Parse(parsedToken["exp"]));
         }

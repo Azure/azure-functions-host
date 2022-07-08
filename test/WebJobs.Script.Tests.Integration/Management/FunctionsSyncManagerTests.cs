@@ -915,15 +915,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""disabled"": false,
   ""bindings"": [
     {
-      ""authLevel"": ""anonymous"",
-      ""type"": ""httpTrigger"",
-      ""direction"": ""in"",
-      ""name"": ""req""
+    ""authLevel"": ""anonymous"",
+    ""type"": ""httpTrigger"",
+    ""direction"": ""in"",
+    ""name"": ""req""
     },
     {
-      ""type"": ""http"",
-      ""direction"": ""out"",
-      ""name"": ""$return""
+    ""type"": ""http"",
+    ""direction"": ""out"",
+    ""name"": ""$return""
     }
   ]
 }";
@@ -932,11 +932,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""scriptFile"": ""main.js"",
   ""bindings"": [
     {
-      ""name"": ""myQueueItem"",
-      ""type"": ""orchestrationTrigger"",
-      ""direction"": ""in"",
-      ""queueName"": ""myqueue-items"",
-      ""connection"": """"
+    ""name"": ""myQueueItem"",
+    ""type"": ""orchestrationTrigger"",
+    ""direction"": ""in"",
+    ""queueName"": ""myqueue-items"",
+    ""connection"": """"
     }
   ]
 }";
@@ -946,11 +946,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""scriptFile"": ""main.js"",
   ""bindings"": [
     {
-      ""name"": ""myQueueItem"",
-      ""type"": ""activityTrigger"",
-      ""direction"": ""in"",
-      ""queueName"": ""myqueue-items"",
-      ""connection"": """"
+    ""name"": ""myQueueItem"",
+    ""type"": ""activityTrigger"",
+    ""direction"": ""in"",
+    ""queueName"": ""myqueue-items"",
+    ""connection"": """"
     }
   ]
 }";

@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         [Fact]
         public async Task MultipleDepenendencyVersions()
         {
-            // Test that we consult the deps file 
+            // Test that we consult the deps file
 
             await RunTest(async () =>
             {
@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
         public async Task ReferenceOlderRuntimeAssembly()
         {
             // Test that we still return host version, even if it's a major version below.
-            // The test project used repros the scenario because it references the Storage extension, 
+            // The test project used repros the scenario because it references the Storage extension,
             // which has references to Extensions.Hosting.Abstractions 2.1. The project itself directly
             // references 2.2 of this assembly and before the fix, would throw an exception on Startup.
 

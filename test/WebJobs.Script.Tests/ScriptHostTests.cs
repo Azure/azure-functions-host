@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             loggerFactory.AddProvider(loggerProvider);
 
             var host = new HostBuilder()
-                 .ConfigureDefaultTestWebScriptHost(_ => { },
+                .ConfigureDefaultTestWebScriptHost(_ => { },
                 options =>
                 {
                     options.ScriptPath = Path.GetTempPath();
@@ -281,8 +281,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var fileAttr = new AssemblyFileVersionAttribute("1.2.3.4");
             var asmMock = new Mock<AssemblyMock>();
             asmMock.Setup(a => a.GetCustomAttributes(typeof(AssemblyFileVersionAttribute), true))
-               .Returns(new Attribute[] { fileAttr })
-               .Verifiable();
+                .Returns(new Attribute[] { fileAttr })
+                .Verifiable();
 
             var version = ScriptHost.GetAssemblyFileVersion(asmMock.Object);
 
@@ -785,9 +785,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         public void TryGetFunctionFromException_FunctionMatch()
         {
             string stack = "TypeError: Cannot read property 'is' of undefined\n" +
-                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js:7:35)\n" +
-                           "at tryOnTimeout (timers.js:224:11)\n" +
-                           "at Timer.listOnTimeout(timers.js:198:5)";
+                            "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\index.js:7:35)\n" +
+                            "at tryOnTimeout (timers.js:224:11)\n" +
+                            "at Timer.listOnTimeout(timers.js:198:5)";
             Collection<FunctionDescriptor> functions = new Collection<FunctionDescriptor>();
             var exception = new InvalidOperationException(stack);
 
@@ -822,9 +822,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             // match - different file from the same function
             stack = "TypeError: Cannot read property 'is' of undefined\n" +
-                           "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\npm\\lib\\foo.js:7:35)\n" +
-                           "at tryOnTimeout (timers.js:224:11)\n" +
-                           "at Timer.listOnTimeout(timers.js:198:5)";
+                            "at Timeout._onTimeout(D:\\home\\site\\wwwroot\\HttpTriggerNode\\npm\\lib\\foo.js:7:35)\n" +
+                            "at tryOnTimeout (timers.js:224:11)\n" +
+                            "at Timer.listOnTimeout(timers.js:198:5)";
             exception = new InvalidOperationException(stack);
             result = ScriptHost.TryGetFunctionFromException(functions, exception, out functionResult);
             Assert.True(result);

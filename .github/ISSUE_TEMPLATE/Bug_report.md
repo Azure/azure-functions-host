@@ -7,8 +7,8 @@ about: Create a report to help us improve
 #### Check for a solution in the Azure portal
 For issues in production, please check for a solution to common issues in the Azure portal before opening a bug. In the Azure portal, navigate to your function app, select `Diagnose and solve problems` from the left, and view relevant dashboards before opening your issue.
 
-<!-- 
-Please provide a succinct description of the issue. Please make an effort to fill in the all the sections below or we may close your issue for being low quality. 
+<!--
+Please provide a succinct description of the issue. Please make an effort to fill in the all the sections below or we may close your issue for being low quality.
 -->
 
 #### Investigative information
@@ -22,8 +22,8 @@ Please provide the following:
 - Invocation ID:
 - Region:
 
-<!-- 
-If you don't want to share your Function App name or Functions names on GitHub, please be sure to provide your Invocation ID, Timestamp, and Region - we can use this to look up your Function App/Function. Provide an invocation id per Function. See the [wiki](https://github.com/Azure/azure-webjobs-sdk-script/wiki/Sharing-Your-Function-App-name-privately) for more details. 
+<!--
+If you don't want to share your Function App name or Functions names on GitHub, please be sure to provide your Invocation ID, Timestamp, and Region - we can use this to look up your Function App/Function. Provide an invocation id per Function. See the [wiki](https://github.com/Azure/azure-webjobs-sdk-script/wiki/Sharing-Your-Function-App-name-privately) for more details.
 -->
 
 #### Repro steps
@@ -31,7 +31,7 @@ If you don't want to share your Function App name or Functions names on GitHub, 
 Provide the steps required to reproduce the problem:
 
 <!--
-Example: 
+Example:
 
 1. Step A
 2. Step B
@@ -67,11 +67,11 @@ Example:
 - Turn off the circuit breaker for the lights.
 -->
 
-#### Related information 
+#### Related information
 
-Provide any related information 
+Provide any related information
 
-* Programming language used 
+* Programming language used
 * Links to source
 * Bindings used
 <!-- Uncomment this if you want to include your source (wrap it in details to make browsing easier)

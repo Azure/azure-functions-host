@@ -96,33 +96,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             _hostOptionsMonitor = TestHelpers.CreateOptionsMonitor(hostOptions);
 
             _workerChannel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               _testWorkerConfig,
-               _mockrpcWorkerProcess.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManager,
+                _testWorkerConfig,
+                _mockrpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
 
             _eventManagerMock.Setup(proxy => proxy.Publish(It.IsAny<OutboundGrpcEvent>())).Verifiable();
             _workerChannelwithMockEventManager = new GrpcWorkerChannel(
-               _workerId,
-               _eventManagerMock.Object,
-               _testWorkerConfig,
-               _mockrpcWorkerProcess.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManagerMock.Object,
+                _testWorkerConfig,
+                _mockrpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
 
             _testEnvironment.SetEnvironmentVariable("APPLICATIONINSIGHTS_ENABLE_AGENT", "true");
         }
@@ -209,18 +209,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             mockrpcWorkerProcessThatThrows.Setup(m => m.StartProcessAsync()).Throws<FileNotFoundException>();
 
             _workerChannel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               _testWorkerConfig,
-               mockrpcWorkerProcessThatThrows.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManager,
+                _testWorkerConfig,
+                mockrpcWorkerProcessThatThrows.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
             await Assert.ThrowsAsync<FileNotFoundException>(async () => await _workerChannel.StartWorkerProcessAsync(CancellationToken.None));
         }
 
@@ -325,18 +325,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             var resultSource = new TaskCompletionSource<ScriptInvocationResult>();
             Guid invocationId = Guid.NewGuid();
             GrpcWorkerChannel channel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               _testWorkerConfig,
-               _mockrpcWorkerProcess.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManager,
+                _testWorkerConfig,
+                _mockrpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
             channel.SetupFunctionInvocationBuffers(GetTestFunctionsList("node"));
             ScriptInvocationContext scriptInvocationContext = GetTestScriptInvocationContext(invocationId, resultSource);
             await channel.SendInvocationRequest(scriptInvocationContext);
@@ -763,18 +763,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, "true");
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               config,
-               _mockrpcWorkerProcess.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManager,
+                config,
+                _mockrpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
 
             IEnumerable<TimeSpan> latencyHistory = null;
 
@@ -801,18 +801,18 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
             };
             _testEnvironment.SetEnvironmentVariable(RpcWorkerConstants.FunctionsWorkerDynamicConcurrencyEnabled, null);
             GrpcWorkerChannel workerChannel = new GrpcWorkerChannel(
-               _workerId,
-               _eventManager,
-               config,
-               _mockrpcWorkerProcess.Object,
-               _logger,
-               _metricsLogger,
-               0,
-               _testEnvironment,
-               _hostOptionsMonitor,
-               _sharedMemoryManager,
-               _functionDataCache,
-               _workerConcurrencyOptions);
+                _workerId,
+                _eventManager,
+                config,
+                _mockrpcWorkerProcess.Object,
+                _logger,
+                _metricsLogger,
+                0,
+                _testEnvironment,
+                _hostOptionsMonitor,
+                _sharedMemoryManager,
+                _functionDataCache,
+                _workerConcurrencyOptions);
 
             // wait 10 seconds
             await Task.Delay(10000);

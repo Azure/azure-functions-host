@@ -1,4 +1,22 @@
-﻿[*.cs]
+﻿root = true
+
+[*]
+end_of_line = crtl
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+
+[*.{ts,tsx,js}]
+indent_style = space
+indent_size = 2
+
+[.resx]
+indent_style = space
+end_of_line = lf
+indent_size = 2
+
+[*.cs]
 
 # SA1008: Opening parenthesis should not be preceded by a space.
 dotnet_diagnostic.SA1008.severity = silent

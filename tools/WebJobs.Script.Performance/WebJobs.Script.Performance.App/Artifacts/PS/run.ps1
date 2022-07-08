@@ -13,7 +13,7 @@ function ZipContent([string] $sourceDirectory, [string] $target)
 {
   Write-Host $sourceDirectory
   Write-Host $target
-  
+
   if (Test-Path $target) {
     Remove-Item $target
   }
@@ -26,7 +26,7 @@ function ConnectToAzure()
 	$passwd = ConvertTo-SecureString $settings.AzureWebJobsTargetSiteClientSecret -AsPlainText -Force
 	# $settings.password 'service principal name/id'
 	$pscredential = New-Object System.Management.Automation.PSCredential($settings.AzureWebJobsTargetSiteApplicationId, $passwd)
-	
+
     # https://azure.microsoft.com/en-us/blog/how-to-migrate-from-azurerm-to-az-in-azure-powershell/
 	Connect-AzAccount -ServicePrincipal -Credential $pscredential -TenantId $settings.AzureWebJobsTargetSiteTenantId
 }
@@ -70,7 +70,7 @@ Invoke-WebRequest -Uri $toolNupkgUrl -OutFile $nupkgPath
 Copy-Item -Path "C:\Tools\ps\local.settings.json" -Destination $binPath -Force
 
 $settings = Get-Content "$binPath\local.settings.json" | Out-String | ConvertFrom-Json
-ConnectToAzure 
+ConnectToAzure
 
 Write-Host "Scanning $scenariosDir'.."
 Get-ChildItem $scenariosDir -Directory |
@@ -87,7 +87,7 @@ Foreach-Object {
             $contentDir = "$fullName\Content\"
             if ((-not $config.isScript) -and ($config.runtime -eq "dotnet")) {
                 # Getting csproj
-                $csprojFile =  Get-ChildItem $contentDir -Filter *.csproj | Select-Object -First 1                
+                $csprojFile =  Get-ChildItem $contentDir -Filter *.csproj | Select-Object -First 1
                 $csprojFile = $_.FullName + "\Content\$csprojFile"
                 Write-Output "Building .NET Core project: $csprojFile"
                 & dotnet build -c Release $csprojFile
@@ -99,10 +99,10 @@ Foreach-Object {
                 & mvn clean package "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn" -f "$tempFolder\Content" -B
                 Copy-Item -Path $tempFolder\Content\target\azure-functions\java-test\test-1.0-SNAPSHOT.jar -Destination "$fullName\Content" -Force
             }
-            
+
             $zipPath = "$tempFolder\$_.zip"
             $jmxPath = "$fullName\test.jmx"
-            Write-Output "Generating zip: $zipPath"            
+            Write-Output "Generating zip: $zipPath"
             ZipContent $contentDir $zipPath
 
             # getting storage account
@@ -116,16 +116,16 @@ Foreach-Object {
                 -Container "artifacts" `
                 -Blob $blobPathZip `
                 -Context $ctx
-            
+
             # upload jmx
             $blobPathJmx = "$currentTime/$name.jmx"
             Set-AzStorageblobcontent -File $jmxPath `
                 -Container "artifacts" `
                 -Blob $blobPathJmx `
                 -Context $ctx
-            
-            $blobPathZip = "https://" + $settings.PerfStorageAccountName + ".blob.core.windows.net/artifacts/$blobPathZip" + "?" + $settings.SASQueryString            
-            $blobPathJmx = "https://" + $settings.PerfStorageAccountName + ".blob.core.windows.net/artifacts/$blobPathJmx" + "?" + $settings.SASQueryString            
+
+            $blobPathZip = "https://" + $settings.PerfStorageAccountName + ".blob.core.windows.net/artifacts/$blobPathZip" + "?" + $settings.SASQueryString
+            $blobPathJmx = "https://" + $settings.PerfStorageAccountName + ".blob.core.windows.net/artifacts/$blobPathJmx" + "?" + $settings.SASQueryString
             $toolArgs = "-u '$runtimeUrl' -r '" + $config.runtime + "' -z '$blobPathZip' -j '$blobPathJmx' -d '" + $config.description + "'"
 
             Push-Location $binPath
@@ -135,7 +135,7 @@ Foreach-Object {
             Pop-Location
 
         } else {
-            Write-Output "No config found: $configPath" 
+            Write-Output "No config found: $configPath"
         }
     }
 }

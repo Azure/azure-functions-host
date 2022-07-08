@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Security.Authorization
 
                 // Ensure we match the expected level and key name, if one is required
                 if (claimLevels.Any(l => l == requiredLevel) &&
-                   (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
+                    (keyName == null || string.Equals(principal.FindFirstValue(SecurityConstants.AuthLevelKeyNameClaimType), keyName, StringComparison.OrdinalIgnoreCase)))
                 {
                     return true;
                 }

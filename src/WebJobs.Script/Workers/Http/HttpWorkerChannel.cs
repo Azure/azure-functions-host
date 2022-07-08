@@ -22,13 +22,13 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
         private IMetricsLogger _metricsLogger;
 
         internal HttpWorkerChannel(
-           string workerId,
-           IScriptEventManager eventManager,
-           IWorkerProcess rpcWorkerProcess,
-           IHttpWorkerService httpWorkerService,
-           ILogger logger,
-           IMetricsLogger metricsLogger,
-           int attemptCount)
+            string workerId,
+            IScriptEventManager eventManager,
+            IWorkerProcess rpcWorkerProcess,
+            IHttpWorkerService httpWorkerService,
+            ILogger logger,
+            IMetricsLogger metricsLogger,
+            int attemptCount)
         {
             Id = workerId;
             _eventManager = eventManager;

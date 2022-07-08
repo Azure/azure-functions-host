@@ -607,7 +607,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
             {
-                 func1
+                func1
             };
 
             var testEnv = new TestEnvironment();
@@ -648,11 +648,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
             {
-                 func1, func2
+                func1, func2
             };
             ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
             {
-                 fd
+                fd
             };
             IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(functionMetadatas, functionDescriptors);
             int validFunctionsCount = 0;
@@ -688,11 +688,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             IEnumerable<FunctionMetadata> functionMetadatas = new List<FunctionMetadata>
             {
-                 func1, func2
+                func1, func2
             };
             ICollection<FunctionDescriptor> functionDescriptors = new List<FunctionDescriptor>
             {
-                 fd
+                fd
             };
 
             IEnumerable<FunctionMetadata> validFunctions = Utility.GetValidFunctions(null, functionDescriptors);

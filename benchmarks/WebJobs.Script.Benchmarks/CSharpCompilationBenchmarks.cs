@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Benchmarks
         }
 
         [Benchmark(Description = nameof(CSharpScript) + "." + nameof(CSharpScript.Create))]
-        public Script<object> ScriptCreation() => 
+        public Script<object> ScriptCreation() =>
             CSharpScript.Create(ScriptSource, options: Resolver.CreateScriptOptions(), assemblyLoader: AssemblyLoader);
 
         [Benchmark(Description = nameof(CSharpCompilationService) + "." + nameof(CSharpCompilationService.GetFunctionCompilationAsync))]

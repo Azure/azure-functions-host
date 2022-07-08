@@ -38,25 +38,25 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         public async Task TimeoutTest_UsingToken_CSharp()
         {
             await RunTokenTest("useToken", async (logs) =>
-             {
-                 // The function should 'clean up' and write 'Done'
-                 await TestHelpers.Await(() =>
-                 {
-                     var doneLog = logs.SingleOrDefault(l => l.EndsWith("Done"));
-                     return doneLog != null;
-                 });
-             });
+            {
+                // The function should 'clean up' and write 'Done'
+                await TestHelpers.Await(() =>
+                {
+                    var doneLog = logs.SingleOrDefault(l => l.EndsWith("Done"));
+                    return doneLog != null;
+                });
+            });
         }
 
         [Fact]
         public async Task TimeoutTest_IgnoringToken_CSharp()
         {
             await RunTokenTest("ignoreToken", (logs) =>
-             {
-                 // We do not expect 'Done' to be written here.
-                 Assert.NotEmpty(logs);
-                 Assert.False(logs.Any(l => l.EndsWith("Done")));
-             });
+            {
+                // We do not expect 'Done' to be written here.
+                Assert.NotEmpty(logs);
+                Assert.False(logs.Any(l => l.EndsWith("Done")));
+            });
         }
 
         private async Task RunTokenTest(string scenario, Action<IEnumerable<string>> verify)
@@ -118,26 +118,26 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
         private IHostBuilder CreateTimeoutHostBuilder(string scriptPath, TimeSpan timeout, string functionName)
         {
             var builder = new HostBuilder()
-               .ConfigureDefaultTestWebScriptHost(b =>
-               {
-                   b.Services.Configure<ScriptJobHostOptions>(o =>
-                   {
-                       o.FunctionTimeout = timeout;
-                       o.Functions = new List<string> { functionName };
-                   });
-               },
-               options =>
-               {
-                   options.ScriptPath = scriptPath;
-               }, runStartupHostedServices: true)
-               .ConfigureLogging(b =>
-               {
-                   b.AddProvider(_loggerProvider);
-               })
-               .ConfigureServices(s =>
-               {
-                   s.AddSingleton<IWebJobsExceptionHandler, MockExceptionHandler>();
-               });
+                .ConfigureDefaultTestWebScriptHost(b =>
+                {
+                    b.Services.Configure<ScriptJobHostOptions>(o =>
+                    {
+                        o.FunctionTimeout = timeout;
+                        o.Functions = new List<string> { functionName };
+                    });
+                },
+                options =>
+                {
+                    options.ScriptPath = scriptPath;
+                }, runStartupHostedServices: true)
+                .ConfigureLogging(b =>
+                {
+                    b.AddProvider(_loggerProvider);
+                })
+                .ConfigureServices(s =>
+                {
+                    s.AddSingleton<IWebJobsExceptionHandler, MockExceptionHandler>();
+                });
 
             return builder;
         }

@@ -63,11 +63,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var expectedWorkersDir = @"d:\testWorkersDir";
             var config = new ConfigurationBuilder()
-                   .AddInMemoryCollection(new Dictionary<string, string>
-                   {
-                       [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = expectedWorkersDir
-                   })
-                   .Build();
+                    .AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        [$"{RpcWorkerConstants.LanguageWorkersSectionName}:{WorkerConstants.WorkersDirectorySectionName}"] = expectedWorkersDir
+                    })
+                    .Build();
             var testLogger = new TestLogger("test");
             var configFactory = new RpcWorkerConfigFactory(config, testLogger, _testSysRuntimeInfo, _testEnvironment, new TestMetricsLogger());
             Assert.Equal(expectedWorkersDir, configFactory.WorkersDirPath);
@@ -78,10 +78,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Workers.Rpc
         {
             var expectedWorkersDir = Path.Combine(Path.GetDirectoryName(new Uri(typeof(RpcWorkerConfigFactory).Assembly.Location).LocalPath), RpcWorkerConstants.DefaultWorkersDirectoryName);
             var configBuilder = ScriptSettingsManager.CreateDefaultConfigurationBuilder()
-                   .AddInMemoryCollection(new Dictionary<string, string>
-                   {
-                       ["languageWorker"] = "test"
-                   });
+                    .AddInMemoryCollection(new Dictionary<string, string>
+                    {
+                        ["languageWorker"] = "test"
+                    });
             var config = configBuilder.Build();
             var scriptSettingsManager = new ScriptSettingsManager(config);
             var testLogger = new TestLogger("test");

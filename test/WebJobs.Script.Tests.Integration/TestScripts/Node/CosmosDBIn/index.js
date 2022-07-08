@@ -1,4 +1,4 @@
-﻿module.exports = function (context, input) {    
+﻿module.exports = function (context, input) {
 
     context.log(context.bindings);
 

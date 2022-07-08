@@ -24,7 +24,7 @@
 
     <Copy SourceFiles="runtimeassemblies.txt" DestinationFolder="$(OutputPath)" />
   </Target>
-  
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\ExtensionsMetadataGenerator.Console\ExtensionsMetadataGenerator.Console.csproj" />
     <ProjectReference Include="..\TestProject_Core21\TestProject_Core21.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />

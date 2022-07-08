@@ -21,10 +21,10 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""version"": ""2.0"",
   ""logging"": {
     ""applicationInsights"": {
-      ""samplingSettings"": {
+    ""samplingSettings"": {
         ""isEnabled"": true,
         ""excludedTypes"": ""Request""
-      }
+    }
     }
   },
   ""extensionBundle"": {
@@ -33,12 +33,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   },
   ""extensions"": {
     ""queues"": {
-      ""maxPollingInterval"": ""00:00:30"",
-      ""visibilityTimeout"": ""00:01:00"",
-      ""batchSize"": 16,
-      ""maxDequeueCount"": 5,
-      ""newBatchThreshold"": 8,
-      ""messageEncoding"": ""base64""
+    ""maxPollingInterval"": ""00:00:30"",
+    ""visibilityTimeout"": ""00:01:00"",
+    ""batchSize"": 16,
+    ""maxDequeueCount"": 5,
+    ""newBatchThreshold"": 8,
+    ""messageEncoding"": ""base64""
     }
   }
 }
@@ -50,13 +50,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 {
   ""version"": ""2.0"",
   ""extensions"": {
-    ""queues"": 
-      ""maxPollingInterval"": ""00:00:30"",
-      ""visibilityTimeout"": ""00:01:00"",
-      ""batchSize"": 16,
-      ""maxDequeueCount"": 5,
-      ""newBatchThreshold"": 8,
-      ""messageEncoding"": ""base64""
+    ""queues"":
+    ""maxPollingInterval"": ""00:00:30"",
+    ""visibilityTimeout"": ""00:01:00"",
+    ""batchSize"": 16,
+    ""maxDequeueCount"": 5,
+    ""newBatchThreshold"": 8,
+    ""messageEncoding"": ""base64""
     }
   }
 }

@@ -26,10 +26,10 @@ namespace Microsoft.Azure.WebJobs.Script.Grpc
                 });
 
                 webBuilder.ConfigureServices(services =>
-                  {
-                      services.AddSingleton(scriptEventManager);
-                      services.AddSingleton(service);
-                  });
+                {
+                    services.AddSingleton(scriptEventManager);
+                    services.AddSingleton(service);
+                });
 
                 webBuilder.UseStartup<Startup>();
             });

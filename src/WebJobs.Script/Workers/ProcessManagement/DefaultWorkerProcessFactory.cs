@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
             _logger = loggerFactory.CreateLogger<DefaultWorkerProcessFactory>();
             _environment = environment;
-       }
+        }
 
         public virtual Process CreateWorkerProcess(WorkerContext context)
         {
@@ -106,7 +106,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 startInfo.EnvironmentVariables[RpcWorkerConstants.PythonThreadpoolThreadCount] = RpcWorkerConstants.DefaultConcurrencyLimit;
             }
             else if (string.IsNullOrEmpty(startInfo.EnvironmentVariables.GetValueOrNull(RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound)) &&
-               string.Equals(functionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
+                string.Equals(functionWorkerRuntime, RpcWorkerConstants.PowerShellLanguageWorkerName, StringComparison.OrdinalIgnoreCase))
             {
                 startInfo.EnvironmentVariables[RpcWorkerConstants.PSWorkerInProcConcurrencyUpperBound] = RpcWorkerConstants.DefaultConcurrencyLimit;
             }

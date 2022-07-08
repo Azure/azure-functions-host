@@ -1,7 +1,7 @@
 ﻿public static TestObject Run(TestObject req)
 {
     req.Greeting = $"Hello, {req.SenderName}";
-    
+
     return req;
 }
 

@@ -1,6 +1,6 @@
 ﻿// Unification rules for Azure Functions 3.0
 // Assemblies in this list cannot be overriden in the funcion load context
-// This list originally comes from dumping TPA assemblies. 
+// This list originally comes from dumping TPA assemblies.
 {
   "runtimeAssemblies": [
     {

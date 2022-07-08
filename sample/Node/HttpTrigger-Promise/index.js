@@ -21,7 +21,7 @@ module.exports = function getStockDataFromGoogle(context, req) {
                 .on('end', () => resolve({ status: 200, body: parseGoogleFinance(responseBody) }));
         })
         // If there is an error, 'resolve' with a 'Bad Request' status code and the error.
-        // If instead we chose to 'reject' the promise (a good option with unknown/unrecoverable errors), 
+        // If instead we chose to 'reject' the promise (a good option with unknown/unrecoverable errors),
         // the client would receive a 500 error with response body {"Message":"An error has occurred."}.
         .on('error', (error) => resolve({ status: 400, body: error }))
         .end();

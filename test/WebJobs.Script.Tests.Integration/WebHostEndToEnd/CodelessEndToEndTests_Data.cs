@@ -13,23 +13,23 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     public static class CodelessEndToEndTests_Data
     {
         private readonly static string _sampleBindingsJson = $@"{{
-          ""bindings"": [
+        ""bindings"": [
             {{
-              ""authLevel"": ""function"",
-              ""type"": ""httpTrigger"",
-              ""direction"": ""in"",
-              ""name"": ""req"",
-              ""methods"" : [
+            ""authLevel"": ""function"",
+            ""type"": ""httpTrigger"",
+            ""direction"": ""in"",
+            ""name"": ""req"",
+            ""methods"" : [
                 ""get"",
                 ""post""
-              ]
+            ]
             }},
             {{
-              ""type"": ""http"",
-              ""direction"": ""out"",
-              ""name"": ""res""
+            ""type"": ""http"",
+            ""direction"": ""out"",
+            ""name"": ""res""
             }}
-          ]
+        ]
         }}
         ";
 

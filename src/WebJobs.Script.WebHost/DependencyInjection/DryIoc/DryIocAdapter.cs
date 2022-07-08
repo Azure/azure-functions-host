@@ -53,10 +53,10 @@ namespace DryIoc.Microsoft.DependencyInjection
         /// <code><![CDATA[
         ///     var container = new Container();
         ///     // you may start to register you services here
-        /// 
+        ///
         ///     var adaptedContainer = container.WithDependencyInjectionAdapter(services);
         ///     var serviceProvider = adaptedContainer.Resolve<IServiceProvider>();
-        ///     
+        ///
         ///     // to register service per Request use Reuse.InCurrentScope
         ///     adaptedContainer.Register<IMyService, MyService>(Reuse.InCurrentScope)
         ///]]></code>
@@ -90,7 +90,7 @@ namespace DryIoc.Microsoft.DependencyInjection
         }
 
         /// <summary>Facade to consolidate DryIoc registrations in <typeparamref name="TCompositionRoot"/></summary>
-        /// <typeparam name="TCompositionRoot">The class will be created by container on Startup 
+        /// <typeparam name="TCompositionRoot">The class will be created by container on Startup
         /// to enable registrations with injected <see cref="IRegistrator"/> or full <see cref="IContainer"/>.</typeparam>
         /// <param name="container">Adapted container</param> <returns>Service provider</returns>
         /// <example>
@@ -138,7 +138,7 @@ namespace DryIoc.Microsoft.DependencyInjection
                     container.RegisterDescriptor(descriptor, singletonReuse);
         }
 
-        /// <summary>Uses passed descriptor to register service in container: 
+        /// <summary>Uses passed descriptor to register service in container:
         /// maps DI Lifetime to DryIoc Reuse,
         /// and DI registration type to corresponding DryIoc Register, RegisterDelegate or RegisterInstance.</summary>
         /// <param name="container">The container.</param>
@@ -199,7 +199,7 @@ namespace DryIoc.Microsoft.DependencyInjection
         private readonly IResolverContext _scopedResolver;
         private readonly Func<Type, bool> _throwIfUnresolved;
 
-        /// <summary>Uses passed container for scoped resolutions.</summary> 
+        /// <summary>Uses passed container for scoped resolutions.</summary>
         /// <param name="scopedResolver">A scoped resolver context to wrap</param>
         /// <param name="throwIfUnresolved">(optional) Instructs DryIoc to throw exception
         /// for unresolved type instead of fallback to default Resolver.</param>
@@ -213,7 +213,7 @@ namespace DryIoc.Microsoft.DependencyInjection
         public IServiceProvider ServiceProvider => this;
 
         /// <summary>Delegates resolution to scoped container. In case the service is unresolved
-        /// depending on provided policy it will either fallback to default DI resolver, 
+        /// depending on provided policy it will either fallback to default DI resolver,
         /// or will throw the original DryIoc exception (cause it good to know the reason).</summary>
         /// <param name="serviceType">Service type to resolve.</param>
         /// <returns>Resolved service object.</returns>

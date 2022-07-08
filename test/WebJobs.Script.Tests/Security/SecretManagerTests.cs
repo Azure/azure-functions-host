@@ -302,7 +302,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 string functionName = "testfunction";
                 string expectedTraceMessage = string.Format(Resources.TraceStaleFunctionSecretRefresh, functionName);
                 string functionSecretsJson =
-                 @"{
+                @"{
     'keys': [
         {
             'name': 'Key1',
@@ -859,7 +859,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 {
                     string functionName = "testfunction";
                     string functionSecretsJson =
-                         @"{
+                        @"{
     'keys': [
         {
             'name': 'Key1',
@@ -903,7 +903,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
                 string expectedTraceMessage = string.Format(Resources.ErrorTooManySecretBackups, ScriptConstants.MaximumSecretBackupCount, functionName,
                     string.Format(Resources.ErrorSameSecrets, "test0,test1"));
                 string functionSecretsJson =
-                     @"{
+                    @"{
     'keys': [
         {
             'name': 'Key1',
@@ -1025,7 +1025,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 string functionName = "testfunction";
                 string functionSecretsJson =
-                 @"{
+                @"{
     'keys': [
         {
             'name': 'Key1',
@@ -1124,7 +1124,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Security
             {
                 string functionName = "testfunction";
                 string functionSecretsJson =
-                     @"{
+                    @"{
     'keys': [
         {
             'name': 'Key1',

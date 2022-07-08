@@ -137,7 +137,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.Management
             catch (Exception e)
             {
                 failsWithExpectedException = e is NotSupportedException && string.Equals(e.Message,
-                                                 $"{nameof(LinuxContainerActivityPublisher)} is available in Linux consumption environment only");
+                                                $"{nameof(LinuxContainerActivityPublisher)} is available in Linux consumption environment only");
             }
 
             Assert.True(failsWithExpectedException);

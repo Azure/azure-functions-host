@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
     public class NullDependencyValidator : IDependencyValidator
     {
         public void Validate(IServiceCollection services)
-        {            
+        {
         }
     }
 }

@@ -169,7 +169,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
 
             if (!functionSuccess)
             {
-                // We see two exceptions: 
+                // We see two exceptions:
                 // - 1 with the RequestTelemetry
                 // - 1 with the TraceTelemetry that "Function Executed (Failure...")
                 ExceptionTelemetry[] exceptions = _fixture.Channel.Telemetries
@@ -189,9 +189,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ApplicationInsights
             await TestHelpers.Await(() =>
             {
                 requestTelemetry = _fixture.Channel.Telemetries
-                   .OfType<RequestTelemetry>()
-                   .Where(t => GetInvocationId(t) == invocationId)
-                   .SingleOrDefault();
+                    .OfType<RequestTelemetry>()
+                    .Where(t => GetInvocationId(t) == invocationId)
+                    .SingleOrDefault();
 
                 return requestTelemetry != null;
             });

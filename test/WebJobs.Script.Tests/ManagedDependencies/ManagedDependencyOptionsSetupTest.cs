@@ -65,16 +65,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.ManagedDependencies
         [InlineData(@"{
                     'version': '2.0',
                     'managedDependency':
-                          {
+                        {
                             'enabled': true
-                          }
+                        }
                         }")]
         [InlineData(@"{
                     'version': '2.0',
                     'managedDependency':
-                          {
+                        {
                             'enabled': false
-                          }
+                        }
                         }")]
         public void Test_ManagedDependencyOptionsSetup_Valid_ManagedDependencies_InHostFile(string hostJson)
         {

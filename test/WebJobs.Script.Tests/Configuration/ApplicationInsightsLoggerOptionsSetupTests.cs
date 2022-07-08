@@ -39,12 +39,12 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_SamplingDisabled_IgnoresOtherSettings()
         {
             IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(new Dictionary<string, string>
-               {
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
                     { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
                     { $"{SamplingSettings}:IsEnabled", "false" }
-               })
-               .Build();
+                })
+                .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
@@ -63,14 +63,14 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
             string includedTypes = "PageView;Trace";
 
             IConfiguration config = new ConfigurationBuilder()
-               .AddInMemoryCollection(new Dictionary<string, string>
-               {
-                   { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
-                   { $"{SamplingSettings}:IsEnabled", "true" },
-                   { $"{SamplingSettings}:ExcludedTypes", excludedTypes },
-                   { $"{SamplingSettings}:IncludedTypes", includedTypes },
-               })
-               .Build();
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { $"{SamplingSettings}:MaxTelemetryItemsPerSecond", "25" },
+                    { $"{SamplingSettings}:IsEnabled", "true" },
+                    { $"{SamplingSettings}:ExcludedTypes", excludedTypes },
+                    { $"{SamplingSettings}:IncludedTypes", includedTypes },
+                })
+                .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
@@ -85,11 +85,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_SnapshotEnabled_CreatesDefaultSettings()
         {
             IConfiguration config = new ConfigurationBuilder()
-              .AddInMemoryCollection(new Dictionary<string, string>
-              {
+            .AddInMemoryCollection(new Dictionary<string, string>
+            {
                     { $"{SnapshotConfiguration}:IsEnabled", "true" }
-              })
-              .Build();
+            })
+            .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 
@@ -152,11 +152,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Configuration
         public void Configure_SamplingEnabled_CreatesDefaultSettings()
         {
             IConfiguration config = new ConfigurationBuilder()
-              .AddInMemoryCollection(new Dictionary<string, string>
-              {
+            .AddInMemoryCollection(new Dictionary<string, string>
+            {
                     { $"{SamplingSettings}:IsEnabled", "true" }
-              })
-              .Build();
+            })
+            .Build();
 
             ApplicationInsightsLoggerOptionsSetup setup = new ApplicationInsightsLoggerOptionsSetup(new MockLoggerConfiguration(config), _environment);
 

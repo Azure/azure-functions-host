@@ -81,9 +81,9 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             var url = webHookProvider.GetUrl(configProvider);
             Assert.Equal($"{TestUrlRoot}{secretValue}", url.ToString());
             Assert.True(IdentifiableSecrets.ValidateBase64Key(secretValue,
-                                                              SecretGenerator.SystemKeySeed,
-                                                              SecretGenerator.AzureFunctionsSignature,
-                                                              encodeForUrl: true));
+                                                            SecretGenerator.SystemKeySeed,
+                                                            SecretGenerator.AzureFunctionsSignature,
+                                                            encodeForUrl: true));
         }
 
         [Extension("My Test Extension", configurationSection: "TestExtension")]

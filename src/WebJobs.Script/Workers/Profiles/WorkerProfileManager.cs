@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             var profileId = string.Empty;
             if (GetEvaluatedProfile(workerRuntime, out WorkerDescriptionProfile profile))
             {
-               profileId = profile.ProfileId;
+                profileId = profile.ProfileId;
             }
             return _activeProfile.Equals(profileId);
         }

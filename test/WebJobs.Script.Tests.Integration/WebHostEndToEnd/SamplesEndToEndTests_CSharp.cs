@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
                 }
 
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
-                
+
                 if (addAuthKey)
                 {
                     await this._fixture.AddMasterKey(request);
@@ -1049,16 +1049,16 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
   ""auth_typ"": """ + provider + @""",
   ""claims"": [
     {
-      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
-      ""val"": """ + name + @"""
+    ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",
+    ""val"": """ + name + @"""
     },
     {
-      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"",
-      ""val"": """ + name + @"""
+    ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn"",
+    ""val"": """ + name + @"""
     },
     {
-      ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"",
-      ""val"": """ + id + @"""
+    ""typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"",
+    ""val"": """ + id + @"""
     }
   ],
   ""name_typ"": ""http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"",

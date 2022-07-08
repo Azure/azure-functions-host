@@ -69,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             if (_environment.IsWindowsAzureManagedHosting())
             {
                 string windowsDefaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                                                         ScriptConstants.DefaultExtensionBundleDirectory,
-                                                         options.Id);
+                                                        ScriptConstants.DefaultExtensionBundleDirectory,
+                                                        options.Id);
 
                 options.ProbingPaths.Add(windowsDefaultPath);
             }
@@ -83,8 +83,8 @@ namespace Microsoft.Azure.WebJobs.Script.Configuration
             {
                 string linuxDefaultPath = Path.Combine(Path.GetPathRoot(homeDirectory), ScriptConstants.DefaultExtensionBundleDirectory, options.Id);
                 string deploymentPackageBundlePath = Path.Combine(homeDirectory, "site", "wwwroot",
-                                                                  ScriptConstants.AzureFunctionsSystemDirectoryName,
-                                                                  ScriptConstants.ExtensionBundleDirectory, options.Id);
+                                                                ScriptConstants.AzureFunctionsSystemDirectoryName,
+                                                                ScriptConstants.ExtensionBundleDirectory, options.Id);
 
                 options.ProbingPaths.Add(linuxDefaultPath);
                 options.ProbingPaths.Add(deploymentPackageBundlePath);

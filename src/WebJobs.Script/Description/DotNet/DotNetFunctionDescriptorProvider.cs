@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
         private static readonly Lazy<Regex> _taskOfUnitType = new Lazy<Regex>(() => new Regex(@"^System\.Threading\.Tasks\.Task`1\[\[Microsoft\.FSharp\.Core\.Unit, FSharp\.Core, Version=\d*\.\d*\.\d*\.\d*, Culture=.*, PublicKeyToken=b03f5f7f11d50a3a\]\]$", RegexOptions.Compiled));
 
         public DotNetFunctionDescriptorProvider(ScriptHost host, ScriptJobHostOptions config, ICollection<IScriptBindingProvider> bindingProviders, IMetricsLogger metricsLogger, ILoggerFactory loggerFactory)
-           : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, loggerFactory)
+            : this(host, config, bindingProviders, new DotNetCompilationServiceFactory(loggerFactory), metricsLogger, loggerFactory)
         {
         }
 

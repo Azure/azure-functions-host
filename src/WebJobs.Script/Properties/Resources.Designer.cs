@@ -10,8 +10,8 @@
 
 namespace Microsoft.Azure.WebJobs.Script.Properties {
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -23,15 +23,15 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Resources() {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Your function must contain a single public method, a public method named &apos;Run&apos;, or a public method matching the name specified in the &apos;entryPoint&apos; metadata property..
         /// </summary>
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("DotNetFunctionEntryPointRulesMessage", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot delete an extension. Persistent file system not available in the current hosting environment.
         /// </summary>
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ErrorDeletingExtension", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot install an extension. Persistent file system not available in the current hosting environment.
         /// </summary>
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ErrorInstallingExtension", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot delete extension when ExtensionBundles is configured..
         /// </summary>
@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleBadRequestDelete", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Cannot install extension when ExtensionBundles is configured..
         /// </summary>
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleBadRequestInstall", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Binding metadata not found within the extension bundle or extension bundle is not configured for the function app..
         /// </summary>
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleBindingMetadataNotFound", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The value of id property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
         /// </summary>
@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleConfigMissingId", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The id and version property are missing in extensionBundle section of {0} file. See https://aka.ms/functions-hostjson for more information&quot;.
         /// </summary>
@@ -131,7 +131,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleConfigMissingMessage", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to The value of version property in extensionBundle section of {0} file is invalid or missing. See https://aka.ms/functions-hostjson for more information.
         /// </summary>
@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleConfigMissingVersion", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Resources.{0} not found within the extension bundle or extension bundle is not configured for the function app..
         /// </summary>
@@ -149,7 +149,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleResourcesLocaleNotFound", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Resources metadata not found within the extension bundle or extension bundle is not configured for the function app..
         /// </summary>
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleResourcesNotFound", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Templates not found within the extension bundle or extension bundle is not configured for the function app..
         /// </summary>
@@ -167,7 +167,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("ExtensionBundleTemplatesNotFound", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to {{
         ///  Language: &quot;{0}&quot;,
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("FunctionInvocationMetricsData", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to A collision for Host ID &apos;{0}&apos; was detected in the configured storage account. For more information, see https://aka.ms/functions-hostid-collision..
         /// </summary>
@@ -190,7 +190,7 @@ namespace Microsoft.Azure.WebJobs.Script.Properties {
                 return ResourceManager.GetString("HostIdCollisionFormat", resourceCulture);
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized string similar to Bundle version matching the {0} was not found.
         /// </summary>

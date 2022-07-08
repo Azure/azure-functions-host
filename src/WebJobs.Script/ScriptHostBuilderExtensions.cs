@@ -63,16 +63,16 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         public static IHostBuilder AddScriptHost(this IHostBuilder builder,
-                                                 ScriptApplicationHostOptions applicationOptions,
-                                                 Action<IWebJobsBuilder> configureWebJobs = null,
-                                                 IMetricsLogger metricsLogger = null)
+                                                ScriptApplicationHostOptions applicationOptions,
+                                                Action<IWebJobsBuilder> configureWebJobs = null,
+                                                IMetricsLogger metricsLogger = null)
             => builder.AddScriptHost(applicationOptions, null, metricsLogger, configureWebJobs);
 
         public static IHostBuilder AddScriptHost(this IHostBuilder builder,
-                                                 ScriptApplicationHostOptions applicationOptions,
-                                                 ILoggerFactory loggerFactory,
-                                                 IMetricsLogger metricsLogger,
-                                                 Action<IWebJobsBuilder> configureWebJobs = null)
+                                                ScriptApplicationHostOptions applicationOptions,
+                                                ILoggerFactory loggerFactory,
+                                                IMetricsLogger metricsLogger,
+                                                Action<IWebJobsBuilder> configureWebJobs = null)
         {
             loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
@@ -278,15 +278,15 @@ namespace Microsoft.Azure.WebJobs.Script
                     .Configure<IConfiguration>((o, c) =>
                     {
                         c.GetSection(ConfigurationSectionNames.JobHost)
-                         .GetSection(ConfigurationSectionNames.Aggregator)
-                         .Bind(o);
+                        .GetSection(ConfigurationSectionNames.Aggregator)
+                        .Bind(o);
                     });
                 services.AddOptions<ScaleOptions>()
                     .Configure<IConfiguration>((o, c) =>
                     {
                         c.GetSection(ConfigurationSectionNames.JobHost)
-                         .GetSection(ConfigurationSectionNames.Scale)
-                         .Bind(o);
+                        .GetSection(ConfigurationSectionNames.Scale)
+                        .Bind(o);
                     });
                 services.AddSingleton<IFunctionsHostingConfiguration, FunctionsHostingConfiguration>();
 

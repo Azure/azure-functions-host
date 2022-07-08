@@ -185,11 +185,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
 
         private static IHttpClientFactory CreateHttpClientFactory(StringBuilder writeContent)
         {
-           var httpClient = new HttpClient(new MockHttpHandler(writeContent));
-           var mockFactory = new Mock<IHttpClientFactory>();
-           mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
+            var httpClient = new HttpClient(new MockHttpHandler(writeContent));
+            var mockFactory = new Mock<IHttpClientFactory>();
+            mockFactory.Setup(m => m.CreateClient(It.IsAny<string>()))
                 .Returns(httpClient);
-           return mockFactory.Object;
+            return mockFactory.Object;
         }
 
         private static LanguageWorkerOptions CreateLanguageWorkerConfigSettings()
@@ -259,15 +259,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""disabled"": false,
   ""bindings"": [
     {
-      ""authLevel"": ""anonymous"",
-      ""type"": ""httpTrigger"",
-      ""direction"": ""in"",
-      ""name"": ""req""
+    ""authLevel"": ""anonymous"",
+    ""type"": ""httpTrigger"",
+    ""direction"": ""in"",
+    ""name"": ""req""
     },
     {
-      ""type"": ""http"",
-      ""direction"": ""out"",
-      ""name"": ""$return""
+    ""type"": ""http"",
+    ""direction"": ""out"",
+    ""name"": ""$return""
     }
   ]
 }";
@@ -276,11 +276,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""scriptFile"": ""main.js"",
   ""bindings"": [
     {
-      ""name"": ""myQueueItem"",
-      ""type"": ""orchestrationTrigger"",
-      ""direction"": ""in"",
-      ""queueName"": ""myqueue-items"",
-      ""connection"": """"
+    ""name"": ""myQueueItem"",
+    ""type"": ""orchestrationTrigger"",
+    ""direction"": ""in"",
+    ""queueName"": ""myqueue-items"",
+    ""connection"": """"
     }
   ]
 }";
@@ -290,11 +290,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Managment
   ""scriptFile"": ""main.js"",
   ""bindings"": [
     {
-      ""name"": ""myQueueItem"",
-      ""type"": ""activityTrigger"",
-      ""direction"": ""in"",
-      ""queueName"": ""myqueue-items"",
-      ""connection"": """"
+    ""name"": ""myQueueItem"",
+    ""type"": ""activityTrigger"",
+    ""direction"": ""in"",
+    ""queueName"": ""myqueue-items"",
+    ""connection"": """"
     }
   ]
 }";

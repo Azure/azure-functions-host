@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             get
             {
                 return _primaryHostStateProvider.IsPrimary &&
-                       (_scriptHostManager.State == ScriptHostState.Running);
+                        (_scriptHostManager.State == ScriptHostState.Running);
             }
         }
 

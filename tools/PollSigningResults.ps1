@@ -23,7 +23,7 @@ if (-not $bypassPackaging -and $env:SkipAssemblySigning -ne "true") {
     "No jenkins artifacts found, investigate job at https://funkins-master.redmond.corp.microsoft.com/job/Build_signing/"
     exit(1);
   }
-  
+
   Get-AzureStorageBlobContent "$env:APPVEYOR_BUILD_VERSION.zip" "azure-functions-host-signed" -Destination "$directoryPath/../buildoutput/signed.zip" -Context $ctx
 
   Expand-Archive "$directoryPath/../buildoutput/signed.zip" "$directoryPath/../buildoutput/signed"
