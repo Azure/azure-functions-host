@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text.Json.Nodes;
+using WorkerHarness.Core.Matching;
 
 namespace WorkerHarness.Core
 {

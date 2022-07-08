@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
+using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness.Core
