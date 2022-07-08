@@ -7,7 +7,7 @@ using WorkerHarness.Core.Tests.Helpers;
 namespace WorkerHarness.Core.Tests.Variables
 {
     [TestClass]
-    public class ExpressionTemplateTests
+    public class ExpressionBaseTests
     {
         [TestMethod]
         [DataRow("${dog}.breed.name", false, 1)]
@@ -18,7 +18,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void SetExpression_ValidExpression_AllPropertiesSet(string expression, bool resolved, int dependencyCount)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
 
             // Act
             concreteExpression.SetExpression(expression);
@@ -37,7 +37,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void SetExpression_InvalidExpression_ThrowArgumentException(string expression)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
 
             // Act
             try
@@ -60,7 +60,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void TryResolve_NoVariableExpression_ReturnTrue(string expression)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -77,7 +77,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void TryResolve_VariableExpressionDoesNotContainInputVariable_ReturnFalse(string expression)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             string variableName = "dog";
@@ -101,7 +101,7 @@ namespace WorkerHarness.Core.Tests.Variables
             string variableName = "attribute";
             string variableValue = "fur";
 
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -124,7 +124,7 @@ namespace WorkerHarness.Core.Tests.Variables
             string variableName = "weatherForecast";
             object variableValue = WeatherForecast.CreateWeatherForecastObject();
 
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -150,7 +150,7 @@ namespace WorkerHarness.Core.Tests.Variables
             string stringVariableName = "attribute";
             object stringVariableValue = "Location";
 
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -178,7 +178,7 @@ namespace WorkerHarness.Core.Tests.Variables
             string stringVariableName = "attribute";
             object stringVariableValue = "Location";
 
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -200,7 +200,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void TryEvaluate_ResolvedExpression_ReturnTrue(string expression)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -218,7 +218,7 @@ namespace WorkerHarness.Core.Tests.Variables
         public void TryEvaluate_UnresolvedExpression_ReturnFalse(string expression)
         {
             // Arrange
-            ExpressionTemplate concreteExpression = new ConcreteExpression();
+            ExpressionBase concreteExpression = new ConcreteExpression();
             concreteExpression.SetExpression(expression);
 
             // Act
@@ -229,7 +229,7 @@ namespace WorkerHarness.Core.Tests.Variables
             Assert.IsNull(evaluatedExpression);
         }
 
-        private class ConcreteExpression : ExpressionTemplate
+        private class ConcreteExpression : ExpressionBase
         {
             public override void ConstructExpression()
             {

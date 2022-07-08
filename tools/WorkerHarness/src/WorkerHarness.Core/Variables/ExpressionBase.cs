@@ -6,12 +6,12 @@ using WorkerHarness.Core.Commons;
 namespace WorkerHarness.Core.Variables
 {
     /// <summary>
-    /// Defines an expression
+    /// a base implementation of IExpression
     /// </summary>
-    public abstract class ExpressionTemplate
+    public abstract class ExpressionBase : IExpression
     {
         /// <summary>
-        /// Inheriting class must implement this method. Inside the method, call SetExpression().
+        ///  Call SetExpression(expression) when implementing this method.
         /// </summary>
         public abstract void ConstructExpression();
 
@@ -58,28 +58,23 @@ namespace WorkerHarness.Core.Variables
         /// <returns>true if the expression is fully resolved</returns>
         public bool TryResolve(string variableName, object variableValue)
         {
-            // update the expression with the variable 
             if (_dependencies.Contains(variableName))
             {
-                if (variableValue is string variableValueInString) // if the variable is a string variable, update the expression
+                if (variableValue is string variableValueInString)
                 {
                     _expression = VariableHelper.ResolveStringVariable(variableName, variableValueInString, _expression);
                 }
-                else // if the variable is an object variable, buffer it
+                else
                 {
                     _objectVariable = new(variableName, variableValue);
                 }
 
-                // attemp to resolve the object variable in _expression
                 _expression = VariableHelper.ResolveObjectVariable(_objectVariable?.Key ?? string.Empty, _objectVariable?.Value, _expression);
 
-                // _resolved is true if the expression contains no variables
                 _resolved = !VariableHelper.ContainVariables(_expression);
 
-                // discard the _objectVariable if _resolved
                 _objectVariable = _resolved ? null : _objectVariable;
 
-                // remove variableName from _dependencies
                 _dependencies.Remove(variableName);
             }
 

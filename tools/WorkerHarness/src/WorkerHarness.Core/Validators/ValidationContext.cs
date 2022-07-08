@@ -8,7 +8,7 @@ namespace WorkerHarness.Core
     /// <summary>
     /// Encapsulates the validation context to validate a message
     /// </summary>
-    public class ValidationContext : ExpressionTemplate
+    public class ValidationContext : ExpressionBase
     {
         // The type of validator to use
         public string Type { get; set; } = string.Empty;
