@@ -3,7 +3,7 @@
 
 using WorkerHarness.Core.Commons;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Matching
 {
     public class StringMatcher : IMatcher
     {

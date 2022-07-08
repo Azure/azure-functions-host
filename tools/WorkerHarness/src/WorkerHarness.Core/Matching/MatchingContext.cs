@@ -3,7 +3,7 @@
 
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Matching
 {
     /// <summary>
     /// Encapsulate the criteria to match a Message to a Grpc StreamingMessage
