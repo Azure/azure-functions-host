@@ -1,12 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using WorkerHarness.Core.Variables;
+
 namespace WorkerHarness.Core
 {
     /// <summary>
     /// Encapsulate the criteria to match a Message to a Grpc StreamingMessage
     /// </summary>
-    public class MatchingContext : Expression
+    public class MatchingContext : ExpressionTemplate
     {
         // the type of the match. The default is string comparison.
         public string Type { get; set; } = "string";

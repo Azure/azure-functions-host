@@ -26,7 +26,7 @@ namespace WorkerHarness.Core.Commons
         /// <returns></returns>
         public static IList<string> ExtractVariableNames(string expression)
         {
-            IList<string> variables = new List<string>();
+            HashSet<string> variables = new();
 
             MatchCollection objectVariableMatches = Regex.Matches(expression, objectVariablePattern);
             foreach (Match match in objectVariableMatches)
@@ -40,7 +40,7 @@ namespace WorkerHarness.Core.Commons
                 variables.Add(match.Groups[2].Value);
             }
 
-            return variables;
+            return variables.ToList();
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace WorkerHarness.Core.Commons
         /// <returns></returns>
         public static string ResolveObjectVariable(string variableName, object? variableValue, string expression)
         {
-            if (variableValue == null)
+            if (variableValue == null || Regex.IsMatch(expression, stringVariablePattern))
             {
                 return expression;
             }

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Variables
 {
     public class VariableManager : IVariableObservable
     {
@@ -9,12 +9,12 @@ namespace WorkerHarness.Core
         private readonly IDictionary<string, object> _variables;
 
         // _expressions store subscribed Expression object
-        private readonly IList<Expression> _expressions;
+        private readonly IList<ExpressionTemplate> _expressions;
 
         public VariableManager()
         {
             _variables = new Dictionary<string, object>();
-            _expressions = new List<Expression>();
+            _expressions = new List<ExpressionTemplate>();
         }
 
         /// <summary>
@@ -22,8 +22,8 @@ namespace WorkerHarness.Core
         /// The expression object is first evaluated using the availabe variables.
         /// If it still have unresolved dependency, then add it to the _expression list
         /// </summary>
-        /// <param name="expression" cref="Expression"></param>
-        public void Subscribe(Expression expression)
+        /// <param name="expression" cref="ExpressionTemplate"></param>
+        public void Subscribe(ExpressionTemplate expression)
         {
             // if expression has dependency that is available, resolve it immediately
             foreach (KeyValuePair<string, object> variable in _variables)
@@ -53,7 +53,7 @@ namespace WorkerHarness.Core
             } 
 
             // update all the expressions that may depend on this variable
-            foreach (Expression expression in _expressions)
+            foreach (ExpressionTemplate expression in _expressions)
             {
                 bool resolved = expression.TryResolve(variableName, variableValue);
                 // if the expression is resolved, removed it from the _expressions list

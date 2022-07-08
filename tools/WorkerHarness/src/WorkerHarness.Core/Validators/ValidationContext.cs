@@ -1,12 +1,14 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using WorkerHarness.Core.Variables;
+
 namespace WorkerHarness.Core
 {
     /// <summary>
     /// Encapsulates the validation context to validate a message
     /// </summary>
-    public class ValidationContext : Expression
+    public class ValidationContext : ExpressionTemplate
     {
         // The type of validator to use
         public string Type { get; set; } = string.Empty;
