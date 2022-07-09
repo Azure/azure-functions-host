@@ -7,6 +7,8 @@ namespace WorkerHarness.Core.Matching
 {
     public class StringMatcher : IMatcher
     {
+        internal static string MatchingException = "Matching exception occurs: {0}";
+
         public bool Match(MatchingContext match, object source)
         {
             try
@@ -19,21 +21,28 @@ namespace WorkerHarness.Core.Matching
             }
             catch (ArgumentException ex)
             {
-                throw ex;
+                throw new ArgumentException(string.Format(MatchingException, ex.Message));
             }
         }
 
         public bool MatchAll(IEnumerable<MatchingContext> matches, object source)
         {
-            foreach (var match in matches)
+            try
             {
-                if (!Match(match, source))
+                foreach (var match in matches)
                 {
-                    return false;
+                    if (!Match(match, source))
+                    {
+                        return false;
+                    }
                 }
-            }
 
-            return true;
+                return true;
+            }
+            catch (ArgumentException ex)
+            {
+                throw ex;
+            }
         }
     }
 }

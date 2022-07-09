@@ -13,6 +13,7 @@ using WorkerHarness.Core.WorkerProcess;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Variables;
+using WorkerHarness.Core.Matching;
 
 namespace WorkerHarness
 {
