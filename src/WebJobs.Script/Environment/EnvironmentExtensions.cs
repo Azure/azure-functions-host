@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
@@ -316,7 +317,7 @@ namespace Microsoft.Azure.WebJobs.Script
         {
             if (refreshCache)
             {
-                IsMultiLanguageEnvironment = environment.IsLogicApp();
+                IsMultiLanguageEnvironment = environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
             }
             return IsMultiLanguageEnvironment;
         }

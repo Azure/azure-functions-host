@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class RpcFunctionInvocationDispatcher : IFunctionInvocationDispatcher
     {
-        private static readonly int MultiLanguageDefaultPrcocessCount = 1;
+        private static readonly int MultiLanguageDefaultProcessCount = 1;
 
         private readonly IMetricsLogger _metricsLogger;
         private readonly ILogger _logger;
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         {
             if (_environment.IsMultiLanguageRuntimeEnvironment())
             {
-                return MultiLanguageDefaultPrcocessCount;
+                return MultiLanguageDefaultProcessCount;
             }
             if (_workerConcurrencyOptions != null && !string.IsNullOrEmpty(_workerRuntime))
             {
@@ -349,7 +349,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     }
                     else if (_environment.IsMultiLanguageRuntimeEnvironment())
                     {
-                        StartWorkerProcesses(startIndex: 0, startAction: InitializeJobhostLanguageWorkerChannelAsync, functionLanguages: functions.Select(function => function.Language).Distinct());
+                        var workerLanguagesToStart = functions.Select(function => function.Language).Distinct();
+                        StartWorkerProcesses(startIndex: 0, startAction: InitializeJobhostLanguageWorkerChannelAsync, functionLanguages: workerLanguagesToStart);
                     }
                     else
                     {

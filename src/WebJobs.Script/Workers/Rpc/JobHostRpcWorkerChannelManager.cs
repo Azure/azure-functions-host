@@ -12,6 +12,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class JobHostRpcWorkerChannelManager : IJobHostRpcWorkerChannelManager
     {
+        private readonly object _getChannelLock = new object();
         private readonly ILogger _logger;
         private ConcurrentDictionary<string, IRpcWorkerChannelDictionary> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelDictionary>();
 
@@ -22,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public void AddChannel(IRpcWorkerChannel channel, string language)
         {
-            lock (_channels)
+            lock (_getChannelLock)
             {
                 if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
                 {
