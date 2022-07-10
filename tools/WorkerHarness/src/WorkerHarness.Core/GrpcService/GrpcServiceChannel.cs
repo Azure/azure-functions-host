@@ -9,10 +9,10 @@ namespace WorkerHarness.Core
 {
     public class GrpcServiceChannel
     {
-        public GrpcServiceChannel(Channel<StreamingMessage> channel1, Channel<StreamingMessage> channel2)
+        public GrpcServiceChannel(Channel<StreamingMessage> inboundChannel, Channel<StreamingMessage> outboundChannel)
         {
-            InboundChannel = channel1 ?? throw new ArgumentNullException(nameof(channel1));
-            OutboundChannel = channel2 ?? throw new ArgumentNullException(nameof(channel2));
+            InboundChannel = inboundChannel ?? throw new ArgumentNullException(nameof(inboundChannel));
+            OutboundChannel = outboundChannel ?? throw new ArgumentNullException(nameof(outboundChannel));
         }
 
         public Channel<StreamingMessage> InboundChannel { get; }

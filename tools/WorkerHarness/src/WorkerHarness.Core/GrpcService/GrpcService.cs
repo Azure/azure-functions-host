@@ -11,14 +11,14 @@ namespace WorkerHarness.Core
 {
     public class GrpcService : FunctionRpc.FunctionRpcBase
     {
-        private Channel<StreamingMessage> _inboundChannel;
+        private readonly Channel<StreamingMessage> _inboundChannel;
 
-        private Channel<StreamingMessage> _outboundChannel;
+        private readonly Channel<StreamingMessage> _outboundChannel;
 
         public GrpcService(Channel<StreamingMessage> inboundChannel, Channel<StreamingMessage> outboundChannel)
         {
-            _outboundChannel = outboundChannel;
             _inboundChannel = inboundChannel;
+            _outboundChannel = outboundChannel;
         }
 
         public override async Task EventStream(IAsyncStreamReader<StreamingMessage> requestStream, IServerStreamWriter<StreamingMessage> responseStream, ServerCallContext context)

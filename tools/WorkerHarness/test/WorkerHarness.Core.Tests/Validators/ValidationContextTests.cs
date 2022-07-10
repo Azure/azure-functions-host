@@ -1,40 +1,21 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.Validators;
 
-namespace WorkerHarness.Core.Tests.Matching
+namespace WorkerHarness.Core.Tests.Validators
 {
     [TestClass]
-    public class MatchingContextTests
+    public class ValidationContextTests
     {
         [TestMethod]
         public void Constructor_DefaultToStringType()
         {
             // Arrage + Act
-            MatchingContext matchingContext = new();
+            ValidationContext validationContext = new();
 
             // Assert
-            Assert.AreEqual("string", matchingContext.Type);
-        }
-
-        [TestMethod]
-        [DataRow("")]
-        [DataRow("hello")]
-        [DataRow("${dog}.@{attribute}.color")]
-        public void ConstructExpression_ExpectedPropertyIsValidExpression_ExpressionPropertyMatchesExpectedProperty(string expected)
-        {
-            // Arrange
-            MatchingContext matchingContext = new()
-            {
-                Expected = expected
-            };
-
-            // Act
-            matchingContext.ConstructExpression();
-
-            // Assert
-            Assert.AreEqual(expected, matchingContext.Expression);
+            Assert.IsTrue(string.Equals(validationContext.Type, "string", StringComparison.OrdinalIgnoreCase));
         }
 
         [TestMethod]
@@ -44,7 +25,7 @@ namespace WorkerHarness.Core.Tests.Matching
         public void ConstructExpression_ExpectedPropertyIsInvalidExpression_ThrowArgumentException(string expected)
         {
             // Arrange
-            MatchingContext matchingContext = new()
+            ValidationContext validationContext = new()
             {
                 Expected = expected
             };
@@ -52,9 +33,9 @@ namespace WorkerHarness.Core.Tests.Matching
             // Act
             try
             {
-                matchingContext.ConstructExpression();
+                validationContext.ConstructExpression();
             }
-            //Assert
+            // Assert
             catch (ArgumentException ex)
             {
                 StringAssert.Contains(ex.Message, "Failed to construct an expression from the expected value");
@@ -62,6 +43,25 @@ namespace WorkerHarness.Core.Tests.Matching
             }
 
             Assert.Fail($"The expected {typeof(ArgumentException)} exception is not thrown");
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("hello")]
+        [DataRow("${dog}.@{attribute}.color")]
+        public void ConstructExpression_ExpectedPropertyIsValidExpression_ExpressionPropertyMatchesExpectedProperty(string expected)
+        {
+            // Arrange
+            ValidationContext validationContext = new()
+            {
+                Expected = expected
+            };
+
+            // Act
+            validationContext.ConstructExpression();
+
+            // Assert
+            Assert.AreEqual(validationContext.Expected, validationContext.Expression);
         }
     }
 }
