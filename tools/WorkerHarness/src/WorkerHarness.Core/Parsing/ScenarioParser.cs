@@ -1,7 +1,10 @@
-﻿using System.Text.Json;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Parsing
 {
     /// <summary>
     /// Parse a json scenario file into a Scenario object
