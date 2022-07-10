@@ -48,7 +48,7 @@ namespace WorkerHarness.Core.Tests.Validators
             ValidationContext context = new()
             {
                 Query = "$.Location.ZipCode",
-                Expected = "[0-9]{4}"
+                Expected = "^[0-9]{4}$"
             };
             context.ConstructExpression();
 
@@ -70,7 +70,7 @@ namespace WorkerHarness.Core.Tests.Validators
             ValidationContext context = new()
             {
                 Query = "$.Location.ZipCode",
-                Expected = "[0-9]{5}"
+                Expected = "^[0-9]{5}$"
             };
             context.ConstructExpression();
 
