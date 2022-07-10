@@ -3,6 +3,7 @@
 
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.Validators;
 
 namespace WorkerHarness.Core
 {
