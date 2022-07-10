@@ -8,7 +8,7 @@ namespace WorkerHarness.Core.Validators
 {
     internal class RegexValidator : IValidator
     {
-        internal static string ValidationExceptionMessage = "RegexValidator exception occurs: ";
+        internal static string ValidationExceptionMessage = $"{typeof(RegexValidator)} exception occurs: ";
 
         public bool Validate(ValidationContext context, object message)
         {

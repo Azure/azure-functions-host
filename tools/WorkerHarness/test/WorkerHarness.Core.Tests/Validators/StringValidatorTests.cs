@@ -24,7 +24,7 @@ namespace WorkerHarness.Core.Tests.Validators
 
             object stubObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IValidator stringValidator = new StringValidator();
+            StringValidator stringValidator = new();
 
             // Act
             try
@@ -34,7 +34,7 @@ namespace WorkerHarness.Core.Tests.Validators
             // Assert
             catch (ArgumentException ex)
             {
-                StringAssert.Contains(ex.Message, "Validation exception occurs");
+                StringAssert.Contains(ex.Message, StringValidator.ValidationExceptionMessage);
                 return;
             }
 
@@ -54,7 +54,7 @@ namespace WorkerHarness.Core.Tests.Validators
 
             object stubObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IValidator stringValidator = new StringValidator();
+            StringValidator stringValidator = new();
 
             // Act
             bool actual = stringValidator.Validate(context, stubObject);
@@ -76,7 +76,7 @@ namespace WorkerHarness.Core.Tests.Validators
 
             object stubObject = WeatherForecast.CreateWeatherForecastObject();
 
-            IValidator stringValidator = new StringValidator();
+            StringValidator stringValidator = new();
 
             // Act
             bool actual = stringValidator.Validate(context, stubObject);
