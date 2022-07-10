@@ -3,7 +3,7 @@
 
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Validators
 {
     /// <summary>
     /// Encapsulates the validation context to validate a message
@@ -24,7 +24,14 @@ namespace WorkerHarness.Core
         /// </summary>
         public override void ConstructExpression()
         {
-            SetExpression(Expected);
+            try
+            {
+                SetExpression(Expected);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException(string.Format("Failed to construct an expression from the expected value {0}. {1}", Expected, ex.Message));
+            }
         }
     }
 }
