@@ -10,8 +10,8 @@ namespace WorkerHarness.Core.Validators
     /// </summary>
     public class ValidationContext : ExpressionBase
     {
-        // The type of validator to use. Default to string validator
-        public string Type { get; set; } = "string";
+        // The type of validator to use
+        public string Type { get; set; } = string.Empty;
 
         // The property to validate
         public string Query { get; set; } = string.Empty;

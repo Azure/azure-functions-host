@@ -22,7 +22,7 @@ namespace WorkerHarness.Core.Tests.Matching
         [DataRow("")]
         [DataRow("hello")]
         [DataRow("${dog}.@{attribute}.color")]
-        public void ConstructExpression_ExpectedPropertyIsValidExpression_ExpressionPropertyMatchesExpectedProperty(string expected)
+        public void ConstructExpression_ExpressionPropertyMatchesExpectedProperty(string expected)
         {
             // Arrange
             MatchingContext matchingContext = new()
@@ -40,8 +40,9 @@ namespace WorkerHarness.Core.Tests.Matching
         [TestMethod]
         [DataRow("${dog}.${cat}.A")]
         [DataRow("dog.${cat}.A")]
+        [DataRow("dog.${cat}.A")]
         [DataRow("${@{animal_type}}.A")]
-        public void ConstructExpression_ExpectedPropertyIsInvalidExpression_ThrowArgumentException(string expected)
+        public void ConstructExpression_ExpectedIsInvalidExpression_ThrowArgumentException(string expected)
         {
             // Arrange
             MatchingContext matchingContext = new()
