@@ -8,29 +8,29 @@ namespace WorkerHarness.Core.Validators
     /// </summary>
     public class ValidatorFactory : IValidatorFactory
     {
+        internal static string InvalidValidatorTypeMessage = "The {0} validator does not exist.";
+
         /// <summary>
-        /// Currently support 2 types of validators:
-        ///     - string validator: support string comparison
-        ///     - regex validator: support regex matching
+        /// Crete IValidator object based on the validator type.
         /// </summary>
         /// <param name="validatorType"></param>
         /// <returns></returns>
-        /// <exception cref="NotImplementedException"></exception>
+        /// <exception cref="NotImplementedException">throw when the given validator type is not supported</exception>
         public IValidator Create(string validatorType)
         {
             IValidator validator;
 
-            if (validatorType.Equals("regex"))
+            if (string.Equals(validatorType, ValidtorTypes.Regex, StringComparison.OrdinalIgnoreCase))
             {
                 validator = new RegexValidator();
             }
-            else if (validatorType.Equals("string"))
+            else if (string.Equals(validatorType, ValidtorTypes.String, StringComparison.OrdinalIgnoreCase))
             {
                 validator = new StringValidator();
             }
             else
             {
-                throw new ArgumentException($"The {nameof(validatorType)} validator does not exist");
+                throw new ArgumentException(string.Format(InvalidValidatorTypeMessage, validatorType));
             }
 
             return validator;
