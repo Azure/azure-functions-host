@@ -8,6 +8,8 @@ namespace WorkerHarness.Core.Validators
 {
     internal class RegexValidator : IValidator
     {
+        internal static string ValidationExceptionMessage = "RegexValidator exception occurs: ";
+
         public bool Validate(ValidationContext context, object message)
         {
             try
@@ -21,7 +23,7 @@ namespace WorkerHarness.Core.Validators
             }
             catch (ArgumentException ex)
             {
-                throw ex;
+                throw new ArgumentException(string.Concat(ValidationExceptionMessage, ex.Message));
             }
         }
     }
