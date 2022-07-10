@@ -1,6 +1,7 @@
 {
-  "scenarioFile": "C:\\Dev\\azure-functions-host\\tools\\WorkerHarness\\src\\WorkerHarness.Core\\a.scenario",
+  "scenarioFile": "C:\\Dev\\User Scenarios\\demo.json",
   "languageExecutable": "C:\\Program Files\\dotnet\\dotnet.exe",
   "workerExecutable": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0\\FunctionApp1.dll",
-  "workerDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0"
+  "workerDirectory": "C:\\temp\\FunctionApp1\\FunctionApp1\\bin\\Debug\\net6.0",
+  "DisplayVerboseError": true
 }
