@@ -3,7 +3,7 @@
 
 namespace WorkerHarness.Core.Validators
 {
-    internal static class ValidtorTypes
+    internal static class ValidatorTypes
     {
         internal static string String = "string";
         internal static string Regex = "regex";

@@ -20,11 +20,11 @@ namespace WorkerHarness.Core.Validators
         {
             IValidator validator;
 
-            if (string.Equals(validatorType, ValidtorTypes.Regex, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(validatorType, ValidatorTypes.Regex, StringComparison.OrdinalIgnoreCase))
             {
                 validator = new RegexValidator();
             }
-            else if (string.Equals(validatorType, ValidtorTypes.String, StringComparison.OrdinalIgnoreCase))
+            else if (string.Equals(validatorType, ValidatorTypes.String, StringComparison.OrdinalIgnoreCase))
             {
                 validator = new StringValidator();
             }
