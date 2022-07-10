@@ -7,6 +7,8 @@ namespace WorkerHarness.Core.Validators
 {
     internal class StringValidator : IValidator
     {
+        internal static string ValidationException = "Validation exception occurs: {0}";
+
         public bool Validate(ValidationContext context, object message)
         {
             try
@@ -20,7 +22,7 @@ namespace WorkerHarness.Core.Validators
             }
             catch (ArgumentException ex)
             {
-                throw ex;
+                throw new ArgumentException(string.Format(ValidationException, ex.Message));
             }
 
         }
