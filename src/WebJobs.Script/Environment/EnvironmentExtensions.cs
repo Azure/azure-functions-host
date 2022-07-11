@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using Microsoft.Azure.WebJobs.Script.Config;
 using Microsoft.Azure.WebJobs.Script.Models;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Options;
@@ -311,12 +312,20 @@ namespace Microsoft.Azure.WebJobs.Script
         }
 
         /// <summary>
-        /// Gets the computer name.
+        /// Gets if runtime enviromnent is logic apps.
         /// </summary>
         public static bool IsLogicApp(this IEnvironment environment)
         {
             string appKind = environment.GetEnvironmentVariable(AppKind)?.ToLower();
             return !string.IsNullOrEmpty(appKind) && appKind.Contains(ScriptConstants.WorkFlowAppKind);
+        }
+
+        /// <summary>
+        /// Gets if runtime environment needs multi language
+        /// </summary>
+        public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
+        {
+            return environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
         }
 
         /// <summary>
