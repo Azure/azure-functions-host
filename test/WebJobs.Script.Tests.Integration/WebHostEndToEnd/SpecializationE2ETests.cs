@@ -259,8 +259,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 var response = await client.GetAsync("api/warmup");
                 response.EnsureSuccessStatusCode();
 
-                Assert.True(GCSettings.LatencyMode == GCLatencyMode.NoGCRegion, $"GCLatencyMode should be NoGCRegion at the end of placeholder mode. LatencyMode: {GCSettings.LatencyMode}");
-
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
 
