@@ -20,8 +20,6 @@ namespace Microsoft.Azure.WebJobs.Script
         // For testing
         internal static string BaseDirectory { get; set; }
 
-        private static bool IsMultiLanguageEnvironment { get; set; }
-
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
         {
             return environment.GetEnvironmentVariable(name) ?? defaultValue;
@@ -313,13 +311,9 @@ namespace Microsoft.Azure.WebJobs.Script
         /// <summary>
         /// Gets if runtime environment needs multi language
         /// </summary>
-        public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment, bool refreshCache = false)
+        public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
         {
-            if (refreshCache)
-            {
-                IsMultiLanguageEnvironment = environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
-            }
-            return IsMultiLanguageEnvironment;
+            return environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
         }
 
         /// <summary>
