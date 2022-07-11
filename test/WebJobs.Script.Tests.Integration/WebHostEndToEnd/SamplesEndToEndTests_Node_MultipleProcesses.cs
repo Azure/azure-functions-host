@@ -41,6 +41,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             IEnumerable<int> nodeProcessesBeforeHostRestart = Process.GetProcessesByName("node").Select(p => p.Id);
             // Trigger a restart
             await _fixture.Host.RestartAsync(CancellationToken.None);
+
             await SamplesTestHelpers.InvokeAndValidateHttpTrigger(_fixture, "HttpTrigger");
 
             // Wait for all the 3 process to start

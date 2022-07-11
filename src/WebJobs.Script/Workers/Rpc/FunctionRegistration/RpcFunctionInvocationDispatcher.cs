@@ -626,8 +626,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
                     _startWorkerProcessLock.Dispose();
                     _workerErrorSubscription.Dispose();
                     _workerRestartSubscription.Dispose();
-                    _processStartCancellationToken?.Cancel();
-                    _processStartCancellationToken?.Dispose();
+                    _processStartCancellationToken.Cancel();
+                    _processStartCancellationToken.Dispose();
                     _jobHostLanguageWorkerChannelManager.ShutdownChannels();
                 }
 

@@ -19,6 +19,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.EndToEnd
             string uri = $"api/{functionName}?code={functionKey}&name=Mathew";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
             HttpResponseMessage response = await fixture.Host.HttpClient.SendAsync(request);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             string body = await response.Content.ReadAsStringAsync();
