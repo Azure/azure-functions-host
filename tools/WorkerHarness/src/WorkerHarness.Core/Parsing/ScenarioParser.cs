@@ -13,6 +13,12 @@ namespace WorkerHarness.Core.Parsing
     {
         private readonly IEnumerable<IActionProvider> _actionProviders;
 
+        // Exception messages
+        internal static string ScenarioFileNotFoundMessage = "The scenario file {0} is not found";
+        internal static string ScenarioFileNotInJsonFormat = "ScenarioParser exception occurs when parsing {0}. {1}";
+        internal static string ScenarioFileMissingActionsList = "Missing the 'actions' array in the scenario {0}";
+        internal static string ScenarioFileMissingActionType = "Mising the \"actionType\" property in an action {0}";
+
         public ScenarioParser(IEnumerable<IActionProvider> actionProviders)
         {
             _actionProviders = actionProviders;
@@ -30,12 +36,20 @@ namespace WorkerHarness.Core.Parsing
         {
             if (!File.Exists(scenarioFile))
             {
-                throw new FileNotFoundException($"The scenario file {scenarioFile} is not found");
+                throw new FileNotFoundException(string.Format(ScenarioFileNotFoundMessage, scenarioFile));
             }
 
             // Read the json file and convert it to a JsonNode object for parsing
-            string scenarioInput = File.ReadAllText(scenarioFile);
-            JsonNode scenarioNode = JsonNode.Parse(scenarioInput) ?? throw new JsonException($"{scenarioFile} does not represent a valid single JSON value");
+            JsonNode scenarioNode;
+            try
+            {
+                string scenarioInput = File.ReadAllText(scenarioFile);
+                scenarioNode = JsonNode.Parse(scenarioInput)!;
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException(string.Format(ScenarioFileNotInJsonFormat, scenarioFile, ex.Message));
+            }
 
             ValidateScenario(scenarioNode, scenarioFile);
 
@@ -48,7 +62,8 @@ namespace WorkerHarness.Core.Parsing
             {
                 if (actionNode["actionType"] == null)
                 {
-                    throw new MissingFieldException($"Missing the \"actionType\" property in {JsonSerializer.Serialize(actionNode)} after resolving imports");
+                    string exceptionMessage = string.Format(ScenarioFileMissingActionType, JsonSerializer.Serialize(actionNode));
+                    throw new ArgumentException(exceptionMessage);
                 }
 
                 string actionType = actionNode["actionType"]!.GetValue<string>();
@@ -125,7 +140,7 @@ namespace WorkerHarness.Core.Parsing
         {
             if (scenarioNode["actions"] == null || scenarioNode["actions"] is not JsonArray)
             {
-                throw new MissingFieldException($"Missing the 'actions' array in the scenario {scenarioPath}");
+                throw new ArgumentException(string.Format(ScenarioFileMissingActionsList, scenarioPath));
             }
         }
 

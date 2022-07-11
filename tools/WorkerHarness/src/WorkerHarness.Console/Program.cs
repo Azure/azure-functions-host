@@ -15,6 +15,7 @@ using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Variables;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Validators;
+using WorkerHarness.Core.Parsing;
 
 namespace WorkerHarness
 {
