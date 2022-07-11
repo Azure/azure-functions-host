@@ -253,13 +253,13 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             {
                 var client = testServer.CreateClient();
 
-                // GCs LatencyMode should be Interactive as default, switch to NoGCRegion in placeholdermode and back to Interactive when specialization is complete.
-                Assert.True(GCSettings.LatencyMode == GCLatencyMode.Interactive);
+                // GC's LatencyMode should be Interactive as default, switch to NoGCRegion in placeholder mode and back to Interactive when specialization is complete.
+                Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the beginning");
 
                 var response = await client.GetAsync("api/warmup");
                 response.EnsureSuccessStatusCode();
 
-                Assert.True(GCSettings.LatencyMode == GCLatencyMode.NoGCRegion);
+                Assert.True(GCSettings.LatencyMode == GCLatencyMode.NoGCRegion, "GCLatencyMode should be NoGCRegion at the end of placeholder mode");
 
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsiteContainerReady, "1");
                 _environment.SetEnvironmentVariable(EnvironmentSettingNames.AzureWebsitePlaceholderMode, "0");
@@ -267,7 +267,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
                 response = await client.GetAsync("api/functionexecutioncontext");
                 response.EnsureSuccessStatusCode();
 
-                Assert.True(GCSettings.LatencyMode == GCLatencyMode.Interactive);
+                Assert.True(GCSettings.LatencyMode != GCLatencyMode.NoGCRegion, "GCLatencyMode should *not* be NoGCRegion at the end of specialization");
             }
         }
 
