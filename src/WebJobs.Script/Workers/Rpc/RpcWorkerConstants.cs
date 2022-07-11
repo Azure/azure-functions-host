@@ -49,7 +49,8 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
         public const string SharedMemoryDataTransfer = "SharedMemoryDataTransfer";
         public const string FunctionDataCache = "FunctionDataCache";
         public const string AcceptsListOfFunctionLoadRequests = "AcceptsListOfFunctionLoadRequests";
-        public const string HandlesWorkerTerminateMessage = "HandlesWorkerTerminateMessage";
+        public const string EnableUserCodeException = "EnableUserCodeException";
+        public const string SupportsLoadResponseCollection = "SupportsLoadResponseCollection";
 
         // Host Capabilities
         public const string V2Compatable = "V2Compatable";
