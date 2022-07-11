@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -12,91 +11,46 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 {
     internal class JobHostRpcWorkerChannelManager : IJobHostRpcWorkerChannelManager
     {
-        private readonly object _getChannelLock = new object();
         private readonly ILogger _logger;
-        private ConcurrentDictionary<string, IRpcWorkerChannelDictionary> _channels = new ConcurrentDictionary<string, IRpcWorkerChannelDictionary>();
+        private ConcurrentDictionary<string, IRpcWorkerChannel> _channels = new ConcurrentDictionary<string, IRpcWorkerChannel>();
 
         public JobHostRpcWorkerChannelManager(ILoggerFactory loggerFactory)
         {
             _logger = loggerFactory.CreateLogger<JobHostRpcWorkerChannelManager>();
         }
 
-        public void AddChannel(IRpcWorkerChannel channel, string language)
+        public void AddChannel(IRpcWorkerChannel channel)
         {
-            lock (_getChannelLock)
-            {
-                if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
-                {
-                    channels.TryAdd(channel.Id, channel);
-                }
-                else
-                {
-                    _channels.TryAdd(language, new IRpcWorkerChannelDictionary
-                    {
-                        [channel.Id] = channel,
-                    });
-                }
-            }
+            _channels.TryAdd(channel.Id, channel);
         }
 
         public Task<bool> ShutdownChannelIfExistsAsync(string channelId, Exception workerException)
         {
-            foreach (string language in _channels.Keys)
+            if (_channels.TryRemove(channelId, out IRpcWorkerChannel removedChannel))
             {
-                if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
-                {
-                    if (channels.TryRemove(channelId, out IRpcWorkerChannel rpcChannel))
-                    {
-                        _logger.LogDebug("Disposing language worker channel with id:{workerId}", rpcChannel.Id);
-                        rpcChannel.TryFailExecutions(workerException);
-                        (rpcChannel as IDisposable)?.Dispose();
-                        return Task.FromResult(true);
-                    }
-                }
+                _logger.LogDebug("Disposing JobHost language worker channel with id:{workerId}", removedChannel.Id);
+                removedChannel.TryFailExecutions(workerException);
+                (removedChannel as IDisposable)?.Dispose();
+                return Task.FromResult(true);
             }
             return Task.FromResult(false);
         }
 
         public void ShutdownChannels()
         {
-            foreach (string language in _channels.Keys)
+            foreach (string channelId in _channels.Keys)
             {
-                if (_channels.TryRemove(language, out IRpcWorkerChannelDictionary removedChannels))
+                if (_channels.TryRemove(channelId, out IRpcWorkerChannel removedChannel))
                 {
-                    foreach (var removedChannel in removedChannels.Values)
-                    {
-                        if (removedChannels.TryRemove(removedChannel.Id, out IRpcWorkerChannel _))
-                        {
-                            _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
-                            (removedChannel as IDisposable)?.Dispose();
-                        }
-                    }
+                    _logger.LogDebug("Disposing language worker channel with id:{workerId}", removedChannel.Id);
+                    (removedChannel as IDisposable)?.Dispose();
                 }
             }
         }
 
-        public IEnumerable<IRpcWorkerChannel> GetChannels(string language)
-        {
-            if (language == null)
-            {
-                return GetChannels();
-            }
-            else if (_channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels))
-            {
-                return channels.Values;
-            }
-            return Enumerable.Empty<IRpcWorkerChannel>();
-        }
-
         public IEnumerable<IRpcWorkerChannel> GetChannels()
         {
-            List<IRpcWorkerChannel> rpcWorkerChannels = new List<IRpcWorkerChannel>();
-            foreach (string language in _channels.Keys)
-            {
-                _channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels);
-                rpcWorkerChannels.AddRange(channels.Values);
-            }
-            return rpcWorkerChannels;
+            return _channels.Values;
         }
     }
 }
