@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -19,6 +19,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkerHarness.Core\WorkerHarness.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <Content Include=".\Parsing\ScenarioFileSamples\*">
+		  <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		  <Link>ScenarioFileSamples\%(Filename)%(Extension)</Link>
+	  </Content>
   </ItemGroup>
 
 </Project>

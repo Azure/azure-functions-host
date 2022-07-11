@@ -1,0 +1,4 @@
+﻿{
+  "scenarioName": "Invalid scenario file where actions is not array",
+  "actions": {}
+}
