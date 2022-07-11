@@ -222,7 +222,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         {
             _logger.ClearLogMessages();
             string scriptPath = Path.Combine(Environment.CurrentDirectory, @"..", "..", "..", "..", "..", "sample", "node");
-            AggregateFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, _logger);
+            var environment = SystemEnvironment.Instance;
+            AggregateFunctionMetadataProvider.ValidateFunctionAppFormat(scriptPath, _logger, environment);
             var traces = _logger.GetLogMessages();
             var functionLoadLogs = traces.Where(m => m.FormattedMessage.Contains("Detected mixed function app. Some functions may not be indexed"));
             Assert.True(functionLoadLogs.Any());

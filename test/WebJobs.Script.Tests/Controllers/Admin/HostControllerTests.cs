@@ -242,6 +242,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
         [InlineData(2, 0, DrainModeState.InProgress)]
         [InlineData(0, 10, DrainModeState.InProgress)]
         [InlineData(5, 1, DrainModeState.InProgress)]
+        [InlineData(20, 30, DrainModeState.Disabled)]
         public void GetDrainStatus_HostRunning_ReturnsExpected(int outstandingRetries, int outstandingInvocations, DrainModeState expectedState)
         {
             var scriptHostManagerMock = new Mock<IScriptHostManager>(MockBehavior.Strict);
@@ -256,9 +257,11 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
             serviceProviderMock.Setup(x => x.GetService(typeof(IFunctionActivityStatusProvider))).Returns(functionActivityStatusProvider.Object);
             serviceProviderMock.Setup(x => x.GetService(typeof(IDrainModeManager))).Returns(drainModeManager.Object);
             drainModeManager.Setup(x => x.IsDrainModeEnabled).Returns(expectedState != DrainModeState.Disabled);
-
             var result = (OkObjectResult)_hostController.DrainStatus(scriptHostManagerMock.Object);
-            Assert.Equal(expectedState, (result.Value as DrainModeStatus).State);
+            var resultStatus = result.Value as DrainModeStatus;
+            Assert.Equal(expectedState, resultStatus.State);
+            Assert.Equal(outstandingRetries, resultStatus.OutstandingRetries);
+            Assert.Equal(outstandingInvocations, resultStatus.OutstandingInvocations);
         }
 
         [Fact]

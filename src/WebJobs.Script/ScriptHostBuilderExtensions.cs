@@ -27,6 +27,7 @@ using Microsoft.Azure.WebJobs.Script.ManagedDependencies;
 using Microsoft.Azure.WebJobs.Script.Scale;
 using Microsoft.Azure.WebJobs.Script.Workers;
 using Microsoft.Azure.WebJobs.Script.Workers.Http;
+using Microsoft.Azure.WebJobs.Script.Workers.Profiles;
 using Microsoft.Azure.WebJobs.Script.Workers.Rpc;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
@@ -386,7 +387,7 @@ namespace Microsoft.Azure.WebJobs.Script
                 {
                     o.InstrumentationKey = appInsightsInstrumentationKey;
                     o.ConnectionString = appInsightsConnectionString;
-                });
+                }, t => t.TelemetryProcessorChainBuilder.Use(next => new ScriptTelemetryProcessor(next)));
 
                 builder.Services.ConfigureOptions<ApplicationInsightsLoggerOptionsSetup>();
 

@@ -100,14 +100,6 @@ function CleanOutput([string] $rootPath) {
     Write-Host "  Removing python worker"
     Remove-Item -Recurse -Force "$rootPath\workers\python" -ErrorAction SilentlyContinue
 
-    Write-Host "  Removing non-win32 node grpc binaries"
-    Get-ChildItem "$rootPath\workers\node\grpc\src\node\extension_binary" -ErrorAction SilentlyContinue | 
-    Foreach-Object {
-        if (-Not ($_.FullName -Match "win32")) {
-            Remove-Item -Recurse -Force $_.FullName
-        }
-    }
-
     $keepRuntimes = @('win', 'win-x86', 'win10-x86', 'win-x64', 'win10-x64')
     Write-Host "  Removing all powershell runtimes except $keepRuntimes"
     Get-ChildItem "$rootPath\workers\powershell" -Directory -ErrorAction SilentlyContinue |
@@ -231,7 +223,10 @@ function CreateSiteExtensions() {
     Move-Item -Path "$officialSiteExtensionPath\64bit\workers" -Destination "$officialSiteExtensionPath\workers" 
      
     # This goes in the root dir
-    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null    
+    Copy-Item $rootDir\src\WebJobs.Script.WebHost\extension.xml $siteExtensionPath > $null
+    
+    #This needs to be removed post Ant 99 as it's a temporary workaround
+    New-Item "$siteExtensionPath\$extensionVersion.hardlinksCreated" > $null
     
     Write-Host "Done copying. Elapsed: $($stopwatch.Elapsed)"
     Write-Host "======================================"

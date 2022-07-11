@@ -162,13 +162,23 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             // Performs function assembly analysis to generete log use of unoptimized assemblies.
             services.AddSingleton<IHostedService, AssemblyAnalyzer.AssemblyAnalysisService>();
 
+            // Manages a diagnostic listener that subscribes to diagnostic sources setup in the host
+            // and persists events in the logging infrastructure.
+            services.AddSingleton<IHostedService, DiagnosticListenerService>();
+
             // Handles shutdown of services that need to happen after StopAsync() of all services of type IHostedService are complete.
             // Order is important.
             // All other IHostedService injections need to go before this.
             services.AddSingleton<IHostedService, HostedServiceManager>();
 
             // Configuration
+
+            // ScriptApplicationHostOptions are special in that they need to be reset on specialization, but the reset
+            // must happen after the StandbyOptions have reset. For this reason, we have a special ChangeTokenSource that
+            // will reset the ScriptApplicationHostOptions only after StandbyOptions have been reset.
             services.ConfigureOptions<ScriptApplicationHostOptionsSetup>();
+            services.AddSingleton<IOptionsChangeTokenSource<ScriptApplicationHostOptions>, ScriptApplicationHostOptionsChangeTokenSource>();
+
             services.ConfigureOptions<StandbyOptionsSetup>();
             services.ConfigureOptions<LanguageWorkerOptionsSetup>();
             services.ConfigureOptionsWithChangeTokenSource<AppServiceOptions, AppServiceOptionsSetup, SpecializationChangeTokenSource<AppServiceOptions>>();
