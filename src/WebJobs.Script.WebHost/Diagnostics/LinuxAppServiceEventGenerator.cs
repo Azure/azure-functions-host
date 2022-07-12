@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics
 
         public static string AzureMonitorEventRegex { get; } = $"{ScriptConstants.LinuxAzureMonitorEventStreamName} (?<Level>[0-6]),(?<ResourceId>[^,]*),(?<OperationName>[^,]*),(?<Category>[^,]*),(?<RegionName>[^,]*),\"(?<Properties>[^,]*)\",(?<EventTimestamp>[^,]+)";
 
-        public static string ExecutionEventRegex { get; } = "(?<executionId>[^,]*),(?<siteName>[^,]*),(?<concurrency>[^,]*),(?<functionName>[^,]*),(?<invocationId>[^,]*),(?<executionStage>[^,]*),(?<executionTimeSpan>[^,]*),(?<success>[^,]*)";
+        public static string ExecutionEventRegex { get; } = "(?<executionId>[^,]*),(?<siteName>[^,]*),(?<concurrency>[^,]*),(?<functionName>[^,]*),(?<invocationId>[^,]*),(?<executionStage>[^,]*),(?<executionTimeSpan>[^,]*),(?<success>[^,]*),(?<dateTime>[^,]*)";
 
         public override void LogFunctionTraceEvent(LogLevel level, string subscriptionId, string appName, string functionName, string eventName,
             string source, string details, string summary, string exceptionType, string exceptionMessage,

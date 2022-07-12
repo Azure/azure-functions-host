@@ -185,7 +185,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
             var match = regex.Match(evt);
 
             Assert.True(match.Success);
-            Assert.Equal(9, match.Groups.Count);
+            Assert.Equal(10, match.Groups.Count);
 
             var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).ToArray();
             Assert.Collection(groupMatches,
@@ -196,9 +196,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(invocationId, p),
                 p => Assert.Equal(executionStage, p),
                 p => Assert.Equal(executionTimeSpan.ToString(), p),
-                p => Assert.Equal(success, p),
-                p => Assert.True(DateTime.TryParse(p)));
+                p => Assert.Equal(Convert.ToBoolean(p)),
+                p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
-
     }
 }
