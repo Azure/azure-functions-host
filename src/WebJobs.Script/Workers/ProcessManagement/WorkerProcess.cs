@@ -211,7 +211,6 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             {
                 if (!Process.WaitForExit(WorkerConstants.WorkerTerminateGracePeriodInSeconds * 1000))
                 {
-                    _workerProcessLogger.LogInformation($"Host waiting for {WorkerConstants.WorkerTerminateGracePeriodInSeconds} seconds grace period for graceful termination of worker process.");
                 }
             }
         }
