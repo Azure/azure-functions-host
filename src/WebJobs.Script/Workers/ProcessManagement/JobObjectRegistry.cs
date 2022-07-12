@@ -36,6 +36,11 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
             }
         }
 
+        ~JobObjectRegistry()
+        {
+            Close();
+        }
+
         public bool Register(Process proc)
         {
             return AssignProcessToJobObject(_handle, proc.Handle);
