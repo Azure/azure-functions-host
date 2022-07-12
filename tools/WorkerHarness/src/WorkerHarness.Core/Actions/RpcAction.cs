@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
+using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Validators;
 using WorkerHarness.Core.Variables;

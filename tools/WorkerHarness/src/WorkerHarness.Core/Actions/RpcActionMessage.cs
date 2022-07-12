@@ -16,7 +16,7 @@ namespace WorkerHarness.Core
 
     public class RpcActionMessage
     {
-        public string Id { get; set; } = string.Empty;
+        public string Id { get; set; } = Guid.NewGuid().ToString();
 
         public string MessageType { get; set; } = string.Empty;
 

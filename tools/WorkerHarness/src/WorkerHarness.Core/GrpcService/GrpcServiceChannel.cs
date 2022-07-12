@@ -5,7 +5,7 @@ using Grpc.Core;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Threading.Channels;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.GrpcService
 {
     public class GrpcServiceChannel
     {

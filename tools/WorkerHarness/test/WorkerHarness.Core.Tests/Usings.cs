@@ -6,7 +6,10 @@ namespace WorkerHarness.Core.Tests.Helpers
     {
         public Location Location { get; set; } = new Location();
         public int TemperatureInFahrenheit { get; set; } = 73;
-        public string Summary { get; set; } = "Cloudy, Rainy";
+        public IList<string> Summary { get; set; } = new List<string>()
+        {
+            "cloudy", "rainy", "cool"
+        };
 
         public static object CreateWeatherForecastObject()
         {

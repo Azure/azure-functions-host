@@ -1,4 +1,7 @@
-﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -6,7 +9,7 @@ using System.Text.Json.Serialization;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Options;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.GrpcService
 {
     public class GrpcMessageProvider : IGrpcMessageProvider
     {
@@ -22,9 +25,18 @@ namespace WorkerHarness.Core
             _serializerOptions.Converters.Add(new JsonStringEnumConverter());
         }
 
+        // Exception messages
+        internal static string NullPayloadMessage = "Cannot create a {0} message from a null payload";
+        internal static string UnsupportedMessageType = "The Worker Harness is currently not able to create a {0} message";
+
         public StreamingMessage Create(string contentCase, JsonNode? content)
         {
-            StreamingMessage message = new StreamingMessage
+            if (content == null)
+            {
+                throw new ArgumentException(string.Format(NullPayloadMessage, contentCase));
+            }
+
+            StreamingMessage message = new()
             {
                 RequestId = Guid.NewGuid().ToString()
             };
@@ -43,25 +55,165 @@ namespace WorkerHarness.Core
                     InvocationRequest invocationRequest = CreateInvocationRequest(content);
                     message.InvocationRequest = invocationRequest;
                     break;
+                case "FunctionsMetadataRequest":
+                    FunctionsMetadataRequest functionsMetadataRequest = CreateFunctionsMetadataRequest(content);
+                    message.FunctionsMetadataRequest = functionsMetadataRequest;
+                    break;
+                case "FunctionLoadRequestCollection":
+                    FunctionLoadRequestCollection functionLoadRequestCollection = CreateFunctionLoadRequestCollection(content);
+                    message.FunctionLoadRequestCollection = functionLoadRequestCollection;
+                    break;
+                case "WorkerTerminate":
+                    WorkerTerminate workerTerminate = CreateWorkerTerminate(content);
+                    message.WorkerTerminate = workerTerminate;
+                    break;
+                case "FileChangeEventRequest":
+                    FileChangeEventRequest fileChangeEventRequest = CreateFileChangeEventRequest(content);
+                    message.FileChangeEventRequest = fileChangeEventRequest;
+                    break;
+                case "InvocationCancel":
+                    InvocationCancel invocationCancel = CreateInvocationCancel(content);
+                    message.InvocationCancel = invocationCancel;
+                    break;
+                case "FunctionEnvironmentReloadRequest":
+                    FunctionEnvironmentReloadRequest environmentReloadRequest = CreateFunctionEnvironmentReloadRequest(content);
+                    message.FunctionEnvironmentReloadRequest = environmentReloadRequest;
+                    break;
+                case "CloseSharedMemoryResourcesRequest":
+                    CloseSharedMemoryResourcesRequest closeMemoryRequest = CreateCloseSharedMemoryResourcesRequest(content);
+                    message.CloseSharedMemoryResourcesRequest = closeMemoryRequest;
+                    break;
                 default:
-                    throw new ArgumentException($"Worker Harness does not understand {contentCase} Grpc message");
+                    throw new ArgumentException(string.Format(UnsupportedMessageType, contentCase));
             }
 
             return message;
         }
 
-        private InvocationRequest CreateInvocationRequest(JsonNode? content)
+        private CloseSharedMemoryResourcesRequest CreateCloseSharedMemoryResourcesRequest(JsonNode content)
         {
-            if (content == null)
+            CloseSharedMemoryResourcesRequest? request = JsonSerializer.Deserialize<CloseSharedMemoryResourcesRequest>(content, _serializerOptions);
+
+            if (request == null)
             {
-                throw new ArgumentNullException($"Can't create a {typeof(InvocationRequest)} from a null {typeof(JsonNode)}");
+                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(CloseSharedMemoryResourcesRequest)} object");
             }
 
-            InvocationRequest? invocationRequest = JsonSerializer.Deserialize<InvocationRequest>(content, _serializerOptions);
-            if (invocationRequest == null)
+            if (content["MapNames"] != null && content["MapNames"] is JsonArray mapNames)
             {
-                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(InvocationRequest)} object");
+                IEnumerator<JsonNode?> enumertor = mapNames.GetEnumerator();
+                while (enumertor.MoveNext())
+                {
+                    JsonNode? node = enumertor.Current;
+                    if (node == null)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        request.MapNames.Add(node.GetValue<string>());
+                    }
+                }
+                return request;
             }
+            else
+            {
+                throw new ArgumentException($"Cannot create a {typeof(CloseSharedMemoryResourcesRequest)} from a payload that does not contain a MapNames array");
+            }
+        }
+
+        private FunctionEnvironmentReloadRequest CreateFunctionEnvironmentReloadRequest(JsonNode content)
+        {
+            FunctionEnvironmentReloadRequest request = JsonSerializer.Deserialize<FunctionEnvironmentReloadRequest>(content, _serializerOptions)!;
+
+            if (request == null)
+            {
+                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(FunctionEnvironmentReloadRequest)} object");
+            }
+
+            if (string.IsNullOrEmpty(request.FunctionAppDirectory))
+            {
+                request.FunctionAppDirectory = _workerOptions.WorkerDirectory;
+            }
+
+            if (content["EnvironmentVariables"] != null && content["EnvironmentVariables"] is JsonObject environmentVariables)
+            {
+                foreach (KeyValuePair<string, JsonNode?> pair in environmentVariables)
+                {
+                    string data = pair.Value?.GetValue<string>() ?? string.Empty;
+                    request.EnvironmentVariables.Add(pair.Key, data);
+                }
+            }
+
+            return request;
+        }
+
+        private InvocationCancel CreateInvocationCancel(JsonNode content)
+        {
+            InvocationCancel invocationCancel = JsonSerializer.Deserialize<InvocationCancel>(content, _serializerOptions)!;
+            if (invocationCancel == null)
+            {
+                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(FileChangeEventRequest)} object");
+            }
+
+            return invocationCancel;
+        }
+
+        private FileChangeEventRequest CreateFileChangeEventRequest(JsonNode content)
+        {
+            FileChangeEventRequest fileChangeEventRequest = JsonSerializer.Deserialize<FileChangeEventRequest>(content, _serializerOptions)!;
+            if (fileChangeEventRequest == null)
+            {
+                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(FileChangeEventRequest)} object");
+            }
+
+            return fileChangeEventRequest;
+        }
+
+        private WorkerTerminate CreateWorkerTerminate(JsonNode content)
+        {
+            WorkerTerminate? workerTerminate = JsonSerializer.Deserialize<WorkerTerminate>(content, _serializerOptions);
+            if (workerTerminate == null)
+            {
+                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(WorkerTerminate)} object");
+            }
+
+            return workerTerminate;
+        }
+
+        private FunctionLoadRequestCollection CreateFunctionLoadRequestCollection(JsonNode content)
+        {
+            FunctionLoadRequestCollection functionLoadRequestCollection = JsonSerializer.Deserialize<FunctionLoadRequestCollection>(content, _serializerOptions)!;
+
+            if (content["FunctionLoadRequests"] != null && content["FunctionLoadRequests"] is JsonArray contentInJsonArray)
+            {
+                IEnumerator<JsonNode> enumerator = contentInJsonArray.GetEnumerator()!;
+                while (enumerator.MoveNext())
+                {
+                    JsonNode? functionLoadRequestPayload = enumerator.Current;
+                    FunctionLoadRequest functionLoadRequest = CreateFunctionLoadRequest(functionLoadRequestPayload);
+                    functionLoadRequestCollection.FunctionLoadRequests.Add(functionLoadRequest);
+                }
+            }
+
+            return functionLoadRequestCollection;
+        }
+
+        private FunctionsMetadataRequest CreateFunctionsMetadataRequest(JsonNode content)
+        {
+            FunctionsMetadataRequest? functionsMetadataRequest = JsonSerializer.Deserialize<FunctionsMetadataRequest>(content, _serializerOptions)!;
+
+            if (string.IsNullOrEmpty(functionsMetadataRequest.FunctionAppDirectory))
+            {
+                functionsMetadataRequest.FunctionAppDirectory = _workerOptions.WorkerDirectory;
+            }
+
+            return functionsMetadataRequest;
+        }
+
+        private InvocationRequest CreateInvocationRequest(JsonNode content)
+        {
+            InvocationRequest invocationRequest = JsonSerializer.Deserialize<InvocationRequest>(content, _serializerOptions)!;
 
             // if user does not specify a FunctionId in the scenario file, create a new Guid
             if (string.IsNullOrEmpty(invocationRequest.FunctionId))
@@ -107,18 +259,9 @@ namespace WorkerHarness.Core
             return invocationRequest;
         }
 
-        private FunctionLoadRequest CreateFunctionLoadRequest(JsonNode? content)
+        private FunctionLoadRequest CreateFunctionLoadRequest(JsonNode content)
         {
-            if (content == null)
-            {
-                throw new ArgumentNullException($"Can't create a {typeof(FunctionLoadRequest)} from a null {typeof(JsonNode)}");
-            }
-
-            FunctionLoadRequest? functionLoadRequest = JsonSerializer.Deserialize<FunctionLoadRequest>(content, _serializerOptions);
-            if (functionLoadRequest == null)
-            {
-                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(FunctionLoadRequest)} object");
-            }
+            FunctionLoadRequest? functionLoadRequest = JsonSerializer.Deserialize<FunctionLoadRequest>(content, _serializerOptions)!;
 
             // if user does not specify a FunctionId in the scenario file, create a new Guid
             if (string.IsNullOrEmpty(functionLoadRequest.FunctionId))
@@ -149,18 +292,9 @@ namespace WorkerHarness.Core
             return functionLoadRequest;
         }
 
-        private WorkerInitRequest CreateWorkerInitRequest(JsonNode? content)
+        private WorkerInitRequest CreateWorkerInitRequest(JsonNode content)
         {
-            if (content == null)
-            {
-                throw new ArgumentNullException($"Can't create a {typeof(WorkerInitRequest)} from a null {typeof(JsonNode)}");
-            }
-
-            WorkerInitRequest? workerInitRequest = JsonSerializer.Deserialize<WorkerInitRequest>(content, _serializerOptions);
-            if (workerInitRequest == null)
-            {
-                throw new NullReferenceException($"Cannot deserialize a {typeof(JsonNode)} object to a {typeof(WorkerInitRequest)} object");
-            }
+            WorkerInitRequest workerInitRequest = JsonSerializer.Deserialize<WorkerInitRequest>(content, _serializerOptions)!;
 
             // if the user does not specify the FunctionAppDirectory, use the WorkerDirectory value in the _workerDescription object
             if (string.IsNullOrEmpty(workerInitRequest.FunctionAppDirectory))
@@ -195,7 +329,7 @@ namespace WorkerHarness.Core
             {
                 foreach (KeyValuePair<string, JsonNode?> logCategory in logCategoriesInJsonObject)
                 {
-                    RpcLog.Types.Level value = logCategory.Value != null ? JsonSerializer.Deserialize<RpcLog.Types.Level>(logCategory.Value, _serializerOptions) : RpcLog.Types.Level.Information;
+                    RpcLog.Types.Level value = logCategory.Value != null ? JsonSerializer.Deserialize<RpcLog.Types.Level>(logCategory.Value, _serializerOptions) : RpcLog.Types.Level.Trace;
                     workerInitRequest.LogCategories.Add(logCategory.Key, value);
                 }
             }
