@@ -242,10 +242,12 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
                 _workerProcessLogger?.LogDebug(exc, "Exception on worker disposal.");
                 //ignore
             }
+            /*
             finally
             {
                 _processRegistry.Close();
             }
+            */
         }
 
         internal void OnHostStart(HostStartEvent evt)

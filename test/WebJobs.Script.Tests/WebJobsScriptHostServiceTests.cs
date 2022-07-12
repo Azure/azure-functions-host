@@ -426,8 +426,8 @@ namespace Microsoft.Azure.WebJobs.Script.Tests
 
             Assert.True(AreRequiredMetricsGenerated(metricsLogger));
 
-            host.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(3));
-            host.Verify(m => m.Dispose(), Times.Exactly(3));
+            host.Verify(m => m.StopAsync(It.IsAny<CancellationToken>()), Times.Exactly(1));
+            host.Verify(m => m.Dispose(), Times.Exactly(1));
 
             var allLogMessages = _webHostLoggerProvider.GetAllLogMessages();
 
