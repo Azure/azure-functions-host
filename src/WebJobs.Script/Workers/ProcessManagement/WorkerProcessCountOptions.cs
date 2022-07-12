@@ -7,7 +7,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers
 {
     public class WorkerProcessCountOptions
     {
-        internal static readonly TimeSpan DefaultInitializationTimeout = TimeSpan.FromSeconds(20);
+        internal static readonly TimeSpan DefaultInitializationTimeout = TimeSpan.FromSeconds(10);
 
         /// <summary>
         /// Gets or sets a value indicating whether to set FUNCTIONS_WORKER_PROCESS_COUNT to number of cpu cores on the host machine
