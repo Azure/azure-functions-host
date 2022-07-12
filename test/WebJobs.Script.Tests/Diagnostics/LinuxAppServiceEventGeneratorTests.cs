@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Azure.WebJobs.Script.Tests.Workers;
 using Microsoft.Azure.WebJobs.Script.WebHost;
 using Microsoft.Azure.WebJobs.Script.WebHost.Diagnostics;
 using Microsoft.Extensions.Logging;
@@ -171,5 +172,33 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(properties, UnNormalize(p)),
                 p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
+
+        [Theory]
+        [MemberData(nameof(LinuxEventGeneratorTestData.GetFunctionExecutionEvents), MemberType = typeof(LinuxEventGeneratorTestData))]
+        public void ParseFunctionExecutionEvents(string executionId, string siteName, int concurrency, string functionName, string invocationId,
+            string executionStage, long executionTimeSpan, bool success)
+        {
+            _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success); 
+            string evt = _events.Single();
+
+            Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
+            var match = regex.Match(evt);
+
+            Assert.True(match.Success);
+            Assert.Equal(9, match.Groups.Count);
+
+            var groupMatches = match.Groups.Cast<Group>().Select(p => p.Value).ToArray();
+            Assert.Collection(groupMatches,
+                p => Assert.Equal(executionId, p),
+                p => Assert.Equal(siteName, p),
+                p => Assert.Equal(concurrency.ToString(), p),
+                p => Assert.Equal(functionName, p),
+                p => Assert.Equal(invocationId, p),
+                p => Assert.Equal(executionStage, p),
+                p => Assert.Equal(executionTimeSpan.ToString(), p),
+                p => Assert.Equal(success, p),
+                p => Assert.True(DateTime.TryParse(p)));
+        }
+
     }
 }
