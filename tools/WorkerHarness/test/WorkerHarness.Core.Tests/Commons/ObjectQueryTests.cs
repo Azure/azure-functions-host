@@ -24,6 +24,22 @@ namespace WorkerHarness.Core.Tests.Commons
         }
 
         [TestMethod]
+        public void Query_ValidQueryThatHasArrayIndexing_ReturnString()
+        {
+            // Arrange
+            object obj = WeatherForecast.CreateWeatherForecastObject();
+            string query = "$.Summary[0]";
+
+            string expected = ((WeatherForecast)obj).Summary[0];
+
+            // Act
+            string value = obj.Query(query);
+
+            // Assert
+            Assert.AreEqual(expected, value);
+        }
+
+        [TestMethod]
         public void Query_QueryContainsNoDolarSign_ThrowArgumentException()
         {
             // Arrange
