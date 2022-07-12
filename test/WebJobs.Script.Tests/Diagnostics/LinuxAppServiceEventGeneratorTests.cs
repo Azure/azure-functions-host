@@ -196,7 +196,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
                 p => Assert.Equal(invocationId, p),
                 p => Assert.Equal(executionStage, p),
                 p => Assert.Equal(executionTimeSpan.ToString(), p),
-                p => Assert.Equal(Convert.ToBoolean(p)),
+                p => Assert.True(Convert.ToBoolean(p)),
                 p => Assert.True(DateTime.TryParse(p, out DateTime dt)));
         }
     }
