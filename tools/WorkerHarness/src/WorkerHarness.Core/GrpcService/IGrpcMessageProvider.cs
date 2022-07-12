@@ -1,7 +1,10 @@
-﻿using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the MIT License. See License.txt in the project root for license information.
+
+using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Text.Json.Nodes;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.GrpcService
 {
     /// <summary>
     /// Abtract the responsibility to create a Grpc Message
