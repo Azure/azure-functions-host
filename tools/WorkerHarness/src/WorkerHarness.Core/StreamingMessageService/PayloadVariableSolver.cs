@@ -2,10 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text.Json.Nodes;
-using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core.GrpcService
+namespace WorkerHarness.Core.StreamingMessageService
 {
     public class PayloadVariableSolver : IPayloadVariableSolver
     {

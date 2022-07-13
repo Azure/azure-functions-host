@@ -4,7 +4,7 @@
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core.GrpcService
+namespace WorkerHarness.Core.StreamingMessageService
 {
     /// <summary>
     /// Abtraction to solve variables in a message payload

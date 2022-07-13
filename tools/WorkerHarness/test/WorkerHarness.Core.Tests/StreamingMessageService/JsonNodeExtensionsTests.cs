@@ -1,13 +1,12 @@
 ﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Moq;
 using System.Text.Json.Nodes;
-using WorkerHarness.Core.Commons;
+using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Tests.Helpers;
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core.Tests.Commons
+namespace WorkerHarness.Core.Tests.StreamingMessageService
 {
     [TestClass]
     public class JsonNodeExtensionsTests
@@ -17,7 +16,7 @@ namespace WorkerHarness.Core.Tests.Commons
         {
             // Arrange
             var stubNode = new JsonObject();
-            IVariableObservable stubGlobalVariables = new Mock<IVariableObservable>().Object;
+            IVariableObservable stubGlobalVariables = new VariableManager();
 
             // Act
             var actual = stubNode.SolveVariables(stubGlobalVariables);
@@ -144,7 +143,7 @@ namespace WorkerHarness.Core.Tests.Commons
             JsonNode stubNode = new JsonArray(item1, item2);
 
             IVariableObservable globalVariables = new VariableManager();
-            
+
             // Act
             try
             {

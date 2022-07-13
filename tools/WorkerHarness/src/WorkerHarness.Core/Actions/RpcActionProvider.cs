@@ -7,8 +7,8 @@ using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
-using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness.Core
 {
@@ -32,7 +32,6 @@ namespace WorkerHarness.Core
         public RpcActionProvider(IValidatorFactory validatorFactory, 
             IMatcher matchService,
             IStreamingMessageProvider rpcMessageProvider,
-            IVariableObservable variableManager,
             GrpcServiceChannel channel)
         {
             _validatorFactory = validatorFactory;

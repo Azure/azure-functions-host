@@ -2,11 +2,11 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Text.Json.Nodes;
-using WorkerHarness.Core.GrpcService;
+using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Tests.Helpers;
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core.Tests.GrpcService
+namespace WorkerHarness.Core.Tests.StreamingMessageService
 {
     [TestClass]
     public class PayloadVariableSolverTests
