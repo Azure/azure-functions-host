@@ -8,7 +8,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using WorkerHarness.Core.Commons;
 
-namespace WorkerHarness.Core.Tests.Grpc
+namespace WorkerHarness.Core.Tests.GrpcService
 {
     [TestClass]
     public class GrpcMessageProviderTests
