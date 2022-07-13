@@ -18,6 +18,7 @@ namespace WorkerHarness.Core.Parsing
         internal static string ScenarioFileNotInJsonFormat = "ScenarioParser exception occurs when parsing {0}. {1}";
         internal static string ScenarioFileMissingActionsList = "Missing the 'actions' array in the scenario {0}";
         internal static string ScenarioFileMissingActionType = "Mising the \"actionType\" property in an action {0}";
+        internal static string ScenarioFileHasInvalidActionType = "Worker Harness does not recognize the action type: {0}";
 
         public ScenarioParser(IEnumerable<IActionProvider> actionProviders)
         {
@@ -56,7 +57,7 @@ namespace WorkerHarness.Core.Parsing
             string scenarioName = scenarioNode["scenarioName"]?.GetValue<string>() ?? Path.GetFileName(scenarioFile);
             Scenario scenario = new(scenarioName);
 
-            IList<JsonNode> actions = ResolveImportInActions(scenarioNode["actions"]!.AsArray());
+            IList<JsonNode> actions = scenarioNode["actions"]!.AsArray()!.ToList<JsonNode>();
 
             foreach (JsonNode actionNode in actions)
             {
@@ -72,7 +73,7 @@ namespace WorkerHarness.Core.Parsing
                 var actionProvider = _actionProviders.FirstOrDefault(p => string.Equals(p.Type, actionType, StringComparison.OrdinalIgnoreCase));
                 if (actionProvider == null)
                 {
-                    throw new InvalidDataException($"There is no action of type \"{actionType}\"");
+                    throw new ArgumentException(string.Format(ScenarioFileHasInvalidActionType, actionType));
                 }
 
                 // the the action provider to create the appropriate action node
@@ -80,60 +81,6 @@ namespace WorkerHarness.Core.Parsing
             }
 
             return scenario;
-        }
-
-        /// <summary>
-        /// Import actions from the scenario file specified in the "import" property in each action node
-        /// </summary>
-        /// <param name="jsonActions" cref="JsonArray"></param>
-        /// <returns></returns>
-        private static IList<JsonNode> ResolveImportInActions(JsonArray jsonActions)
-        {
-            IList<JsonNode> actionsBuffer = new List<JsonNode>();
-
-            for (int i = 0; i < jsonActions.Count; i++)
-            {
-                JsonNode actionNode = jsonActions[i] 
-                    ?? throw new NullReferenceException($"The element at index {i} of an {typeof(JsonArray)} is null. Expect a {typeof(JsonNode)} type");
-
-                if (actionNode["import"] != null && actionNode["import"]!.GetValue<string>() is string filePath)
-                {
-                    AddActions(filePath, ref actionsBuffer);
-                }
-                else
-                {
-                    actionsBuffer.Add(actionNode);
-                }
-            }
-
-            jsonActions.Clear();
-
-            return actionsBuffer;
-        }
-
-        private static void AddActions(string filePath, ref IList<JsonNode> actionsBuffer)
-        {
-            if (!File.Exists(filePath))
-            {
-                throw new FileNotFoundException($"{filePath} is not found");
-            }
-
-            // read the file and convert it to a JsonNode
-            string fileInput = File.ReadAllText(filePath);
-            JsonNode fileAsJsonNode = JsonNode.Parse(fileInput) ?? throw new JsonException($"{filePath} does not represent a valid single JSON value");
-
-            // validate that the file is a scenario file
-            ValidateScenario(fileAsJsonNode, filePath);
-
-            // read all actions in the file and add them to the actionsBuffer list
-            JsonArray fileActions = fileAsJsonNode["actions"]!.AsArray();
-            for (int i = 0; i < fileActions.Count; i++)
-            {
-                JsonNode actionNode = fileActions[i] ?? throw new NullReferenceException($"The element at index {i} of an {typeof(JsonArray)} is null. Expect a {typeof(JsonNode)} type");
-                actionsBuffer.Add(actionNode);
-            }
-
-            fileActions.Clear(); // remove all actionNodes from their parent "fileActions" in this case
         }
 
         private static void ValidateScenario(JsonNode scenarioNode, string scenarioPath)
