@@ -1,0 +1,10 @@
+{
+  "actions": [
+    {
+      "actionType": "rpc"
+    },
+    {
+      "actionType": "delay"
+    }
+  ]
+}
