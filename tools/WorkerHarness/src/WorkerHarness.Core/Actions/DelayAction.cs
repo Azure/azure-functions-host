@@ -16,7 +16,7 @@ namespace WorkerHarness.Core
             _milisecondsDelay = milisecondsDelay;
         }
 
-        public async Task<ActionResult> ExecuteAsync()
+        public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
             await Task.Delay(_milisecondsDelay);
 

@@ -23,8 +23,6 @@ namespace WorkerHarness.Core
 
         private readonly IGrpcMessageProvider _rpcMessageProvider;
 
-        private readonly IVariableObservable _variableManager;
-
         private readonly Channel<StreamingMessage> _inboundChannel;
 
         private readonly Channel<StreamingMessage> _outboundChannel;
@@ -40,7 +38,6 @@ namespace WorkerHarness.Core
             _validatorFactory = validatorFactory;
             _matchService = matchService;
             _rpcMessageProvider = rpcMessageProvider;
-            _variableManager = variableManager;
             _inboundChannel = channel.InboundChannel;
             _outboundChannel = channel.OutboundChannel;
         }
@@ -60,7 +57,6 @@ namespace WorkerHarness.Core
                                 _matchService,
                                 _rpcMessageProvider,
                                 actionData,
-                                _variableManager,
                                 _inboundChannel,
                                 _outboundChannel);
         }

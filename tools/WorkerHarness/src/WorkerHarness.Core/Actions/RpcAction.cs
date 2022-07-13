@@ -8,7 +8,6 @@ using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Validators;
-using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness.Core
 {
@@ -26,9 +25,6 @@ namespace WorkerHarness.Core
         // _actionData encapsulates data for each action in the Scenario file.
         private readonly RpcActionData _actionData;
 
-        // _variableManager evaluates all registered expressions once the variable values are available.
-        private readonly IVariableObservable _variableManager;
-
         // _inboundChannel stores messages from Grpc Layer. These messages are yet matched or validated.
         private readonly Channel<StreamingMessage> _inboundChannel;
 
@@ -39,7 +35,6 @@ namespace WorkerHarness.Core
             IMatcher matchService,
             IGrpcMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
-            IVariableObservable variableManager,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel)
         {
@@ -47,7 +42,6 @@ namespace WorkerHarness.Core
             _matchService = matchService;
             _grpcMessageProvider = grpcMessageProvider;
             _actionData = actionData;
-            _variableManager = variableManager;
             _inboundChannel = inboundChannel;
             _outboundChannel = outboundChannel;
         }
@@ -61,7 +55,7 @@ namespace WorkerHarness.Core
         // Execution timeout for an action
         public int Timeout { get => _actionData.Timeout; }
 
-        public async Task<ActionResult> ExecuteAsync()
+        public async Task<ActionResult> ExecuteAsync(ExecutionContext executionContext)
         {
             CancellationTokenSource tokenSource = new();
 
@@ -79,8 +73,8 @@ namespace WorkerHarness.Core
             ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap = new(); 
 
             // wait for timeoutTask, SendGrpc, and ReceiveGrpc with cancellation token
-            Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, statusMap, tokenSource.Token);
-            Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, statusMap, tokenSource.Token);
+            Task<bool> sendTask = SendToGrpcAsync(outgoingRpcMessages, statusMap, tokenSource.Token, executionContext);
+            Task<bool> receiveTask = ReceiveFromGrpcAsync(incomingRpcMessages, statusMap, tokenSource.Token, executionContext);
 
             //tokenSource.CancelAfter(Timeout);
 
@@ -112,8 +106,6 @@ namespace WorkerHarness.Core
 
             ActionResult actionResult = CreateActionResult(executionStatus, statusMap);
 
-            _variableManager.Clear();
-
             tokenSource.Dispose();
 
             return actionResult;
@@ -139,9 +131,9 @@ namespace WorkerHarness.Core
         }
 
         private async Task<bool> ReceiveFromGrpcAsync(IEnumerable<RpcActionMessage> incomingRpcMessages, 
-            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token)
+            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token, ExecutionContext execuationContext)
         {
-            RegisterExpressions(incomingRpcMessages);
+            RegisterExpressions(incomingRpcMessages, execuationContext);
 
             bool allValidated = true;
 
@@ -193,10 +185,10 @@ namespace WorkerHarness.Core
                         }
 
                         // setVariables
-                        SetVariables(rpcActionMessage, streamingMessage);
+                        SetVariables(rpcActionMessage, streamingMessage, execuationContext);
 
                         // register grpcMsg as a variable in _variableManager
-                        _variableManager.AddVariable(rpcActionMessage.Id, streamingMessage);
+                        execuationContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
 
                     }
 
@@ -224,38 +216,34 @@ namespace WorkerHarness.Core
             return allValidated;
         }
 
-        private void RegisterExpressions(IEnumerable<RpcActionMessage> incomingRpcMessages)
+        private void RegisterExpressions(IEnumerable<RpcActionMessage> incomingRpcMessages, ExecutionContext executionContext)
         {
             foreach (RpcActionMessage rpcActionMessage in incomingRpcMessages)
             {
-                RegisterExpressions(rpcActionMessage);
+                RegisterExpressions(rpcActionMessage, executionContext);
             }
         }
 
-        private void RegisterExpressions(RpcActionMessage rpcActionMessage)
+        private void RegisterExpressions(RpcActionMessage rpcActionMessage, ExecutionContext executionContext)
         {
             foreach (var matchingCriteria in rpcActionMessage.MatchingCriteria)
             {
-                //matchingCriteria.Query = VariableHelper.UpdateSingleDefaultVariableExpression(matchingCriteria.Query, rpcActionMessage.Id);
-
                 matchingCriteria.ConstructExpression();
 
-                _variableManager.Subscribe(matchingCriteria);
+                executionContext.GlobalVariables.Subscribe(matchingCriteria);
             }
 
             // in message.Validators, update any default variable '$.' to '$.{messageId}'
             foreach (var validator in rpcActionMessage.Validators)
             {
-                //validator.Query = VariableHelper.UpdateSingleDefaultVariableExpression(validator.Query, rpcActionMessage.Id);
-
                 validator.ConstructExpression();
 
-                _variableManager.Subscribe(validator);
+                executionContext.GlobalVariables.Subscribe(validator);
             }
         }
 
         private async Task<bool> SendToGrpcAsync(IEnumerable<RpcActionMessage> outgoingRpcMessages, 
-            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token)
+            ConcurrentDictionary<RpcActionMessage, RpcActionError> statusMap, CancellationToken token, ExecutionContext executionContext)
         {
             bool allSent = true;
 
@@ -263,7 +251,7 @@ namespace WorkerHarness.Core
             while (!token.IsCancellationRequested && enumerator.MoveNext())
             {
                 var rpcActionMessage = enumerator.Current;
-                var sent = await SendToGrpcAsync(rpcActionMessage, token);
+                var sent = await SendToGrpcAsync(rpcActionMessage, token, executionContext);
 
                 allSent = allSent && sent;
 
@@ -285,7 +273,7 @@ namespace WorkerHarness.Core
             return allSent;
         }
 
-        private async Task<bool> SendToGrpcAsync(RpcActionMessage rpcActionMessage, CancellationToken cancellationToken)
+        private async Task<bool> SendToGrpcAsync(RpcActionMessage rpcActionMessage, CancellationToken cancellationToken, ExecutionContext executionContext)
         {
             bool succeeded;
 
@@ -298,9 +286,9 @@ namespace WorkerHarness.Core
                 await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
 
                 // set variables
-                SetVariables(rpcActionMessage, streamingMessage);
+                SetVariables(rpcActionMessage, streamingMessage, executionContext);
 
-                _variableManager.AddVariable(rpcActionMessage.Id, streamingMessage);
+                executionContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
 
                 succeeded = true;
             }
@@ -312,7 +300,7 @@ namespace WorkerHarness.Core
             return succeeded;
         }
 
-        private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage)
+        private void SetVariables(RpcActionMessage rpcActionMessage, StreamingMessage streamingMessage, ExecutionContext executionContext)
         {
             if (rpcActionMessage.SetVariables == null)
             {
@@ -327,7 +315,7 @@ namespace WorkerHarness.Core
 
                 try
                 {
-                    _variableManager.AddVariable(variableName, streamingMessage.Query(query));
+                    executionContext.GlobalVariables.AddVariable(variableName, streamingMessage.Query(query));
                 }
                 catch (ArgumentException ex)
                 {

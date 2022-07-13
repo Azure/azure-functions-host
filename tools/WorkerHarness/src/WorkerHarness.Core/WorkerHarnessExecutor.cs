@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using WorkerHarness.Core.Options;
 using WorkerHarness.Core.Parsing;
+using WorkerHarness.Core.Variables;
 using WorkerHarness.Core.WorkerProcess;
 
 namespace WorkerHarness.Core
@@ -16,21 +17,26 @@ namespace WorkerHarness.Core
         private readonly IScenarioParser _scenarioParser;
         private readonly ILogger<DefaultWorkerHarnessExecutor> _logger;
         private readonly HarnessOptions _harnessOptions;
+        private readonly IVariableObservable _globalVariables;
 
         public DefaultWorkerHarnessExecutor(
             IWorkerProcessBuilder workerProcessBuilder,
             IScenarioParser scenarioParser,
             ILogger<DefaultWorkerHarnessExecutor> logger,
-            IOptions<HarnessOptions> harnessOptions)
+            IOptions<HarnessOptions> harnessOptions,
+            IVariableObservable variableObservable)
         {
             _workerProcessBuilder = workerProcessBuilder;
             _scenarioParser = scenarioParser;
             _logger = logger;
             _harnessOptions = harnessOptions.Value;
+            _globalVariables = variableObservable;
         }
 
         public async Task<bool> Start()
         {
+            // execution context: information associated with that 
+            // object has information about global variables and context about the exisiting run.
 
             Process myProcess = _workerProcessBuilder.Build(_harnessOptions.LanguageExecutable!, _harnessOptions.WorkerExecutable!, _harnessOptions.WorkerDirectory!);
 
@@ -38,13 +44,16 @@ namespace WorkerHarness.Core
 
             Scenario scenario = _scenarioParser.Parse(scenarioFile);
 
+            ExecutionContext executionContext = new(_globalVariables);
+
             try
             {
                 myProcess.Start();
 
                 foreach (IAction action in scenario.Actions)
                 {
-                    ActionResult actionResult = await action.ExecuteAsync();
+                    ActionResult actionResult = await action.ExecuteAsync(executionContext);
+                    // ExecuteAsync get a context
 
                     ShowActionResult(actionResult);
                     
