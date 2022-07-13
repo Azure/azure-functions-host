@@ -8,18 +8,22 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using WorkerHarness.Core.Commons;
 using WorkerHarness.Core.Options;
+using WorkerHarness.Core.Variables;
 
 namespace WorkerHarness.Core.GrpcService
 {
     public class StreamingMessageProvider : IStreamingMessageProvider
     {
         private readonly HarnessOptions _workerOptions;
+        private readonly IPayloadVariableSolver _payloadVariableSolver;
 
         private readonly JsonSerializerOptions _serializerOptions;
 
-        public StreamingMessageProvider(IOptions<HarnessOptions> workerOptions)
+        public StreamingMessageProvider(IOptions<HarnessOptions> workerOptions, 
+            IPayloadVariableSolver payloadVariableSolver)
         {
             _workerOptions = workerOptions.Value;
+            _payloadVariableSolver = payloadVariableSolver;
 
             _serializerOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
             _serializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -28,6 +32,29 @@ namespace WorkerHarness.Core.GrpcService
         // Exception messages
         internal static string NullPayloadMessage = "Cannot create a {0} message from a null payload";
         internal static string UnsupportedMessageType = "The Worker Harness is currently not able to create a {0} message";
+
+        public bool TryCreate(out StreamingMessage message, string messageType, JsonNode? payload, IVariableObservable variableObservable)
+        {
+            if (payload == null)
+            {
+                throw new ArgumentException(string.Format(NullPayloadMessage, payload));
+            }
+
+            bool solved = _payloadVariableSolver.TrySolveVariables(out JsonNode newPayload, payload, variableObservable);
+
+            if (solved)
+            {
+                message = Create(messageType, newPayload);
+
+                return true;
+            }
+            else
+            {
+                message = new StreamingMessage();
+
+                return false;
+            }
+        }
 
         public StreamingMessage Create(string contentCase, JsonNode? content)
         {
