@@ -178,7 +178,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Diagnostics
         public void ParseFunctionExecutionEvents(string executionId, string siteName, int concurrency, string functionName, string invocationId,
             string executionStage, long executionTimeSpan, bool success)
         {
-            _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success); 
+            _generator.LogFunctionExecutionEvent(executionId, siteName, concurrency, functionName, invocationId, executionStage, executionTimeSpan, success);
             string evt = _events.Single();
 
             Regex regex = new Regex(LinuxAppServiceEventGenerator.ExecutionEventRegex);
