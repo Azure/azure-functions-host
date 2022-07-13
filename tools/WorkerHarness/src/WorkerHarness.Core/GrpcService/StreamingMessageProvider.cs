@@ -11,13 +11,13 @@ using WorkerHarness.Core.Options;
 
 namespace WorkerHarness.Core.GrpcService
 {
-    public class GrpcMessageProvider : IGrpcMessageProvider
+    public class StreamingMessageProvider : IStreamingMessageProvider
     {
         private readonly HarnessOptions _workerOptions;
 
         private readonly JsonSerializerOptions _serializerOptions;
 
-        public GrpcMessageProvider(IOptions<HarnessOptions> workerOptions)
+        public StreamingMessageProvider(IOptions<HarnessOptions> workerOptions)
         {
             _workerOptions = workerOptions.Value;
 

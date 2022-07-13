@@ -20,10 +20,10 @@ namespace WorkerHarness.Core.Tests.GrpcService
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
 
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             string messageType = "WorkerInitRequest";
-            string expectedExceptionMessage = string.Format(GrpcMessageProvider.NullPayloadMessage, messageType);
+            string expectedExceptionMessage = string.Format(StreamingMessageProvider.NullPayloadMessage, messageType);
 
             // Act
             try
@@ -49,11 +49,11 @@ namespace WorkerHarness.Core.Tests.GrpcService
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
 
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             JsonNode stubNode = JsonNode.Parse("{}")!;
 
-            string expectedExceptionMessage = string.Format(GrpcMessageProvider.UnsupportedMessageType, messageType);
+            string expectedExceptionMessage = string.Format(StreamingMessageProvider.UnsupportedMessageType, messageType);
 
             // Act
             try
@@ -80,7 +80,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
@@ -110,7 +110,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
@@ -147,7 +147,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
@@ -184,7 +184,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
@@ -209,7 +209,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
@@ -229,7 +229,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
 
             HarnessOptions harnessOptions = CreateDefaultHarnessOptions();
             MSOptions.IOptions<HarnessOptions> stubOptions = MSOptions.Options.Create<HarnessOptions>(harnessOptions);
-            GrpcMessageProvider provider = new(stubOptions);
+            StreamingMessageProvider provider = new(stubOptions);
 
             // Act
             StreamingMessage message = provider.Create(messageType, payload);
