@@ -484,8 +484,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
             IEnumerable<IRpcWorkerChannel> initializedWorkers = workerChannels.Where(ch => ch.IsChannelReadyForInvocations());
             int workerCount = await _maxProcessCount.Value;
 
-            // In case of multi language environment, we are not aware of workers we need until we get function metadata. Thus skipping this check
-            if (initializedWorkers.Count() > workerCount && !_environment.IsMultiLanguageRuntimeEnvironment())
+            if (initializedWorkers.Count() > workerCount)
             {
                 throw new InvalidOperationException($"Number of initialized language workers exceeded:{initializedWorkers.Count()} exceeded maxProcessCount: {workerCount}");
             }

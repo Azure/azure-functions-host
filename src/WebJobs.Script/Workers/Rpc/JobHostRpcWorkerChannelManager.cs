@@ -90,7 +90,7 @@ namespace Microsoft.Azure.WebJobs.Script.Workers.Rpc
 
         public IEnumerable<IRpcWorkerChannel> GetChannels()
         {
-            List<IRpcWorkerChannel> rpcWorkerChannels = new List<IRpcWorkerChannel>();
+            var rpcWorkerChannels = new List<IRpcWorkerChannel>();
             foreach (string language in _channels.Keys)
             {
                 _channels.TryGetValue(language, out IRpcWorkerChannelDictionary channels);

@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Script.Description
             IFunctionInvocationDispatcher dispatcher, ILoggerFactory loggerFactory, IApplicationLifetime applicationLifetime, TimeSpan workerInitializationTimeout)
             : base(host, config, bindingProviders, dispatcher, loggerFactory, applicationLifetime, workerInitializationTimeout)
         {
-            _workerConfig = workerConfig;
+            _workerConfig = workerConfig ?? throw new ArgumentNullException(nameof(workerConfig));
         }
 
         /// <inheritdoc/>
