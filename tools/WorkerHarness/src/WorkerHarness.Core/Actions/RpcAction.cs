@@ -5,8 +5,8 @@ using Microsoft.Azure.Functions.WorkerHarness.Grpc.Messages;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 using WorkerHarness.Core.Commons;
-using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.Matching;
+using WorkerHarness.Core.StreamingMessageService;
 using WorkerHarness.Core.Validators;
 
 namespace WorkerHarness.Core
@@ -280,17 +280,24 @@ namespace WorkerHarness.Core
             try
             {
                 // create the appropriate Grpc message
-                 _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
+                bool created = _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
 
-                // send it to grpc
-                await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
+                if (created)
+                {
+                    // send it to grpc
+                    await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
 
-                // set variables
-                SetVariables(rpcActionMessage, streamingMessage, executionContext);
+                    // set variables
+                    SetVariables(rpcActionMessage, streamingMessage, executionContext);
 
-                executionContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
+                    executionContext.GlobalVariables.AddVariable(rpcActionMessage.Id, streamingMessage);
 
-                succeeded = true;
+                    succeeded = true;
+                }
+                else
+                {
+                    succeeded = false;
+                }
             }
             catch (OperationCanceledException)
             {

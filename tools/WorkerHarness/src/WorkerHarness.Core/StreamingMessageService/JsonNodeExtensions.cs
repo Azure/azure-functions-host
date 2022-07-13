@@ -4,13 +4,18 @@
 using System.Text.Json.Nodes;
 using WorkerHarness.Core.Variables;
 
-namespace WorkerHarness.Core.Commons
+namespace WorkerHarness.Core.StreamingMessageService
 {
     internal static class JsonNodeExtensions
     {
-        // exception messages
         internal static string VariableCannotBeSolved = "The {0} expression contain a variable that cannot be solved because it is not avaible in the global variables";
 
+        /// <summary>
+        /// An extension method to solve any variables in a JsonNode.
+        /// </summary>
+        /// <param name="node" cref="JsonNode"></param>
+        /// <param name="globalVariables" cref="IVariableObservable"></param>
+        /// <returns></returns>
         internal static JsonNode SolveVariables(this JsonNode node, IVariableObservable globalVariables)
         {
             return RecursiveSolveVariables(node, globalVariables);

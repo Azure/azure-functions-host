@@ -17,6 +17,7 @@ using WorkerHarness.Core.Matching;
 using WorkerHarness.Core.Validators;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.GrpcService;
+using WorkerHarness.Core.StreamingMessageService;
 
 namespace WorkerHarness
 {
@@ -68,6 +69,7 @@ namespace WorkerHarness
                 .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
                 .AddSingleton<IStreamingMessageProvider, StreamingMessageProvider>()
+                .AddSingleton<IPayloadVariableSolver, PayloadVariableSolver>()
                 .AddSingleton<IValidatorFactory, ValidatorFactory>()
                 .AddSingleton<IVariableObservable, VariableManager>()
                 .AddSingleton<IMatcher, StringMatcher>()
