@@ -23,7 +23,8 @@ namespace WorkerHarness.Core.Tests.Commons
             var actual = stubNode.SolveVariables(stubGlobalVariables);
 
             // Assert
-            Assert.AreEqual(stubNode, actual);
+            Assert.IsTrue(actual is JsonObject);
+            Assert.AreEqual(0, ((JsonObject)actual).Count);
         }
 
         [TestMethod]
