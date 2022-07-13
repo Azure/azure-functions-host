@@ -67,7 +67,7 @@ namespace WorkerHarness
             ServiceProvider serviceProvider = new ServiceCollection()
                 .AddSingleton<IWorkerProcessBuilder, WorkerProcessBuilder>()
                 .AddSingleton<IScenarioParser, ScenarioParser>()
-                .AddSingleton<IGrpcMessageProvider, GrpcMessageProvider>()
+                .AddSingleton<IStreamingMessageProvider, StreamingMessageProvider>()
                 .AddSingleton<IValidatorFactory, ValidatorFactory>()
                 .AddSingleton<IVariableObservable, VariableManager>()
                 .AddSingleton<IMatcher, StringMatcher>()

@@ -20,7 +20,7 @@ namespace WorkerHarness.Core
         private readonly IMatcher _matchService;
 
         // _grpcMessageProvider create the right StreamingMessage object.
-        private readonly IGrpcMessageProvider _grpcMessageProvider;
+        private readonly IStreamingMessageProvider _grpcMessageProvider;
 
         // _actionData encapsulates data for each action in the Scenario file.
         private readonly RpcActionData _actionData;
@@ -33,7 +33,7 @@ namespace WorkerHarness.Core
 
         internal RpcAction(IValidatorFactory validatorFactory, 
             IMatcher matchService,
-            IGrpcMessageProvider grpcMessageProvider, 
+            IStreamingMessageProvider grpcMessageProvider, 
             RpcActionData actionData,
             Channel<StreamingMessage> inboundChannel,
             Channel<StreamingMessage> outboundChannel)

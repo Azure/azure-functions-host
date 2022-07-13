@@ -9,7 +9,7 @@ namespace WorkerHarness.Core.GrpcService
     /// <summary>
     /// Abtract the responsibility to create a Grpc Message
     /// </summary>
-    public interface IGrpcMessageProvider
+    public interface IStreamingMessageProvider
     {
         /// <summary>
         /// Create a StreamingMessage object
