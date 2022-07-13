@@ -33,15 +33,17 @@ namespace WorkerHarness.Core.Commons
             }
             else if (node is JsonObject nodeAsJsonObject)
             {
+                JsonObject newObject = new();
+
                 IEnumerator<KeyValuePair<string, JsonNode?>> enumerator = nodeAsJsonObject.GetEnumerator();
                 while (enumerator.MoveNext())
                 {
                     string propertyName = enumerator.Current.Key;
                     JsonNode propertyValue = enumerator.Current.Value!;
-                    nodeAsJsonObject[propertyName] = RecursiveSolveVariables(propertyValue, globalVariables);
+                    newObject[propertyName] = RecursiveSolveVariables(propertyValue, globalVariables);
                 }
 
-                return nodeAsJsonObject;
+                return newObject;
             }
             else if (node is JsonValue nodeAsJsonValue)
             {
