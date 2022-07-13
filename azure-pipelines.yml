@@ -16,6 +16,9 @@ trigger:
     include:
     - dev
     - release/4.*
+  paths:
+    exclude:
+    - src/WebJobs.Script.WebHost/PreJIT
 
 jobs:
 - job: InitializePipeline
@@ -44,7 +47,7 @@ jobs:
   pool:
     name: '1ES-Hosted-AzFunc'
     demands:
-      - ImageOverride -equals MMS2019TLS
+      - ImageOverride -equals MMS2019TLS  
   steps:
   - template: build/install-dotnet.yml
   - task: PowerShell@2
