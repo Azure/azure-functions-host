@@ -33,6 +33,8 @@ namespace Microsoft.Azure.WebJobs.Script.WebHost
             HttpBodyControlOptions httpBodyControlOptions = httpBodyControlOptionsMonitor.CurrentValue;
             httpBodyControlOptionsMonitor.OnChange(newOptions => httpBodyControlOptions = newOptions);
 
+            // Ensure the ClrOptimizationMiddleware is registered before all middleware
+            builder.UseMiddleware<ClrOptimizationMiddleware>();
             builder.UseMiddleware<HttpRequestBodySizeMiddleware>();
             builder.UseMiddleware<SystemTraceMiddleware>();
             builder.UseMiddleware<HostnameFixupMiddleware>();

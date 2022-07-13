@@ -29,7 +29,6 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
         public SystemTraceMiddlewareTests()
         {
             var environment = new TestEnvironment();
-            var hostEnvironment = new ScriptWebHostEnvironment(environment);
             _loggerProvider = new TestLoggerProvider();
             var loggerFactory = new LoggerFactory();
             loggerFactory.AddProvider(_loggerProvider);
@@ -40,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Handlers
             };
 
             var logger = loggerFactory.CreateLogger<SystemTraceMiddleware>();
-            _middleware = new SystemTraceMiddleware(requestDelegate, hostEnvironment, logger);
+            _middleware = new SystemTraceMiddleware(requestDelegate, logger);
         }
 
         [Fact]
