@@ -19,6 +19,8 @@ namespace Microsoft.Azure.WebJobs.Script
     {
         private static bool? isApplicationInsightsAgentEnabled;
 
+        private static bool? isMultiLanguageEnabled;
+
         internal static string BaseDirectory { get; set; }
 
         public static string GetEnvironmentVariableOrDefault(this IEnvironment environment, string name, string defaultValue)
@@ -325,7 +327,11 @@ namespace Microsoft.Azure.WebJobs.Script
         /// </summary>
         public static bool IsMultiLanguageRuntimeEnvironment(this IEnvironment environment)
         {
-            return environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
+            if (!isMultiLanguageEnabled.HasValue)
+            {
+                isMultiLanguageEnabled = environment.IsLogicApp() && FeatureFlags.IsEnabled(ScriptConstants.FeatureFlagEnableMultiLanguageWorker, environment);
+            }
+            return isMultiLanguageEnabled.Value;
         }
 
         /// <summary>
@@ -538,6 +544,16 @@ namespace Microsoft.Azure.WebJobs.Script
                 return isApplicationInsightsAgentEnabled.Value;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Clears all cached static flags in <see cref="EnvironmentExtensions"/>.
+        /// Currently we only use it to purge static initialisations in across tests.
+        /// </summary>
+        public static void ClearCache()
+        {
+            isMultiLanguageEnabled = null;
+            isApplicationInsightsAgentEnabled = null;
         }
     }
 }

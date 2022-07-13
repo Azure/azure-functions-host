@@ -19,8 +19,15 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
     /// <summary>
     /// Class to run tests for Multi Language Runtime
     /// </summary>
-    public class MultiLanguageEndToEndTests
+    public class MultiLanguageEndToEndTests : IDisposable
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MultiLanguageEndToEndTests"/> class.
+        /// </summary>
+        public MultiLanguageEndToEndTests()
+        {
+            EnvironmentExtensions.ClearCache();
+        }
 
         /// <summary>
         /// Runs tests with multiple language provider function.
@@ -217,12 +224,22 @@ namespace Microsoft.Azure.WebJobs.Script.Tests.Integration.WebHostEndToEnd
 
                     builder.Services.AddSingleton(testEnvironment);
                 },
-                configureScriptHostServices: s =>
+                configureScriptHostServices: service =>
                 {
-                    s.AddSingleton(syncTriggerMock.Object);
+                    service.AddSingleton(syncTriggerMock.Object);
+                },
+                configureWebHostServices: service =>
+                {
+                    service.AddSingleton(testEnvironment);
                 });
 
             return host;
+        }
+
+        /// <inheritdoc/>
+        public void Dispose()
+        {
+            EnvironmentExtensions.ClearCache();
         }
 
         /// <summary>
