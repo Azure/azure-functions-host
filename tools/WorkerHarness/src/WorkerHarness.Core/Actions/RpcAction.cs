@@ -280,7 +280,7 @@ namespace WorkerHarness.Core
             try
             {
                 // create the appropriate Grpc message
-                StreamingMessage streamingMessage = _grpcMessageProvider.Create(rpcActionMessage.MessageType, rpcActionMessage.Payload);
+                 _grpcMessageProvider.TryCreate(out StreamingMessage streamingMessage, rpcActionMessage.MessageType, rpcActionMessage.Payload, executionContext.GlobalVariables);
 
                 // send it to grpc
                 await _outboundChannel.Writer.WriteAsync(streamingMessage, cancellationToken);
@@ -307,7 +307,7 @@ namespace WorkerHarness.Core
                 return;
             }
 
-            IDictionary<string, string> variableSettings = rpcActionMessage.SetVariables!;
+            IDictionary<string, string> variableSettings = rpcActionMessage.SetVariables;
             foreach (KeyValuePair<string, string> setting in variableSettings)
             {
                 string variableName = setting.Key;

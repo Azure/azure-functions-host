@@ -18,6 +18,6 @@ namespace WorkerHarness.Core.GrpcService
         /// <param name="payload" cref="JsonNode">a payload that has zero or more variables</param>
         /// <param name="variableObservable" cref="IVariableObservable">store variables and their values</param>
         /// <returns>true if all variables in payload are solved, false otherwise</returns>
-        bool SolveVariables(out JsonNode newPayload, JsonNode payload, IVariableObservable variableObservable);
+        bool TrySolveVariables(out JsonNode newPayload, JsonNode payload, IVariableObservable variableObservable);
     }
 }

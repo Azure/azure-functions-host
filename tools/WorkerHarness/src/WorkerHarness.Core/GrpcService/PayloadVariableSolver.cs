@@ -9,7 +9,7 @@ namespace WorkerHarness.Core.GrpcService
 {
     public class PayloadVariableSolver : IPayloadVariableSolver
     {
-        public bool SolveVariables(out JsonNode newPayload, JsonNode payload, IVariableObservable variableObservable)
+        public bool TrySolveVariables(out JsonNode newPayload, JsonNode payload, IVariableObservable variableObservable)
         {
             try
             {

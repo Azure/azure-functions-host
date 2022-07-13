@@ -12,7 +12,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
     public class PayloadVariableSolverTests
     {
         [TestMethod]
-        public void SolveVariables_PayloadSolveVariablesThrowsArgumentException_ReturnFalse()
+        public void TrySolveVariables_PayloadSolveVariablesThrowsArgumentException_ReturnFalse()
         {
             // Arrange
             JsonNode payload = new JsonObject
@@ -37,7 +37,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
             PayloadVariableSolver payloadVariableSolver = new();
 
             // Act
-            bool actual = payloadVariableSolver.SolveVariables(out JsonNode newPayload, payload, globalVariables);
+            bool actual = payloadVariableSolver.TrySolveVariables(out JsonNode newPayload, payload, globalVariables);
 
             // Assert
             Assert.IsFalse(actual);
@@ -46,7 +46,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
         }
 
         [TestMethod]
-        public void SolveVariables_PayloadSolveVariablesSucceeds_ReturnTrue()
+        public void TrySolveVariables_PayloadSolveVariablesSucceeds_ReturnTrue()
         {
             // Arrange
             JsonNode payload = new JsonObject
@@ -73,7 +73,7 @@ namespace WorkerHarness.Core.Tests.GrpcService
             PayloadVariableSolver payloadVariableSolver = new();
 
             // Act
-            bool actual = payloadVariableSolver.SolveVariables(out JsonNode newPayload, payload, globalVariables);
+            bool actual = payloadVariableSolver.TrySolveVariables(out JsonNode newPayload, payload, globalVariables);
 
             // Assert
             Assert.IsTrue(actual);
