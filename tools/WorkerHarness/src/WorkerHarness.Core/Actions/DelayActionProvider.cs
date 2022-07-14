@@ -3,7 +3,7 @@
 
 using System.Text.Json.Nodes;
 
-namespace WorkerHarness.Core
+namespace WorkerHarness.Core.Actions
 {
     public class DelayActionProvider : IActionProvider
     {

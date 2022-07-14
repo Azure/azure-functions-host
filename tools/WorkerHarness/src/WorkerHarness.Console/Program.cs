@@ -18,6 +18,7 @@ using WorkerHarness.Core.Validators;
 using WorkerHarness.Core.Parsing;
 using WorkerHarness.Core.GrpcService;
 using WorkerHarness.Core.StreamingMessageService;
+using WorkerHarness.Core.Actions;
 
 namespace WorkerHarness
 {
